@@ -32,9 +32,13 @@ Oreamnos is currently in development. Here is the progress so far:
 ### ✅ Phase 6: Usage Statistics & Analytics
 - **Implemented:** Rolling window tracking of token usage, latency, and success rates, custom Flutter Canvas (`CustomPainter`) line charts for visual data representation, and dashboard history in Settings.
 
+### ✅ Phase 7: Card Generator
+- **Implemented:** Custom `CardData` model with deterministic JSON extraction.
+- **Implemented:** Multiple templates (Standard, Breaking News, Quote) and custom backgrounds.
+- **Implemented:** Native high-quality PNG export (Gallery Saving) and sharing mechanisms via `RepaintBoundary` and `gal`.
+
 ## 🚧 Upcoming (Migration Plan)
 
-- **Phase 7:** Card Generator (Structured JSON extraction, custom background painters)
 - **Phase 8:** Vision Extraction (ML Kit OCR, platform-specific models)
 - **Phase 9:** Polish & Platform Features (Haptics, Spring animations, background services)
 

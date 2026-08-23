@@ -9,6 +9,9 @@ import 'data/services/usage_service.dart';
 
 import 'ui/features/settings/view_models/settings_view_model.dart';
 import 'ui/features/generate/view_models/generate_view_model.dart';
+import 'data/services/export_service.dart';
+import 'data/services/card_data_extractor.dart';
+import 'ui/features/card_generator/view_models/card_generator_view_model.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -38,6 +41,14 @@ void main() async {
         ChangeNotifierProxyProvider<SettingsViewModel, GenerateViewModel>(
           create: (context) => GenerateViewModel(context.read<SettingsViewModel>(), context.read<UsageService>()),
           update: (context, settings, previous) => previous ?? GenerateViewModel(settings, context.read<UsageService>()),
+        ),
+        Provider<ExportService>(create: (_) => ExportService()),
+        Provider<CardDataExtractor>(create: (_) => CardDataExtractor()),
+        ChangeNotifierProvider<CardGeneratorViewModel>(
+          create: (context) => CardGeneratorViewModel(
+            extractor: context.read<CardDataExtractor>(),
+            exportService: context.read<ExportService>(),
+          ),
         ),
       ],
       child: const OreamnosApp(),

@@ -172,6 +172,26 @@ class _GenerateScreenState extends State<GenerateScreen> {
                       Row(
                         children: [
                           IconButton(
+                            icon: const Icon(Icons.image),
+                            onPressed: () async {
+                              final settings = context.read<SettingsViewModel>();
+                              if (settings.selectedModel != null) {
+                                final apiKey = await settings.getApiKeyForProvider(settings.selectedProvider);
+                                if (!context.mounted) return;
+                                context.push(
+                                  RoutePaths.cardGenerator,
+                                  extra: {
+                                    'generatedText': viewModel.generatedContent ?? '',
+                                    'provider': settings.selectedProvider,
+                                    'apiKey': apiKey ?? '',
+                                    'modelId': settings.selectedModel!,
+                                  },
+                                );
+                              }
+                            },
+                            tooltip: 'Generate Card',
+                          ),
+                          IconButton(
                             icon: const Icon(Icons.fullscreen),
                             onPressed: () {
                               context.push(

@@ -59,14 +59,14 @@
 - [ ] Session history (last 20 requests)
 - [ ] Per-provider breakdown
 
-#### Phase 7: Card Generator
-- [ ] CardPromptManager for structured JSON extraction
-- [ ] CardDataExtractor with JSON parsing
-- [ ] Template picker (10+ templates)
-- [ ] Card canvas renderers
-- [ ] Background picker (gradient, gallery, preset)
-- [ ] Design studio (typography, opacity, image position)
-- [ ] Export pipeline (save to gallery, share)
+#### ✅ Phase 7: Card Generator
+- [x] CardPromptManager for structured JSON extraction
+- [x] CardDataExtractor with JSON parsing
+- [x] Template picker (10+ templates)
+- [x] Card canvas renderers
+- [x] Background picker (gradient, gallery, preset)
+- [x] Design studio (typography, opacity, image position)
+- [x] Export pipeline (save to gallery, share)
 
 #### Phase 8: Vision Extraction (Platform-Specific)
 - [ ] IVisionExtractor interface
