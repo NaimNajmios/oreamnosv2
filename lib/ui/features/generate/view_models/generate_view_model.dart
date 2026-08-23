@@ -1,4 +1,3 @@
-import 'package:flutter/foundation.dart';
 import 'package:uuid/uuid.dart';
 import 'package:oreamnos/data/services/curator_factory.dart';
 import 'package:oreamnos/ui/features/settings/view_models/settings_view_model.dart';
@@ -8,15 +7,33 @@ import 'package:oreamnos/domain/models/usage_log.dart';
 
 import 'package:image_picker/image_picker.dart';
 import 'package:oreamnos/domain/services/vision_extractor.dart';
+import 'package:oreamnos/data/services/notification_service.dart';
+import 'package:oreamnos/data/services/log_service.dart';
+import 'package:flutter/widgets.dart'; // for AppLifecycleState
 
 enum GenerateState { idle, generating, success, error }
 
-class GenerateViewModel extends ChangeNotifier {
+class GenerateViewModel extends ChangeNotifier with WidgetsBindingObserver {
   GenerateViewModel(
     this._settingsViewModel, 
     this._usageService,
     [this._visionExtractor]
-  );
+  ) {
+    WidgetsBinding.instance.addObserver(this);
+  }
+
+  @override
+  void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    super.dispose();
+  }
+
+  bool _isBackgrounded = false;
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    _isBackgrounded = state == AppLifecycleState.paused || state == AppLifecycleState.inactive;
+  }
 
   final SettingsViewModel _settingsViewModel;
   final UsageService _usageService;
@@ -93,9 +110,18 @@ class GenerateViewModel extends ChangeNotifier {
         estimatedTokens: estimatedTokens,
         isSuccess: true,
       ));
+      
+      LogService().info('Generated post successfully in ${stopwatch.elapsedMilliseconds}ms');
 
       _state = GenerateState.success;
-    } catch (e) {
+      
+      if (_isBackgrounded) {
+        NotificationService().showGenerationCompleteNotification(
+          'Post Ready',
+          'Your AI-curated social media post has been generated successfully.',
+        );
+      }
+    } catch (e, st) {
       stopwatch.stop();
       _usageService.logUsage(UsageLog(
         id: const Uuid().v4(),
@@ -106,8 +132,17 @@ class GenerateViewModel extends ChangeNotifier {
         isSuccess: false,
       ));
       
+      LogService().error('Failed to generate post', e, st);
+      
       _errorMessage = e.toString();
       _state = GenerateState.error;
+      
+      if (_isBackgrounded) {
+        NotificationService().showGenerationCompleteNotification(
+          'Generation Failed',
+          'There was an error generating your post.',
+        );
+      }
     } finally {
       notifyListeners();
     }
@@ -157,8 +192,17 @@ class GenerateViewModel extends ChangeNotifier {
         isSuccess: true,
       ));
 
+      LogService().info('Refined post successfully in ${stopwatch.elapsedMilliseconds}ms');
+
       _state = GenerateState.success;
-    } catch (e) {
+      
+      if (_isBackgrounded) {
+        NotificationService().showGenerationCompleteNotification(
+          'Refinement Ready',
+          'Your refined social media post is ready.',
+        );
+      }
+    } catch (e, st) {
       stopwatch.stop();
       _usageService.logUsage(UsageLog(
         id: const Uuid().v4(),
@@ -168,9 +212,18 @@ class GenerateViewModel extends ChangeNotifier {
         estimatedTokens: 0,
         isSuccess: false,
       ));
+      
+      LogService().error('Failed to refine post', e, st);
 
       _errorMessage = e.toString();
       _state = GenerateState.error;
+      
+      if (_isBackgrounded) {
+        NotificationService().showGenerationCompleteNotification(
+          'Refinement Failed',
+          'There was an error refining your post.',
+        );
+      }
     } finally {
       notifyListeners();
     }

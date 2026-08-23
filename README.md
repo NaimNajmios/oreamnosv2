@@ -37,10 +37,20 @@ Oreamnos is currently in development. Here is the progress so far:
 - **Implemented:** Multiple templates (Standard, Breaking News, Quote) and custom backgrounds.
 - **Implemented:** Native high-quality PNG export (Gallery Saving) and sharing mechanisms via `RepaintBoundary` and `gal`.
 
+### ✅ Phase 8: Vision Extraction
+- **Implemented:** `IVisionExtractor` interface with `MLKitVisionExtractor` using `google_mlkit_text_recognition`.
+- **Implemented:** On-device, privacy-preserving Optical Character Recognition (OCR).
+- **Implemented:** Direct Gallery image picker integration on the Generate screen to extract text from screenshots and graphics.
+
+### ✅ Phase 9: Polish & Platform Features
+- **Implemented:** Semantic haptic feedback for all interactive components.
+- **Implemented:** Custom Spring animations via `flutter_animate`.
+- **Implemented:** Android Quick Settings Tile ("Paste to AI") and background Notifications.
+- **Implemented:** In-memory ring buffer logging system and Debug Log Viewer.
+
 ## 🚧 Upcoming (Migration Plan)
 
-- **Phase 8:** Vision Extraction (ML Kit OCR, platform-specific models)
-- **Phase 9:** Polish & Platform Features (Haptics, Spring animations, background services)
+- **Phase 10:** Release & Polish (Testing, App Icon, Final review)
 
 ## Getting Started
 

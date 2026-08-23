@@ -14,12 +14,19 @@ import 'data/services/card_data_extractor.dart';
 import 'domain/services/vision_extractor.dart';
 import 'data/services/ml_kit_vision_extractor.dart';
 import 'ui/features/card_generator/view_models/card_generator_view_model.dart';
+import 'data/services/notification_service.dart';
+import 'data/services/quick_settings_service.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
   // Initialize SharedPreferences before app starts
   final sharedPrefs = await SharedPreferences.getInstance();
+
+  await NotificationService().init();
+  await NotificationService().requestPermission();
+
+  await QuickSettingsService.init();
 
   const secureStorage = FlutterSecureStorage(
     aOptions: AndroidOptions(encryptedSharedPreferences: true),

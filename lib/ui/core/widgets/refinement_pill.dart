@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../utils/haptics.dart';
 
 class RefinementPill extends StatelessWidget {
   final String label;
@@ -18,7 +19,10 @@ class RefinementPill extends StatelessWidget {
     return Material(
       color: Colors.transparent,
       child: InkWell(
-        onTap: isLoading ? null : onTap,
+        onTap: isLoading ? null : () {
+          Haptics.selectionClick();
+          onTap();
+        },
         borderRadius: BorderRadius.zero,
         child: Container(
           padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),

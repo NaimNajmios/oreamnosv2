@@ -109,6 +109,16 @@ class SettingsScreen extends StatelessWidget {
             subtitle: viewModel.themeMode.label,
             onTap: () => ThemeSelectionDialog.show(context),
           ),
+          const Divider(height: 32),
+          _buildSectionHeader(context, 'Advanced'),
+          const SizedBox(height: 8),
+          _buildTile(
+            context,
+            icon: Icons.bug_report_outlined,
+            title: 'Debug Logs',
+            subtitle: 'View internal system logs',
+            onTap: () => context.push(RoutePaths.debugLogs),
+          ),
         ],
       ),
     );

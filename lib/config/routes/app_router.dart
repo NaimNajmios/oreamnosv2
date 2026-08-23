@@ -9,6 +9,7 @@ import '../../ui/features/settings/views/hashtag_manager_screen.dart';
 import '../../ui/features/usage/views/usage_screen.dart';
 import '../../ui/features/card_generator/views/card_generator_screen.dart';
 import '../../ui/features/generate/views/reading_mode_screen.dart';
+import '../../ui/features/settings/views/debug_log_screen.dart';
 import '../../data/models/ai_provider.dart';
 
 /// Route path constants.
@@ -21,6 +22,7 @@ abstract final class RoutePaths {
   static const String usage = '/usage';
   // Future routes:
   static const String cardGenerator = '/card-generator';
+  static const String debugLogs = '/debug-logs';
   // static const String sessions = '/sessions';
 }
 
@@ -76,6 +78,10 @@ GoRouter createAppRouter() {
             modelId: args['modelId'] as String,
           );
         },
+      ),
+      GoRoute(
+        path: RoutePaths.debugLogs,
+        builder: (context, state) => const DebugLogScreen(),
       ),
     ],
   );

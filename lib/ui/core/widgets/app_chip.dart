@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
+
+import '../utils/haptics.dart';
 
 /// A pill-shaped chip with animated color transitions.
 class AppChip extends StatelessWidget {
@@ -25,7 +26,7 @@ class AppChip extends StatelessWidget {
 
     return GestureDetector(
       onTap: () {
-        HapticFeedback.lightImpact();
+        Haptics.selectionClick();
         onTap?.call();
       },
       child: AnimatedContainer(

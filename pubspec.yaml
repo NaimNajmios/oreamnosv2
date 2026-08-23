@@ -47,6 +47,8 @@ dependencies:
   path_provider: ^2.1.6
   google_mlkit_text_recognition: ^0.17.1
   image_picker: ^1.2.3
+  quick_settings: ^1.0.1
+  flutter_local_notifications: ^22.3.0
 
 dev_dependencies:
   flutter_test:
@@ -57,6 +59,19 @@ dev_dependencies:
   # Code Generation
   build_runner: ^2.4.15
   json_serializable: ^6.9.5
+  flutter_launcher_icons: ^0.14.4
+  flutter_native_splash: ^2.4.8
 
 flutter:
   uses-material-design: true
+
+flutter_launcher_icons:
+  android: "launcher_icon"
+  ios: true
+  image_path: "icon/icon.png"
+
+flutter_native_splash:
+  color: "#1C1C1C"
+  image: "icon/icon.png"
+  android: true
+  ios: true
