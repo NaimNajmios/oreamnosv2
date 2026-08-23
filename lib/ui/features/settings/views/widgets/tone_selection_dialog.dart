@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import '../view_models/settings_view_model.dart';
+import 'package:oreamnos/ui/features/settings/view_models/settings_view_model.dart';
 
 class ToneSelectionDialog extends StatelessWidget {
   const ToneSelectionDialog({super.key});

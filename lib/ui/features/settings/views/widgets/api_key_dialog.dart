@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import '../../../../data/models/ai_provider.dart';
-import '../../../core/widgets/neo_input.dart';
-import '../view_models/settings_view_model.dart';
+import 'package:oreamnos/data/models/ai_provider.dart';
+import 'package:oreamnos/ui/core/widgets/neo_input.dart';
+import 'package:oreamnos/ui/features/settings/view_models/settings_view_model.dart';
 
 class ApiKeyDialog extends StatefulWidget {
   const ApiKeyDialog({super.key, required this.provider});

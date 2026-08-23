@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import '../../../../domain/models/app_theme_mode.dart';
-import '../view_models/settings_view_model.dart';
+import 'package:oreamnos/domain/models/app_theme_mode.dart';
+import 'package:oreamnos/ui/features/settings/view_models/settings_view_model.dart';
 
 class ThemeSelectionDialog extends StatelessWidget {
   const ThemeSelectionDialog({super.key});

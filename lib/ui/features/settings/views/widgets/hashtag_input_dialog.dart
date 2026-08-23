@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import '../../../core/widgets/neo_input.dart';
-import '../view_models/settings_view_model.dart';
+import 'package:oreamnos/ui/core/widgets/neo_input.dart';
+import 'package:oreamnos/ui/features/settings/view_models/settings_view_model.dart';
 
 class HashtagInputDialog extends StatefulWidget {
   const HashtagInputDialog({super.key});
