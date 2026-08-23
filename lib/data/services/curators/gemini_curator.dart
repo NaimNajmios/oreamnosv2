@@ -5,6 +5,8 @@ import 'package:oreamnos/domain/services/content_curator.dart';
 import 'package:oreamnos/domain/services/prompt_manager.dart';
 import 'package:oreamnos/domain/services/card_prompt_manager.dart';
 
+import 'package:oreamnos/ui/features/card_generator/view_models/card_generator_view_model.dart';
+
 class GeminiCurator implements IContentCurator {
   @override
   Future<String> generatePost({
@@ -67,9 +69,10 @@ class GeminiCurator implements IContentCurator {
     required String generatedText,
     required String modelId,
     required String apiKey,
+    required CardTemplate template,
   }) async {
     final systemPrompt = CardPromptManager.buildSystemPrompt();
-    final userPrompt = CardPromptManager.buildUserPrompt(generatedText);
+    final userPrompt = CardPromptManager.buildUserPrompt(template, generatedText);
 
     final actualModelId = modelId.startsWith('models/') ? modelId : 'models/$modelId';
     final url = Uri.parse('https://generativelanguage.googleapis.com/v1beta/$actualModelId:generateContent?key=$apiKey');

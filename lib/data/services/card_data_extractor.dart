@@ -5,18 +5,22 @@ import 'package:oreamnos/domain/services/content_curator.dart';
 import 'package:oreamnos/data/services/curator_factory.dart';
 import 'package:oreamnos/data/models/ai_provider.dart';
 
+import 'package:oreamnos/ui/features/card_generator/view_models/card_generator_view_model.dart';
+
 class CardDataExtractor {
   Future<CardData> extractCardData({
     required String generatedText,
     required AiProvider provider,
     required String modelId,
     required String apiKey,
+    required CardTemplate template,
   }) async {
     final curator = CuratorFactory.getCurator(provider);
     final jsonString = await curator.extractCardData(
       generatedText: generatedText,
       modelId: modelId,
       apiKey: apiKey,
+      template: template,
     );
 
     // Clean up potential markdown formatting in response (e.g., ```json ... ```)

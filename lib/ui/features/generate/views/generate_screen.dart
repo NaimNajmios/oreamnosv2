@@ -13,6 +13,7 @@ import '../../../core/widgets/app_copy_button.dart';
 import '../../../core/widgets/typewriter_markdown.dart';
 import '../../../core/widgets/swipeable_output_card.dart';
 import '../../../core/widgets/refinement_pill.dart';
+import '../../settings/views/widgets/add_pill_dialog.dart';
 
 class GenerateScreen extends StatefulWidget {
   const GenerateScreen({super.key});
@@ -158,6 +159,40 @@ class _GenerateScreenState extends State<GenerateScreen> {
       );
     }
 
+    if (viewModel.state == GenerateState.rateLimited) {
+      return Center(
+        child: Padding(
+          padding: const EdgeInsets.all(16),
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Icon(Icons.hourglass_disabled, size: 48, color: theme.colorScheme.error),
+              const SizedBox(height: 16),
+              Text(
+                'Rate Limit Exceeded',
+                style: theme.textTheme.titleLarge?.copyWith(color: theme.colorScheme.error),
+              ),
+              const SizedBox(height: 8),
+              Text(
+                viewModel.errorMessage ?? 'Rate limit exceeded.',
+                style: theme.textTheme.bodyMedium,
+                textAlign: TextAlign.center,
+              ),
+              const SizedBox(height: 24),
+              if (viewModel.suggestedFallbackProvider != null)
+                FilledButton.icon(
+                  onPressed: () {
+                    viewModel.retryWithProvider(viewModel.suggestedFallbackProvider!);
+                  },
+                  icon: const Icon(Icons.refresh),
+                  label: Text('Retry with ${viewModel.suggestedFallbackProvider!.displayName}'),
+                ),
+            ],
+          ),
+        ),
+      );
+    }
+
     if (viewModel.state == GenerateState.generating) {
       return const Center(
         child: CircularProgressIndicator(),
@@ -169,7 +204,7 @@ class _GenerateScreenState extends State<GenerateScreen> {
       children: [
         Expanded(
           child: SwipeableOutputCard(
-            content: viewModel.generatedContent ?? '',
+            content: viewModel.formattedContent ?? '',
             child: Padding(
               padding: const EdgeInsets.all(16),
               child: Column(
@@ -197,7 +232,7 @@ class _GenerateScreenState extends State<GenerateScreen> {
                                 context.push(
                                   RoutePaths.cardGenerator,
                                   extra: {
-                                    'generatedText': viewModel.generatedContent ?? '',
+                                    'generatedText': viewModel.formattedContent ?? '',
                                     'provider': settings.selectedProvider,
                                     'apiKey': apiKey ?? '',
                                     'modelId': settings.selectedModel!,
@@ -212,21 +247,49 @@ class _GenerateScreenState extends State<GenerateScreen> {
                             onPressed: () {
                               context.push(
                                 RoutePaths.readingMode,
-                                extra: viewModel.generatedContent ?? '',
+                                extra: viewModel.formattedContent ?? '',
                               );
                             },
                             tooltip: 'Reading Mode',
                           ),
-                          AppCopyButton(textToCopy: viewModel.generatedContent ?? ''),
+                          AppCopyButton(textToCopy: viewModel.formattedContent ?? ''),
                         ],
                       ),
                     ],
                   ),
-                  const Divider(height: 24),
+                  const Divider(height: 12),
+                  SingleChildScrollView(
+                    scrollDirection: Axis.horizontal,
+                    child: Row(
+                      children: [
+                        FilterChip(
+                          label: const Text('Title'),
+                          selected: viewModel.showTitle,
+                          onSelected: (_) => viewModel.toggleTitle(),
+                          materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                        ),
+                        const SizedBox(width: 8),
+                        FilterChip(
+                          label: const Text('Hashtags'),
+                          selected: viewModel.showHashtags,
+                          onSelected: (_) => viewModel.toggleHashtags(),
+                          materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                        ),
+                        const SizedBox(width: 8),
+                        FilterChip(
+                          label: const Text('Source'),
+                          selected: viewModel.showSource,
+                          onSelected: (_) => viewModel.toggleSource(),
+                          materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                        ),
+                      ],
+                    ),
+                  ),
+                  const Divider(height: 16),
                   Expanded(
                     child: SingleChildScrollView(
                       child: TypewriterMarkdown(
-                        data: viewModel.generatedContent ?? '',
+                        data: viewModel.formattedContent ?? '',
                       ),
                     ),
                   ),
@@ -260,6 +323,9 @@ class _GenerateScreenState extends State<GenerateScreen> {
                   child: RefinementPill(
                     label: pill.label,
                     onTap: () => viewModel.refineContent(pill.instruction),
+                    onLongPress: () {
+                      AddPillDialog.show(context, existingPill: pill);
+                    },
                   ),
                 ),
               ),

@@ -5,8 +5,43 @@ import 'package:oreamnos/data/services/export_service.dart';
 import 'package:oreamnos/data/services/curator_factory.dart';
 import 'package:oreamnos/data/models/ai_provider.dart';
 
-enum CardTemplate { standard, quote, breakingNews }
-enum CardBackground { solidDark, gradientBlue, gradientOrange }
+enum CardTemplate {
+  playerSpotlight,
+  headlineQuote,
+  topStats,
+  transferNews,
+  breakingNews,
+  matchPreview,
+  detailedScoreboard,
+  onThisDay,
+  startingXI,
+  matchStatsComparison,
+  socialPost,
+  rivalry,
+  tableStandings,
+  injuryReport,
+  contractExpiry,
+  awardNominee,
+}
+
+enum CardBackground {
+  solidDark,
+  gradientBlue,
+  gradientOrange,
+  cutout,
+  magazineBold,
+  offsetCard,
+  glassmorphism,
+  neonGlow,
+  minimalist,
+  grunge
+}
+
+enum AppFont {
+  defaultFont,
+  classicSerif,
+  typewriter
+}
 
 class CardGeneratorViewModel extends ChangeNotifier {
   final CardDataExtractor extractor;
@@ -16,8 +51,9 @@ class CardGeneratorViewModel extends ChangeNotifier {
   bool isExtracting = false;
   String? extractionError;
   
-  CardTemplate selectedTemplate = CardTemplate.standard;
+  CardTemplate selectedTemplate = CardTemplate.playerSpotlight;
   CardBackground selectedBackground = CardBackground.solidDark;
+  AppFont selectedFont = AppFont.defaultFont;
   
   CardGeneratorViewModel({
     required this.extractor,
@@ -35,6 +71,7 @@ class CardGeneratorViewModel extends ChangeNotifier {
         provider: provider,
         modelId: modelId,
         apiKey: apiKey,
+        template: selectedTemplate,
       );
     } catch (e) {
       extractionError = e.toString();
@@ -51,6 +88,11 @@ class CardGeneratorViewModel extends ChangeNotifier {
 
   void setBackground(CardBackground background) {
     selectedBackground = background;
+    notifyListeners();
+  }
+
+  void setFont(AppFont font) {
+    selectedFont = font;
     notifyListeners();
   }
 

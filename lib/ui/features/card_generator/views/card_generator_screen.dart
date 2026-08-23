@@ -105,6 +105,7 @@ class _CardGeneratorScreenState extends State<CardGeneratorScreen> {
                                   cardData: viewModel.cardData!,
                                   template: viewModel.selectedTemplate,
                                   background: viewModel.selectedBackground,
+                                  font: viewModel.selectedFont,
                                 ),
                               ),
                             ),
@@ -173,6 +174,32 @@ class _CardGeneratorScreenState extends State<CardGeneratorScreen> {
                       label: Text(b.name.toUpperCase()),
                       selected: isSelected,
                       onSelected: (_) => viewModel.setBackground(b),
+                    ),
+                  );
+                }).toList(),
+              ),
+            ),
+            const SizedBox(height: 16),
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 16),
+              child: Text(
+                'Typography',
+                style: theme.textTheme.titleSmall?.copyWith(fontWeight: FontWeight.bold),
+              ),
+            ),
+            const SizedBox(height: 8),
+            SingleChildScrollView(
+              scrollDirection: Axis.horizontal,
+              padding: const EdgeInsets.symmetric(horizontal: 16),
+              child: Row(
+                children: AppFont.values.map((f) {
+                  final isSelected = viewModel.selectedFont == f;
+                  return Padding(
+                    padding: const EdgeInsets.only(right: 8),
+                    child: ChoiceChip(
+                      label: Text(f.name.toUpperCase()),
+                      selected: isSelected,
+                      onSelected: (_) => viewModel.setFont(f),
                     ),
                   );
                 }).toList(),

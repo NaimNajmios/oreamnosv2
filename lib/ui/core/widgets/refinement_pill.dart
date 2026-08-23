@@ -4,12 +4,14 @@ import '../utils/haptics.dart';
 class RefinementPill extends StatelessWidget {
   final String label;
   final VoidCallback onTap;
+  final VoidCallback? onLongPress;
   final bool isLoading;
 
   const RefinementPill({
     super.key,
     required this.label,
     required this.onTap,
+    this.onLongPress,
     this.isLoading = false,
   });
 
@@ -22,6 +24,12 @@ class RefinementPill extends StatelessWidget {
         onTap: isLoading ? null : () {
           Haptics.selectionClick();
           onTap();
+        },
+        onLongPress: isLoading ? null : () {
+          if (onLongPress != null) {
+            Haptics.selectionClick(); // Provide feedback for long press
+            onLongPress!();
+          }
         },
         borderRadius: BorderRadius.zero,
         child: Container(

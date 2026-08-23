@@ -11,6 +11,7 @@ import 'domain/models/app_theme_mode.dart';
 import 'ui/features/settings/view_models/settings_view_model.dart';
 import 'ui/features/generate/view_models/generate_view_model.dart';
 import 'data/services/share_intent_service.dart';
+import 'ui/features/share/share_bottom_sheet.dart';
 
 /// Root application widget.
 class OreamnosApp extends StatefulWidget {
@@ -30,8 +31,20 @@ class _OreamnosAppState extends State<OreamnosApp> {
 
     ShareIntentService().onSharedTextReceived = (text) {
       if (!mounted) return;
-      context.read<GenerateViewModel>().setPendingInput(text);
-      _router.go(RoutePaths.generate);
+      
+      final currentContext = rootNavigatorKey.currentContext;
+      if (currentContext != null) {
+        showModalBottomSheet(
+          context: currentContext,
+          isScrollControlled: true,
+          backgroundColor: Colors.transparent,
+          builder: (context) => ShareBottomSheet(initialContent: text),
+        );
+      } else {
+        // Fallback
+        context.read<GenerateViewModel>().setPendingInput(text);
+        _router.go(RoutePaths.generate);
+      }
     };
     ShareIntentService().initialize();
   }

@@ -5,6 +5,8 @@ import 'package:oreamnos/domain/services/content_curator.dart';
 import 'package:oreamnos/domain/services/prompt_manager.dart';
 import 'package:oreamnos/domain/services/card_prompt_manager.dart';
 
+import 'package:oreamnos/ui/features/card_generator/view_models/card_generator_view_model.dart';
+
 class OpenAICompatibleCurator implements IContentCurator {
   OpenAICompatibleCurator(this.baseUrl);
 
@@ -61,9 +63,10 @@ class OpenAICompatibleCurator implements IContentCurator {
     required String generatedText,
     required String modelId,
     required String apiKey,
+    required CardTemplate template,
   }) async {
     final systemPrompt = CardPromptManager.buildSystemPrompt();
-    final userPrompt = CardPromptManager.buildUserPrompt(generatedText);
+    final userPrompt = CardPromptManager.buildUserPrompt(template, generatedText);
 
     final url = Uri.parse('$baseUrl/chat/completions');
 

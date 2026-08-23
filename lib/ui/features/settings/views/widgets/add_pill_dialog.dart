@@ -7,12 +7,14 @@ import '../../../../core/widgets/app_button.dart';
 import '../../../../core/widgets/app_input.dart';
 
 class AddPillDialog extends StatefulWidget {
-  const AddPillDialog({super.key});
+  final CustomPill? existingPill;
 
-  static Future<void> show(BuildContext context) {
+  const AddPillDialog({super.key, this.existingPill});
+
+  static Future<void> show(BuildContext context, {CustomPill? existingPill}) {
     return showDialog(
       context: context,
-      builder: (context) => const AddPillDialog(),
+      builder: (context) => AddPillDialog(existingPill: existingPill),
     );
   }
 
@@ -23,6 +25,15 @@ class AddPillDialog extends StatefulWidget {
 class _AddPillDialogState extends State<AddPillDialog> {
   final _labelController = TextEditingController();
   final _instructionController = TextEditingController();
+
+  @override
+  void initState() {
+    super.initState();
+    if (widget.existingPill != null) {
+      _labelController.text = widget.existingPill!.label;
+      _instructionController.text = widget.existingPill!.instruction;
+    }
+  }
 
   @override
   void dispose() {
@@ -43,7 +54,14 @@ class _AddPillDialogState extends State<AddPillDialog> {
     }
 
     final pill = CustomPill(label: label, instruction: instruction);
-    context.read<SettingsViewModel>().addCustomPill(pill);
+    final viewModel = context.read<SettingsViewModel>();
+    
+    if (widget.existingPill != null) {
+      // Find index and update
+      viewModel.removeCustomPill(widget.existingPill!);
+    }
+    viewModel.addCustomPill(pill);
+    
     Navigator.of(context).pop();
   }
 

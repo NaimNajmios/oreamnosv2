@@ -4,6 +4,7 @@ import 'package:oreamnos/ui/features/settings/view_models/settings_view_model.da
 import 'package:oreamnos/data/services/web_scraper_service.dart';
 import 'package:oreamnos/data/services/usage_service.dart';
 import 'package:oreamnos/domain/models/usage_log.dart';
+import 'package:oreamnos/data/models/ai_provider.dart';
 
 import 'package:image_picker/image_picker.dart';
 import 'package:oreamnos/domain/services/vision_extractor.dart';
@@ -11,7 +12,7 @@ import 'package:oreamnos/data/services/notification_service.dart';
 import 'package:oreamnos/data/services/log_service.dart';
 import 'package:flutter/widgets.dart'; // for AppLifecycleState
 
-enum GenerateState { idle, generating, success, error }
+enum GenerateState { idle, generating, success, error, rateLimited }
 
 class GenerateViewModel extends ChangeNotifier with WidgetsBindingObserver {
   GenerateViewModel(
@@ -48,8 +49,78 @@ class GenerateViewModel extends ChangeNotifier with WidgetsBindingObserver {
   String? _errorMessage;
   String? get errorMessage => _errorMessage;
 
+  AiProvider? _suggestedFallbackProvider;
+  AiProvider? get suggestedFallbackProvider => _suggestedFallbackProvider;
+
+  AiProvider _getNextProvider(AiProvider current) {
+    switch (current) {
+      case AiProvider.gemini: return AiProvider.groq;
+      case AiProvider.groq: return AiProvider.openRouter;
+      case AiProvider.openRouter: return AiProvider.cerebras;
+      case AiProvider.cerebras: return AiProvider.gemini;
+    }
+  }
+
+  Future<void> retryWithProvider(AiProvider provider) async {
+    await _settingsViewModel.setSelectedProvider(provider);
+    if (_pendingInput != null) {
+      await generatePost(_pendingInput!);
+    } else if (_generatedContent != null) {
+      // Just re-generate with the last successful input? Or just use the original pending input?
+      // For simplicity, we just trigger generation with the pending input, which should be stored
+    }
+  }
+
   String? _pendingInput;
   String? get pendingInput => _pendingInput;
+
+  // Dynamic Output Toggles
+  bool _showTitle = true;
+  bool get showTitle => _showTitle;
+
+  bool _showHashtags = true;
+  bool get showHashtags => _showHashtags;
+
+  bool _showSource = true;
+  bool get showSource => _showSource;
+
+  void toggleTitle() {
+    _showTitle = !_showTitle;
+    notifyListeners();
+  }
+
+  void toggleHashtags() {
+    _showHashtags = !_showHashtags;
+    notifyListeners();
+  }
+
+  void toggleSource() {
+    _showSource = !_showSource;
+    notifyListeners();
+  }
+
+  String? get formattedContent {
+    if (_generatedContent == null) return null;
+    String content = _generatedContent!;
+
+    // A simple heuristic for markdown structure (could be customized)
+    // If showTitle is false, remove the first header if it exists
+    if (!_showTitle) {
+      content = content.replaceFirst(RegExp(r'^#+ [^\n]+\n+'), '');
+    }
+
+    // If showHashtags is false, remove lines starting with hashtags or the last paragraph full of hashtags
+    if (!_showHashtags) {
+      content = content.replaceAll(RegExp(r'\n+(#[^\s#]+ *)+$'), '');
+    }
+
+    // If showSource is false, remove lines like "Sumber:" or "Source:"
+    if (!_showSource) {
+      content = content.replaceAll(RegExp(r'\n+(Sumber|Source):[^\n]+$'), '');
+    }
+
+    return content.trim();
+  }
 
   void setPendingInput(String input) {
     _pendingInput = input;
@@ -134,8 +205,15 @@ class GenerateViewModel extends ChangeNotifier with WidgetsBindingObserver {
       
       LogService().error('Failed to generate post', e, st);
       
-      _errorMessage = e.toString();
-      _state = GenerateState.error;
+      final errStr = e.toString().toLowerCase();
+      if (errStr.contains('429') || errStr.contains('rate limit') || errStr.contains('quota')) {
+        _errorMessage = 'Rate limit exceeded for ${provider.displayName}.';
+        _suggestedFallbackProvider = _getNextProvider(provider);
+        _state = GenerateState.rateLimited;
+      } else {
+        _errorMessage = e.toString();
+        _state = GenerateState.error;
+      }
       
       if (_isBackgrounded) {
         NotificationService().showGenerationCompleteNotification(
@@ -215,8 +293,15 @@ class GenerateViewModel extends ChangeNotifier with WidgetsBindingObserver {
       
       LogService().error('Failed to refine post', e, st);
 
-      _errorMessage = e.toString();
-      _state = GenerateState.error;
+      final errStr = e.toString().toLowerCase();
+      if (errStr.contains('429') || errStr.contains('rate limit') || errStr.contains('quota')) {
+        _errorMessage = 'Rate limit exceeded for ${provider.displayName}.';
+        _suggestedFallbackProvider = _getNextProvider(provider);
+        _state = GenerateState.rateLimited;
+      } else {
+        _errorMessage = e.toString();
+        _state = GenerateState.error;
+      }
       
       if (_isBackgrounded) {
         NotificationService().showGenerationCompleteNotification(

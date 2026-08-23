@@ -7,13 +7,27 @@ class CardCanvas extends StatelessWidget {
   final CardData cardData;
   final CardTemplate template;
   final CardBackground background;
+  final AppFont font;
 
   const CardCanvas({
     super.key,
     required this.cardData,
     required this.template,
     required this.background,
+    this.font = AppFont.defaultFont,
   });
+
+  TextStyle _getFontStyle(TextStyle baseStyle) {
+    switch (font) {
+      case AppFont.classicSerif:
+        return GoogleFonts.lora(textStyle: baseStyle);
+      case AppFont.typewriter:
+        return GoogleFonts.spaceMono(textStyle: baseStyle);
+      case AppFont.defaultFont:
+      default:
+        return GoogleFonts.inter(textStyle: baseStyle);
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -30,8 +44,12 @@ class CardCanvas extends StatelessWidget {
   BoxDecoration _buildBackgroundDecoration() {
     switch (background) {
       case CardBackground.solidDark:
+      case CardBackground.minimalist:
+      case CardBackground.magazineBold:
         return const BoxDecoration(color: Color(0xFF1E1E1E));
       case CardBackground.gradientBlue:
+      case CardBackground.glassmorphism:
+      case CardBackground.neonGlow:
         return const BoxDecoration(
           gradient: LinearGradient(
             colors: [Color(0xFF1E3A8A), Color(0xFF3B82F6)],
@@ -40,6 +58,9 @@ class CardCanvas extends StatelessWidget {
           ),
         );
       case CardBackground.gradientOrange:
+      case CardBackground.cutout:
+      case CardBackground.offsetCard:
+      case CardBackground.grunge:
         return const BoxDecoration(
           gradient: LinearGradient(
             colors: [Color(0xFF9A3412), Color(0xFFF97316)],
@@ -52,16 +73,18 @@ class CardCanvas extends StatelessWidget {
 
   Widget _buildTemplateContent() {
     switch (template) {
-      case CardTemplate.standard:
-        return _buildStandardTemplate();
-      case CardTemplate.quote:
+      case CardTemplate.headlineQuote:
         return _buildQuoteTemplate();
       case CardTemplate.breakingNews:
         return _buildBreakingNewsTemplate();
+      default:
+        return _buildStandardTemplate();
     }
   }
 
   Widget _buildStandardTemplate() {
+    final listFields = cardData.data.entries.where((e) => e.value is List).toList();
+    
     return LayoutBuilder(
       builder: (context, constraints) {
         return Column(
@@ -78,25 +101,29 @@ class CardCanvas extends StatelessWidget {
                     children: [
                       Text(
                         cardData.title.toUpperCase(),
-                        style: GoogleFonts.inter(
-                          fontSize: 28,
-                          fontWeight: FontWeight.w900,
-                          color: Colors.white,
-                          letterSpacing: -1,
+                        style: _getFontStyle(
+                          const TextStyle(
+                            fontSize: 28,
+                            fontWeight: FontWeight.w900,
+                            color: Colors.white,
+                            letterSpacing: -1,
+                          ),
                         ),
                       ),
                       const SizedBox(height: 12),
                       Text(
                         cardData.subtitle,
-                        style: GoogleFonts.inter(
-                          fontSize: 16,
-                          fontWeight: FontWeight.w400,
-                          color: Colors.white70,
+                        style: _getFontStyle(
+                          const TextStyle(
+                            fontSize: 16,
+                            fontWeight: FontWeight.w400,
+                            color: Colors.white70,
+                          ),
                         ),
                       ),
                       const SizedBox(height: 24),
-                      if (cardData.keyPoints.isNotEmpty) ...[
-                        for (var point in cardData.keyPoints)
+                      if (listFields.isNotEmpty) ...[
+                        for (var item in (listFields.first.value as List).take(4))
                           Padding(
                             padding: const EdgeInsets.only(bottom: 12),
                             child: Row(
@@ -105,11 +132,13 @@ class CardCanvas extends StatelessWidget {
                                 const Text('• ', style: TextStyle(color: Colors.white, fontSize: 18)),
                                 Expanded(
                                   child: Text(
-                                    point,
-                                    style: GoogleFonts.inter(
-                                      fontSize: 18,
-                                      fontWeight: FontWeight.w500,
-                                      color: Colors.white,
+                                    item is Map ? (item['label'] != null ? "\${item['label']}: \${item['value']}" : item.toString()) : item.toString(),
+                                    style: _getFontStyle(
+                                      const TextStyle(
+                                        fontSize: 18,
+                                        fontWeight: FontWeight.w500,
+                                        color: Colors.white,
+                                      ),
                                     ),
                                   ),
                                 ),
@@ -117,6 +146,30 @@ class CardCanvas extends StatelessWidget {
                             ),
                           ),
                       ],
+                      if (listFields.isEmpty && cardData.data.containsKey('keyPoints')) ...[
+                        for (var point in (cardData.data['keyPoints'] as List).take(4))
+                          Padding(
+                            padding: const EdgeInsets.only(bottom: 12),
+                            child: Row(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                const Text('• ', style: TextStyle(color: Colors.white, fontSize: 18)),
+                                Expanded(
+                                  child: Text(
+                                    point.toString(),
+                                    style: _getFontStyle(
+                                      const TextStyle(
+                                        fontSize: 18,
+                                        fontWeight: FontWeight.w500,
+                                        color: Colors.white,
+                                      ),
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                      ]
                     ],
                   ),
                 ),
@@ -131,6 +184,8 @@ class CardCanvas extends StatelessWidget {
   }
 
   Widget _buildQuoteTemplate() {
+    final quoteText = cardData.data['quote'] ?? cardData.data['keyQuote'] ?? cardData.subtitle;
+    
     return LayoutBuilder(
       builder: (context, constraints) {
         return Column(
@@ -148,13 +203,15 @@ class CardCanvas extends StatelessWidget {
                       const Icon(Icons.format_quote_rounded, size: 48, color: Colors.white54),
                       const SizedBox(height: 16),
                       Text(
-                        cardData.quote ?? cardData.subtitle,
-                        style: GoogleFonts.inter(
-                          fontSize: 32,
-                          fontWeight: FontWeight.bold,
-                          fontStyle: FontStyle.italic,
-                          color: Colors.white,
-                          height: 1.2,
+                        quoteText,
+                        style: _getFontStyle(
+                          const TextStyle(
+                            fontSize: 32,
+                            fontWeight: FontWeight.bold,
+                            fontStyle: FontStyle.italic,
+                            color: Colors.white,
+                            height: 1.2,
+                          ),
                         ),
                       ),
                       const SizedBox(height: 24),
@@ -182,6 +239,7 @@ class CardCanvas extends StatelessWidget {
   }
 
   Widget _buildBreakingNewsTemplate() {
+    final label = cardData.data['label'] ?? 'BREAKING';
     return LayoutBuilder(
       builder: (context, constraints) {
         return Column(
@@ -200,33 +258,39 @@ class CardCanvas extends StatelessWidget {
                         padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
                         color: Colors.redAccent,
                         child: Text(
-                          'BREAKING',
-                          style: GoogleFonts.inter(
-                            fontSize: 14,
-                            fontWeight: FontWeight.w900,
-                            color: Colors.white,
-                            letterSpacing: 2,
+                          label.toString().toUpperCase(),
+                          style: _getFontStyle(
+                            const TextStyle(
+                              fontSize: 14,
+                              fontWeight: FontWeight.w900,
+                              color: Colors.white,
+                              letterSpacing: 2,
+                            ),
                           ),
                         ),
                       ),
                       const SizedBox(height: 16),
                       Text(
                         cardData.title,
-                        style: GoogleFonts.inter(
-                          fontSize: 36,
-                          fontWeight: FontWeight.w900,
-                          color: Colors.white,
-                          height: 1.1,
-                          letterSpacing: -1,
+                        style: _getFontStyle(
+                          const TextStyle(
+                            fontSize: 36,
+                            fontWeight: FontWeight.w900,
+                            color: Colors.white,
+                            height: 1.1,
+                            letterSpacing: -1,
+                          ),
                         ),
                       ),
                       const SizedBox(height: 16),
                       Text(
                         cardData.subtitle,
-                        style: GoogleFonts.inter(
-                          fontSize: 20,
-                          fontWeight: FontWeight.w400,
-                          color: Colors.white70,
+                        style: _getFontStyle(
+                          const TextStyle(
+                            fontSize: 20,
+                            fontWeight: FontWeight.w400,
+                            color: Colors.white70,
+                          ),
                         ),
                       ),
                     ],

@@ -1,3 +1,4 @@
+import 'package:flutter/widgets.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../ui/features/generate/views/generate_screen.dart';
@@ -26,9 +27,12 @@ abstract final class RoutePaths {
   // static const String sessions = '/sessions';
 }
 
+final rootNavigatorKey = GlobalKey<NavigatorState>();
+
 /// Application router using GoRouter with shell route for bottom navigation.
 GoRouter createAppRouter() {
   return GoRouter(
+    navigatorKey: rootNavigatorKey,
     initialLocation: RoutePaths.generate,
     routes: [
       ShellRoute(
