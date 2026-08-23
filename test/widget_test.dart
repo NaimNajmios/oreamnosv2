@@ -7,7 +7,10 @@ import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:oreamnos/app.dart';
 import 'package:oreamnos/data/services/preferences_service.dart';
 
+import 'package:oreamnos/ui/features/settings/view_models/settings_view_model.dart';
+
 PreferencesService _createTestPreferencesService(SharedPreferences prefs) {
+  FlutterSecureStorage.setMockInitialValues({});
   const secureStorage = FlutterSecureStorage();
   return PreferencesService(
     prefs: prefs,
@@ -19,6 +22,9 @@ Widget _buildTestApp(PreferencesService preferencesService) {
   return MultiProvider(
     providers: [
       Provider<PreferencesService>.value(value: preferencesService),
+      ChangeNotifierProvider<SettingsViewModel>(
+        create: (context) => SettingsViewModel(context.read<PreferencesService>()),
+      ),
     ],
     child: const OreamnosApp(),
   );
@@ -58,6 +64,11 @@ void main() {
 
     // Verify Settings screen is shown (section headers are uppercased)
     expect(find.text('AI PROVIDER'), findsOneWidget);
+    
+    // Scroll down to find Appearance
+    await tester.drag(find.byType(ListView), const Offset(0, -500));
+    await tester.pumpAndSettle();
+    
     expect(find.text('APPEARANCE'), findsOneWidget);
   });
 }

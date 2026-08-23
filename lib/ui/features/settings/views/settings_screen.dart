@@ -1,12 +1,21 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 
-/// Settings screen.
-/// This is a placeholder — will be built out in subsequent migration phases.
+import '../view_models/settings_view_model.dart';
+import 'widgets/api_key_dialog.dart';
+import 'widgets/hashtag_input_dialog.dart';
+import 'widgets/provider_selection_dialog.dart';
+import 'widgets/theme_selection_dialog.dart';
+import 'widgets/tone_selection_dialog.dart';
+
+/// Settings screen for configuring AI providers, post settings, and appearance.
 class SettingsScreen extends StatelessWidget {
   const SettingsScreen({super.key});
 
   @override
   Widget build(BuildContext context) {
+    final viewModel = context.watch<SettingsViewModel>();
+    
     return Scaffold(
       appBar: AppBar(
         title: const Text('Settings'),
@@ -14,42 +23,68 @@ class SettingsScreen extends StatelessWidget {
       body: ListView(
         padding: const EdgeInsets.all(16),
         children: [
-          // AI Provider section placeholder
           _buildSectionHeader(context, 'AI Provider'),
           const SizedBox(height: 8),
-          _buildPlaceholderTile(
+          _buildTile(
             context,
             icon: Icons.smart_toy_outlined,
-            title: 'Provider & Model',
-            subtitle: 'Configure AI provider and model selection',
+            title: 'Active Provider',
+            subtitle: viewModel.selectedProvider.displayName,
+            onTap: () => ProviderSelectionDialog.show(context),
+          ),
+          _buildTile(
+            context,
+            icon: Icons.vpn_key_outlined,
+            title: 'API Key',
+            subtitle: (viewModel.currentApiKey?.isNotEmpty ?? false)
+                ? '•••••••• (Configured)'
+                : 'Not configured',
+            onTap: () => ApiKeyDialog.show(context, viewModel.selectedProvider),
           ),
           const Divider(height: 32),
 
-          // Post Settings section placeholder
           _buildSectionHeader(context, 'Post Settings'),
           const SizedBox(height: 8),
-          _buildPlaceholderTile(
+          _buildTile(
             context,
             icon: Icons.tune,
             title: 'Tone',
-            subtitle: 'Formal or Casual',
+            subtitle: viewModel.toneMode[0].toUpperCase() + viewModel.toneMode.substring(1),
+            onTap: () => ToneSelectionDialog.show(context),
           ),
-          _buildPlaceholderTile(
+          _buildTile(
             context,
             icon: Icons.tag,
-            title: 'Hashtags',
-            subtitle: 'Manage default hashtags',
+            title: 'Default Hashtags',
+            subtitle: viewModel.defaultHashtags.isEmpty
+                ? 'None'
+                : viewModel.defaultHashtags,
+            onTap: () => HashtagInputDialog.show(context),
+          ),
+          SwitchListTile(
+            contentPadding: EdgeInsets.zero,
+            title: const Text('Auto-append Hashtags'),
+            subtitle: Text(
+              'Automatically append hashtags to generated posts',
+              style: TextStyle(
+                color: Theme.of(context).colorScheme.onSurface.withAlpha(153),
+              ),
+            ),
+            value: viewModel.autoAppendHashtags,
+            activeTrackColor: Theme.of(context).colorScheme.primary.withAlpha(128),
+            activeThumbColor: Theme.of(context).colorScheme.primary,
+            onChanged: (value) => viewModel.setAutoAppendHashtags(value),
           ),
           const Divider(height: 32),
 
-          // Appearance section placeholder
           _buildSectionHeader(context, 'Appearance'),
           const SizedBox(height: 8),
-          _buildPlaceholderTile(
+          _buildTile(
             context,
             icon: Icons.palette_outlined,
             title: 'Theme',
-            subtitle: 'Light, Dark, or Deep Blue',
+            subtitle: viewModel.themeMode.label,
+            onTap: () => ThemeSelectionDialog.show(context),
           ),
         ],
       ),
@@ -68,11 +103,12 @@ class SettingsScreen extends StatelessWidget {
     );
   }
 
-  Widget _buildPlaceholderTile(
+  Widget _buildTile(
     BuildContext context, {
     required IconData icon,
     required String title,
     required String subtitle,
+    required VoidCallback onTap,
   }) {
     final theme = Theme.of(context);
     return ListTile(
@@ -89,9 +125,7 @@ class SettingsScreen extends StatelessWidget {
         color: theme.colorScheme.onSurface.withAlpha(102),
       ),
       contentPadding: EdgeInsets.zero,
-      onTap: () {
-        // TODO: Implement in future phases
-      },
+      onTap: onTap,
     );
   }
 }

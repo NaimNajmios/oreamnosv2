@@ -5,8 +5,9 @@ import 'package:provider/provider.dart';
 import 'config/constants.dart';
 import 'config/routes/app_router.dart';
 import 'config/theme/app_theme.dart';
-import 'data/services/preferences_service.dart';
 import 'domain/models/app_theme_mode.dart';
+
+import 'ui/features/settings/view_models/settings_view_model.dart';
 
 /// Root application widget.
 class OreamnosApp extends StatefulWidget {
@@ -33,8 +34,17 @@ class _OreamnosAppState extends State<OreamnosApp> {
 
   @override
   Widget build(BuildContext context) {
-    final prefs = context.read<PreferencesService>();
-    final themeMode = prefs.themeMode;
+    final settingsViewModel = context.watch<SettingsViewModel>();
+    
+    if (!settingsViewModel.isInitialized) {
+      return const MaterialApp(
+        home: Scaffold(
+          body: Center(child: CircularProgressIndicator()),
+        ),
+      );
+    }
+
+    final themeMode = settingsViewModel.themeMode;
 
     final ThemeData themeData;
     final ThemeData? darkThemeData;
