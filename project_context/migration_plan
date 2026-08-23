@@ -1,0 +1,113 @@
+# Oreamnos — Migration Plan
+## Socurate (Android/Kotlin) → Oreamnos (Flutter/Dart)
+
+### Migration Phases
+
+#### ✅ Phase 0: Project Scaffolding & Git Setup
+- Flutter project initialised (3.47.1 / Dart 3.13.1)
+- Git: main → develop → feature branches
+- Dependencies: provider, go_router, http, flutter_secure_storage, etc.
+- Neo-Editorial theme system (Light, Dark, Deep Blue)
+- GoRouter with ShellRoute for bottom navigation
+- Core widgets: NeoCard, NeoChip, NeoButton, NeoInput, NeoCopyButton
+- PreferencesService with encrypted API key storage
+- Widget tests for app shell and navigation
+
+#### Phase 1: Settings & AI Provider Configuration
+- [ ] Full settings screen with all sections
+- [ ] AI provider selection (Gemini, Groq, OpenRouter, Cerebras)
+- [ ] API key management with secure storage
+- [ ] Model selection per provider
+- [ ] Tone toggle (Formal/Casual)
+- [ ] Theme switcher (Light/Dark/Deep Blue/System)
+- [ ] Connection testing
+
+#### Phase 2: Content Generation Core
+- [ ] PromptManager — centralized prompt building
+- [ ] AI service layer (HTTP calls to all 4 providers)
+- [ ] Content curator abstraction (IContentCurator equivalent)
+- [ ] CuratorFactory with provider selection
+- [ ] Rate limit handling with fallback chain
+- [ ] Web content extraction from URLs
+- [ ] Generate screen with NeoInput and output display
+- [ ] Typewriter text animation
+- [ ] Markdown rendering
+
+#### Phase 3: Share Intent & Input
+- [ ] Android share intent handling (receive text/URLs)
+- [ ] iOS share extension
+- [ ] Bottom sheet for share receiver
+- [ ] URL auto-detection and content extraction
+- [ ] Clipboard paste detection
+
+#### Phase 4: Output & Refinement
+- [ ] Output card with swipe gestures (copy/share)
+- [ ] Toggle chips (Title, Hashtags, Source)
+- [ ] Refinement pills (Rephrase, Check Flow, Check Wording)
+- [ ] Custom pill creation and management
+- [ ] Reading mode (full-screen immersive view)
+- [ ] Copy and share functionality
+
+#### Phase 5: Hashtag Manager
+- [ ] Hashtag management screen
+- [ ] Default hashtag configuration
+- [ ] Auto-append toggle
+
+#### Phase 6: Usage Statistics & Analytics
+- [ ] Token tracking per provider
+- [ ] Custom canvas charts (token usage, success rate, response time)
+- [ ] Session history (last 20 requests)
+- [ ] Per-provider breakdown
+
+#### Phase 7: Card Generator
+- [ ] CardPromptManager for structured JSON extraction
+- [ ] CardDataExtractor with JSON parsing
+- [ ] Template picker (10+ templates)
+- [ ] Card canvas renderers
+- [ ] Background picker (gradient, gallery, preset)
+- [ ] Design studio (typography, opacity, image position)
+- [ ] Export pipeline (save to gallery, share)
+
+#### Phase 8: Vision Extraction (Platform-Specific)
+- [ ] IVisionExtractor interface
+- [ ] ML Kit OCR fallback (cross-platform)
+- [ ] Platform-specific model download management
+- [ ] Vision model selector in Settings
+- [ ] OcrInputSheet for image selection and extraction
+
+#### Phase 9: Polish & Platform Features
+- [ ] Haptic feedback system
+- [ ] Spring physics animations
+- [ ] Notification helper
+- [ ] Quick Settings tile (Android)
+- [ ] Background generation service
+- [ ] Debug log viewer
+
+### Architecture Mapping
+
+| Android (Kotlin) | Flutter (Dart) |
+|-------------------|----------------|
+| ViewModel + LiveData | ChangeNotifier + Provider |
+| NavHost + Activities | GoRouter + ShellRoute |
+| EncryptedSharedPreferences | FlutterSecureStorage |
+| SharedPreferences | shared_preferences |
+| OkHttp | http package |
+| Gson | json_serializable / dart:convert |
+| Jetpack Compose | Flutter widgets |
+| Material 3 (Compose) | Material 3 (Flutter) |
+| Canvas (Compose) | CustomPainter |
+| Coil | Image.network / cached_network_image |
+| Markwon | flutter_markdown |
+
+### Design System: Neo-Editorial
+
+| Property | Value |
+|----------|-------|
+| Border radius | 0 (sharp corners everywhere) |
+| Card borders | 1dp subtle grey |
+| Primary (Light/Dark) | #FF4500 International Orange |
+| Primary (Deep Blue) | #3B82F6 Electric Blue |
+| Input font | JetBrains Mono (monospace) |
+| Body font | Inter (sans-serif) |
+| Haptic | Light tap on selection, medium on confirm |
+| Animations | Spring physics (MediumBouncy), 200ms color transitions |
