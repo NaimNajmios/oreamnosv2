@@ -1,10 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:go_router/go_router.dart';
 
+import '../../../../config/routes/app_router.dart';
 import '../view_models/settings_view_model.dart';
 import 'widgets/api_key_dialog.dart';
 import 'widgets/model_selection_dialog.dart';
-import 'widgets/hashtag_input_dialog.dart';
 import 'widgets/provider_selection_dialog.dart';
 import 'widgets/theme_selection_dialog.dart';
 import 'widgets/tone_selection_dialog.dart';
@@ -63,11 +64,9 @@ class SettingsScreen extends StatelessWidget {
           _buildTile(
             context,
             icon: Icons.tag,
-            title: 'Default Hashtags',
-            subtitle: viewModel.defaultHashtags.isEmpty
-                ? 'None'
-                : viewModel.defaultHashtags,
-            onTap: () => HashtagInputDialog.show(context),
+            title: 'Hashtag Manager',
+            subtitle: '${viewModel.hashtagGroups.length} groups',
+            onTap: () => context.push(RoutePaths.hashtagManager),
           ),
           SwitchListTile(
             contentPadding: EdgeInsets.zero,
@@ -82,6 +81,13 @@ class SettingsScreen extends StatelessWidget {
             activeTrackColor: Theme.of(context).colorScheme.primary.withAlpha(128),
             activeThumbColor: Theme.of(context).colorScheme.primary,
             onChanged: (value) => viewModel.setAutoAppendHashtags(value),
+          ),
+          _buildTile(
+            context,
+            icon: Icons.edit_note,
+            title: 'Manage Refinement Pills',
+            subtitle: '${viewModel.customPills.length} custom pills',
+            onTap: () => context.push(RoutePaths.pillManager),
           ),
           const Divider(height: 32),
 

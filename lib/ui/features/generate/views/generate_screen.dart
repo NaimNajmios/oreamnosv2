@@ -6,6 +6,7 @@ import 'package:go_router/go_router.dart';
 
 import 'package:oreamnos/config/routes/app_router.dart';
 import '../view_models/generate_view_model.dart';
+import '../../settings/view_models/settings_view_model.dart';
 import '../../../core/widgets/app_button.dart';
 import '../../../core/widgets/app_input.dart';
 import '../../../core/widgets/app_copy_button.dart';
@@ -216,6 +217,15 @@ class _GenerateScreenState extends State<GenerateScreen> {
               RefinementPill(
                 label: 'Shorter',
                 onTap: () => viewModel.refineContent('Make the post more concise and shorter.'),
+              ),
+              ...context.watch<SettingsViewModel>().customPills.map(
+                (pill) => Padding(
+                  padding: const EdgeInsets.only(left: 8.0),
+                  child: RefinementPill(
+                    label: pill.label,
+                    onTap: () => viewModel.refineContent(pill.instruction),
+                  ),
+                ),
               ),
             ],
           ),

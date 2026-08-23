@@ -20,14 +20,14 @@ Oreamnos is currently in development. Here is the progress so far:
 - **Implemented:** AI service layer with `IContentCurator` abstraction, `CuratorFactory`, and provider-specific REST API wrappers.
 - **Implemented:** Generate screen UI featuring a custom `TypewriterMarkdown` widget for streaming AI responses beautifully.
 
-### 🚧 Phase 3: Share Intent & Input (Current)
-- **Pending:** Android share intent handling (receive text/URLs), URL metadata extraction, and direct routing to the Generate screen.
 ### ✅ Phase 3: Share Intent & Input
-- **Implemented:** Android share intent handling (receive text/URLs), URL metadata extraction via web scraping, and direct routing to the Generate screen.
+- **Implemented:** Android share intent handling (receive text/URLs), URL metadata extraction via web scraping, clipboard paste detection, and direct routing to the Generate screen.
+
+### ✅ Phase 4: Output & Refinement
+- **Implemented:** Output card with swipe gestures (copy/share), Refinement pills (Rephrase, Check Flow, Shorter) for AI revision, and a full-screen immersive Reading Mode.
 
 ### 🔜 Upcoming Phases
-- **Output & Refinement**: Output cards with refinement tools (rephrase, check flow).
-- **Hashtag & Usage Stats**: Hashtag management and token tracking.
+- **Hashtag & Usage Stats**: Hashtag management and token tracking (Phases 5 & 6).
 - **Card Generator**: Generate visual cards from text for sharing.
 - **Vision Extraction**: ML Kit and AI OCR for image text extraction.
 

@@ -2,6 +2,8 @@ import 'package:flutter/foundation.dart';
 import '../../../../data/models/ai_provider.dart';
 import '../../../../data/services/preferences_service.dart';
 import '../../../../domain/models/app_theme_mode.dart';
+import '../../../../domain/models/custom_pill.dart';
+import '../../../../domain/models/hashtag_group.dart';
 
 class SettingsViewModel extends ChangeNotifier {
   SettingsViewModel(this._preferencesService) {
@@ -28,8 +30,16 @@ class SettingsViewModel extends ChangeNotifier {
   late String _defaultHashtags;
   String get defaultHashtags => _defaultHashtags;
 
+  late List<HashtagGroup> _hashtagGroups;
+  List<HashtagGroup> _hashtagGroups = [];
+  List<HashtagGroup> get hashtagGroups => _hashtagGroups;
+
   late bool _autoAppendHashtags;
   bool get autoAppendHashtags => _autoAppendHashtags;
+
+  late List<CustomPill> _customPills;
+  List<CustomPill> _customPills = [];
+  List<CustomPill> get customPills => _customPills;
 
   String? _currentApiKey;
   String? get currentApiKey => _currentApiKey;
@@ -40,7 +50,9 @@ class SettingsViewModel extends ChangeNotifier {
     _selectedModel = _preferencesService.getSelectedModel(_selectedProvider);
     _toneMode = _preferencesService.toneMode;
     _defaultHashtags = _preferencesService.defaultHashtags;
+    _hashtagGroups = _preferencesService.hashtagGroups;
     _autoAppendHashtags = _preferencesService.autoAppendHashtags;
+    _customPills = _preferencesService.customPills;
     
     await _loadApiKey(_selectedProvider);
 
@@ -105,6 +117,59 @@ class SettingsViewModel extends ChangeNotifier {
     if (_autoAppendHashtags == enabled) return;
     await _preferencesService.setAutoAppendHashtags(enabled: enabled);
     _autoAppendHashtags = enabled;
+    notifyListeners();
+  }
+
+  Future<void> addCustomPill(CustomPill pill) async {
+    _customPills = List.of(_customPills)..add(pill);
+    await _preferencesService.setCustomPills(_customPills);
+    notifyListeners();
+  }
+
+  Future<void> removeCustomPill(CustomPill pill) async {
+    _customPills = List.of(_customPills)..removeWhere((p) => p.label == pill.label && p.instruction == pill.instruction);
+    await _preferencesService.setCustomPills(_customPills);
+    notifyListeners();
+  }
+
+  Future<void> addHashtagGroup(HashtagGroup group) async {
+    // If it's the first group, make it default
+    final isFirst = _hashtagGroups.isEmpty;
+    final newGroup = isFirst ? group.copyWith(isDefault: true) : group;
+    
+    _hashtagGroups = List.of(_hashtagGroups)..add(newGroup);
+    await _preferencesService.setHashtagGroups(_hashtagGroups);
+    if (newGroup.isDefault) {
+      _defaultHashtags = newGroup.hashtags;
+    }
+    notifyListeners();
+  }
+
+  Future<void> removeHashtagGroup(HashtagGroup group) async {
+    _hashtagGroups = List.of(_hashtagGroups)..removeWhere((g) => g.id == group.id);
+    
+    // If we removed the default, assign a new default if possible
+    if (group.isDefault && _hashtagGroups.isNotEmpty) {
+      final newDefault = _hashtagGroups.first.copyWith(isDefault: true);
+      _hashtagGroups[0] = newDefault;
+      _defaultHashtags = newDefault.hashtags;
+    } else if (group.isDefault) {
+      _defaultHashtags = '';
+    }
+    
+    await _preferencesService.setHashtagGroups(_hashtagGroups);
+    notifyListeners();
+  }
+
+  Future<void> setDefaultHashtagGroup(String id) async {
+    _hashtagGroups = _hashtagGroups.map((g) {
+      if (g.id == id) {
+        _defaultHashtags = g.hashtags;
+        return g.copyWith(isDefault: true);
+      }
+      return g.copyWith(isDefault: false);
+    }).toList();
+    await _preferencesService.setHashtagGroups(_hashtagGroups);
     notifyListeners();
   }
 }

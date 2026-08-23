@@ -1,8 +1,11 @@
+import 'dart:convert';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import '../../config/constants.dart';
 import '../../domain/models/app_theme_mode.dart';
+import '../../domain/models/custom_pill.dart';
+import '../../domain/models/hashtag_group.dart';
 import '../models/ai_provider.dart';
 
 /// Manages user preferences and secure API key storage.
@@ -85,10 +88,26 @@ class PreferencesService {
 
   // === Hashtags ===
 
-  String get defaultHashtags =>
-      _prefs.getString(AppConstants.keyDefaultHashtags) ?? '';
+  List<HashtagGroup> get hashtagGroups {
+    final list = _prefs.getStringList('hashtag_groups') ?? [];
+    return list.map((e) => HashtagGroup.fromJson(jsonDecode(e))).toList();
+  }
+
+  Future<bool> setHashtagGroups(List<HashtagGroup> groups) {
+    final list = groups.map((e) => jsonEncode(e.toJson())).toList();
+    return _prefs.setStringList('hashtag_groups', list);
+  }
+
+  String get defaultHashtags {
+    final groups = hashtagGroups;
+    for (var g in groups) {
+      if (g.isDefault) return g.hashtags;
+    }
+    return _prefs.getString(AppConstants.keyDefaultHashtags) ?? '';
+  }
 
   Future<bool> setDefaultHashtags(String hashtags) {
+    // Legacy fallback write
     return _prefs.setString(AppConstants.keyDefaultHashtags, hashtags);
   }
 
@@ -101,10 +120,13 @@ class PreferencesService {
 
   // === Custom Refinement Pills ===
   
-  List<String> get customPills =>
-      _prefs.getStringList('custom_refinement_pills') ?? [];
+  List<CustomPill> get customPills {
+    final list = _prefs.getStringList('custom_refinement_pills') ?? [];
+    return list.map((e) => CustomPill.fromJson(jsonDecode(e))).toList();
+  }
 
-  Future<bool> setCustomPills(List<String> pills) {
-    return _prefs.setStringList('custom_refinement_pills', pills);
+  Future<bool> setCustomPills(List<CustomPill> pills) {
+    final list = pills.map((e) => jsonEncode(e.toJson())).toList();
+    return _prefs.setStringList('custom_refinement_pills', list);
   }
 }
