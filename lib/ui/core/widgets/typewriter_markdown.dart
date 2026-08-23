@@ -22,12 +22,15 @@ class _TypewriterMarkdownState extends State<TypewriterMarkdown> with SingleTick
   @override
   void initState() {
     super.initState();
+    final charsLength = widget.data.characters.length;
     _controller = AnimationController(
       vsync: this,
       duration: widget.duration * widget.data.length,
+      duration: widget.duration * charsLength,
     );
     
     _charCount = StepTween(begin: 0, end: widget.data.length).animate(_controller)
+    _charCount = StepTween(begin: 0, end: charsLength).animate(_controller)
       ..addListener(() {
         setState(() {});
       });
@@ -41,6 +44,9 @@ class _TypewriterMarkdownState extends State<TypewriterMarkdown> with SingleTick
     if (oldWidget.data != widget.data) {
       _controller.duration = widget.duration * widget.data.length;
       _charCount = StepTween(begin: 0, end: widget.data.length).animate(_controller)
+      final charsLength = widget.data.characters.length;
+      _controller.duration = widget.duration * charsLength;
+      _charCount = StepTween(begin: 0, end: charsLength).animate(_controller)
         ..addListener(() {
           setState(() {});
         });
@@ -57,6 +63,7 @@ class _TypewriterMarkdownState extends State<TypewriterMarkdown> with SingleTick
   @override
   Widget build(BuildContext context) {
     final visibleText = widget.data.substring(0, _charCount.value);
+    final visibleText = widget.data.characters.take(_charCount.value).toString();
     
     return MarkdownBody(
       data: visibleText,

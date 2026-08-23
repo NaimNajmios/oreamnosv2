@@ -77,6 +77,46 @@ class GenerateViewModel extends ChangeNotifier {
     }
   }
 
+  Future<void> refineContent(String instruction) async {
+    if (_generatedContent == null || _generatedContent!.isEmpty) return;
+
+    _state = GenerateState.generating;
+    _errorMessage = null;
+    notifyListeners();
+
+    try {
+      final provider = _settingsViewModel.selectedProvider;
+      final modelId = _settingsViewModel.selectedModel;
+      if (modelId == null || modelId.isEmpty) {
+        throw Exception('No model selected. Please go to Settings to select a model.');
+      }
+
+      final apiKey = await _settingsViewModel.getApiKeyForProvider(provider);
+      if (apiKey == null || apiKey.isEmpty) {
+        throw Exception('API key not configured for ${provider.displayName}.');
+      }
+
+      final curator = CuratorFactory.getCurator(provider);
+      
+      final refinementPrompt = 'Please refine the following social media post based on this instruction: "$instruction". Keep the original tone if not specified otherwise.\n\nPost:\n$_generatedContent';
+
+      _generatedContent = await curator.generatePost(
+        contentOrUrl: refinementPrompt,
+        modelId: modelId,
+        apiKey: apiKey,
+        tone: _settingsViewModel.toneMode,
+        defaultHashtags: '', // Do not auto-append hashtags again on refinement
+      );
+
+      _state = GenerateState.success;
+    } catch (e) {
+      _errorMessage = e.toString();
+      _state = GenerateState.error;
+    } finally {
+      notifyListeners();
+    }
+  }
+
   void reset() {
     _state = GenerateState.idle;
     _generatedContent = null;

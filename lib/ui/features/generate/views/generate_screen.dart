@@ -2,13 +2,16 @@ import 'package:flutter/material.dart';
 
 import 'package:provider/provider.dart';
 
+import 'package:go_router/go_router.dart';
 
+import 'package:oreamnos/config/routes/app_router.dart';
 import '../view_models/generate_view_model.dart';
 import '../../../core/widgets/app_button.dart';
 import '../../../core/widgets/app_input.dart';
-import '../../../core/widgets/app_card.dart';
 import '../../../core/widgets/app_copy_button.dart';
 import '../../../core/widgets/typewriter_markdown.dart';
+import '../../../core/widgets/swipeable_output_card.dart';
+import '../../../core/widgets/refinement_pill.dart';
 
 class GenerateScreen extends StatefulWidget {
   const GenerateScreen({super.key});
@@ -145,36 +148,79 @@ class _GenerateScreenState extends State<GenerateScreen> {
     }
 
     // Success state
-    return AppCard(
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Text(
-                  'Generated Post',
-                  style: theme.textTheme.titleMedium?.copyWith(
-                    color: theme.colorScheme.primary,
-                    fontWeight: FontWeight.bold,
+    return Column(
+      children: [
+        Expanded(
+          child: SwipeableOutputCard(
+            content: viewModel.generatedContent ?? '',
+            child: Padding(
+              padding: const EdgeInsets.all(16),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Text(
+                        'Generated Post',
+                        style: theme.textTheme.titleMedium?.copyWith(
+                          color: theme.colorScheme.primary,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                      Row(
+                        children: [
+                          IconButton(
+                            icon: const Icon(Icons.fullscreen),
+                            onPressed: () {
+                              context.push(
+                                RoutePaths.readingMode,
+                                extra: viewModel.generatedContent ?? '',
+                              );
+                            },
+                            tooltip: 'Reading Mode',
+                          ),
+                          AppCopyButton(textToCopy: viewModel.generatedContent ?? ''),
+                        ],
+                      ),
+                    ],
                   ),
-                ),
-                AppCopyButton(textToCopy: viewModel.generatedContent ?? ''),
-              ],
-            ),
-            const Divider(height: 24),
-            Expanded(
-              child: SingleChildScrollView(
-                child: TypewriterMarkdown(
-                  data: viewModel.generatedContent ?? '',
-                ),
+                  const Divider(height: 24),
+                  Expanded(
+                    child: SingleChildScrollView(
+                      child: TypewriterMarkdown(
+                        data: viewModel.generatedContent ?? '',
+                      ),
+                    ),
+                  ),
+                ],
               ),
             ),
-          ],
+          ),
         ),
-      ),
+        const SizedBox(height: 12),
+        SingleChildScrollView(
+          scrollDirection: Axis.horizontal,
+          child: Row(
+            children: [
+              RefinementPill(
+                label: 'Rephrase',
+                onTap: () => viewModel.refineContent('Rephrase the post to make it more engaging and slightly different, but keep the core message.'),
+              ),
+              const SizedBox(width: 8),
+              RefinementPill(
+                label: 'Check Flow',
+                onTap: () => viewModel.refineContent('Improve the flow and readability of the post.'),
+              ),
+              const SizedBox(width: 8),
+              RefinementPill(
+                label: 'Shorter',
+                onTap: () => viewModel.refineContent('Make the post more concise and shorter.'),
+              ),
+            ],
+          ),
+        ),
+      ],
     );
   }
 }

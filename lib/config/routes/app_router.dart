@@ -4,10 +4,13 @@ import '../../ui/features/generate/views/generate_screen.dart';
 import '../../ui/features/settings/views/settings_screen.dart';
 import '../../ui/features/shell/views/app_shell.dart';
 
+import '../../ui/features/generate/views/reading_mode_screen.dart';
+
 /// Route path constants.
 abstract final class RoutePaths {
   static const String generate = '/generate';
   static const String settings = '/settings';
+  static const String readingMode = '/reading-mode';
   // Future routes:
   // static const String usage = '/usage';
   // static const String cardGenerator = '/card-generator';
@@ -35,6 +38,13 @@ GoRouter createAppRouter() {
             ),
           ),
         ],
+      ),
+      GoRoute(
+        path: RoutePaths.readingMode,
+        builder: (context, state) {
+          final content = state.extra as String? ?? '';
+          return ReadingModeScreen(content: content);
+        },
       ),
     ],
   );

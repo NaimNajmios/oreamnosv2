@@ -98,4 +98,13 @@ class PreferencesService {
   Future<bool> setAutoAppendHashtags({required bool enabled}) {
     return _prefs.setBool(AppConstants.keyAutoAppendHashtags, enabled);
   }
+
+  // === Custom Refinement Pills ===
+  
+  List<String> get customPills =>
+      _prefs.getStringList('custom_refinement_pills') ?? [];
+
+  Future<bool> setCustomPills(List<String> pills) {
+    return _prefs.setStringList('custom_refinement_pills', pills);
+  }
 }
