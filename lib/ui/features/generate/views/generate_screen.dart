@@ -31,6 +31,14 @@ class _GenerateScreenState extends State<GenerateScreen> {
     final theme = Theme.of(context);
     final viewModel = context.watch<GenerateViewModel>();
 
+    if (viewModel.pendingInput != null && viewModel.pendingInput != _controller.text) {
+      // Defer state update using microtask to avoid building phase errors
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        _controller.text = viewModel.pendingInput!;
+        viewModel.clearPendingInput();
+      });
+    }
+
     return Scaffold(
       appBar: AppBar(
         title: const Text('Oreamnos'),

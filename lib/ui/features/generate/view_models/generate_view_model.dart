@@ -1,6 +1,7 @@
 import 'package:flutter/foundation.dart';
-import '../../../../data/services/curator_factory.dart';
-import '../../settings/view_models/settings_view_model.dart';
+import 'package:oreamnos/data/services/curator_factory.dart';
+import 'package:oreamnos/ui/features/settings/view_models/settings_view_model.dart';
+import 'package:oreamnos/data/services/web_scraper_service.dart';
 
 enum GenerateState { idle, generating, success, error }
 
@@ -18,8 +19,21 @@ class GenerateViewModel extends ChangeNotifier {
   String? _errorMessage;
   String? get errorMessage => _errorMessage;
 
-  Future<void> generatePost(String contentOrUrl) async {
-    if (contentOrUrl.isEmpty) return;
+  String? _pendingInput;
+  String? get pendingInput => _pendingInput;
+
+  void setPendingInput(String input) {
+    _pendingInput = input;
+    notifyListeners();
+  }
+
+  void clearPendingInput() {
+    _pendingInput = null;
+    notifyListeners();
+  }
+
+  Future<void> generatePost(String input) async {
+    if (input.trim().isEmpty) return;
 
     _state = GenerateState.generating;
     _errorMessage = null;
@@ -27,6 +41,12 @@ class GenerateViewModel extends ChangeNotifier {
     notifyListeners();
 
     try {
+      String contentToCurate = input.trim();
+      
+      // Extract text if input is a URL
+      if (WebScraperService.isUrl(contentToCurate)) {
+        contentToCurate = await WebScraperService.extractTextFromUrl(contentToCurate);
+      }
       final provider = _settingsViewModel.selectedProvider;
       final modelId = _settingsViewModel.selectedModel;
       if (modelId == null || modelId.isEmpty) {
@@ -41,7 +61,7 @@ class GenerateViewModel extends ChangeNotifier {
       final curator = CuratorFactory.getCurator(provider);
 
       _generatedContent = await curator.generatePost(
-        contentOrUrl: contentOrUrl,
+        contentOrUrl: contentToCurate,
         modelId: modelId,
         apiKey: apiKey,
         tone: _settingsViewModel.toneMode,

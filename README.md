@@ -1,23 +1,31 @@
 # Oreamnos
 
-**Oreamnos** is an AI-Assisted Social Media Curator built with Flutter. It helps you craft, refine, and curate social media posts using various AI providers (Gemini, Groq, OpenRouter, Cerebras).
+**Oreamnos** is an AI-Assisted Social Media Curator built with Flutter. It helps you craft, refine, and curate social media posts from football news using various AI providers (Gemini, Groq, OpenRouter, Cerebras), transforming them into highly engaging Malaysian Malay content.
 
 ## Features & Progress
 
 Oreamnos is currently in development. Here is the progress so far:
 
 ### ✅ Phase 0: Foundation
-- Flutter project scaffolding with Neo-Editorial design system.
-- Light, Dark, and Deep Blue themes.
+- Flutter project scaffolding with a **Flat Minimalist** design system and Material 3 Dynamic Color support.
+- Custom Light, Dark, and Deep Blue themes.
 - Navigation using `go_router` and `ShellRoute`.
 
-### 🚧 Phase 1: Settings & AI Provider Configuration (In Progress)
+### ✅ Phase 1: Settings & AI Provider Configuration
 - **Implemented:** Full settings screen, AI provider selection (Gemini, Groq, OpenRouter, Cerebras), API key management with secure storage (`flutter_secure_storage`), Tone toggle, and Theme switcher.
-- **Pending:** Model selection per provider and connection testing.
+- **Implemented:** Dynamic model fetching per provider and implicit connection testing.
+
+### ✅ Phase 2: Content Generation Core
+- **Implemented:** `PromptManager` for generating system instructions based on user preferences.
+- **Implemented:** AI service layer with `IContentCurator` abstraction, `CuratorFactory`, and provider-specific REST API wrappers.
+- **Implemented:** Generate screen UI featuring a custom `TypewriterMarkdown` widget for streaming AI responses beautifully.
+
+### 🚧 Phase 3: Share Intent & Input (Current)
+- **Pending:** Android share intent handling (receive text/URLs), URL metadata extraction, and direct routing to the Generate screen.
+### ✅ Phase 3: Share Intent & Input
+- **Implemented:** Android share intent handling (receive text/URLs), URL metadata extraction via web scraping, and direct routing to the Generate screen.
 
 ### 🔜 Upcoming Phases
-- **Content Generation Core**: Prompt manager, web content extraction, and content curation.
-- **Share Intent**: Android/iOS share sheet integration for receiving URLs and text.
 - **Output & Refinement**: Output cards with refinement tools (rephrase, check flow).
 - **Hashtag & Usage Stats**: Hashtag management and token tracking.
 - **Card Generator**: Generate visual cards from text for sharing.

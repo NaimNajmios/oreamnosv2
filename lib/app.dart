@@ -9,6 +9,8 @@ import 'config/theme/app_theme.dart';
 import 'domain/models/app_theme_mode.dart';
 
 import 'ui/features/settings/view_models/settings_view_model.dart';
+import 'ui/features/generate/view_models/generate_view_model.dart';
+import 'data/services/share_intent_service.dart';
 
 /// Root application widget.
 class OreamnosApp extends StatefulWidget {
@@ -25,10 +27,18 @@ class _OreamnosAppState extends State<OreamnosApp> {
   void initState() {
     super.initState();
     _router = createAppRouter();
+
+    ShareIntentService().onSharedTextReceived = (text) {
+      if (!mounted) return;
+      context.read<GenerateViewModel>().setPendingInput(text);
+      _router.go(RoutePaths.generate);
+    };
+    ShareIntentService().initialize();
   }
 
   @override
   void dispose() {
+    ShareIntentService().dispose();
     _router.dispose();
     super.dispose();
   }
