@@ -1,0 +1,11 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512">
+  <!-- Background: charcoal -->
+  <rect width="512" height="512" rx="115" fill="#1C1C1C"/>
+
+  <!-- Ball mark -->
+  <path d="M256 138 L324.5 187.8 L298.3 268.2 L213.7 268.2 L187.5 187.8 Z" fill="#F4F1EB"/>
+
+  <!-- Text lines -->
+  <rect x="168" y="320" width="176" height="16" rx="8" fill="#F4F1EB"/>
+  <rect x="196" y="352" width="120" height="16" rx="8" fill="#F4F1EB"/>
+</svg>

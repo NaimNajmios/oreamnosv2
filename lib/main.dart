@@ -7,6 +7,7 @@ import 'app.dart';
 import 'data/services/preferences_service.dart';
 
 import 'ui/features/settings/view_models/settings_view_model.dart';
+import 'ui/features/generate/view_models/generate_view_model.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -29,6 +30,10 @@ void main() async {
         Provider<PreferencesService>.value(value: preferencesService),
         ChangeNotifierProvider<SettingsViewModel>(
           create: (context) => SettingsViewModel(context.read<PreferencesService>()),
+        ),
+        ChangeNotifierProxyProvider<SettingsViewModel, GenerateViewModel>(
+          create: (context) => GenerateViewModel(context.read<SettingsViewModel>()),
+          update: (context, settings, previous) => previous ?? GenerateViewModel(settings),
         ),
       ],
       child: const OreamnosApp(),

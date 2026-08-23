@@ -20,7 +20,6 @@ class AppChip extends StatelessWidget {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final primary = theme.colorScheme.primaryContainer;
-    final surface = theme.colorScheme.surfaceVariant;
     final surface = theme.colorScheme.surfaceContainerHighest;
     final onSurface = theme.colorScheme.onSurface;
 

@@ -19,6 +19,9 @@ class SettingsViewModel extends ChangeNotifier {
   late AiProvider _selectedProvider;
   AiProvider get selectedProvider => _selectedProvider;
 
+  String? _selectedModel;
+  String? get selectedModel => _selectedModel;
+
   late String _toneMode;
   String get toneMode => _toneMode;
 
@@ -28,15 +31,13 @@ class SettingsViewModel extends ChangeNotifier {
   late bool _autoAppendHashtags;
   bool get autoAppendHashtags => _autoAppendHashtags;
 
-  // Track API keys existence securely without exposing them directly in state if not needed,
-  // but for the UI, we might just need to know if they exist.
-  // We'll load the current provider's API key.
   String? _currentApiKey;
   String? get currentApiKey => _currentApiKey;
 
   Future<void> _loadState() async {
     _themeMode = _preferencesService.themeMode;
     _selectedProvider = _preferencesService.selectedProvider;
+    _selectedModel = _preferencesService.getSelectedModel(_selectedProvider);
     _toneMode = _preferencesService.toneMode;
     _defaultHashtags = _preferencesService.defaultHashtags;
     _autoAppendHashtags = _preferencesService.autoAppendHashtags;
@@ -62,7 +63,15 @@ class SettingsViewModel extends ChangeNotifier {
     if (_selectedProvider == provider) return;
     await _preferencesService.setSelectedProvider(provider);
     _selectedProvider = provider;
+    _selectedModel = _preferencesService.getSelectedModel(provider);
     await _loadApiKey(provider);
+    notifyListeners();
+  }
+
+  Future<void> setSelectedModel(String modelId) async {
+    if (_selectedModel == modelId) return;
+    await _preferencesService.setSelectedModel(_selectedProvider, modelId);
+    _selectedModel = modelId;
     notifyListeners();
   }
 

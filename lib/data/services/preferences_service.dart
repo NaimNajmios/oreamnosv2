@@ -66,6 +66,15 @@ class PreferencesService {
     return _prefs.setString(AppConstants.keySelectedProvider, provider.name);
   }
 
+  // === Selected Model Per Provider ===
+  String? getSelectedModel(AiProvider provider) {
+    return _prefs.getString('model_${provider.name}');
+  }
+
+  Future<bool> setSelectedModel(AiProvider provider, String modelId) {
+    return _prefs.setString('model_${provider.name}', modelId);
+  }
+
   // === Tone ===
 
   String get toneMode => _prefs.getString(AppConstants.keyToneMode) ?? 'formal';

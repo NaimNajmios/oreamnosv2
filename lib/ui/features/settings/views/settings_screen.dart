@@ -3,6 +3,7 @@ import 'package:provider/provider.dart';
 
 import '../view_models/settings_view_model.dart';
 import 'widgets/api_key_dialog.dart';
+import 'widgets/model_selection_dialog.dart';
 import 'widgets/hashtag_input_dialog.dart';
 import 'widgets/provider_selection_dialog.dart';
 import 'widgets/theme_selection_dialog.dart';
@@ -31,6 +32,13 @@ class SettingsScreen extends StatelessWidget {
             title: 'Active Provider',
             subtitle: viewModel.selectedProvider.displayName,
             onTap: () => ProviderSelectionDialog.show(context),
+          ),
+          _buildTile(
+            context,
+            icon: Icons.model_training,
+            title: 'Model',
+            subtitle: viewModel.selectedModel ?? 'Default (Auto-select)',
+            onTap: () => ModelSelectionDialog.show(context, viewModel.selectedProvider),
           ),
           _buildTile(
             context,
