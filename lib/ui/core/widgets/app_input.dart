@@ -1,10 +1,10 @@
 import 'package:flutter/material.dart';
-import 'package:google_fonts/google_fonts.dart';
 
-/// Monospace text input field matching the Neo-Editorial design.
-/// Uses JetBrains Mono for the input text (matching Android's NeoInput).
-class NeoInput extends StatelessWidget {
-  const NeoInput({
+import '../../../config/theme/app_typography.dart';
+
+/// Clean text input field matching the Flat Minimalist design.
+class AppInput extends StatelessWidget {
+  const AppInput({
     super.key,
     this.controller,
     this.label,
@@ -30,22 +30,17 @@ class NeoInput extends StatelessWidget {
       maxLines: maxLines,
       readOnly: readOnly,
       onChanged: onChanged,
-      style: GoogleFonts.jetBrainsMono(
-        fontSize: 14,
-        color: theme.colorScheme.onSurface,
-      ),
+      style: AppTypography.input(theme.colorScheme.onSurface),
       decoration: InputDecoration(
         labelText: label,
         hintText: hint,
-        hintStyle: GoogleFonts.jetBrainsMono(
-          fontSize: 14,
-          color: theme.colorScheme.onSurface.withAlpha(102),
-        ),
-        border: const OutlineInputBorder(
-          borderRadius: BorderRadius.zero,
+        hintStyle: AppTypography.input(theme.colorScheme.onSurface.withAlpha(102)),
+        border: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(12),
+          borderSide: BorderSide.none,
         ),
         focusedBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.zero,
+          borderRadius: BorderRadius.circular(12),
           borderSide: BorderSide(
             color: theme.colorScheme.primary,
             width: 2,
@@ -53,7 +48,7 @@ class NeoInput extends StatelessWidget {
         ),
         filled: true,
         fillColor: theme.colorScheme.surface,
-        contentPadding: const EdgeInsets.all(16),
+        contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
       ),
     );
   }

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:dynamic_color/dynamic_color.dart';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 
@@ -46,37 +47,41 @@ class _OreamnosAppState extends State<OreamnosApp> {
 
     final themeMode = settingsViewModel.themeMode;
 
-    final ThemeData themeData;
-    final ThemeData? darkThemeData;
-    final ThemeMode materialThemeMode;
+    return DynamicColorBuilder(
+      builder: (ColorScheme? lightDynamic, ColorScheme? darkDynamic) {
+        final ThemeData themeData;
+        final ThemeData? darkThemeData;
+        final ThemeMode materialThemeMode;
 
-    switch (themeMode) {
-      case AppThemeMode.light:
-        themeData = AppTheme.light();
-        darkThemeData = null;
-        materialThemeMode = ThemeMode.light;
-      case AppThemeMode.dark:
-        themeData = AppTheme.dark();
-        darkThemeData = null;
-        materialThemeMode = ThemeMode.dark;
-      case AppThemeMode.deepBlue:
-        // Deep Blue is a custom dark theme — force dark mode
-        themeData = AppTheme.deepBlue();
-        darkThemeData = null;
-        materialThemeMode = ThemeMode.dark;
-      case AppThemeMode.system:
-        themeData = AppTheme.light();
-        darkThemeData = AppTheme.dark();
-        materialThemeMode = ThemeMode.system;
-    }
+        switch (themeMode) {
+          case AppThemeMode.light:
+            themeData = AppTheme.light(dynamicColorScheme: lightDynamic);
+            darkThemeData = null;
+            materialThemeMode = ThemeMode.light;
+          case AppThemeMode.dark:
+            themeData = AppTheme.dark(dynamicColorScheme: darkDynamic);
+            darkThemeData = null;
+            materialThemeMode = ThemeMode.dark;
+          case AppThemeMode.deepBlue:
+            // Deep Blue is a custom dark theme — force dark mode
+            themeData = AppTheme.deepBlue();
+            darkThemeData = null;
+            materialThemeMode = ThemeMode.dark;
+          case AppThemeMode.system:
+            themeData = AppTheme.light(dynamicColorScheme: lightDynamic);
+            darkThemeData = AppTheme.dark(dynamicColorScheme: darkDynamic);
+            materialThemeMode = ThemeMode.system;
+        }
 
-    return MaterialApp.router(
-      title: AppConstants.appName,
-      theme: themeData,
-      darkTheme: darkThemeData,
-      themeMode: materialThemeMode,
-      routerConfig: _router,
-      debugShowCheckedModeBanner: false,
+        return MaterialApp.router(
+          title: AppConstants.appName,
+          theme: themeData,
+          darkTheme: darkThemeData,
+          themeMode: materialThemeMode,
+          routerConfig: _router,
+          debugShowCheckedModeBanner: false,
+        );
+      },
     );
   }
 }

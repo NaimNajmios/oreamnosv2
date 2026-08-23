@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import 'package:oreamnos/ui/core/widgets/neo_input.dart';
+import 'package:oreamnos/ui/core/widgets/app_input.dart';
 import 'package:oreamnos/ui/features/settings/view_models/settings_view_model.dart';
 
 class HashtagInputDialog extends StatefulWidget {
@@ -33,12 +33,10 @@ class _HashtagInputDialogState extends State<HashtagInputDialog> {
     super.dispose();
   }
 
-  Future<void> _save() async {
-    final viewModel = context.read<SettingsViewModel>();
-    await viewModel.setDefaultHashtags(_controller.text.trim());
-    if (mounted) {
-      Navigator.of(context).pop();
-    }
+  void _save() {
+    final text = _controller.text.trim();
+    context.read<SettingsViewModel>().setDefaultHashtags(text);
+    Navigator.of(context).pop();
   }
 
   @override
@@ -60,10 +58,9 @@ class _HashtagInputDialogState extends State<HashtagInputDialog> {
       ),
       content: SizedBox(
         width: 400,
-        child: NeoInput(
+        child: AppInput(
           controller: _controller,
           hint: 'e.g. #LFC #YNWA',
-          maxLines: 2,
         ),
       ),
       actions: [

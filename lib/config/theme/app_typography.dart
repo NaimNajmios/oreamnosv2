@@ -1,20 +1,22 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 
-/// Typography system for the Neo-Editorial design language.
+/// Typography system for the Flat Minimalist design language.
 abstract final class AppTypography {
-  /// Default sans-serif text theme for body/label text.
+  /// Default sans-serif text theme for the application.
   static TextTheme textTheme(Color onSurface) {
     return TextTheme(
       displayLarge: GoogleFonts.inter(
         fontSize: 57,
-        fontWeight: FontWeight.w700,
+        fontWeight: FontWeight.w600,
         color: onSurface,
+        letterSpacing: -1.5,
       ),
       headlineLarge: GoogleFonts.inter(
         fontSize: 32,
-        fontWeight: FontWeight.w700,
+        fontWeight: FontWeight.w600,
         color: onSurface,
+        letterSpacing: -0.5,
       ),
       headlineMedium: GoogleFonts.inter(
         fontSize: 28,
@@ -28,7 +30,7 @@ abstract final class AppTypography {
       ),
       titleMedium: GoogleFonts.inter(
         fontSize: 16,
-        fontWeight: FontWeight.w600,
+        fontWeight: FontWeight.w500,
         color: onSurface,
       ),
       bodyLarge: GoogleFonts.inter(
@@ -54,10 +56,10 @@ abstract final class AppTypography {
     );
   }
 
-  /// Monospace text style for input fields (matches Android NeoInput).
-  static TextStyle monoInput(Color color) {
-    return GoogleFonts.jetBrainsMono(
-      fontSize: 14,
+  /// Soft text style for input fields.
+  static TextStyle input(Color color) {
+    return GoogleFonts.inter(
+      fontSize: 15,
       fontWeight: FontWeight.w400,
       color: color,
     );

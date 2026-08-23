@@ -1,10 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
-/// A rectangular chip with animated color transitions.
-/// Matches the Neo-Editorial design: sharp corners, 1dp border.
-class NeoChip extends StatelessWidget {
-  const NeoChip({
+/// A pill-shaped chip with animated color transitions.
+class AppChip extends StatelessWidget {
+  const AppChip({
     super.key,
     required this.label,
     this.selected = false,
@@ -20,8 +19,9 @@ class NeoChip extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final primary = theme.colorScheme.primary;
-    final surface = theme.colorScheme.surface;
+    final primary = theme.colorScheme.primaryContainer;
+    final surface = theme.colorScheme.surfaceVariant;
+    final surface = theme.colorScheme.surfaceContainerHighest;
     final onSurface = theme.colorScheme.onSurface;
 
     return GestureDetector(
@@ -31,12 +31,10 @@ class NeoChip extends StatelessWidget {
       },
       child: AnimatedContainer(
         duration: const Duration(milliseconds: 200),
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
         decoration: BoxDecoration(
           color: selected ? primary : surface,
-          border: Border.all(
-            color: selected ? primary : onSurface.withAlpha(51),
-          ),
+          borderRadius: BorderRadius.circular(24),
         ),
         child: Row(
           mainAxisSize: MainAxisSize.min,
@@ -45,15 +43,15 @@ class NeoChip extends StatelessWidget {
               Icon(
                 icon,
                 size: 16,
-                color: selected ? theme.colorScheme.onPrimary : onSurface,
+                color: selected ? theme.colorScheme.onPrimaryContainer : onSurface,
               ),
-              const SizedBox(width: 6),
+              const SizedBox(width: 8),
             ],
             Text(
               label,
               style: theme.textTheme.labelMedium?.copyWith(
-                color: selected ? theme.colorScheme.onPrimary : onSurface,
-                fontWeight: selected ? FontWeight.w600 : FontWeight.w400,
+                color: selected ? theme.colorScheme.onPrimaryContainer : onSurface,
+                fontWeight: selected ? FontWeight.w600 : FontWeight.w500,
               ),
             ),
           ],

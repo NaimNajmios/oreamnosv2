@@ -2,9 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
 /// Primary action button with haptic feedback.
-/// Neo-Editorial: sharp corners, bold accent color.
-class NeoButton extends StatelessWidget {
-  const NeoButton({
+/// Flat Minimalist design: rounded corners, soft elevation.
+class AppButton extends StatelessWidget {
+  const AppButton({
     super.key,
     required this.label,
     required this.onPressed,
@@ -22,7 +22,7 @@ class NeoButton extends StatelessWidget {
     final theme = Theme.of(context);
 
     return SizedBox(
-      height: 48,
+      height: 52,
       child: ElevatedButton(
         onPressed: isLoading
             ? null
@@ -33,8 +33,8 @@ class NeoButton extends StatelessWidget {
         style: ElevatedButton.styleFrom(
           backgroundColor: theme.colorScheme.primary,
           foregroundColor: theme.colorScheme.onPrimary,
-          shape: const RoundedRectangleBorder(
-            borderRadius: BorderRadius.zero,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(16),
           ),
           elevation: 0,
         ),
@@ -51,7 +51,7 @@ class NeoButton extends StatelessWidget {
                 mainAxisSize: MainAxisSize.min,
                 children: [
                   if (icon != null) ...[
-                    Icon(icon, size: 18),
+                    Icon(icon, size: 20),
                     const SizedBox(width: 8),
                   ],
                   Text(

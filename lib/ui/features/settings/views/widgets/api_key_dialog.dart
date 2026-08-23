@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:oreamnos/data/models/ai_provider.dart';
-import 'package:oreamnos/ui/core/widgets/neo_input.dart';
+import 'package:oreamnos/ui/core/widgets/app_input.dart';
 import 'package:oreamnos/ui/features/settings/view_models/settings_view_model.dart';
 
 class ApiKeyDialog extends StatefulWidget {
@@ -22,7 +22,7 @@ class ApiKeyDialog extends StatefulWidget {
 
 class _ApiKeyDialogState extends State<ApiKeyDialog> {
   late TextEditingController _controller;
-  bool _isLoading = true;
+  bool _isLoading = false;
 
   @override
   void initState() {
@@ -38,9 +38,6 @@ class _ApiKeyDialogState extends State<ApiKeyDialog> {
       if (existingKey != null) {
         _controller.text = existingKey;
       }
-      setState(() {
-        _isLoading = false;
-      });
     }
   }
 
@@ -51,10 +48,28 @@ class _ApiKeyDialogState extends State<ApiKeyDialog> {
   }
 
   Future<void> _saveKey() async {
-    final viewModel = context.read<SettingsViewModel>();
-    await viewModel.setApiKey(widget.provider, _controller.text.trim());
-    if (mounted) {
-      Navigator.of(context).pop();
+    final key = _controller.text.trim();
+    if (key.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('API Key cannot be empty')),
+      );
+      return;
+    }
+
+    setState(() => _isLoading = true);
+
+    try {
+      await context.read<SettingsViewModel>().setApiKey(widget.provider, key);
+      if (mounted) {
+        Navigator.of(context).pop();
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('${widget.provider.displayName} API Key saved')),
+        );
+      }
+    } finally {
+      if (mounted) {
+        setState(() => _isLoading = false);
+      }
     }
   }
 
@@ -68,26 +83,30 @@ class _ApiKeyDialogState extends State<ApiKeyDialog> {
       ),
       backgroundColor: theme.colorScheme.surface,
       title: Text(
-        '${widget.provider.displayName} API KEY',
+        'Configure ${widget.provider.displayName}',
         style: theme.textTheme.labelMedium?.copyWith(
           color: theme.colorScheme.primary,
           letterSpacing: 1.2,
           fontWeight: FontWeight.w700,
         ),
       ),
-      content: _isLoading
-          ? const SizedBox(
-              height: 100,
-              child: Center(child: CircularProgressIndicator()),
-            )
-          : SizedBox(
-              width: 400,
-              child: NeoInput(
-                controller: _controller,
-                hint: 'Enter API Key (sk-...)',
-                maxLines: 1,
-              ),
+      content: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Text('Enter your API key to enable content generation.'),
+          const SizedBox(height: 16),
+          SizedBox(
+            width: 400,
+            child: AppInput(
+              controller: _controller,
+              label: 'API Key',
+              hint: 'sk-...',
+              maxLines: 1,
             ),
+          ),
+        ],
+      ),
       actions: [
         TextButton(
           onPressed: () => Navigator.of(context).pop(),

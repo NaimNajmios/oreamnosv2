@@ -3,8 +3,8 @@ import 'package:flutter/services.dart';
 
 /// Copy button with animated feedback.
 /// Shows a checkmark briefly after copying.
-class NeoCopyButton extends StatefulWidget {
-  const NeoCopyButton({
+class AppCopyButton extends StatefulWidget {
+  const AppCopyButton({
     super.key,
     required this.textToCopy,
     this.size = 20,
@@ -14,10 +14,10 @@ class NeoCopyButton extends StatefulWidget {
   final double size;
 
   @override
-  State<NeoCopyButton> createState() => _NeoCopyButtonState();
+  State<AppCopyButton> createState() => _AppCopyButtonState();
 }
 
-class _NeoCopyButtonState extends State<NeoCopyButton> {
+class _AppCopyButtonState extends State<AppCopyButton> {
   bool _copied = false;
 
   Future<void> _onCopy() async {
@@ -43,7 +43,7 @@ class _NeoCopyButtonState extends State<NeoCopyButton> {
                 Icons.check,
                 key: const ValueKey('check'),
                 size: widget.size,
-                color: Colors.green,
+                color: theme.colorScheme.primary, // Using primary for success/active state
               )
             : Icon(
                 Icons.copy,
