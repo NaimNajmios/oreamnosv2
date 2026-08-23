@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
 
 import 'package:provider/provider.dart';
-
 import 'package:go_router/go_router.dart';
+import 'package:image_picker/image_picker.dart';
 
 import 'package:oreamnos/config/routes/app_router.dart';
 import '../view_models/generate_view_model.dart';
@@ -70,6 +70,22 @@ class _GenerateScreenState extends State<GenerateScreen> {
                 controller: _controller,
                 hint: 'Enter football news URL or paste content...',
                 maxLines: 4,
+                suffixIcon: viewModel.isExtractingImage
+                    ? const Padding(
+                        padding: EdgeInsets.all(12.0),
+                        child: SizedBox(
+                          width: 24,
+                          height: 24,
+                          child: CircularProgressIndicator(strokeWidth: 2),
+                        ),
+                      )
+                    : IconButton(
+                        icon: const Icon(Icons.document_scanner),
+                        tooltip: 'Extract from Image',
+                        onPressed: () {
+                          viewModel.extractTextFromImage(ImageSource.gallery);
+                        },
+                      ),
               ),
               const SizedBox(height: 16),
               AppButton(

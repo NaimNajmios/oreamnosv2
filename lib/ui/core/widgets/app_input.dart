@@ -12,6 +12,7 @@ class AppInput extends StatelessWidget {
     this.maxLines = 1,
     this.onChanged,
     this.readOnly = false,
+    this.suffixIcon,
   });
 
   final TextEditingController? controller;
@@ -20,6 +21,7 @@ class AppInput extends StatelessWidget {
   final int? maxLines;
   final ValueChanged<String>? onChanged;
   final bool readOnly;
+  final Widget? suffixIcon;
 
   @override
   Widget build(BuildContext context) {
@@ -49,6 +51,7 @@ class AppInput extends StatelessWidget {
         filled: true,
         fillColor: theme.colorScheme.surface,
         contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+        suffixIcon: suffixIcon,
       ),
     );
   }

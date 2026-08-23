@@ -13,7 +13,7 @@ subprojects {
     if (name != "app") {
         afterEvaluate {
             extensions.findByType(BaseExtension::class.java)?.apply {
-                compileSdkVersion(34)
+                compileSdkVersion(36)
                 compileOptions {
                     sourceCompatibility = JavaVersion.VERSION_17
                     targetCompatibility = JavaVersion.VERSION_17

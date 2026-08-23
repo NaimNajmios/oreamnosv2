@@ -11,6 +11,8 @@ import 'ui/features/settings/view_models/settings_view_model.dart';
 import 'ui/features/generate/view_models/generate_view_model.dart';
 import 'data/services/export_service.dart';
 import 'data/services/card_data_extractor.dart';
+import 'domain/services/vision_extractor.dart';
+import 'data/services/ml_kit_vision_extractor.dart';
 import 'ui/features/card_generator/view_models/card_generator_view_model.dart';
 
 void main() async {
@@ -38,9 +40,19 @@ void main() async {
         ChangeNotifierProvider<SettingsViewModel>(
           create: (context) => SettingsViewModel(context.read<PreferencesService>()),
         ),
-        ChangeNotifierProxyProvider<SettingsViewModel, GenerateViewModel>(
-          create: (context) => GenerateViewModel(context.read<SettingsViewModel>(), context.read<UsageService>()),
-          update: (context, settings, previous) => previous ?? GenerateViewModel(settings, context.read<UsageService>()),
+        Provider<IVisionExtractor>(create: (_) => MLKitVisionExtractor()),
+        ChangeNotifierProxyProvider2<SettingsViewModel, IVisionExtractor, GenerateViewModel>(
+          create: (context) => GenerateViewModel(
+            context.read<SettingsViewModel>(), 
+            context.read<UsageService>(),
+            context.read<IVisionExtractor>(),
+          ),
+          update: (context, settings, visionExtractor, previous) => 
+            previous ?? GenerateViewModel(
+              settings, 
+              context.read<UsageService>(),
+              visionExtractor,
+            ),
         ),
         Provider<ExportService>(create: (_) => ExportService()),
         Provider<CardDataExtractor>(create: (_) => CardDataExtractor()),

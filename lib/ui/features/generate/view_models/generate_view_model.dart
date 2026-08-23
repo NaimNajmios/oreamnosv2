@@ -6,13 +6,21 @@ import 'package:oreamnos/data/services/web_scraper_service.dart';
 import 'package:oreamnos/data/services/usage_service.dart';
 import 'package:oreamnos/domain/models/usage_log.dart';
 
+import 'package:image_picker/image_picker.dart';
+import 'package:oreamnos/domain/services/vision_extractor.dart';
+
 enum GenerateState { idle, generating, success, error }
 
 class GenerateViewModel extends ChangeNotifier {
-  GenerateViewModel(this._settingsViewModel, this._usageService);
+  GenerateViewModel(
+    this._settingsViewModel, 
+    this._usageService,
+    [this._visionExtractor]
+  );
 
   final SettingsViewModel _settingsViewModel;
   final UsageService _usageService;
+  final IVisionExtractor? _visionExtractor;
 
   GenerateState _state = GenerateState.idle;
   GenerateState get state => _state;
@@ -173,6 +181,38 @@ class GenerateViewModel extends ChangeNotifier {
     _generatedContent = null;
     _errorMessage = null;
     notifyListeners();
+  }
+
+  bool _isExtractingImage = false;
+  bool get isExtractingImage => _isExtractingImage;
+
+  Future<void> extractTextFromImage(ImageSource source) async {
+    if (_visionExtractor == null) return;
+    
+    try {
+      final ImagePicker picker = ImagePicker();
+      final XFile? image = await picker.pickImage(source: source);
+      
+      if (image != null) {
+        _isExtractingImage = true;
+        notifyListeners();
+        
+        final extractedText = await _visionExtractor.extractText(image.path);
+        
+        if (extractedText.isNotEmpty) {
+          setPendingInput(extractedText);
+        } else {
+          _errorMessage = "No text found in the image.";
+          _state = GenerateState.error;
+        }
+      }
+    } catch (e) {
+      _errorMessage = 'Failed to extract text: $e';
+      _state = GenerateState.error;
+    } finally {
+      _isExtractingImage = false;
+      notifyListeners();
+    }
   }
 }
 
