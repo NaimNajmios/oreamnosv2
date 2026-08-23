@@ -5,6 +5,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 import 'app.dart';
 import 'data/services/preferences_service.dart';
+import 'data/services/usage_service.dart';
 
 import 'ui/features/settings/view_models/settings_view_model.dart';
 import 'ui/features/generate/view_models/generate_view_model.dart';
@@ -24,16 +25,19 @@ void main() async {
     secureStorage: secureStorage,
   );
 
+  final usageService = UsageService(sharedPrefs);
+
   runApp(
     MultiProvider(
       providers: [
         Provider<PreferencesService>.value(value: preferencesService),
+        ChangeNotifierProvider<UsageService>.value(value: usageService),
         ChangeNotifierProvider<SettingsViewModel>(
           create: (context) => SettingsViewModel(context.read<PreferencesService>()),
         ),
         ChangeNotifierProxyProvider<SettingsViewModel, GenerateViewModel>(
-          create: (context) => GenerateViewModel(context.read<SettingsViewModel>()),
-          update: (context, settings, previous) => previous ?? GenerateViewModel(settings),
+          create: (context) => GenerateViewModel(context.read<SettingsViewModel>(), context.read<UsageService>()),
+          update: (context, settings, previous) => previous ?? GenerateViewModel(settings, context.read<UsageService>()),
         ),
       ],
       child: const OreamnosApp(),

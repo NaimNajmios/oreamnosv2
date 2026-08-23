@@ -31,14 +31,12 @@ class SettingsViewModel extends ChangeNotifier {
   String get defaultHashtags => _defaultHashtags;
 
   late List<HashtagGroup> _hashtagGroups;
-  List<HashtagGroup> _hashtagGroups = [];
   List<HashtagGroup> get hashtagGroups => _hashtagGroups;
 
   late bool _autoAppendHashtags;
   bool get autoAppendHashtags => _autoAppendHashtags;
 
   late List<CustomPill> _customPills;
-  List<CustomPill> _customPills = [];
   List<CustomPill> get customPills => _customPills;
 
   String? _currentApiKey;

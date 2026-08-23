@@ -91,6 +91,15 @@ class SettingsScreen extends StatelessWidget {
           ),
           const Divider(height: 32),
 
+          _buildSectionHeader(context, 'Usage & Analytics'),
+          _buildTile(
+            context,
+            icon: Icons.bar_chart,
+            title: 'Usage Statistics',
+            subtitle: 'View token usage and latency',
+            onTap: () => context.push(RoutePaths.usage),
+          ),
+          const SizedBox(height: 16),
           _buildSectionHeader(context, 'Appearance'),
           const SizedBox(height: 8),
           _buildTile(

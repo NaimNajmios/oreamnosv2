@@ -26,10 +26,17 @@ Oreamnos is currently in development. Here is the progress so far:
 ### ✅ Phase 4: Output & Refinement
 - **Implemented:** Output card with swipe gestures (copy/share), Refinement pills (Rephrase, Check Flow, Shorter) for AI revision, and a full-screen immersive Reading Mode.
 
-### 🔜 Upcoming Phases
-- **Hashtag & Usage Stats**: Hashtag management and token tracking (Phases 5 & 6).
-- **Card Generator**: Generate visual cards from text for sharing.
-- **Vision Extraction**: ML Kit and AI OCR for image text extraction.
+### ✅ Phase 5: Hashtag Manager
+- **Implemented:** Custom hashtag grouping and management, dynamic default hashtag injection.
+
+### ✅ Phase 6: Usage Statistics & Analytics
+- **Implemented:** Rolling window tracking of token usage, latency, and success rates, custom Flutter Canvas (`CustomPainter`) line charts for visual data representation, and dashboard history in Settings.
+
+## 🚧 Upcoming (Migration Plan)
+
+- **Phase 7:** Card Generator (Structured JSON extraction, custom background painters)
+- **Phase 8:** Vision Extraction (ML Kit OCR, platform-specific models)
+- **Phase 9:** Polish & Platform Features (Haptics, Spring animations, background services)
 
 ## Getting Started
 

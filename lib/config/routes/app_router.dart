@@ -7,6 +7,7 @@ import '../../ui/features/shell/views/app_shell.dart';
 import '../../ui/features/generate/views/reading_mode_screen.dart';
 import '../../ui/features/settings/views/pill_manager_screen.dart';
 import '../../ui/features/settings/views/hashtag_manager_screen.dart';
+import '../../ui/features/usage/views/usage_screen.dart';
 
 /// Route path constants.
 abstract final class RoutePaths {
@@ -15,8 +16,8 @@ abstract final class RoutePaths {
   static const String readingMode = '/reading-mode';
   static const String pillManager = '/pill-manager';
   static const String hashtagManager = '/hashtag-manager';
+  static const String usage = '/usage';
   // Future routes:
-  // static const String usage = '/usage';
   // static const String cardGenerator = '/card-generator';
   // static const String sessions = '/sessions';
 }
@@ -57,6 +58,10 @@ GoRouter createAppRouter() {
       GoRoute(
         path: RoutePaths.hashtagManager,
         builder: (context, state) => const HashtagManagerScreen(),
+      ),
+      GoRoute(
+        path: RoutePaths.usage,
+        builder: (context, state) => const UsageScreen(),
       ),
     ],
   );

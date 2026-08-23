@@ -1,14 +1,18 @@
 import 'package:flutter/foundation.dart';
+import 'package:uuid/uuid.dart';
 import 'package:oreamnos/data/services/curator_factory.dart';
 import 'package:oreamnos/ui/features/settings/view_models/settings_view_model.dart';
 import 'package:oreamnos/data/services/web_scraper_service.dart';
+import 'package:oreamnos/data/services/usage_service.dart';
+import 'package:oreamnos/domain/models/usage_log.dart';
 
 enum GenerateState { idle, generating, success, error }
 
 class GenerateViewModel extends ChangeNotifier {
-  GenerateViewModel(this._settingsViewModel);
+  GenerateViewModel(this._settingsViewModel, this._usageService);
 
   final SettingsViewModel _settingsViewModel;
+  final UsageService _usageService;
 
   GenerateState _state = GenerateState.idle;
   GenerateState get state => _state;
@@ -40,6 +44,9 @@ class GenerateViewModel extends ChangeNotifier {
     _generatedContent = null;
     notifyListeners();
 
+    final stopwatch = Stopwatch()..start();
+    final provider = _settingsViewModel.selectedProvider;
+
     try {
       String contentToCurate = input.trim();
       
@@ -47,7 +54,7 @@ class GenerateViewModel extends ChangeNotifier {
       if (WebScraperService.isUrl(contentToCurate)) {
         contentToCurate = await WebScraperService.extractTextFromUrl(contentToCurate);
       }
-      final provider = _settingsViewModel.selectedProvider;
+      
       final modelId = _settingsViewModel.selectedModel;
       if (modelId == null || modelId.isEmpty) {
         throw Exception('No model selected. Please go to Settings to select a model.');
@@ -68,8 +75,29 @@ class GenerateViewModel extends ChangeNotifier {
         defaultHashtags: _settingsViewModel.autoAppendHashtags ? _settingsViewModel.defaultHashtags : '',
       );
 
+      stopwatch.stop();
+      final estimatedTokens = ((contentToCurate.length + (_generatedContent?.length ?? 0)) / 4).round();
+      _usageService.logUsage(UsageLog(
+        id: const Uuid().v4(),
+        timestamp: DateTime.now(),
+        providerId: provider.name,
+        latencyMs: stopwatch.elapsedMilliseconds,
+        estimatedTokens: estimatedTokens,
+        isSuccess: true,
+      ));
+
       _state = GenerateState.success;
     } catch (e) {
+      stopwatch.stop();
+      _usageService.logUsage(UsageLog(
+        id: const Uuid().v4(),
+        timestamp: DateTime.now(),
+        providerId: provider.name,
+        latencyMs: stopwatch.elapsedMilliseconds,
+        estimatedTokens: 0,
+        isSuccess: false,
+      ));
+      
       _errorMessage = e.toString();
       _state = GenerateState.error;
     } finally {
@@ -84,8 +112,10 @@ class GenerateViewModel extends ChangeNotifier {
     _errorMessage = null;
     notifyListeners();
 
+    final stopwatch = Stopwatch()..start();
+    final provider = _settingsViewModel.selectedProvider;
+
     try {
-      final provider = _settingsViewModel.selectedProvider;
       final modelId = _settingsViewModel.selectedModel;
       if (modelId == null || modelId.isEmpty) {
         throw Exception('No model selected. Please go to Settings to select a model.');
@@ -108,8 +138,29 @@ class GenerateViewModel extends ChangeNotifier {
         defaultHashtags: '', // Do not auto-append hashtags again on refinement
       );
 
+      stopwatch.stop();
+      final estimatedTokens = ((refinementPrompt.length + (_generatedContent?.length ?? 0)) / 4).round();
+      _usageService.logUsage(UsageLog(
+        id: const Uuid().v4(),
+        timestamp: DateTime.now(),
+        providerId: provider.name,
+        latencyMs: stopwatch.elapsedMilliseconds,
+        estimatedTokens: estimatedTokens,
+        isSuccess: true,
+      ));
+
       _state = GenerateState.success;
     } catch (e) {
+      stopwatch.stop();
+      _usageService.logUsage(UsageLog(
+        id: const Uuid().v4(),
+        timestamp: DateTime.now(),
+        providerId: provider.name,
+        latencyMs: stopwatch.elapsedMilliseconds,
+        estimatedTokens: 0,
+        isSuccess: false,
+      ));
+
       _errorMessage = e.toString();
       _state = GenerateState.error;
     } finally {
