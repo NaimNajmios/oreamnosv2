@@ -1,9 +1,10 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_animate/flutter_animate.dart';
-import '../utils/haptics.dart';
+import 'package:oreamnos/config/theme/app_motion.dart';
+import 'package:oreamnos/config/theme/app_spacing.dart';
+import 'package:oreamnos/ui/core/utils/haptics.dart';
 
-/// Primary action button with haptic feedback.
-/// Flat Minimalist design: rounded corners, soft elevation.
+/// Primary filled action button in the Serene Editorial design system.
+/// Features pill radius, smooth scale-down animation on press, and loading state.
 class AppButton extends StatefulWidget {
   const AppButton({
     super.key,
@@ -11,51 +12,92 @@ class AppButton extends StatefulWidget {
     required this.onPressed,
     this.icon,
     this.isLoading = false,
+    this.height = 52,
+    this.backgroundColor,
+    this.foregroundColor,
   });
 
   final String label;
   final VoidCallback? onPressed;
   final IconData? icon;
   final bool isLoading;
+  final double height;
+  final Color? backgroundColor;
+  final Color? foregroundColor;
 
   @override
   State<AppButton> createState() => _AppButtonState();
 }
 
-class _AppButtonState extends State<AppButton> {
-  bool _isPressed = false;
+class _AppButtonState extends State<AppButton> with SingleTickerProviderStateMixin {
+  late final AnimationController _controller;
+  late final Animation<double> _scaleAnimation;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = AnimationController(
+      vsync: this,
+      duration: AppMotion.fast,
+    );
+    _scaleAnimation = Tween<double>(begin: 1.0, end: 0.98).animate(
+      CurvedAnimation(parent: _controller, curve: AppMotion.curveFast),
+    );
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  void _handleTapDown(TapDownDetails _) {
+    if (widget.onPressed != null && !widget.isLoading) {
+      Haptics.lightImpact();
+      _controller.forward();
+    }
+  }
+
+  void _handleTapUp(TapUpDetails _) {
+    if (widget.onPressed != null && !widget.isLoading) {
+      _controller.reverse();
+      widget.onPressed?.call();
+    }
+  }
+
+  void _handleTapCancel() {
+    if (widget.onPressed != null && !widget.isLoading) {
+      _controller.reverse();
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final enabled = widget.onPressed != null && !widget.isLoading;
+
+    final bgColor = widget.backgroundColor ??
+        (enabled ? theme.colorScheme.primary : theme.colorScheme.primary.withValues(alpha: 0.4));
+    final fgColor = widget.foregroundColor ?? theme.colorScheme.onPrimary;
 
     return GestureDetector(
-      onTapDown: widget.isLoading || widget.onPressed == null
-          ? null
-          : (_) {
-              Haptics.lightImpact();
-              setState(() => _isPressed = true);
-            },
-      onTapUp: widget.isLoading || widget.onPressed == null
-          ? null
-          : (_) {
-              setState(() => _isPressed = false);
-              widget.onPressed?.call();
-            },
-      onTapCancel: () {
-        if (_isPressed) {
-          setState(() => _isPressed = false);
-        }
-      },
-      child: SizedBox(
-        height: 52,
-        child: DecoratedBox(
+      onTapDown: _handleTapDown,
+      onTapUp: _handleTapUp,
+      onTapCancel: _handleTapCancel,
+      behavior: HitTestBehavior.opaque,
+      child: AnimatedBuilder(
+        animation: _scaleAnimation,
+        builder: (context, child) => Transform.scale(
+          scale: AppMotion.shouldReduceMotion(context) ? 1.0 : _scaleAnimation.value,
+          child: child,
+        ),
+        child: Container(
+          height: widget.height,
           decoration: BoxDecoration(
-            color: widget.onPressed == null
-                ? theme.colorScheme.primary.withAlpha(128)
-                : theme.colorScheme.primary,
-            borderRadius: BorderRadius.circular(16),
+            color: bgColor,
+            borderRadius: AppSpacing.borderRadiusPill,
           ),
+          padding: const EdgeInsets.symmetric(horizontal: 20),
           child: Center(
             child: widget.isLoading
                 ? SizedBox(
@@ -63,30 +105,30 @@ class _AppButtonState extends State<AppButton> {
                     height: 20,
                     child: CircularProgressIndicator(
                       strokeWidth: 2,
-                      color: theme.colorScheme.onPrimary,
+                      valueColor: AlwaysStoppedAnimation<Color>(fgColor),
                     ),
                   )
                 : Row(
                     mainAxisSize: MainAxisSize.min,
+                    mainAxisAlignment: MainAxisAlignment.center,
                     children: [
                       if (widget.icon != null) ...[
-                        Icon(widget.icon, size: 20, color: theme.colorScheme.onPrimary),
+                        Icon(widget.icon, size: 18, color: fgColor),
                         const SizedBox(width: 8),
                       ],
                       Text(
                         widget.label,
                         style: theme.textTheme.labelLarge?.copyWith(
-                          color: theme.colorScheme.onPrimary,
+                          color: fgColor,
                           fontWeight: FontWeight.w600,
+                          letterSpacing: 0.1,
                         ),
                       ),
                     ],
                   ),
           ),
         ),
-      )
-      .animate(target: _isPressed ? 1 : 0)
-      .scale(begin: const Offset(1, 1), end: const Offset(0.95, 0.95), curve: Curves.easeOutBack, duration: 150.ms),
+      ),
     );
   }
 }

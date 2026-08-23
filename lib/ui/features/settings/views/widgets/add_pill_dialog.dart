@@ -1,10 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
-import '../../../../../domain/models/custom_pill.dart';
-import '../../view_models/settings_view_model.dart';
-import '../../../../core/widgets/app_button.dart';
-import '../../../../core/widgets/app_input.dart';
+import 'package:oreamnos/config/theme/app_spacing.dart';
+import 'package:oreamnos/domain/models/custom_pill.dart';
+import 'package:oreamnos/ui/core/utils/haptics.dart';
+import 'package:oreamnos/ui/core/widgets/app_button.dart';
+import 'package:oreamnos/ui/core/widgets/app_input.dart';
+import 'package:oreamnos/ui/features/settings/view_models/settings_view_model.dart';
 
 class AddPillDialog extends StatefulWidget {
   final CustomPill? existingPill;
@@ -48,69 +50,88 @@ class _AddPillDialogState extends State<AddPillDialog> {
 
     if (label.isEmpty || instruction.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Both fields are required')),
+        const SnackBar(content: Text('Both label and instruction are required')),
       );
       return;
     }
 
     final pill = CustomPill(label: label, instruction: instruction);
     final viewModel = context.read<SettingsViewModel>();
-    
+
     if (widget.existingPill != null) {
-      // Find index and update
       viewModel.removeCustomPill(widget.existingPill!);
     }
     viewModel.addCustomPill(pill);
-    
+    Haptics.mediumImpact();
+
     Navigator.of(context).pop();
   }
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final isEditing = widget.existingPill != null;
 
     return Dialog(
-      shape: const RoundedRectangleBorder(borderRadius: BorderRadius.zero),
-      child: Padding(
-        padding: const EdgeInsets.all(24),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            Text(
-              'Add Custom Pill',
-              style: theme.textTheme.titleLarge?.copyWith(
-                fontWeight: FontWeight.bold,
+      shape: RoundedRectangleBorder(
+        borderRadius: AppSpacing.borderRadiusLg,
+        side: BorderSide(color: theme.colorScheme.outline),
+      ),
+      backgroundColor: theme.colorScheme.surface,
+      child: ConstrainedBox(
+        constraints: const BoxConstraints(maxWidth: 440),
+        child: Padding(
+          padding: const EdgeInsets.all(AppSpacing.xl),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Text(
+                isEditing ? 'Edit Custom Pill' : 'Add Custom Pill',
+                style: theme.textTheme.titleMedium?.copyWith(
+                  fontWeight: FontWeight.w700,
+                ),
               ),
-            ),
-            const SizedBox(height: 24),
-            AppInput(
-              controller: _labelController,
-              hint: 'e.g. Translate',
-              maxLines: 1,
-            ),
-            const SizedBox(height: 16),
-            AppInput(
-              controller: _instructionController,
-              hint: 'e.g. Translate this to English',
-              maxLines: 4,
-            ),
-            const SizedBox(height: 24),
-            Row(
-              mainAxisAlignment: MainAxisAlignment.end,
-              children: [
-                TextButton(
-                  onPressed: () => Navigator.of(context).pop(),
-                  child: const Text('CANCEL'),
+              const SizedBox(height: AppSpacing.xs),
+              Text(
+                'Define a quick AI refinement prompt for your generated posts.',
+                style: theme.textTheme.bodySmall?.copyWith(
+                  color: theme.colorScheme.onSurface.withValues(alpha: 0.6),
                 ),
-                const SizedBox(width: 8),
-                AppButton(
-                  label: 'SAVE',
-                  onPressed: _save,
-                ),
-              ],
-            ),
-          ],
+              ),
+              const SizedBox(height: AppSpacing.lg),
+              AppInput(
+                controller: _labelController,
+                label: 'Pill Label',
+                hint: 'e.g. Translate to English, Punchy Hook',
+                maxLines: 1,
+              ),
+              const SizedBox(height: AppSpacing.md),
+              AppInput(
+                controller: _instructionController,
+                label: 'Prompt Instruction',
+                hint: 'e.g. Translate this post into standard English while retaining the football hype.',
+                minLines: 3,
+                maxLines: 4,
+              ),
+              const SizedBox(height: AppSpacing.xl),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.end,
+                children: [
+                  TextButton(
+                    onPressed: () => Navigator.of(context).pop(),
+                    child: const Text('Cancel'),
+                  ),
+                  const SizedBox(width: AppSpacing.sm),
+                  AppButton(
+                    label: isEditing ? 'Save Changes' : 'Add Pill',
+                    height: 44,
+                    onPressed: _save,
+                  ),
+                ],
+              ),
+            ],
+          ),
         ),
       ),
     );

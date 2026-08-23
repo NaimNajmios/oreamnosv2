@@ -2,11 +2,19 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:intl/intl.dart';
 
+import '../../../../config/theme/app_colors.dart';
+import '../../../../config/theme/app_spacing.dart';
 import '../../../../data/services/usage_service.dart';
 import '../../../../domain/models/usage_log.dart';
+import '../../../core/utils/haptics.dart';
 import '../../../core/widgets/app_button.dart';
+import '../../../core/widgets/app_card.dart';
+import '../../../core/widgets/empty_state.dart';
+import '../../../core/widgets/section_header.dart';
+import '../../../core/widgets/stat_card.dart';
 import 'widgets/usage_chart.dart';
 
+/// Serene Editorial Usage & Analytics screen.
 class UsageScreen extends StatelessWidget {
   const UsageScreen({super.key});
 
@@ -31,87 +39,139 @@ class UsageScreen extends StatelessWidget {
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Usage Statistics'),
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.delete_outline),
-            onPressed: () => _confirmClear(context, usageService),
+        title: Text(
+          'Usage & Analytics',
+          style: theme.textTheme.titleMedium?.copyWith(
+            fontWeight: FontWeight.w700,
+            letterSpacing: -0.3,
           ),
+        ),
+        actions: [
+          if (logs.isNotEmpty)
+            IconButton(
+              icon: const Icon(Icons.delete_outline_rounded),
+              tooltip: 'Clear History',
+              onPressed: () => _confirmClear(context, usageService),
+            ),
         ],
       ),
       body: logs.isEmpty
-          ? const Center(child: Text('No usage data yet.'))
-          : ListView(
-              padding: const EdgeInsets.all(16),
-              children: [
-                _buildStatCards(context, totalTokens, successRate, avgLatency),
-                const SizedBox(height: 24),
-                Text(
-                  'Token Usage History',
-                  style: theme.textTheme.titleMedium?.copyWith(
-                    fontWeight: FontWeight.bold,
+          ? const EmptyState(
+              icon: Icons.analytics_outlined,
+              title: 'No Usage Data Yet',
+              description: 'Generated posts and API latency statistics will appear here.',
+            )
+          : Center(
+              child: ConstrainedBox(
+                constraints: const BoxConstraints(maxWidth: AppSpacing.maxContentWidth),
+                child: ListView(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: AppSpacing.screenHorizontal,
+                    vertical: AppSpacing.base,
                   ),
+                  children: [
+                    // 3 Metric StatCards
+                    Row(
+                      children: [
+                        Expanded(
+                          child: StatCard(
+                            title: 'Tokens',
+                            value: NumberFormat.compact().format(totalTokens),
+                            subtitle: '$totalTokens est.',
+                            icon: Icons.data_usage_rounded,
+                          ),
+                        ),
+                        const SizedBox(width: AppSpacing.sm),
+                        Expanded(
+                          child: StatCard(
+                            title: 'Success',
+                            value: '${successRate.toStringAsFixed(0)}%',
+                            subtitle: '$successCount / ${logs.length}',
+                            icon: Icons.check_circle_outline_rounded,
+                            valueColor: successRate >= 90
+                                ? AppColors.success
+                                : theme.colorScheme.primary,
+                          ),
+                        ),
+                        const SizedBox(width: AppSpacing.sm),
+                        Expanded(
+                          child: StatCard(
+                            title: 'Avg Latency',
+                            value: '${avgLatency}ms',
+                            subtitle: 'Per prompt',
+                            icon: Icons.speed_rounded,
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: AppSpacing.lg),
+
+                    // Usage Chart
+                    const SectionHeader(title: 'Token Usage History'),
+                    UsageChart(logs: logs),
+                    const SizedBox(height: AppSpacing.lg),
+
+                    // Recent Requests
+                    const SectionHeader(title: 'Recent Requests'),
+                    ListView.separated(
+                      shrinkWrap: true,
+                      physics: const NeverScrollableScrollPhysics(),
+                      itemCount: logs.length,
+                      separatorBuilder: (context, index) => const SizedBox(height: AppSpacing.sm),
+                      itemBuilder: (context, index) => _buildLogCard(context, logs[index]),
+                    ),
+                    const SizedBox(height: AppSpacing.xl),
+                  ],
                 ),
-                const SizedBox(height: 16),
-                UsageChart(logs: logs),
-                const SizedBox(height: 24),
-                Text(
-                  'Recent Requests',
-                  style: theme.textTheme.titleMedium?.copyWith(
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-                const SizedBox(height: 8),
-                ...logs.map((log) => _buildLogTile(context, log)),
-              ],
+              ),
             ),
     );
   }
 
-  Widget _buildStatCards(BuildContext context, int tokens, double success, int latency) {
-    return Row(
-      children: [
-        Expanded(child: _StatCard(title: 'Tokens', value: '$tokens')),
-        const SizedBox(width: 8),
-        Expanded(child: _StatCard(title: 'Success', value: '${success.toStringAsFixed(0)}%')),
-        const SizedBox(width: 8),
-        Expanded(child: _StatCard(title: 'Avg Time', value: '${latency}ms')),
-      ],
-    );
-  }
-
-  Widget _buildLogTile(BuildContext context, UsageLog log) {
+  Widget _buildLogCard(BuildContext context, UsageLog log) {
     final theme = Theme.of(context);
     final timeStr = DateFormat('MMM d, HH:mm').format(log.timestamp);
-    
-    return Container(
-      margin: const EdgeInsets.only(bottom: 8),
-      padding: const EdgeInsets.all(12),
-      decoration: BoxDecoration(
-        border: Border.all(color: theme.colorScheme.onSurface.withOpacity(0.1)),
-        borderRadius: BorderRadius.zero,
+
+    return AppCard(
+      padding: const EdgeInsets.symmetric(
+        horizontal: AppSpacing.base,
+        vertical: AppSpacing.md,
       ),
       child: Row(
         children: [
-          Icon(
-            log.isSuccess ? Icons.check_circle : Icons.error,
-            color: log.isSuccess ? Colors.green : Colors.red,
-            size: 20,
+          Container(
+            width: 32,
+            height: 32,
+            decoration: BoxDecoration(
+              color: log.isSuccess
+                  ? AppColors.success.withValues(alpha: 0.1)
+                  : AppColors.error.withValues(alpha: 0.1),
+              shape: BoxShape.circle,
+            ),
+            child: Icon(
+              log.isSuccess ? Icons.check_rounded : Icons.close_rounded,
+              color: log.isSuccess ? AppColors.success : AppColors.error,
+              size: 18,
+            ),
           ),
-          const SizedBox(width: 12),
+          const SizedBox(width: AppSpacing.md),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  log.providerId,
-                  style: const TextStyle(fontWeight: FontWeight.bold),
+                  log.providerId.toUpperCase(),
+                  style: theme.textTheme.titleSmall?.copyWith(
+                    fontWeight: FontWeight.w700,
+                    fontSize: 13,
+                  ),
                 ),
+                const SizedBox(height: 2),
                 Text(
                   timeStr,
-                  style: TextStyle(
-                    fontSize: 12,
-                    color: theme.colorScheme.onSurface.withOpacity(0.6),
+                  style: theme.textTheme.bodySmall?.copyWith(
+                    color: theme.colorScheme.onSurface.withValues(alpha: 0.5),
+                    fontSize: 11,
                   ),
                 ),
               ],
@@ -120,12 +180,19 @@ class UsageScreen extends StatelessWidget {
           Column(
             crossAxisAlignment: CrossAxisAlignment.end,
             children: [
-              Text('${log.estimatedTokens} tokens'),
+              Text(
+                '${log.estimatedTokens} tokens',
+                style: theme.textTheme.titleSmall?.copyWith(
+                  fontWeight: FontWeight.w600,
+                  fontSize: 13,
+                ),
+              ),
+              const SizedBox(height: 2),
               Text(
                 '${log.latencyMs}ms',
-                style: TextStyle(
-                  fontSize: 12,
-                  color: theme.colorScheme.onSurface.withOpacity(0.6),
+                style: theme.textTheme.bodySmall?.copyWith(
+                  color: theme.colorScheme.onSurface.withValues(alpha: 0.5),
+                  fontSize: 11,
                 ),
               ),
             ],
@@ -136,64 +203,64 @@ class UsageScreen extends StatelessWidget {
   }
 
   Future<void> _confirmClear(BuildContext context, UsageService service) async {
+    final theme = Theme.of(context);
     final result = await showDialog<bool>(
       context: context,
-      builder: (ctx) => AlertDialog(
-        title: const Text('Clear History?'),
-        content: const Text('This will delete all usage statistics.'),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(ctx).pop(false),
-            child: const Text('CANCEL'),
+      builder: (ctx) => Dialog(
+        shape: RoundedRectangleBorder(
+          borderRadius: AppSpacing.borderRadiusLg,
+          side: BorderSide(color: theme.colorScheme.outline),
+        ),
+        backgroundColor: theme.colorScheme.surface,
+        child: ConstrainedBox(
+          constraints: const BoxConstraints(maxWidth: 400),
+          child: Padding(
+            padding: const EdgeInsets.all(AppSpacing.xl),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                Text(
+                  'Clear Usage History?',
+                  style: theme.textTheme.titleMedium?.copyWith(
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+                const SizedBox(height: AppSpacing.xs),
+                Text(
+                  'This will permanently reset all recorded token usage, latency statistics, and request history.',
+                  style: theme.textTheme.bodySmall?.copyWith(
+                    color: theme.colorScheme.onSurface.withValues(alpha: 0.6),
+                  ),
+                ),
+                const SizedBox(height: AppSpacing.xl),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.end,
+                  children: [
+                    TextButton(
+                      onPressed: () => Navigator.of(ctx).pop(false),
+                      child: const Text('Cancel'),
+                    ),
+                    const SizedBox(width: AppSpacing.sm),
+                    AppButton(
+                      label: 'Clear History',
+                      backgroundColor: AppColors.error,
+                      foregroundColor: Colors.white,
+                      height: 40,
+                      onPressed: () => Navigator.of(ctx).pop(true),
+                    ),
+                  ],
+                ),
+              ],
+            ),
           ),
-          AppButton(
-            label: 'CLEAR',
-            onPressed: () => Navigator.of(ctx).pop(true),
-          ),
-        ],
+        ),
       ),
     );
 
     if (result == true) {
+      Haptics.heavyImpact();
       service.clearLogs();
     }
-  }
-}
-
-class _StatCard extends StatelessWidget {
-  final String title;
-  final String value;
-
-  const _StatCard({required this.title, required this.value});
-
-  @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    return Container(
-      padding: const EdgeInsets.all(12),
-      decoration: BoxDecoration(
-        color: theme.colorScheme.surface,
-        border: Border.all(color: theme.colorScheme.onSurface.withOpacity(0.1)),
-      ),
-      child: Column(
-        children: [
-          Text(
-            title,
-            style: TextStyle(
-              fontSize: 12,
-              color: theme.colorScheme.onSurface.withOpacity(0.6),
-            ),
-          ),
-          const SizedBox(height: 4),
-          Text(
-            value,
-            style: const TextStyle(
-              fontSize: 18,
-              fontWeight: FontWeight.bold,
-            ),
-          ),
-        ],
-      ),
-    );
   }
 }

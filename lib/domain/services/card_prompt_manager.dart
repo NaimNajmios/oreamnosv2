@@ -14,7 +14,7 @@ CRITICAL RULE 3: If a specific piece of information (e.g., stats, dates, fees) i
 
   static String buildUserPrompt(CardTemplate template, String generatedText) {
     final schema = _getSchemaForTemplate(template);
-    return '\$schema\n\nARTICLE:\n\$generatedText\n\nRespond with ONLY the JSON object, starting with {';
+    return '$schema\n\nARTICLE:\n$generatedText\n\nRespond with ONLY the JSON object, starting with {';
   }
 
   static String _getSchemaForTemplate(CardTemplate template) {
@@ -89,7 +89,6 @@ Return ONLY a JSON object with this exact structure:
       case CardTemplate.injuryReport:
       case CardTemplate.contractExpiry:
       case CardTemplate.awardNominee:
-      default:
         // Generic fallback to headline for omitted templates in this iteration
         return '''
 Extract the main information from the football article below.

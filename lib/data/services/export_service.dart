@@ -52,7 +52,12 @@ class ExportService {
     await file.writeAsBytes(pngBytes);
 
     final xfile = XFile(file.path);
-    await Share.shareXFiles([xfile], text: text);
+    await SharePlus.instance.share(
+      ShareParams(
+        files: [xfile],
+        text: text.isEmpty ? null : text,
+      ),
+    );
   }
 }
 

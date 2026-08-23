@@ -1,6 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:oreamnos/config/theme/app_spacing.dart';
 import 'package:oreamnos/data/models/ai_provider.dart';
+import 'package:oreamnos/ui/core/utils/haptics.dart';
+import 'package:oreamnos/ui/core/widgets/app_button.dart';
 import 'package:oreamnos/ui/core/widgets/app_input.dart';
 import 'package:oreamnos/ui/features/settings/view_models/settings_view_model.dart';
 
@@ -23,6 +26,7 @@ class ApiKeyDialog extends StatefulWidget {
 class _ApiKeyDialogState extends State<ApiKeyDialog> {
   late TextEditingController _controller;
   bool _isLoading = false;
+  bool _obscureText = true;
 
   @override
   void initState() {
@@ -34,10 +38,8 @@ class _ApiKeyDialogState extends State<ApiKeyDialog> {
   Future<void> _loadExistingKey() async {
     final viewModel = context.read<SettingsViewModel>();
     final existingKey = await viewModel.getApiKeyForProvider(widget.provider);
-    if (mounted) {
-      if (existingKey != null) {
-        _controller.text = existingKey;
-      }
+    if (mounted && existingKey != null) {
+      _controller.text = existingKey;
     }
   }
 
@@ -61,6 +63,7 @@ class _ApiKeyDialogState extends State<ApiKeyDialog> {
     try {
       await context.read<SettingsViewModel>().setApiKey(widget.provider, key);
       if (mounted) {
+        Haptics.mediumImpact();
         Navigator.of(context).pop();
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text('${widget.provider.displayName} API Key saved')),
@@ -77,58 +80,71 @@ class _ApiKeyDialogState extends State<ApiKeyDialog> {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
 
-    return AlertDialog(
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.zero,
+    return Dialog(
+      shape: RoundedRectangleBorder(
+        borderRadius: AppSpacing.borderRadiusLg,
+        side: BorderSide(color: theme.colorScheme.outline),
       ),
       backgroundColor: theme.colorScheme.surface,
-      title: Text(
-        'Configure ${widget.provider.displayName}',
-        style: theme.textTheme.labelMedium?.copyWith(
-          color: theme.colorScheme.primary,
-          letterSpacing: 1.2,
-          fontWeight: FontWeight.w700,
+      child: ConstrainedBox(
+        constraints: const BoxConstraints(maxWidth: 440),
+        child: Padding(
+          padding: const EdgeInsets.all(AppSpacing.xl),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Text(
+                'Configure ${widget.provider.displayName}',
+                style: theme.textTheme.titleMedium?.copyWith(
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
+              const SizedBox(height: AppSpacing.xs),
+              Text(
+                'Enter your API key to enable AI content generation.',
+                style: theme.textTheme.bodySmall?.copyWith(
+                  color: theme.colorScheme.onSurface.withValues(alpha: 0.6),
+                ),
+              ),
+              const SizedBox(height: AppSpacing.lg),
+              AppInput(
+                controller: _controller,
+                label: 'API Key',
+                hint: 'sk-...',
+                maxLines: 1,
+                obscureText: _obscureText,
+                suffixIcon: IconButton(
+                  icon: Icon(
+                    _obscureText ? Icons.visibility_outlined : Icons.visibility_off_outlined,
+                    size: 20,
+                  ),
+                  onPressed: () {
+                    setState(() => _obscureText = !_obscureText);
+                  },
+                ),
+              ),
+              const SizedBox(height: AppSpacing.xl),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.end,
+                children: [
+                  TextButton(
+                    onPressed: () => Navigator.of(context).pop(),
+                    child: const Text('Cancel'),
+                  ),
+                  const SizedBox(width: AppSpacing.sm),
+                  AppButton(
+                    label: 'Save Key',
+                    isLoading: _isLoading,
+                    height: 44,
+                    onPressed: _isLoading ? null : _saveKey,
+                  ),
+                ],
+              ),
+            ],
+          ),
         ),
       ),
-      content: Column(
-        mainAxisSize: MainAxisSize.min,
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          const Text('Enter your API key to enable content generation.'),
-          const SizedBox(height: 16),
-          SizedBox(
-            width: 400,
-            child: AppInput(
-              controller: _controller,
-              label: 'API Key',
-              hint: 'sk-...',
-              maxLines: 1,
-            ),
-          ),
-        ],
-      ),
-      actions: [
-        TextButton(
-          onPressed: () => Navigator.of(context).pop(),
-          style: TextButton.styleFrom(
-            shape: const RoundedRectangleBorder(borderRadius: BorderRadius.zero),
-            foregroundColor: theme.colorScheme.onSurface,
-          ),
-          child: const Text('CANCEL'),
-        ),
-        ElevatedButton(
-          onPressed: _isLoading ? null : _saveKey,
-          style: ElevatedButton.styleFrom(
-            backgroundColor: theme.colorScheme.primary,
-            foregroundColor: theme.colorScheme.onPrimary,
-            shape: const RoundedRectangleBorder(
-              borderRadius: BorderRadius.zero,
-            ),
-          ),
-          child: const Text('SAVE'),
-        ),
-      ],
     );
   }
 }
-

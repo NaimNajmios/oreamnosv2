@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:oreamnos/domain/models/card_data.dart';
 import 'package:oreamnos/data/services/card_data_extractor.dart';
 import 'package:oreamnos/data/services/export_service.dart';
-import 'package:oreamnos/data/services/curator_factory.dart';
 import 'package:oreamnos/data/models/ai_provider.dart';
 
 enum CardTemplate {

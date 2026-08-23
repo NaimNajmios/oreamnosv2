@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
-import '../../../../../domain/models/usage_log.dart';
+import 'package:oreamnos/config/theme/app_spacing.dart';
+import 'package:oreamnos/domain/models/usage_log.dart';
 
+/// Serene gradient line chart for token usage history.
 class UsageChart extends StatelessWidget {
   final List<UsageLog> logs;
 
@@ -9,22 +11,26 @@ class UsageChart extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     if (logs.isEmpty) {
-      return const Center(child: Text('No data available'));
+      return const SizedBox.shrink();
     }
 
     final theme = Theme.of(context);
-    
+
     return Container(
       width: double.infinity,
-      height: 200,
+      height: 180,
       decoration: BoxDecoration(
-        border: Border.all(color: theme.colorScheme.onSurface.withOpacity(0.1)),
+        color: theme.colorScheme.surface,
+        borderRadius: AppSpacing.borderRadiusMd,
+        border: Border.all(color: theme.colorScheme.outline, width: 1),
       ),
+      padding: const EdgeInsets.all(AppSpacing.base),
       child: CustomPaint(
         painter: _UsageChartPainter(
           logs: logs,
           lineColor: theme.colorScheme.primary,
-          gridColor: theme.colorScheme.onSurface.withOpacity(0.05),
+          fillColor: theme.colorScheme.primaryContainer.withValues(alpha: 0.3),
+          gridColor: theme.colorScheme.outline.withValues(alpha: 0.5),
         ),
       ),
     );
@@ -34,11 +40,13 @@ class UsageChart extends StatelessWidget {
 class _UsageChartPainter extends CustomPainter {
   final List<UsageLog> logs;
   final Color lineColor;
+  final Color fillColor;
   final Color gridColor;
 
   _UsageChartPainter({
     required this.logs,
     required this.lineColor,
+    required this.fillColor,
     required this.gridColor,
   });
 
@@ -51,17 +59,15 @@ class _UsageChartPainter extends CustomPainter {
       ..strokeWidth = 1
       ..style = PaintingStyle.stroke;
 
-    // Draw grid
-    const int gridLines = 4;
+    // Draw horizontal hairline gridlines
+    const int gridLines = 3;
     for (int i = 0; i <= gridLines; i++) {
       final y = size.height * (i / gridLines);
       canvas.drawLine(Offset(0, y), Offset(size.width, y), gridPaint);
     }
 
-    // Prepare data points
-    // We display chronologically, so reverse the logs (which are newest first)
     final reversedLogs = logs.reversed.toList();
-    
+
     int maxTokens = 1;
     for (var log in reversedLogs) {
       if (log.estimatedTokens > maxTokens) {
@@ -73,40 +79,59 @@ class _UsageChartPainter extends CustomPainter {
       ..color = lineColor
       ..strokeWidth = 2
       ..style = PaintingStyle.stroke
+      ..strokeCap = StrokeCap.round
       ..strokeJoin = StrokeJoin.round;
+
+    final fillPaint = Paint()
+      ..color = fillColor
+      ..style = PaintingStyle.fill;
 
     final dotPaint = Paint()
       ..color = lineColor
       ..style = PaintingStyle.fill;
 
-    final path = Path();
-    
+    final linePath = Path();
+    final fillPath = Path();
+
+    final points = <Offset>[];
+
     for (int i = 0; i < reversedLogs.length; i++) {
       final log = reversedLogs[i];
-      // Map x from 0 to width
-      final x = reversedLogs.length == 1 
-          ? size.width / 2 
+      final x = reversedLogs.length == 1
+          ? size.width / 2
           : (i / (reversedLogs.length - 1)) * size.width;
-          
-      // Map y from height to 0
-      final y = size.height - (log.estimatedTokens / maxTokens * size.height * 0.9);
-      
+
+      final y = size.height - (log.estimatedTokens / maxTokens * (size.height * 0.85)) - 4;
+      final point = Offset(x, y);
+      points.add(point);
+
       if (i == 0) {
-        path.moveTo(x, y);
+        linePath.moveTo(x, y);
+        fillPath.moveTo(x, size.height);
+        fillPath.lineTo(x, y);
       } else {
-        path.lineTo(x, y);
+        linePath.lineTo(x, y);
+        fillPath.lineTo(x, y);
       }
-      
-      canvas.drawCircle(Offset(x, y), 3, dotPaint);
     }
 
-    canvas.drawPath(path, linePaint);
+    if (points.isNotEmpty) {
+      fillPath.lineTo(points.last.dx, size.height);
+      fillPath.close();
+
+      canvas.drawPath(fillPath, fillPaint);
+      canvas.drawPath(linePath, linePaint);
+
+      for (var point in points) {
+        canvas.drawCircle(point, 3.5, dotPaint);
+      }
+    }
   }
 
   @override
   bool shouldRepaint(covariant _UsageChartPainter oldDelegate) {
     return oldDelegate.logs != logs ||
-           oldDelegate.lineColor != lineColor ||
-           oldDelegate.gridColor != gridColor;
+        oldDelegate.lineColor != lineColor ||
+        oldDelegate.gridColor != gridColor;
   }
 }

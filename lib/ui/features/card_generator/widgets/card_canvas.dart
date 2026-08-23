@@ -24,7 +24,6 @@ class CardCanvas extends StatelessWidget {
       case AppFont.typewriter:
         return GoogleFonts.spaceMono(textStyle: baseStyle);
       case AppFont.defaultFont:
-      default:
         return GoogleFonts.inter(textStyle: baseStyle);
     }
   }

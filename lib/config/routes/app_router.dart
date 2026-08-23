@@ -3,8 +3,7 @@ import 'package:go_router/go_router.dart';
 
 import '../../ui/features/generate/views/generate_screen.dart';
 import '../../ui/features/settings/views/settings_screen.dart';
-import '../../ui/features/shell/views/app_shell.dart';
-
+import '../../ui/features/shell/views/modern_app_shell.dart';
 import '../../ui/features/settings/views/pill_manager_screen.dart';
 import '../../ui/features/settings/views/hashtag_manager_screen.dart';
 import '../../ui/features/usage/views/usage_screen.dart';
@@ -21,27 +20,32 @@ abstract final class RoutePaths {
   static const String pillManager = '/pill-manager';
   static const String hashtagManager = '/hashtag-manager';
   static const String usage = '/usage';
-  // Future routes:
+  static const String library = '/library';
   static const String cardGenerator = '/card-generator';
   static const String debugLogs = '/debug-logs';
-  // static const String sessions = '/sessions';
 }
 
 final rootNavigatorKey = GlobalKey<NavigatorState>();
 
-/// Application router using GoRouter with shell route for bottom navigation.
+/// Application router using GoRouter with shell route for 3-tab navigation.
 GoRouter createAppRouter() {
   return GoRouter(
     navigatorKey: rootNavigatorKey,
     initialLocation: RoutePaths.generate,
     routes: [
       ShellRoute(
-        builder: (context, state, child) => AppShell(child: child),
+        builder: (context, state, child) => ModernAppShell(child: child),
         routes: [
           GoRoute(
             path: RoutePaths.generate,
             pageBuilder: (context, state) => const NoTransitionPage(
               child: GenerateScreen(),
+            ),
+          ),
+          GoRoute(
+            path: RoutePaths.usage,
+            pageBuilder: (context, state) => const NoTransitionPage(
+              child: UsageScreen(),
             ),
           ),
           GoRoute(
@@ -66,10 +70,6 @@ GoRouter createAppRouter() {
       GoRoute(
         path: RoutePaths.hashtagManager,
         builder: (context, state) => const HashtagManagerScreen(),
-      ),
-      GoRoute(
-        path: RoutePaths.usage,
-        builder: (context, state) => const UsageScreen(),
       ),
       GoRoute(
         path: RoutePaths.cardGenerator,

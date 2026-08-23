@@ -1,10 +1,7 @@
 import 'dart:convert';
 import 'package:oreamnos/domain/models/card_data.dart';
-import 'package:oreamnos/domain/services/content_curator.dart';
-
 import 'package:oreamnos/data/services/curator_factory.dart';
 import 'package:oreamnos/data/models/ai_provider.dart';
-
 import 'package:oreamnos/ui/features/card_generator/view_models/card_generator_view_model.dart';
 
 class CardDataExtractor {

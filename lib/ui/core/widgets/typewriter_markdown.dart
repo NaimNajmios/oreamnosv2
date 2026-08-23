@@ -1,67 +1,134 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_markdown/flutter_markdown.dart';
+import 'package:oreamnos/config/theme/app_motion.dart';
+import 'package:oreamnos/config/theme/app_typography.dart';
 
+/// Markdown renderer with typewriter streaming animation.
 class TypewriterMarkdown extends StatefulWidget {
+  final String data;
+  final Duration duration;
+  final VoidCallback? onComplete;
+
   const TypewriterMarkdown({
     super.key,
     required this.data,
-    this.duration = const Duration(milliseconds: 15),
+    this.duration = AppMotion.typewriter,
+    this.onComplete,
   });
-
-  final String data;
-  final Duration duration; // duration per character
 
   @override
   State<TypewriterMarkdown> createState() => _TypewriterMarkdownState();
 }
 
-class _TypewriterMarkdownState extends State<TypewriterMarkdown> with SingleTickerProviderStateMixin {
-  late AnimationController _controller;
-  late Animation<int> _charCount;
+class _TypewriterMarkdownState extends State<TypewriterMarkdown> {
+  String _displayedText = '';
+  Timer? _timer;
+  int _currentIndex = 0;
 
   @override
   void initState() {
     super.initState();
-    _controller = AnimationController(
-      vsync: this,
-      duration: widget.duration * widget.data.length,
-    );
-    
-    _charCount = StepTween(begin: 0, end: widget.data.length).animate(_controller)
-      ..addListener(() {
-        setState(() {});
-      });
-
-    _controller.forward();
+    _startAnimation();
   }
 
   @override
-  void didUpdateWidget(TypewriterMarkdown oldWidget) {
+  void didUpdateWidget(covariant TypewriterMarkdown oldWidget) {
     super.didUpdateWidget(oldWidget);
     if (oldWidget.data != widget.data) {
-      _controller.duration = widget.duration * widget.data.length;
-      _charCount = StepTween(begin: 0, end: widget.data.length).animate(_controller)
-        ..addListener(() {
-          setState(() {});
-        });
-      _controller.forward(from: 0.0);
+      _startAnimation();
     }
   }
 
   @override
   void dispose() {
-    _controller.dispose();
+    _timer?.cancel();
     super.dispose();
+  }
+
+  void _startAnimation() {
+    _timer?.cancel();
+    _currentIndex = 0;
+    _displayedText = '';
+
+    if (widget.data.isEmpty) return;
+
+    final reduceMotion = AppMotion.shouldReduceMotion(context);
+    if (reduceMotion) {
+      setState(() {
+        _displayedText = widget.data;
+      });
+      widget.onComplete?.call();
+      return;
+    }
+
+    _timer = Timer.periodic(widget.duration, (timer) {
+      if (!mounted) {
+        timer.cancel();
+        return;
+      }
+
+      if (_currentIndex < widget.data.length) {
+        final step = (widget.data.length - _currentIndex > 100) ? 4 : 2;
+        final nextIndex = (_currentIndex + step <= widget.data.length)
+            ? _currentIndex + step
+            : widget.data.length;
+
+        setState(() {
+          _displayedText = widget.data.substring(0, nextIndex);
+          _currentIndex = nextIndex;
+        });
+      } else {
+        timer.cancel();
+        widget.onComplete?.call();
+      }
+    });
   }
 
   @override
   Widget build(BuildContext context) {
-    final visibleText = widget.data.substring(0, _charCount.value);
-    
+    final theme = Theme.of(context);
+
     return MarkdownBody(
-      data: visibleText,
-      selectable: _controller.isCompleted, // only selectable when finished to avoid focus issues
+      data: _displayedText,
+      selectable: true,
+      styleSheet: MarkdownStyleSheet(
+        p: theme.textTheme.bodyMedium?.copyWith(
+          height: 1.55,
+          color: theme.colorScheme.onSurface,
+        ),
+        h1: theme.textTheme.headlineMedium?.copyWith(
+          fontWeight: FontWeight.w700,
+          letterSpacing: -0.5,
+        ),
+        h2: theme.textTheme.titleLarge?.copyWith(
+          fontWeight: FontWeight.w700,
+          letterSpacing: -0.3,
+        ),
+        h3: theme.textTheme.titleMedium?.copyWith(
+          fontWeight: FontWeight.w600,
+        ),
+        code: AppTypography.mono(
+          fontSize: 13,
+          color: theme.colorScheme.primary,
+        ),
+        codeblockDecoration: BoxDecoration(
+          color: theme.colorScheme.surfaceContainerHighest.withValues(alpha: 0.5),
+          borderRadius: BorderRadius.circular(8),
+        ),
+        blockquote: theme.textTheme.bodyMedium?.copyWith(
+          fontStyle: FontStyle.italic,
+          color: theme.colorScheme.onSurface.withValues(alpha: 0.8),
+        ),
+        blockquoteDecoration: BoxDecoration(
+          border: Border(
+            left: BorderSide(
+              color: theme.colorScheme.primary,
+              width: 3,
+            ),
+          ),
+        ),
+      ),
     );
   }
 }
-

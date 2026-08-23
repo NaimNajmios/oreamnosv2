@@ -1,10 +1,17 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:go_router/go_router.dart';
+
+import 'package:oreamnos/config/routes/app_router.dart';
+import 'package:oreamnos/config/theme/app_spacing.dart';
+import 'package:oreamnos/ui/core/utils/haptics.dart';
+import 'package:oreamnos/ui/core/widgets/app_button.dart';
+import 'package:oreamnos/ui/core/widgets/app_card.dart';
+import 'package:oreamnos/ui/core/widgets/app_chip.dart';
 import 'package:oreamnos/ui/features/generate/view_models/generate_view_model.dart';
 import 'package:oreamnos/ui/features/settings/view_models/settings_view_model.dart';
-import 'package:go_router/go_router.dart';
-import 'package:oreamnos/config/routes/app_router.dart';
 
+/// Modal bottom sheet presented when text or URL is shared to Oreamnos.
 class ShareBottomSheet extends StatefulWidget {
   final String initialContent;
 
@@ -24,11 +31,12 @@ class _ShareBottomSheetState extends State<ShareBottomSheet> {
   }
 
   void _generate() {
+    Haptics.mediumImpact();
     context.read<SettingsViewModel>().setToneMode(_selectedTone);
     context.read<GenerateViewModel>().setPendingInput(widget.initialContent);
     context.read<GenerateViewModel>().generatePost(widget.initialContent);
     Navigator.of(context).pop();
-    // Navigate to Generate Screen if not already there
+
     final goRouter = GoRouter.of(context);
     if (goRouter.routeInformationProvider.value.uri.path != RoutePaths.generate) {
       goRouter.go(RoutePaths.generate);
@@ -38,73 +46,89 @@ class _ShareBottomSheetState extends State<ShareBottomSheet> {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    
-    return Container(
+
+    return Padding(
       padding: EdgeInsets.only(
-        left: 24,
-        right: 24,
-        top: 24,
-        bottom: MediaQuery.of(context).viewInsets.bottom + 24,
-      ),
-      decoration: BoxDecoration(
-        color: theme.colorScheme.surface,
-        borderRadius: const BorderRadius.vertical(top: Radius.circular(28)),
+        left: AppSpacing.xl,
+        right: AppSpacing.xl,
+        top: AppSpacing.sm,
+        bottom: MediaQuery.of(context).viewInsets.bottom + AppSpacing.xxl,
       ),
       child: Column(
         mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          Text(
-            'Create Post',
-            style: theme.textTheme.headlineSmall?.copyWith(fontWeight: FontWeight.bold),
+          Row(
+            children: [
+              Container(
+                width: 36,
+                height: 36,
+                decoration: BoxDecoration(
+                  color: theme.colorScheme.primaryContainer,
+                  borderRadius: AppSpacing.borderRadiusSm,
+                ),
+                child: Icon(
+                  Icons.auto_awesome_rounded,
+                  size: 18,
+                  color: theme.colorScheme.primary,
+                ),
+              ),
+              const SizedBox(width: AppSpacing.md),
+              Text(
+                'Share to Oreamnos',
+                style: theme.textTheme.titleMedium?.copyWith(
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
+            ],
           ),
-          const SizedBox(height: 16),
-          Container(
-            padding: const EdgeInsets.all(12),
-            decoration: BoxDecoration(
-              color: theme.colorScheme.surfaceContainerHighest,
-              borderRadius: BorderRadius.circular(12),
-              border: Border.all(color: theme.colorScheme.outlineVariant),
-            ),
+          const SizedBox(height: AppSpacing.base),
+
+          // Content Preview Card
+          AppCard(
+            padding: const EdgeInsets.all(AppSpacing.md),
+            backgroundColor: theme.colorScheme.surfaceContainerHighest,
             child: Text(
               widget.initialContent,
-              maxLines: 3,
+              maxLines: 4,
               overflow: TextOverflow.ellipsis,
-              style: theme.textTheme.bodyMedium,
+              style: theme.textTheme.bodyMedium?.copyWith(height: 1.4),
             ),
           ),
-          const SizedBox(height: 24),
+          const SizedBox(height: AppSpacing.lg),
+
+          // Tone Selector
           Text(
-            'Select Tone',
-            style: theme.textTheme.titleSmall?.copyWith(color: theme.colorScheme.primary),
+            'SELECT TONE',
+            style: theme.textTheme.labelSmall?.copyWith(
+              color: theme.colorScheme.primary,
+              fontWeight: FontWeight.w700,
+              letterSpacing: 1.1,
+            ),
           ),
-          const SizedBox(height: 8),
-          SegmentedButton<String>(
-            segments: const [
-              ButtonSegment(value: 'formal', label: Text('Formal')),
-              ButtonSegment(value: 'casual', label: Text('Casual')),
-              ButtonSegment(value: 'humorous', label: Text('Humorous')),
-              ButtonSegment(value: 'hype', label: Text('Hype')),
+          const SizedBox(height: AppSpacing.sm),
+          Row(
+            children: [
+              AppChip(
+                label: 'Formal',
+                selected: _selectedTone == 'formal',
+                onTap: () => setState(() => _selectedTone = 'formal'),
+              ),
+              const SizedBox(width: AppSpacing.sm),
+              AppChip(
+                label: 'Casual',
+                selected: _selectedTone == 'casual',
+                onTap: () => setState(() => _selectedTone = 'casual'),
+              ),
             ],
-            selected: {_selectedTone},
-            onSelectionChanged: (Set<String> newSelection) {
-              setState(() {
-                _selectedTone = newSelection.first;
-              });
-            },
-            style: SegmentedButton.styleFrom(
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-            ),
           ),
-          const SizedBox(height: 24),
-          FilledButton.icon(
+          const SizedBox(height: AppSpacing.xl),
+
+          // Primary Action
+          AppButton(
+            label: 'Curate Post Now',
+            icon: Icons.auto_awesome_rounded,
             onPressed: _generate,
-            icon: const Icon(Icons.auto_awesome),
-            label: const Text('Generate Now'),
-            style: FilledButton.styleFrom(
-              padding: const EdgeInsets.symmetric(vertical: 16),
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-            ),
           ),
         ],
       ),

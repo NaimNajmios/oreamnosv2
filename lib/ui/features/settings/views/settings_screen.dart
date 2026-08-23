@@ -2,7 +2,11 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:go_router/go_router.dart';
 
-import '../../../../config/routes/app_router.dart';
+import 'package:oreamnos/config/routes/app_router.dart';
+import 'package:oreamnos/config/theme/app_spacing.dart';
+import 'package:oreamnos/ui/core/widgets/app_card.dart';
+import 'package:oreamnos/ui/core/widgets/section_header.dart';
+import 'package:oreamnos/ui/core/widgets/settings_tile.dart';
 import '../view_models/settings_view_model.dart';
 import 'widgets/api_key_dialog.dart';
 import 'widgets/model_selection_dialog.dart';
@@ -10,155 +14,189 @@ import 'widgets/provider_selection_dialog.dart';
 import 'widgets/theme_selection_dialog.dart';
 import 'widgets/tone_selection_dialog.dart';
 
-/// Settings screen for configuring AI providers, post settings, and appearance.
+/// Serene Editorial Settings hub with grouped card sections.
 class SettingsScreen extends StatelessWidget {
   const SettingsScreen({super.key});
 
   @override
   Widget build(BuildContext context) {
     final viewModel = context.watch<SettingsViewModel>();
-    
+    final theme = Theme.of(context);
+
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Settings'),
-      ),
-      body: ListView(
-        padding: const EdgeInsets.all(16),
-        children: [
-          _buildSectionHeader(context, 'AI Provider'),
-          const SizedBox(height: 8),
-          _buildTile(
-            context,
-            icon: Icons.smart_toy_outlined,
-            title: 'Active Provider',
-            subtitle: viewModel.selectedProvider.displayName,
-            onTap: () => ProviderSelectionDialog.show(context),
+        title: Text(
+          'Settings',
+          style: theme.textTheme.titleMedium?.copyWith(
+            fontWeight: FontWeight.w700,
+            letterSpacing: -0.3,
           ),
-          _buildTile(
-            context,
-            icon: Icons.model_training,
-            title: 'Model',
-            subtitle: viewModel.selectedModel ?? 'Default (Auto-select)',
-            onTap: () => ModelSelectionDialog.show(context, viewModel.selectedProvider),
-          ),
-          _buildTile(
-            context,
-            icon: Icons.vpn_key_outlined,
-            title: 'API Key',
-            subtitle: (viewModel.currentApiKey?.isNotEmpty ?? false)
-                ? '•••••••• (Configured)'
-                : 'Not configured',
-            onTap: () => ApiKeyDialog.show(context, viewModel.selectedProvider),
-          ),
-          const Divider(height: 32),
-
-          _buildSectionHeader(context, 'Post Settings'),
-          const SizedBox(height: 8),
-          _buildTile(
-            context,
-            icon: Icons.tune,
-            title: 'Tone',
-            subtitle: viewModel.toneMode[0].toUpperCase() + viewModel.toneMode.substring(1),
-            onTap: () => ToneSelectionDialog.show(context),
-          ),
-          _buildTile(
-            context,
-            icon: Icons.tag,
-            title: 'Hashtag Manager',
-            subtitle: '${viewModel.hashtagGroups.length} groups',
-            onTap: () => context.push(RoutePaths.hashtagManager),
-          ),
-          SwitchListTile(
-            contentPadding: EdgeInsets.zero,
-            title: const Text('Auto-append Hashtags'),
-            subtitle: Text(
-              'Automatically append hashtags to generated posts',
-              style: TextStyle(
-                color: Theme.of(context).colorScheme.onSurface.withAlpha(153),
-              ),
-            ),
-            value: viewModel.autoAppendHashtags,
-            activeTrackColor: Theme.of(context).colorScheme.primary.withAlpha(128),
-            activeThumbColor: Theme.of(context).colorScheme.primary,
-            onChanged: (value) => viewModel.setAutoAppendHashtags(value),
-          ),
-          _buildTile(
-            context,
-            icon: Icons.edit_note,
-            title: 'Manage Refinement Pills',
-            subtitle: '${viewModel.customPills.length} custom pills',
-            onTap: () => context.push(RoutePaths.pillManager),
-          ),
-          const Divider(height: 32),
-
-          _buildSectionHeader(context, 'Usage & Analytics'),
-          _buildTile(
-            context,
-            icon: Icons.bar_chart,
-            title: 'Usage Statistics',
-            subtitle: 'View token usage and latency',
-            onTap: () => context.push(RoutePaths.usage),
-          ),
-          const SizedBox(height: 16),
-          _buildSectionHeader(context, 'Appearance'),
-          const SizedBox(height: 8),
-          _buildTile(
-            context,
-            icon: Icons.palette_outlined,
-            title: 'Theme',
-            subtitle: viewModel.themeMode.label,
-            onTap: () => ThemeSelectionDialog.show(context),
-          ),
-          const Divider(height: 32),
-          _buildSectionHeader(context, 'Advanced'),
-          const SizedBox(height: 8),
-          _buildTile(
-            context,
-            icon: Icons.bug_report_outlined,
-            title: 'Debug Logs',
-            subtitle: 'View internal system logs',
-            onTap: () => context.push(RoutePaths.debugLogs),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildSectionHeader(BuildContext context, String title) {
-    final theme = Theme.of(context);
-    return Text(
-      title.toUpperCase(),
-      style: theme.textTheme.labelMedium?.copyWith(
-        color: theme.colorScheme.primary,
-        letterSpacing: 1.2,
-        fontWeight: FontWeight.w700,
-      ),
-    );
-  }
-
-  Widget _buildTile(
-    BuildContext context, {
-    required IconData icon,
-    required String title,
-    required String subtitle,
-    required VoidCallback onTap,
-  }) {
-    final theme = Theme.of(context);
-    return ListTile(
-      leading: Icon(icon, color: theme.colorScheme.onSurface),
-      title: Text(title),
-      subtitle: Text(
-        subtitle,
-        style: TextStyle(
-          color: theme.colorScheme.onSurface.withAlpha(153),
         ),
       ),
-      trailing: Icon(
-        Icons.chevron_right,
-        color: theme.colorScheme.onSurface.withAlpha(102),
+      body: Center(
+        child: ConstrainedBox(
+          constraints: const BoxConstraints(maxWidth: AppSpacing.maxContentWidth),
+          child: ListView(
+            padding: const EdgeInsets.symmetric(
+              horizontal: AppSpacing.screenHorizontal,
+              vertical: AppSpacing.base,
+            ),
+            children: [
+              // 1. AI Provider Section
+              const SectionHeader(title: 'AI Provider'),
+              AppCard(
+                padding: EdgeInsets.zero,
+                child: Column(
+                  children: [
+                    SettingsTile(
+                      leadingIcon: Icons.smart_toy_outlined,
+                      title: 'Active Provider',
+                      subtitle: viewModel.selectedProvider.displayName,
+                      onTap: () => ProviderSelectionDialog.show(context),
+                    ),
+                    const Divider(indent: 56),
+                    SettingsTile(
+                      leadingIcon: Icons.psychology_outlined,
+                      title: 'Model',
+                      subtitle: viewModel.selectedModel ?? 'Default (Auto-select)',
+                      onTap: () => ModelSelectionDialog.show(context, viewModel.selectedProvider),
+                    ),
+                    const Divider(indent: 56),
+                    SettingsTile(
+                      leadingIcon: Icons.key_outlined,
+                      title: 'API Key',
+                      subtitle: (viewModel.currentApiKey?.isNotEmpty ?? false)
+                          ? '•••••••• (Configured)'
+                          : 'Not configured',
+                      onTap: () => ApiKeyDialog.show(context, viewModel.selectedProvider),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: AppSpacing.lg),
+
+              // 2. Post Settings Section
+              const SectionHeader(title: 'Post Settings'),
+              AppCard(
+                padding: EdgeInsets.zero,
+                child: Column(
+                  children: [
+                    SettingsTile(
+                      leadingIcon: Icons.tune_rounded,
+                      title: 'Tone',
+                      subtitle: viewModel.toneMode[0].toUpperCase() + viewModel.toneMode.substring(1),
+                      onTap: () => ToneSelectionDialog.show(context),
+                    ),
+                    const Divider(indent: 56),
+                    SettingsTile(
+                      leadingIcon: Icons.tag_rounded,
+                      title: 'Hashtag Manager',
+                      subtitle: '${viewModel.hashtagGroups.length} groups',
+                      onTap: () => context.push(RoutePaths.hashtagManager),
+                    ),
+                    const Divider(indent: 56),
+                    Padding(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: AppSpacing.base,
+                        vertical: 10,
+                      ),
+                      child: Row(
+                        children: [
+                          Container(
+                            width: 36,
+                            height: 36,
+                            decoration: BoxDecoration(
+                              color: theme.colorScheme.primaryContainer.withValues(alpha: 0.7),
+                              borderRadius: AppSpacing.borderRadiusSm,
+                            ),
+                            child: Icon(
+                              Icons.auto_awesome_outlined,
+                              size: 18,
+                              color: theme.colorScheme.primary,
+                            ),
+                          ),
+                          const SizedBox(width: AppSpacing.md),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  'Auto-append Hashtags',
+                                  style: theme.textTheme.titleSmall?.copyWith(
+                                    fontWeight: FontWeight.w600,
+                                  ),
+                                ),
+                                const SizedBox(height: 2),
+                                Text(
+                                  'Automatically append default group to generated posts',
+                                  style: theme.textTheme.bodySmall?.copyWith(
+                                    color: theme.colorScheme.onSurface.withValues(alpha: 0.6),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                          Switch(
+                            value: viewModel.autoAppendHashtags,
+                            onChanged: (value) => viewModel.setAutoAppendHashtags(value),
+                          ),
+                        ],
+                      ),
+                    ),
+                    const Divider(indent: 56),
+                    SettingsTile(
+                      leadingIcon: Icons.edit_note_rounded,
+                      title: 'Manage Refinement Pills',
+                      subtitle: '${viewModel.customPills.length} custom pills',
+                      onTap: () => context.push(RoutePaths.pillManager),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: AppSpacing.lg),
+
+              // 3. Usage & Analytics Section
+              const SectionHeader(title: 'Usage & Analytics'),
+              AppCard(
+                padding: EdgeInsets.zero,
+                child: SettingsTile(
+                  leadingIcon: Icons.analytics_outlined,
+                  title: 'Usage Statistics',
+                  subtitle: 'View token usage, latency & recent requests',
+                  onTap: () => context.push(RoutePaths.usage),
+                ),
+              ),
+              const SizedBox(height: AppSpacing.lg),
+
+              // 4. Appearance Section
+              const SectionHeader(title: 'Appearance'),
+              AppCard(
+                padding: EdgeInsets.zero,
+                child: SettingsTile(
+                  leadingIcon: Icons.palette_outlined,
+                  title: 'Theme',
+                  subtitle: viewModel.themeMode.label,
+                  onTap: () => ThemeSelectionDialog.show(context),
+                ),
+              ),
+              const SizedBox(height: AppSpacing.lg),
+
+              // 5. Advanced Section
+              const SectionHeader(title: 'Advanced'),
+              AppCard(
+                padding: EdgeInsets.zero,
+                child: SettingsTile(
+                  leadingIcon: Icons.bug_report_outlined,
+                  title: 'Debug Logs',
+                  subtitle: 'View and copy internal system logs',
+                  onTap: () => context.push(RoutePaths.debugLogs),
+                ),
+              ),
+              const SizedBox(height: AppSpacing.xl),
+            ],
+          ),
+        ),
       ),
-      contentPadding: EdgeInsets.zero,
-      onTap: onTap,
     );
   }
 }

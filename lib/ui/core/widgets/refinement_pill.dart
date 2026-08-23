@@ -1,42 +1,53 @@
 import 'package:flutter/material.dart';
-import '../utils/haptics.dart';
+import 'package:oreamnos/config/theme/app_spacing.dart';
+import 'package:oreamnos/ui/core/utils/haptics.dart';
 
+/// Interactive AI refinement suggestion pill widget.
 class RefinementPill extends StatelessWidget {
-  final String label;
-  final VoidCallback onTap;
-  final VoidCallback? onLongPress;
-  final bool isLoading;
-
   const RefinementPill({
     super.key,
     required this.label,
-    required this.onTap,
-    this.onLongPress,
+    this.icon,
     this.isLoading = false,
+    this.onTap,
+    this.onLongPress,
   });
+
+  final String label;
+  final IconData? icon;
+  final bool isLoading;
+  final VoidCallback? onTap;
+  final VoidCallback? onLongPress;
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+
     return Material(
       color: Colors.transparent,
       child: InkWell(
-        onTap: isLoading ? null : () {
-          Haptics.selectionClick();
-          onTap();
-        },
-        onLongPress: isLoading ? null : () {
-          if (onLongPress != null) {
-            Haptics.selectionClick(); // Provide feedback for long press
-            onLongPress!();
-          }
-        },
-        borderRadius: BorderRadius.zero,
+        onTap: isLoading
+            ? null
+            : () {
+                Haptics.lightImpact();
+                onTap?.call();
+              },
+        onLongPress: onLongPress == null
+            ? null
+            : () {
+                Haptics.mediumImpact();
+                onLongPress?.call();
+              },
+        borderRadius: AppSpacing.borderRadiusPill,
         child: Container(
-          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
           decoration: BoxDecoration(
-            border: Border.all(color: theme.colorScheme.primary),
-            color: theme.colorScheme.primary.withAlpha(25),
+            color: theme.colorScheme.surface,
+            borderRadius: AppSpacing.borderRadiusPill,
+            border: Border.all(
+              color: theme.colorScheme.outline,
+              width: 1,
+            ),
           ),
           child: Row(
             mainAxisSize: MainAxisSize.min,
@@ -47,17 +58,19 @@ class RefinementPill extends StatelessWidget {
                   height: 12,
                   child: CircularProgressIndicator(
                     strokeWidth: 2,
-                    color: theme.colorScheme.primary,
+                    valueColor: AlwaysStoppedAnimation<Color>(theme.colorScheme.primary),
                   ),
                 ),
-                const SizedBox(width: 8),
+                const SizedBox(width: 6),
+              ] else if (icon != null) ...[
+                Icon(icon, size: 14, color: theme.colorScheme.primary),
+                const SizedBox(width: 6),
               ],
               Text(
-                label.toUpperCase(),
-                style: theme.textTheme.labelSmall?.copyWith(
-                  color: theme.colorScheme.primary,
-                  fontWeight: FontWeight.bold,
-                  letterSpacing: 1.1,
+                label,
+                style: theme.textTheme.labelMedium?.copyWith(
+                  fontWeight: FontWeight.w500,
+                  color: theme.colorScheme.onSurface,
                 ),
               ),
             ],
@@ -67,4 +80,3 @@ class RefinementPill extends StatelessWidget {
     );
   }
 }
-
