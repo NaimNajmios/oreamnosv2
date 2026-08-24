@@ -35,6 +35,28 @@ abstract final class AppColors {
   static const Color deepBlueAccent = Color(0xFF3B82F6);
   static const Color deepBlueAccentSoft = Color(0xFF1E293B);
 
+  // === Colorful Flat Categorical Tokens (light / dark variants) ===
+  // Teal — AI / provider
+  static const Color lightTeal = Color(0xFF0EA5E9);
+  static const Color lightTealSoft = Color(0xFFE0F2FE);
+  static const Color darkTeal = Color(0xFF38BDF8);
+  static const Color darkTealSoft = Color(0xFF0C4A6E);
+  // Amber — Post/tone/warning
+  static const Color lightAmber = Color(0xFFF59E0B);
+  static const Color lightAmberSoft = Color(0xFFFEF3C7);
+  static const Color darkAmber = Color(0xFFFBBF24);
+  static const Color darkAmberSoft = Color(0xFF78350F);
+  // Emerald — hashtags/success
+  static const Color lightEmerald = Color(0xFF10B981);
+  static const Color lightEmeraldSoft = Color(0xFFD1FAE5);
+  static const Color darkEmerald = Color(0xFF34D399);
+  static const Color darkEmeraldSoft = Color(0xFF064E3B);
+  // Violet — usage/analytics
+  static const Color lightViolet = Color(0xFF8B5CF6);
+  static const Color lightVioletSoft = Color(0xFFEDE9FE);
+  static const Color darkViolet = Color(0xFFA78BFA);
+  static const Color darkVioletSoft = Color(0xFF4C1D95);
+
   // === Shared Semantic Accents ===
   static const Color success = Color(0xFF16A34A);
   static const Color successSoft = Color(0xFFDCFCE7);
@@ -42,6 +64,25 @@ abstract final class AppColors {
   static const Color warningSoft = Color(0xFFFEF3C7);
   static const Color error = Color(0xFFDC2626);
   static const Color errorSoft = Color(0xFFFEE2E2);
+
+  /// Categorical tint helpers — keep flat, solid fills at ~12% soft alpha elsewhere.
+  static Color tintForProvider(String providerId, bool isDark) {
+    final id = providerId.toLowerCase();
+    if (id.contains('gemini')) return isDark ? darkAccent : lightAccent;
+    if (id.contains('groq')) return isDark ? darkEmerald : lightEmerald;
+    if (id.contains('openrouter')) return isDark ? darkAmber : lightAmber;
+    if (id.contains('cerebras')) return isDark ? darkViolet : lightViolet;
+    return isDark ? darkTeal : lightTeal;
+  }
+
+  static Color softForProvider(String providerId, bool isDark) {
+    final id = providerId.toLowerCase();
+    if (id.contains('gemini')) return isDark ? darkAccentSoft : lightAccentSoft;
+    if (id.contains('groq')) return isDark ? darkEmeraldSoft : lightEmeraldSoft;
+    if (id.contains('openrouter')) return isDark ? darkAmberSoft : lightAmberSoft;
+    if (id.contains('cerebras')) return isDark ? darkVioletSoft : lightVioletSoft;
+    return isDark ? darkTealSoft : lightTealSoft;
+  }
 
   // Legacy compatibility aliases
   static const Color lightPrimary = lightAccent;

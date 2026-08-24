@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:oreamnos/config/theme/app_colors.dart';
 import 'package:oreamnos/config/theme/app_spacing.dart';
 import 'package:oreamnos/domain/models/usage_log.dart';
 
@@ -15,6 +16,7 @@ class UsageChart extends StatelessWidget {
     }
 
     final theme = Theme.of(context);
+    final isDark = Theme.of(context).brightness == Brightness.dark;
 
     return Container(
       width: double.infinity,
@@ -28,9 +30,10 @@ class UsageChart extends StatelessWidget {
       child: CustomPaint(
         painter: _UsageChartPainter(
           logs: logs,
+          isDark: isDark,
           lineColor: theme.colorScheme.primary,
-          fillColor: theme.colorScheme.primaryContainer.withValues(alpha: 0.3),
-          gridColor: theme.colorScheme.outline.withValues(alpha: 0.5),
+          fillColor: AppColors.lightViolet.withValues(alpha: 0.12),
+          gridColor: theme.colorScheme.outline.withValues(alpha: 0.35),
         ),
       ),
     );
@@ -39,12 +42,14 @@ class UsageChart extends StatelessWidget {
 
 class _UsageChartPainter extends CustomPainter {
   final List<UsageLog> logs;
+  final bool isDark;
   final Color lineColor;
   final Color fillColor;
   final Color gridColor;
 
   _UsageChartPainter({
     required this.logs,
+    required this.isDark,
     required this.lineColor,
     required this.fillColor,
     required this.gridColor,
@@ -75,19 +80,9 @@ class _UsageChartPainter extends CustomPainter {
       }
     }
 
-    final linePaint = Paint()
-      ..color = lineColor
-      ..strokeWidth = 2
-      ..style = PaintingStyle.stroke
-      ..strokeCap = StrokeCap.round
-      ..strokeJoin = StrokeJoin.round;
-
+    // subtle teal-tinted fill for flat colorful background
     final fillPaint = Paint()
       ..color = fillColor
-      ..style = PaintingStyle.fill;
-
-    final dotPaint = Paint()
-      ..color = lineColor
       ..style = PaintingStyle.fill;
 
     final linePath = Path();
@@ -120,10 +115,30 @@ class _UsageChartPainter extends CustomPainter {
       fillPath.close();
 
       canvas.drawPath(fillPath, fillPaint);
-      canvas.drawPath(linePath, linePaint);
 
-      for (var point in points) {
-        canvas.drawCircle(point, 3.5, dotPaint);
+      // Draw per-segment lines with provider hue, dots with success/fail
+      for (int i = 0; i < points.length - 1; i++) {
+        final providerColor = AppColors.tintForProvider(reversedLogs[i].providerId, isDark);
+        final segPaint = Paint()
+          ..color = providerColor
+          ..strokeWidth = 2.2
+          ..style = PaintingStyle.stroke
+          ..strokeCap = StrokeCap.round
+          ..strokeJoin = StrokeJoin.round;
+        final segPath = Path()
+          ..moveTo(points[i].dx, points[i].dy)
+          ..lineTo(points[i + 1].dx, points[i + 1].dy);
+        canvas.drawPath(segPath, segPaint);
+      }
+      for (int i = 0; i < points.length; i++) {
+        final log = reversedLogs[i];
+        final dotColor = log.isSuccess
+            ? AppColors.tintForProvider(log.providerId, isDark)
+            : AppColors.error;
+        final outer = Paint()..color = Colors.white.withValues(alpha: 0.9)..style = PaintingStyle.fill;
+        final inner = Paint()..color = dotColor..style = PaintingStyle.fill;
+        canvas.drawCircle(points[i], 5, outer);
+        canvas.drawCircle(points[i], 3.5, inner);
       }
     }
   }
@@ -131,6 +146,7 @@ class _UsageChartPainter extends CustomPainter {
   @override
   bool shouldRepaint(covariant _UsageChartPainter oldDelegate) {
     return oldDelegate.logs != logs ||
+        oldDelegate.isDark != isDark ||
         oldDelegate.lineColor != lineColor ||
         oldDelegate.gridColor != gridColor;
   }

@@ -4,6 +4,7 @@ import 'package:provider/provider.dart';
 import 'package:go_router/go_router.dart';
 
 import 'package:oreamnos/config/routes/app_router.dart';
+import 'package:oreamnos/config/theme/app_colors.dart';
 import 'package:oreamnos/config/theme/app_spacing.dart';
 import 'package:oreamnos/data/services/web_scraper_service.dart';
 import 'package:oreamnos/ui/core/utils/haptics.dart';
@@ -82,12 +83,17 @@ class _GenerateScreenState extends State<GenerateScreen> {
     final isSuccess = viewModel.state == GenerateState.success && viewModel.formattedContent != null;
 
     final settings = context.watch<SettingsViewModel>();
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     final validationMsg = viewModel.validationMessage ?? viewModel.errorMessage;
     final needsConfig = validationMsg != null && (validationMsg.toLowerCase().contains('api key') || validationMsg.toLowerCase().contains('model'));
     // Config strip values
     final providerLabel = settings.selectedProvider.displayName;
     final modelLabel = settings.selectedModel ?? 'Auto';
     final toneLabel = settings.toneMode[0].toUpperCase() + settings.toneMode.substring(1);
+    final teal = isDark ? AppColors.darkTeal : AppColors.lightTeal;
+    final tealSoft = isDark ? AppColors.darkTealSoft : AppColors.lightTealSoft;
+    final amber = isDark ? AppColors.darkAmber : AppColors.lightAmber;
+    final amberSoft = isDark ? AppColors.darkAmberSoft : AppColors.lightAmberSoft;
 
     return Scaffold(
       appBar: AppBar(
@@ -164,21 +170,27 @@ class _GenerateScreenState extends State<GenerateScreen> {
                         AppChip(
                           label: providerLabel,
                           icon: Icons.smart_toy_outlined,
-                          selected: false,
+                          selected: true,
+                          selectedColor: tealSoft.withValues(alpha: 0.35),
+                          selectedTextColor: teal,
                           onTap: () => context.push(RoutePaths.settings),
                         ),
                         const SizedBox(width: AppSpacing.sm),
                         AppChip(
                           label: modelLabel,
                           icon: Icons.memory_rounded,
-                          selected: false,
+                          selected: true,
+                          selectedColor: theme.colorScheme.primaryContainer.withValues(alpha: 0.5),
+                          selectedTextColor: theme.colorScheme.primary,
                           onTap: () => context.push(RoutePaths.settings),
                         ),
                         const SizedBox(width: AppSpacing.sm),
                         AppChip(
                           label: toneLabel,
                           icon: Icons.tune_rounded,
-                          selected: false,
+                          selected: true,
+                          selectedColor: amberSoft.withValues(alpha: 0.35),
+                          selectedTextColor: amber,
                           onTap: () => context.push(RoutePaths.settings),
                         ),
                       ],
@@ -675,14 +687,20 @@ class _GenerateScreenState extends State<GenerateScreen> {
               height: 64,
               decoration: BoxDecoration(
                 gradient: LinearGradient(
-                  colors: [theme.colorScheme.primary.withValues(alpha: 0.18), theme.colorScheme.primaryContainer.withValues(alpha: 0.5)],
+                  colors: [
+                    (theme.brightness == Brightness.dark ? AppColors.darkTeal : AppColors.lightTeal).withValues(alpha: 0.18),
+                    (theme.brightness == Brightness.dark ? AppColors.darkViolet : AppColors.lightViolet).withValues(alpha: 0.22)
+                  ],
                   begin: Alignment.topLeft,
                   end: Alignment.bottomRight,
                 ),
                 borderRadius: AppSpacing.borderRadiusLg,
-                border: Border.all(color: theme.colorScheme.primary.withValues(alpha: 0.12)),
+                border: Border.all(
+                    color: (theme.brightness == Brightness.dark ? AppColors.darkTeal : AppColors.lightTeal).withValues(alpha: 0.14)),
               ),
-              child: Icon(Icons.auto_awesome_rounded, size: 30, color: theme.colorScheme.primary),
+              child: Icon(Icons.auto_awesome_rounded,
+                  size: 30,
+                  color: theme.brightness == Brightness.dark ? AppColors.darkTeal : AppColors.lightTeal),
             ),
             const SizedBox(height: AppSpacing.base),
             Text(

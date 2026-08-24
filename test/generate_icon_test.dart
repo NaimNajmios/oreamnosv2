@@ -19,8 +19,8 @@ void main() {
       bgPaint,
     );
 
-    // Ball mark
-    final Paint markPaint = Paint()..color = const Color(0xFFF4F1EB);
+    // Ball mark — tri-tone flat palette (amber / teal / indigo) keeps #1C1C1C bg
+    final Paint pentagonPaint = Paint()..color = const Color(0xFFF59E0B); // amber
     final Path path = Path()
       ..moveTo(256, 138)
       ..lineTo(324.5, 187.8)
@@ -28,16 +28,18 @@ void main() {
       ..lineTo(213.7, 268.2)
       ..lineTo(187.5, 187.8)
       ..close();
-    canvas.drawPath(path, markPaint);
+    canvas.drawPath(path, pentagonPaint);
 
-    // Text lines
+    // Text lines — teal + indigo
+    final Paint tealPaint = Paint()..color = const Color(0xFF0EA5E9);
+    final Paint indigoPaint = Paint()..color = const Color(0xFF4F46E5);
     canvas.drawRRect(
       RRect.fromRectAndRadius(const Rect.fromLTWH(168, 320, 176, 16), const Radius.circular(8)),
-      markPaint,
+      tealPaint,
     );
     canvas.drawRRect(
       RRect.fromRectAndRadius(const Rect.fromLTWH(196, 352, 120, 16), const Radius.circular(8)),
-      markPaint,
+      indigoPaint,
     );
 
     final Picture picture = recorder.endRecording();

@@ -14,6 +14,7 @@ class AppCard extends StatelessWidget {
     this.borderRadius,
     this.onTap,
     this.boxShadow,
+    this.accentColor,
   });
 
   final Widget child;
@@ -24,6 +25,7 @@ class AppCard extends StatelessWidget {
   final BorderRadius? borderRadius;
   final VoidCallback? onTap;
   final List<BoxShadow>? boxShadow;
+  final Color? accentColor;
 
   @override
   Widget build(BuildContext context) {
@@ -41,9 +43,24 @@ class AppCard extends StatelessWidget {
         ),
         boxShadow: boxShadow ?? AppSpacing.subtleShadow,
       ),
-      child: Padding(
-        padding: padding,
-        child: child,
+      child: ClipRRect(
+        borderRadius: radius,
+        child: Stack(
+          children: [
+            if (accentColor != null)
+              Positioned(
+                left: 0,
+                top: 0,
+                bottom: 0,
+                width: 3,
+                child: Container(color: accentColor),
+              ),
+            Padding(
+              padding: padding,
+              child: child,
+            ),
+          ],
+        ),
       ),
     );
 

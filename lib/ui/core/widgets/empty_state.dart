@@ -11,6 +11,8 @@ class EmptyState extends StatelessWidget {
     required this.description,
     this.actionLabel,
     this.onAction,
+    this.iconColor,
+    this.iconBackground,
   });
 
   final IconData icon;
@@ -18,6 +20,8 @@ class EmptyState extends StatelessWidget {
   final String description;
   final String? actionLabel;
   final VoidCallback? onAction;
+  final Color? iconColor;
+  final Color? iconBackground;
 
   @override
   Widget build(BuildContext context) {
@@ -33,13 +37,13 @@ class EmptyState extends StatelessWidget {
               width: 64,
               height: 64,
               decoration: BoxDecoration(
-                color: theme.colorScheme.primaryContainer.withValues(alpha: 0.5),
+                color: iconBackground ?? theme.colorScheme.primaryContainer.withValues(alpha: 0.5),
                 borderRadius: AppSpacing.borderRadiusLg,
               ),
               child: Icon(
                 icon,
                 size: 32,
-                color: theme.colorScheme.primary,
+                color: iconColor ?? theme.colorScheme.primary,
               ),
             ),
             const SizedBox(height: AppSpacing.lg),

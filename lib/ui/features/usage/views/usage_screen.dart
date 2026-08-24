@@ -21,6 +21,7 @@ class UsageScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     final usageService = context.watch<UsageService>();
     final logs = usageService.logs;
 
@@ -56,10 +57,12 @@ class UsageScreen extends StatelessWidget {
         ],
       ),
       body: logs.isEmpty
-          ? const EmptyState(
+          ? EmptyState(
               icon: Icons.analytics_outlined,
               title: 'No Usage Data Yet',
               description: 'Generated posts and API latency statistics will appear here.',
+              iconColor: isDark ? AppColors.darkViolet : AppColors.lightViolet,
+              iconBackground: (isDark ? AppColors.darkVioletSoft : AppColors.lightVioletSoft).withValues(alpha: 0.35),
             )
           : Center(
               child: ConstrainedBox(
@@ -70,7 +73,7 @@ class UsageScreen extends StatelessWidget {
                     vertical: AppSpacing.base,
                   ),
                   children: [
-                    // 3 Metric StatCards
+                    // 3 Metric StatCards — colorful flat tints
                     Row(
                       children: [
                         Expanded(
@@ -79,6 +82,9 @@ class UsageScreen extends StatelessWidget {
                             value: NumberFormat.compact().format(totalTokens),
                             subtitle: '$totalTokens est.',
                             icon: Icons.data_usage_rounded,
+                            iconColor: AppColors.lightTeal,
+                            iconBackground: AppColors.lightTealSoft.withValues(alpha: 0.6),
+                            accentColor: AppColors.lightTeal,
                           ),
                         ),
                         const SizedBox(width: AppSpacing.sm),
@@ -91,6 +97,11 @@ class UsageScreen extends StatelessWidget {
                             valueColor: successRate >= 90
                                 ? AppColors.success
                                 : theme.colorScheme.primary,
+                            iconColor: successRate >= 90 ? AppColors.success : AppColors.lightViolet,
+                            iconBackground: successRate >= 90
+                                ? AppColors.successSoft.withValues(alpha: 0.6)
+                                : AppColors.lightVioletSoft.withValues(alpha: 0.6),
+                            accentColor: successRate >= 90 ? AppColors.success : AppColors.lightViolet,
                           ),
                         ),
                         const SizedBox(width: AppSpacing.sm),
@@ -100,6 +111,9 @@ class UsageScreen extends StatelessWidget {
                             value: '${avgLatency}ms',
                             subtitle: 'Per prompt',
                             icon: Icons.speed_rounded,
+                            iconColor: AppColors.lightAmber,
+                            iconBackground: AppColors.lightAmberSoft.withValues(alpha: 0.6),
+                            accentColor: AppColors.lightAmber,
                           ),
                         ),
                       ],
@@ -130,9 +144,13 @@ class UsageScreen extends StatelessWidget {
 
   Widget _buildLogCard(BuildContext context, UsageLog log) {
     final theme = Theme.of(context);
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     final timeStr = DateFormat('MMM d, HH:mm').format(log.timestamp);
+    final providerTint = AppColors.tintForProvider(log.providerId, isDark);
+    final providerSoft = AppColors.softForProvider(log.providerId, isDark).withValues(alpha: 0.35);
 
     return AppCard(
+      accentColor: providerTint,
       padding: const EdgeInsets.symmetric(
         horizontal: AppSpacing.base,
         vertical: AppSpacing.md,
@@ -143,14 +161,12 @@ class UsageScreen extends StatelessWidget {
             width: 32,
             height: 32,
             decoration: BoxDecoration(
-              color: log.isSuccess
-                  ? AppColors.success.withValues(alpha: 0.1)
-                  : AppColors.error.withValues(alpha: 0.1),
+              color: providerSoft,
               shape: BoxShape.circle,
             ),
             child: Icon(
               log.isSuccess ? Icons.check_rounded : Icons.close_rounded,
-              color: log.isSuccess ? AppColors.success : AppColors.error,
+              color: log.isSuccess ? providerTint : AppColors.error,
               size: 18,
             ),
           ),

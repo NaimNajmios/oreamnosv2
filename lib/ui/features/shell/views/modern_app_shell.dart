@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 
 import 'package:oreamnos/config/routes/app_router.dart';
+import 'package:oreamnos/config/theme/app_colors.dart';
 import 'package:oreamnos/ui/core/utils/haptics.dart';
 
 /// Modern App Shell with Material 3 NavigationBar (Generate, Library, Settings).
@@ -32,29 +33,43 @@ class ModernAppShell extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final currentIndex = _currentIndex(context);
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final amber = isDark ? AppColors.darkAmber : AppColors.lightAmber;
+    final violet = isDark ? AppColors.darkViolet : AppColors.lightViolet;
+    final teal = isDark ? AppColors.darkTeal : AppColors.lightTeal;
+    // Per-tab hue for selected state — flat tint, not gradient
+    final indicatorColors = [amber.withValues(alpha: 0.18), violet.withValues(alpha: 0.18), teal.withValues(alpha: 0.18)];
+    final iconColors = [amber, violet, teal];
 
     return Scaffold(
       body: child,
-      bottomNavigationBar: NavigationBar(
-        selectedIndex: currentIndex,
-        onDestinationSelected: (index) => _onTabTapped(context, index),
-        destinations: const [
-          NavigationDestination(
-            icon: Icon(Icons.auto_awesome_outlined),
-            selectedIcon: Icon(Icons.auto_awesome_rounded),
-            label: 'Generate',
-          ),
-          NavigationDestination(
-            icon: Icon(Icons.analytics_outlined),
-            selectedIcon: Icon(Icons.analytics_rounded),
-            label: 'Library',
-          ),
-          NavigationDestination(
-            icon: Icon(Icons.tune_outlined),
-            selectedIcon: Icon(Icons.tune_rounded),
-            label: 'Settings',
-          ),
-        ],
+      bottomNavigationBar: Theme(
+        data: Theme.of(context).copyWith(
+          navigationBarTheme: Theme.of(context).navigationBarTheme.copyWith(
+                indicatorColor: indicatorColors[currentIndex],
+              ),
+        ),
+        child: NavigationBar(
+          selectedIndex: currentIndex,
+          onDestinationSelected: (index) => _onTabTapped(context, index),
+          destinations: [
+            NavigationDestination(
+              icon: const Icon(Icons.auto_awesome_outlined),
+              selectedIcon: Icon(Icons.auto_awesome_rounded, color: iconColors[0]),
+              label: 'Generate',
+            ),
+            NavigationDestination(
+              icon: const Icon(Icons.analytics_outlined),
+              selectedIcon: Icon(Icons.analytics_rounded, color: iconColors[1]),
+              label: 'Library',
+            ),
+            NavigationDestination(
+              icon: const Icon(Icons.tune_outlined),
+              selectedIcon: Icon(Icons.tune_rounded, color: iconColors[2]),
+              label: 'Settings',
+            ),
+          ],
+        ),
       ),
     );
   }

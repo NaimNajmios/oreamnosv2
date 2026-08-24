@@ -3,6 +3,7 @@ import 'package:provider/provider.dart';
 import 'package:go_router/go_router.dart';
 
 import 'package:oreamnos/config/routes/app_router.dart';
+import 'package:oreamnos/config/theme/app_colors.dart';
 import 'package:oreamnos/config/theme/app_spacing.dart';
 import 'package:oreamnos/ui/core/widgets/app_card.dart';
 import 'package:oreamnos/ui/core/widgets/section_header.dart';
@@ -22,6 +23,15 @@ class SettingsScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     final viewModel = context.watch<SettingsViewModel>();
     final theme = Theme.of(context);
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final teal = isDark ? AppColors.darkTeal : AppColors.lightTeal;
+    final tealSoft = isDark ? AppColors.darkTealSoft : AppColors.lightTealSoft;
+    final amber = isDark ? AppColors.darkAmber : AppColors.lightAmber;
+    final amberSoft = isDark ? AppColors.darkAmberSoft : AppColors.lightAmberSoft;
+    final violet = isDark ? AppColors.darkViolet : AppColors.lightViolet;
+    final violetSoft = isDark ? AppColors.darkVioletSoft : AppColors.lightVioletSoft;
+    final emerald = isDark ? AppColors.darkEmerald : AppColors.lightEmerald;
+    final emeraldSoft = isDark ? AppColors.darkEmeraldSoft : AppColors.lightEmeraldSoft;
 
     return Scaffold(
       appBar: AppBar(
@@ -45,6 +55,7 @@ class SettingsScreen extends StatelessWidget {
               // 1. AI Provider Section
               const SectionHeader(title: 'AI Provider'),
               AppCard(
+                accentColor: teal,
                 padding: EdgeInsets.zero,
                 child: Column(
                   children: [
@@ -52,6 +63,8 @@ class SettingsScreen extends StatelessWidget {
                       leadingIcon: Icons.smart_toy_outlined,
                       title: 'Active Provider',
                       subtitle: viewModel.selectedProvider.displayName,
+                      iconBackgroundColor: tealSoft.withValues(alpha: 0.35),
+                      iconColor: teal,
                       onTap: () => ProviderSelectionDialog.show(context),
                     ),
                     const Divider(indent: 56),
@@ -59,6 +72,8 @@ class SettingsScreen extends StatelessWidget {
                       leadingIcon: Icons.psychology_outlined,
                       title: 'Model',
                       subtitle: viewModel.selectedModel ?? 'Default (Auto-select)',
+                      iconBackgroundColor: tealSoft.withValues(alpha: 0.28),
+                      iconColor: teal,
                       onTap: () => ModelSelectionDialog.show(context, viewModel.selectedProvider),
                     ),
                     const Divider(indent: 56),
@@ -68,6 +83,8 @@ class SettingsScreen extends StatelessWidget {
                       subtitle: (viewModel.currentApiKey?.isNotEmpty ?? false)
                           ? '•••••••• (Configured)'
                           : 'Not configured',
+                      iconBackgroundColor: amberSoft.withValues(alpha: 0.35),
+                      iconColor: amber,
                       onTap: () => ApiKeyDialog.show(context, viewModel.selectedProvider),
                     ),
                   ],
@@ -78,6 +95,7 @@ class SettingsScreen extends StatelessWidget {
               // 2. Post Settings Section
               const SectionHeader(title: 'Post Settings'),
               AppCard(
+                accentColor: amber,
                 padding: EdgeInsets.zero,
                 child: Column(
                   children: [
@@ -85,6 +103,8 @@ class SettingsScreen extends StatelessWidget {
                       leadingIcon: Icons.tune_rounded,
                       title: 'Tone',
                       subtitle: viewModel.toneMode[0].toUpperCase() + viewModel.toneMode.substring(1),
+                      iconBackgroundColor: amberSoft.withValues(alpha: 0.35),
+                      iconColor: amber,
                       onTap: () => ToneSelectionDialog.show(context),
                     ),
                     const Divider(indent: 56),
@@ -92,6 +112,8 @@ class SettingsScreen extends StatelessWidget {
                       leadingIcon: Icons.tag_rounded,
                       title: 'Hashtag Manager',
                       subtitle: '${viewModel.hashtagGroups.length} groups',
+                      iconBackgroundColor: emeraldSoft.withValues(alpha: 0.35),
+                      iconColor: emerald,
                       onTap: () => context.push(RoutePaths.hashtagManager),
                     ),
                     const Divider(indent: 56),
@@ -106,13 +128,13 @@ class SettingsScreen extends StatelessWidget {
                             width: 36,
                             height: 36,
                             decoration: BoxDecoration(
-                              color: theme.colorScheme.primaryContainer.withValues(alpha: 0.7),
+                              color: amberSoft.withValues(alpha: 0.35),
                               borderRadius: AppSpacing.borderRadiusSm,
                             ),
                             child: Icon(
                               Icons.auto_awesome_outlined,
                               size: 18,
-                              color: theme.colorScheme.primary,
+                              color: amber,
                             ),
                           ),
                           const SizedBox(width: AppSpacing.md),
@@ -148,6 +170,8 @@ class SettingsScreen extends StatelessWidget {
                       leadingIcon: Icons.edit_note_rounded,
                       title: 'Manage Refinement Pills',
                       subtitle: '${viewModel.customPills.length} custom pills',
+                      iconBackgroundColor: violetSoft.withValues(alpha: 0.35),
+                      iconColor: violet,
                       onTap: () => context.push(RoutePaths.pillManager),
                     ),
                   ],
@@ -158,11 +182,14 @@ class SettingsScreen extends StatelessWidget {
               // 3. Usage & Analytics Section
               const SectionHeader(title: 'Usage & Analytics'),
               AppCard(
+                accentColor: violet,
                 padding: EdgeInsets.zero,
                 child: SettingsTile(
                   leadingIcon: Icons.analytics_outlined,
                   title: 'Usage Statistics',
                   subtitle: 'View token usage, latency & recent requests',
+                  iconBackgroundColor: violetSoft.withValues(alpha: 0.35),
+                  iconColor: violet,
                   onTap: () => context.push(RoutePaths.usage),
                 ),
               ),
@@ -171,11 +198,14 @@ class SettingsScreen extends StatelessWidget {
               // 4. Appearance Section
               const SectionHeader(title: 'Appearance'),
               AppCard(
+                accentColor: emerald,
                 padding: EdgeInsets.zero,
                 child: SettingsTile(
                   leadingIcon: Icons.palette_outlined,
                   title: 'Theme',
                   subtitle: viewModel.themeMode.label,
+                  iconBackgroundColor: emeraldSoft.withValues(alpha: 0.35),
+                  iconColor: emerald,
                   onTap: () => ThemeSelectionDialog.show(context),
                 ),
               ),
@@ -184,11 +214,14 @@ class SettingsScreen extends StatelessWidget {
               // 5. Advanced Section
               const SectionHeader(title: 'Advanced'),
               AppCard(
+                accentColor: AppColors.error,
                 padding: EdgeInsets.zero,
                 child: SettingsTile(
                   leadingIcon: Icons.bug_report_outlined,
                   title: 'Debug Logs',
                   subtitle: 'View and copy internal system logs',
+                  iconBackgroundColor: AppColors.errorSoft.withValues(alpha: 0.5),
+                  iconColor: AppColors.error,
                   onTap: () => context.push(RoutePaths.debugLogs),
                 ),
               ),
