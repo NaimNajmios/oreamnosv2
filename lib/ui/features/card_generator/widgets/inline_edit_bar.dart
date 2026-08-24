@@ -14,7 +14,6 @@ class InlineEditBar extends StatefulWidget {
 class _InlineEditBarState extends State<InlineEditBar> {
   late TextEditingController _headlineCtrl;
   late TextEditingController _subtextCtrl;
-  late TextEditingController _microCtrl;
 
   @override
   void initState() {
@@ -22,7 +21,6 @@ class _InlineEditBarState extends State<InlineEditBar> {
     final d = widget.viewModel.cardData;
     _headlineCtrl = TextEditingController(text: d?.headline ?? '');
     _subtextCtrl = TextEditingController(text: d?.subtext ?? '');
-    _microCtrl = TextEditingController(text: d?.microStat ?? '');
     widget.viewModel.addListener(_syncFromVm);
   }
 
@@ -38,14 +36,11 @@ class _InlineEditBarState extends State<InlineEditBar> {
   void _syncFromVm() {
     final d = widget.viewModel.cardData;
     if (d == null) return;
-    // Avoid overwriting while user is typing — only sync if field lost focus and differs
     if (!_headlineCtrl.text.contains(d.headline) && _headlineCtrl.text != d.headline) {
-      // sync only on external change (e.g., LLM polish) when controllers not focused
       final hasFocus = FocusManager.instance.primaryFocus?.context?.widget is EditableText;
       if (!hasFocus) {
         _headlineCtrl.text = d.headline;
         _subtextCtrl.text = d.subtext;
-        _microCtrl.text = d.microStat ?? '';
       }
     }
   }
@@ -55,7 +50,6 @@ class _InlineEditBarState extends State<InlineEditBar> {
     widget.viewModel.removeListener(_syncFromVm);
     _headlineCtrl.dispose();
     _subtextCtrl.dispose();
-    _microCtrl.dispose();
     super.dispose();
   }
 
@@ -114,14 +108,6 @@ class _InlineEditBarState extends State<InlineEditBar> {
             maxLen: 90,
             maxLines: 2,
             onChanged: (v) => widget.viewModel.updateSubtext(v),
-          ),
-          const SizedBox(height: AppSpacing.sm),
-          _Field(
-            controller: _microCtrl,
-            label: 'Badge (optional) — e.g. Hat-trick • 90\'',
-            maxLen: 24,
-            maxLines: 1,
-            onChanged: (v) => widget.viewModel.updateMicroStat(v),
           ),
         ],
       ),

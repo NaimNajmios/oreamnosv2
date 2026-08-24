@@ -109,26 +109,22 @@ class _CardGeneratorScreenState extends State<CardGeneratorScreen> {
       appBar: AppBar(
         title: Text('Card Studio', style: theme.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w700, letterSpacing: -0.3)),
         actions: [
-          if (hasData) ...[
-            IconButton(
-              icon: const Icon(Icons.share_rounded),
-              tooltip: 'Share Card',
-              onPressed: () => vm.shareCard(_boundaryKey),
+          if (hasData)
+            Padding(
+              padding: const EdgeInsets.only(right: AppSpacing.xs),
+              child: IconButton(
+                icon: const Icon(Icons.ios_share_rounded),
+                tooltip: 'Export',
+                onPressed: () {
+                  Haptics.lightImpact();
+                  ExportBottomSheet.show(
+                    context,
+                    onSaveToGallery: _handleSaveToGallery,
+                    onShare: () => vm.shareCard(_boundaryKey),
+                  );
+                },
+              ),
             ),
-            IconButton(
-              icon: const Icon(Icons.download_rounded),
-              tooltip: 'Export',
-              onPressed: () {
-                Haptics.lightImpact();
-                ExportBottomSheet.show(
-                  context,
-                  onSaveToGallery: _handleSaveToGallery,
-                  onShare: () => vm.shareCard(_boundaryKey),
-                );
-              },
-            ),
-            const SizedBox(width: AppSpacing.xs),
-          ],
         ],
       ),
       body: _buildBody(context, vm, theme, hasData),
@@ -178,59 +174,27 @@ class _CardGeneratorScreenState extends State<CardGeneratorScreen> {
       return const Center(child: Text('No data.'));
     }
 
-    final isPolishing = vm.isExtracting;
-
     return Column(
       children: [
-        // Stage + optional polishing banner
         Expanded(
-          child: Stack(
-            children: [
-              CardStage(
-                boundaryKey: _boundaryKey,
-                aspectRatio: vm.selectedRatio.ratio,
-                child: CardCanvas(
-                  cardData: vm.cardData!,
-                  template: vm.selectedTemplate,
-                  font: vm.selectedFont,
-                  backgroundImage: vm.backgroundImage,
-                  scrimOpacity: vm.scrimOpacity,
-                  useVignette: vm.useVignette,
-                ),
-              ),
-              if (isPolishing)
-                Positioned(
-                  top: 12,
-                  left: 0,
-                  right: 0,
-                  child: Center(
-                    child: Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                      decoration: BoxDecoration(
-                        color: theme.colorScheme.surface.withValues(alpha: 0.92),
-                        borderRadius: AppSpacing.borderRadiusPill,
-                        border: Border.all(color: theme.colorScheme.outline.withValues(alpha: 0.5)),
-                        boxShadow: AppSpacing.softShadow,
-                      ),
-                      child: Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          SizedBox(width: 12, height: 12, child: CircularProgressIndicator(strokeWidth: 1.6, color: theme.colorScheme.primary)),
-                          const SizedBox(width: 8),
-                          Text('Polishing…', style: theme.textTheme.labelSmall?.copyWith(fontWeight: FontWeight.w600)),
-                        ],
-                      ),
-                    ),
-                  ),
-                ),
-            ],
+          child: CardStage(
+            boundaryKey: _boundaryKey,
+            aspectRatio: vm.selectedRatio.ratio,
+            child: CardCanvas(
+              cardData: vm.cardData!,
+              template: vm.selectedTemplate,
+              font: vm.selectedFont,
+              backgroundImage: vm.backgroundImage,
+              scrimOpacity: vm.scrimOpacity,
+              useVignette: vm.useVignette,
+              headlineScale: vm.headlineScale,
+            ),
           ),
         ),
 
-        // Inline edit — always visible when hasData
+        // Edit — 2 fields only (badge moved to Advanced)
         InlineEditBar(viewModel: vm),
 
-        // Dock — scrollable, stays below edit bar
         Flexible(
           child: SingleChildScrollView(
             child: DesignDock(viewModel: vm),

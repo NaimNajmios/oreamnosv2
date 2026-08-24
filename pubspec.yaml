@@ -29,6 +29,7 @@ dependencies:
 
   # Typography
   google_fonts: ^6.2.1
+  auto_size_text: ^3.0.0
 
   # JSON Serialization
   json_annotation: ^4.9.0

@@ -72,6 +72,8 @@ class CardGeneratorViewModel extends ChangeNotifier {
   CardTemplate selectedTemplate = CardTemplate.standard;
   CardRatio selectedRatio = CardRatio.portrait45;
   AppFont selectedFont = AppFont.defaultFont;
+  double headlineScale = 1.0; // 0.85 - 1.15 user-adjustable
+  bool templateCompact = true; // emoji-only default
 
   // Image + scrim (overlay darkness 0.3 - 0.75)
   File? backgroundImage;
@@ -153,6 +155,16 @@ class CardGeneratorViewModel extends ChangeNotifier {
 
   void setVignette(bool v) {
     useVignette = v;
+    notifyListeners();
+  }
+
+  void setHeadlineScale(double v) {
+    headlineScale = v.clamp(0.85, 1.15);
+    notifyListeners();
+  }
+
+  void toggleTemplateCompact() {
+    templateCompact = !templateCompact;
     notifyListeners();
   }
 

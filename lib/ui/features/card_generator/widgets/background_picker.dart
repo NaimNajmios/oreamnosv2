@@ -2,14 +2,13 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:oreamnos/config/theme/app_spacing.dart';
+import 'package:oreamnos/ui/core/utils/haptics.dart';
 import 'package:oreamnos/ui/core/widgets/app_chip.dart';
 
 class BackgroundPicker extends StatelessWidget {
   final File? image;
   final double scrim;
-  final bool vignette;
   final ValueChanged<double> onScrimChanged;
-  final ValueChanged<bool> onVignetteChanged;
   final Future<void> Function(ImageSource) onPick;
   final VoidCallback onRemove;
 
@@ -17,12 +16,54 @@ class BackgroundPicker extends StatelessWidget {
     super.key,
     required this.image,
     required this.scrim,
-    required this.vignette,
     required this.onScrimChanged,
-    required this.onVignetteChanged,
     required this.onPick,
     required this.onRemove,
   });
+
+  void _showSourceSheet(BuildContext context) {
+    showModalBottomSheet(
+      context: context,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(AppSpacing.radiusLg)),
+      ),
+      builder: (_) => SafeArea(
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(AppSpacing.base, AppSpacing.md, AppSpacing.base, AppSpacing.xl),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Center(
+                child: Container(width: 36, height: 4, decoration: BoxDecoration(color: Theme.of(context).colorScheme.outlineVariant, borderRadius: AppSpacing.borderRadiusPill)),
+              ),
+              const SizedBox(height: AppSpacing.base),
+              Text('Choose image source', style: Theme.of(context).textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w700)),
+              const SizedBox(height: AppSpacing.base),
+              ListTile(
+                leading: const Icon(Icons.photo_library_outlined),
+                title: const Text('Gallery'),
+                onTap: () {
+                  Navigator.pop(context);
+                  Haptics.lightImpact();
+                  onPick(ImageSource.gallery);
+                },
+              ),
+              ListTile(
+                leading: const Icon(Icons.photo_camera_outlined),
+                title: const Text('Camera'),
+                onTap: () {
+                  Navigator.pop(context);
+                  Haptics.lightImpact();
+                  onPick(ImageSource.camera);
+                },
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -30,63 +71,28 @@ class BackgroundPicker extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(
-          'BACKGROUND',
-          style: theme.textTheme.labelSmall?.copyWith(
-            color: theme.colorScheme.primary,
-            fontWeight: FontWeight.w700,
-            letterSpacing: 1.1,
-          ),
-        ),
-        const SizedBox(height: AppSpacing.sm),
         Row(
           children: [
             AppChip(
-              label: image == null ? 'Pick Image' : 'Change',
+              label: image == null ? 'Pick image' : 'Change image',
               icon: Icons.image_outlined,
-              onTap: () => onPick(ImageSource.gallery),
-            ),
-            const SizedBox(width: AppSpacing.sm),
-            AppChip(
-              label: 'Camera',
-              icon: Icons.photo_camera_outlined,
-              onTap: () => onPick(ImageSource.camera),
+              onTap: () => _showSourceSheet(context),
             ),
             if (image != null) ...[
               const SizedBox(width: AppSpacing.sm),
               AppChip(
                 label: 'Remove',
                 icon: Icons.close_rounded,
-                onTap: onRemove,
+                onTap: () {
+                  Haptics.lightImpact();
+                  onRemove();
+                },
               ),
             ],
           ],
         ),
-        if (image == null) ...[
+        if (image != null) ...[
           const SizedBox(height: AppSpacing.sm),
-          Container(
-            width: double.infinity,
-            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-            decoration: BoxDecoration(
-              color: theme.colorScheme.surfaceContainerHighest.withValues(alpha: 0.5),
-              borderRadius: AppSpacing.borderRadiusSm,
-              border: Border.all(color: theme.colorScheme.outline.withValues(alpha: 0.5)),
-            ),
-            child: Row(
-              children: [
-                Icon(Icons.info_outline_rounded, size: 14, color: theme.colorScheme.onSurface.withValues(alpha: 0.6)),
-                const SizedBox(width: 8),
-                Expanded(
-                  child: Text(
-                    'Add a pitch or player photo — we overlay a dark scrim so text pops.',
-                    style: theme.textTheme.bodySmall?.copyWith(color: theme.colorScheme.onSurface.withValues(alpha: 0.65), height: 1.35),
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ] else ...[
-          const SizedBox(height: AppSpacing.md),
           Row(
             children: [
               Text('Overlay', style: theme.textTheme.labelSmall?.copyWith(fontWeight: FontWeight.w600)),
@@ -102,40 +108,6 @@ class BackgroundPicker extends StatelessWidget {
               ),
               Text('${(scrim * 100).round()}%', style: theme.textTheme.labelSmall?.copyWith(color: theme.colorScheme.onSurface.withValues(alpha: 0.6))),
             ],
-          ),
-          Row(
-            children: [
-              Text('Vignette', style: theme.textTheme.labelSmall?.copyWith(fontWeight: FontWeight.w600)),
-              const SizedBox(width: 8),
-              Switch(
-                value: vignette,
-                onChanged: onVignetteChanged,
-                materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
-              ),
-            ],
-          ),
-          const SizedBox(height: 4),
-          ClipRRect(
-            borderRadius: AppSpacing.borderRadiusSm,
-            child: Stack(
-              children: [
-                Image.file(image!, height: 92, width: double.infinity, fit: BoxFit.cover),
-                Positioned.fill(
-                  child: DecoratedBox(
-                    decoration: BoxDecoration(
-                      gradient: LinearGradient(
-                        colors: [Colors.black.withValues(alpha: scrim), Colors.black.withValues(alpha: scrim * 0.6)],
-                        begin: Alignment.topCenter,
-                        end: Alignment.bottomCenter,
-                      ),
-                    ),
-                    child: Center(
-                      child: Text('Preview scrim', style: theme.textTheme.labelSmall?.copyWith(color: Colors.white, fontWeight: FontWeight.w700, letterSpacing: 0.6)),
-                    ),
-                  ),
-                ),
-              ],
-            ),
           ),
         ],
       ],

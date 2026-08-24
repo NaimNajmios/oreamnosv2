@@ -1,4 +1,5 @@
 import 'dart:io';
+import 'package:auto_size_text/auto_size_text.dart';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:oreamnos/domain/models/card_data.dart';
@@ -6,6 +7,7 @@ import 'package:oreamnos/ui/features/card_generator/view_models/card_generator_v
 
 /// Sparse companion canvas — headline + hook + optional microStat badge
 /// over an optional real image with dark scrim. No source/hashtags.
+/// Headlines auto-shrink to avoid `...` at 60 chars.
 class CardCanvas extends StatelessWidget {
   final CardData cardData;
   final CardTemplate template;
@@ -13,6 +15,7 @@ class CardCanvas extends StatelessWidget {
   final File? backgroundImage;
   final double scrimOpacity;
   final bool useVignette;
+  final double headlineScale;
 
   const CardCanvas({
     super.key,
@@ -22,16 +25,18 @@ class CardCanvas extends StatelessWidget {
     this.backgroundImage,
     this.scrimOpacity = 0.55,
     this.useVignette = false,
+    this.headlineScale = 1.0,
   });
 
   TextStyle _font(TextStyle base) {
+    final scaled = base.copyWith(fontSize: (base.fontSize ?? 14) * headlineScale);
     switch (font) {
       case AppFont.classicSerif:
-        return GoogleFonts.lora(textStyle: base);
+        return GoogleFonts.lora(textStyle: scaled);
       case AppFont.typewriter:
-        return GoogleFonts.spaceMono(textStyle: base);
+        return GoogleFonts.spaceMono(textStyle: scaled);
       case AppFont.defaultFont:
-        return GoogleFonts.inter(textStyle: base);
+        return GoogleFonts.inter(textStyle: scaled);
     }
   }
 
@@ -41,7 +46,6 @@ class CardCanvas extends StatelessWidget {
       decoration: _buildBackgroundDecoration(),
       child: Stack(
         children: [
-          // Scrim layer when image present
           if (backgroundImage != null)
             Positioned.fill(
               child: DecoratedBox(
@@ -57,7 +61,6 @@ class CardCanvas extends StatelessWidget {
                 ),
               ),
             ),
-          // Vignette
           if (useVignette)
             Positioned.fill(
               child: DecoratedBox(
@@ -71,7 +74,6 @@ class CardCanvas extends StatelessWidget {
                 ),
               ),
             ),
-          // Content
           Padding(
             padding: const EdgeInsets.all(28),
             child: _buildTemplateContent(),
@@ -91,7 +93,6 @@ class CardCanvas extends StatelessWidget {
         ),
       );
     }
-    // No image — subtle editorial dark
     return const BoxDecoration(color: Color(0xFF141416));
   }
 
@@ -144,7 +145,7 @@ class CardCanvas extends StatelessWidget {
                             ),
                           ),
                         ),
-                      Text(
+                      AutoSizeText(
                         cardData.headline.toUpperCase(),
                         style: _font(
                           const TextStyle(
@@ -156,12 +157,14 @@ class CardCanvas extends StatelessWidget {
                           ),
                         ),
                         maxLines: 3,
+                        minFontSize: 18,
+                        stepGranularity: 0.5,
                         overflow: TextOverflow.ellipsis,
                       ),
                       const SizedBox(height: 14),
                       Container(width: 36, height: 3, color: Colors.white.withValues(alpha: 0.9)),
                       const SizedBox(height: 14),
-                      Text(
+                      AutoSizeText(
                         cardData.subtext,
                         style: _font(
                           const TextStyle(
@@ -172,6 +175,8 @@ class CardCanvas extends StatelessWidget {
                           ),
                         ),
                         maxLines: 3,
+                        minFontSize: 12,
+                        stepGranularity: 0.5,
                         overflow: TextOverflow.ellipsis,
                       ),
                     ],
@@ -204,7 +209,7 @@ class CardCanvas extends StatelessWidget {
                     children: [
                       Icon(Icons.format_quote_rounded, size: 42, color: Colors.white.withValues(alpha: 0.9)),
                       const SizedBox(height: 12),
-                      Text(
+                      AutoSizeText(
                         cardData.subtext.isNotEmpty ? cardData.subtext : cardData.headline,
                         style: _font(
                           const TextStyle(
@@ -216,20 +221,23 @@ class CardCanvas extends StatelessWidget {
                           ),
                         ),
                         maxLines: 5,
+                        minFontSize: 16,
+                        stepGranularity: 0.5,
                         overflow: TextOverflow.ellipsis,
                       ),
                       const SizedBox(height: 18),
                       Container(width: 32, height: 3, color: Colors.white),
                       const SizedBox(height: 12),
-                      Text(
+                      AutoSizeText(
                         cardData.headline.toUpperCase(),
                         style: GoogleFonts.jetBrainsMono(
-                          fontSize: 11,
+                          fontSize: 11 * headlineScale,
                           fontWeight: FontWeight.w700,
                           color: Colors.white.withValues(alpha: 0.85),
                           letterSpacing: 1.0,
                         ),
                         maxLines: 2,
+                        minFontSize: 9,
                         overflow: TextOverflow.ellipsis,
                       ),
                       if (cardData.hasMicroStat) ...[
@@ -237,7 +245,7 @@ class CardCanvas extends StatelessWidget {
                         Text(
                           cardData.microStat!,
                           style: GoogleFonts.jetBrainsMono(
-                            fontSize: 11,
+                            fontSize: 11 * headlineScale,
                             color: Colors.white.withValues(alpha: 0.65),
                           ),
                         ),
@@ -287,7 +295,7 @@ class CardCanvas extends StatelessWidget {
                         ),
                       ),
                       const SizedBox(height: 16),
-                      Text(
+                      AutoSizeText(
                         cardData.headline.toUpperCase(),
                         style: _font(
                           const TextStyle(
@@ -299,10 +307,12 @@ class CardCanvas extends StatelessWidget {
                           ),
                         ),
                         maxLines: 3,
+                        minFontSize: 18,
+                        stepGranularity: 0.5,
                         overflow: TextOverflow.ellipsis,
                       ),
                       const SizedBox(height: 12),
-                      Text(
+                      AutoSizeText(
                         cardData.subtext,
                         style: _font(
                           const TextStyle(
@@ -313,6 +323,8 @@ class CardCanvas extends StatelessWidget {
                           ),
                         ),
                         maxLines: 3,
+                        minFontSize: 12,
+                        stepGranularity: 0.5,
                         overflow: TextOverflow.ellipsis,
                       ),
                     ],
@@ -343,7 +355,7 @@ class CardCanvas extends StatelessWidget {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
-                      Text(
+                      AutoSizeText(
                         cardData.headline.toUpperCase(),
                         style: _font(
                           const TextStyle(
@@ -355,6 +367,8 @@ class CardCanvas extends StatelessWidget {
                           ),
                         ),
                         maxLines: 3,
+                        minFontSize: 18,
+                        stepGranularity: 0.5,
                         overflow: TextOverflow.ellipsis,
                       ),
                       const SizedBox(height: 16),
@@ -394,7 +408,7 @@ class CardCanvas extends StatelessWidget {
                           ),
                         ),
                       const SizedBox(height: 14),
-                      Text(
+                      AutoSizeText(
                         cardData.subtext,
                         style: _font(
                           const TextStyle(
@@ -405,6 +419,8 @@ class CardCanvas extends StatelessWidget {
                           ),
                         ),
                         maxLines: 3,
+                        minFontSize: 12,
+                        stepGranularity: 0.5,
                         overflow: TextOverflow.ellipsis,
                       ),
                     ],
