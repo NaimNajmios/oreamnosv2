@@ -4,7 +4,6 @@ import 'package:provider/provider.dart';
 import 'package:go_router/go_router.dart';
 
 import 'package:oreamnos/config/routes/app_router.dart';
-import 'package:oreamnos/config/theme/app_colors.dart';
 import 'package:oreamnos/config/theme/app_spacing.dart';
 import 'package:oreamnos/data/services/web_scraper_service.dart';
 import 'package:oreamnos/ui/core/utils/haptics.dart';
@@ -16,6 +15,7 @@ import 'package:oreamnos/ui/core/widgets/app_input.dart';
 import 'package:oreamnos/ui/core/widgets/error_state.dart';
 import 'package:oreamnos/ui/core/widgets/ocr_extraction_sheet.dart';
 import 'package:oreamnos/ui/core/widgets/refinement_pill.dart';
+import 'package:oreamnos/ui/core/widgets/section_header.dart';
 import 'package:oreamnos/ui/core/widgets/skeleton_loader.dart';
 import 'package:oreamnos/ui/core/widgets/swipeable_output_card.dart';
 import 'package:oreamnos/ui/core/widgets/typewriter_markdown.dart';
@@ -82,18 +82,8 @@ class _GenerateScreenState extends State<GenerateScreen> {
     final isGenerating = viewModel.state == GenerateState.generating;
     final isSuccess = viewModel.state == GenerateState.success && viewModel.formattedContent != null;
 
-    final settings = context.watch<SettingsViewModel>();
-    final isDark = Theme.of(context).brightness == Brightness.dark;
     final validationMsg = viewModel.validationMessage ?? viewModel.errorMessage;
     final needsConfig = validationMsg != null && (validationMsg.toLowerCase().contains('api key') || validationMsg.toLowerCase().contains('model'));
-    // Config strip values
-    final providerLabel = settings.selectedProvider.displayName;
-    final modelLabel = settings.selectedModel ?? 'Auto';
-    final toneLabel = settings.toneMode[0].toUpperCase() + settings.toneMode.substring(1);
-    final teal = isDark ? AppColors.darkTeal : AppColors.lightTeal;
-    final tealSoft = isDark ? AppColors.darkTealSoft : AppColors.lightTealSoft;
-    final amber = isDark ? AppColors.darkAmber : AppColors.lightAmber;
-    final amberSoft = isDark ? AppColors.darkAmberSoft : AppColors.lightAmberSoft;
 
     return Scaffold(
       appBar: AppBar(
@@ -159,86 +149,19 @@ class _GenerateScreenState extends State<GenerateScreen> {
                         ],
                       ),
                     ),
-                  // Top Input Card
-                  _buildInputCard(context, viewModel, isUrl, hasContent, isGenerating),
-                  const SizedBox(height: AppSpacing.sm),
-                  // Config strip — trust & quick switch
-                  SingleChildScrollView(
-                    scrollDirection: Axis.horizontal,
-                    child: Row(
-                      children: [
-                        AppChip(
-                          label: providerLabel,
-                          icon: Icons.smart_toy_outlined,
-                          selected: true,
-                          selectedColor: tealSoft.withValues(alpha: 0.35),
-                          selectedTextColor: teal,
-                          onTap: () => context.push(RoutePaths.settings),
-                        ),
-                        const SizedBox(width: AppSpacing.sm),
-                        AppChip(
-                          label: modelLabel,
-                          icon: Icons.memory_rounded,
-                          selected: true,
-                          selectedColor: theme.colorScheme.primaryContainer.withValues(alpha: 0.5),
-                          selectedTextColor: theme.colorScheme.primary,
-                          onTap: () => context.push(RoutePaths.settings),
-                        ),
-                        const SizedBox(width: AppSpacing.sm),
-                        AppChip(
-                          label: toneLabel,
-                          icon: Icons.tune_rounded,
-                          selected: true,
-                          selectedColor: amberSoft.withValues(alpha: 0.35),
-                          selectedTextColor: amber,
-                          onTap: () => context.push(RoutePaths.settings),
-                        ),
-                      ],
-                    ),
-                  ),
+                  // Capture Section — single card (input + config footer + CTA + recent ExpansionTile)
+                  _buildCaptureCard(context, viewModel, isUrl, hasContent, isGenerating),
+                  const SizedBox(height: AppSpacing.xxl),
+                  Divider(thickness: 1, height: 1, color: theme.colorScheme.outlineVariant.withValues(alpha: 0.55)),
                   const SizedBox(height: AppSpacing.base),
-
-                  // Primary CTA Button
-                  AppButton(
-                    label: isGenerating
-                        ? (viewModel.generatingStep == GeneratingStep.scraping ? 'Extracting URL...' : 'Curating Post...')
-                        : 'Generate Post',
-                    icon: Icons.auto_awesome_rounded,
-                    isLoading: isGenerating,
-                    onPressed: (!hasContent || isGenerating)
-                        ? null
-                        : () {
-                            FocusScope.of(context).unfocus();
-                            viewModel.generatePost(_controller.text);
-                          },
+                  const SectionHeader(title: 'Output'),
+                  const SizedBox(height: AppSpacing.sm),
+                  AnimatedSwitcher(
+                    duration: const Duration(milliseconds: 220),
+                    switchInCurve: Curves.easeOutCubic,
+                    switchOutCurve: Curves.easeInCubic,
+                    child: _buildResultArea(context, theme, viewModel, isSuccess),
                   ),
-                  if (viewModel.recentInputs.isNotEmpty && !isGenerating && !isSuccess) ...[
-                    const SizedBox(height: AppSpacing.md),
-                    Text('Recent', style: theme.textTheme.labelSmall?.copyWith(color: theme.colorScheme.onSurface.withValues(alpha: 0.5), letterSpacing: 0.8)),
-                    const SizedBox(height: AppSpacing.sm),
-                    SingleChildScrollView(
-                      scrollDirection: Axis.horizontal,
-                      child: Row(
-                        children: viewModel.recentInputs.map((r) {
-                          final truncated = r.length > 32 ? '${r.substring(0, 32)}…' : r;
-                          return Padding(
-                            padding: const EdgeInsets.only(right: AppSpacing.sm),
-                            child: AppChip(
-                              label: truncated,
-                              onTap: () {
-                                _controller.text = r;
-                                setState(() {});
-                              },
-                            ),
-                          );
-                        }).toList(),
-                      ),
-                    ),
-                  ],
-                  const SizedBox(height: AppSpacing.xl),
-
-                  // Result State Area
-                  _buildResultArea(context, theme, viewModel, isSuccess),
                 ],
               ),
             ),
@@ -248,7 +171,7 @@ class _GenerateScreenState extends State<GenerateScreen> {
     );
   }
 
-  Widget _buildInputCard(
+  Widget _buildCaptureCard(
     BuildContext context,
     GenerateViewModel viewModel,
     bool isUrl,
@@ -256,10 +179,13 @@ class _GenerateScreenState extends State<GenerateScreen> {
     bool isGenerating,
   ) {
     final theme = Theme.of(context);
+    final settings = context.watch<SettingsViewModel>();
+    final providerLabel = settings.selectedProvider.displayName;
+    final modelLabel = settings.selectedModel ?? 'Auto';
+    final toneLabel = settings.toneMode[0].toUpperCase() + settings.toneMode.substring(1);
     final charCount = _controller.text.length;
-    final wordCount = _controller.text.trim().isEmpty
-        ? 0
-        : _controller.text.trim().split(RegExp(r'\s+')).length;
+    final wordCount = _controller.text.trim().isEmpty ? 0 : _controller.text.trim().split(RegExp(r'\s+')).length;
+    final isSuccess = viewModel.state == GenerateState.success && viewModel.formattedContent != null;
 
     return AppCard(
       padding: const EdgeInsets.all(AppSpacing.base),
@@ -324,11 +250,9 @@ class _GenerateScreenState extends State<GenerateScreen> {
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              // Action pills — labeled for discoverability
               Wrap(
                 spacing: AppSpacing.sm,
                 children: [
-                  // Scan Image pill
                   InkWell(
                     onTap: isGenerating
                         ? null
@@ -387,14 +311,11 @@ class _GenerateScreenState extends State<GenerateScreen> {
                   ),
                 ],
               ),
-              // Character / Word count with limit warning
               if (hasContent)
                 Container(
                   padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                   decoration: BoxDecoration(
-                    color: charCount > 8000
-                        ? theme.colorScheme.error.withValues(alpha: 0.08)
-                        : Colors.transparent,
+                    color: charCount > 8000 ? theme.colorScheme.error.withValues(alpha: 0.08) : Colors.transparent,
                     borderRadius: AppSpacing.borderRadiusXs,
                   ),
                   child: Text(
@@ -407,6 +328,88 @@ class _GenerateScreenState extends State<GenerateScreen> {
                 ),
             ],
           ),
+          const SizedBox(height: AppSpacing.md),
+          Divider(thickness: 1, height: 1, color: theme.colorScheme.outlineVariant.withValues(alpha: 0.55)),
+          const SizedBox(height: AppSpacing.sm),
+          // Config footer — muted text, no scroll, no clipping
+          InkWell(
+            onTap: () {
+              Haptics.lightImpact();
+              context.push(RoutePaths.settings);
+            },
+            borderRadius: AppSpacing.borderRadiusSm,
+            child: Padding(
+              padding: const EdgeInsets.symmetric(vertical: 6, horizontal: 2),
+              child: Row(
+                children: [
+                  Icon(Icons.tune_rounded, size: 13, color: theme.colorScheme.onSurface.withValues(alpha: 0.45)),
+                  const SizedBox(width: 6),
+                  Expanded(
+                    child: Text(
+                      '$providerLabel • $modelLabel • $toneLabel',
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: theme.textTheme.labelSmall?.copyWith(
+                        color: theme.colorScheme.onSurface.withValues(alpha: 0.55),
+                        fontWeight: FontWeight.w500,
+                        letterSpacing: 0.2,
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  Icon(Icons.chevron_right_rounded, size: 16, color: theme.colorScheme.onSurface.withValues(alpha: 0.35)),
+                ],
+              ),
+            ),
+          ),
+          const SizedBox(height: AppSpacing.base),
+          AppButton(
+            label: isGenerating
+                ? (viewModel.generatingStep == GeneratingStep.scraping ? 'Extracting URL...' : 'Curating Post...')
+                : 'Generate Post',
+            icon: Icons.auto_awesome_rounded,
+            isLoading: isGenerating,
+            onPressed: (!hasContent || isGenerating)
+                ? null
+                : () {
+                    FocusScope.of(context).unfocus();
+                    viewModel.generatePost(_controller.text);
+                  },
+          ),
+          if (viewModel.recentInputs.isNotEmpty && !isGenerating && !isSuccess) ...[
+            const SizedBox(height: AppSpacing.md),
+            Divider(thickness: 1, height: 1, color: theme.colorScheme.outlineVariant.withValues(alpha: 0.35)),
+            Theme(
+              data: Theme.of(context).copyWith(dividerColor: Colors.transparent),
+              child: ExpansionTile(
+                tilePadding: EdgeInsets.zero,
+                childrenPadding: const EdgeInsets.only(top: AppSpacing.sm, bottom: AppSpacing.xs),
+                dense: true,
+                initiallyExpanded: false,
+                title: Text('Recent', style: theme.textTheme.labelSmall?.copyWith(color: theme.colorScheme.onSurface.withValues(alpha: 0.55), letterSpacing: 0.8, fontWeight: FontWeight.w700)),
+                trailing: Icon(Icons.expand_more_rounded, size: 18, color: theme.colorScheme.onSurface.withValues(alpha: 0.45)),
+                children: [
+                  Align(
+                    alignment: Alignment.centerLeft,
+                    child: Wrap(
+                      spacing: AppSpacing.sm,
+                      runSpacing: AppSpacing.sm,
+                      children: viewModel.recentInputs.map((r) {
+                        final truncated = r.length > 32 ? '${r.substring(0, 32)}…' : r;
+                        return AppChip(
+                          label: truncated,
+                          onTap: () {
+                            _controller.text = r;
+                            setState(() {});
+                          },
+                        );
+                      }).toList(),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
         ],
       ),
     );
@@ -421,11 +424,12 @@ class _GenerateScreenState extends State<GenerateScreen> {
     if (viewModel.state == GenerateState.generating) {
       final isScraping = viewModel.generatingStep == GeneratingStep.scraping;
       return AppCard(
-        padding: const EdgeInsets.all(AppSpacing.xl),
+        key: const ValueKey('generating'),
+        padding: const EdgeInsets.all(AppSpacing.base),
         child: Column(
           children: [
             SkeletonLoader.outputCard(context),
-            const SizedBox(height: AppSpacing.lg),
+            const SizedBox(height: AppSpacing.base),
             Row(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
@@ -446,20 +450,14 @@ class _GenerateScreenState extends State<GenerateScreen> {
                 ),
               ],
             ),
-            const SizedBox(height: AppSpacing.md),
+            const SizedBox(height: AppSpacing.sm),
             Row(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                Container(
-                    width: 8,
-                    height: 8,
-                    decoration: BoxDecoration(color: isScraping ? theme.colorScheme.primary : theme.colorScheme.outline, shape: BoxShape.circle)),
-                const SizedBox(width: 6),
-                Container(
-                    width: 8,
-                    height: 8,
-                    decoration: BoxDecoration(color: !isScraping ? theme.colorScheme.primary : theme.colorScheme.outline, shape: BoxShape.circle)),
-                const SizedBox(width: 6),
+                Container(width: 8, height: 8, decoration: BoxDecoration(color: isScraping ? theme.colorScheme.primary : theme.colorScheme.outline, shape: BoxShape.circle)),
+                const SizedBox(width: AppSpacing.sm),
+                Container(width: 8, height: 8, decoration: BoxDecoration(color: !isScraping ? theme.colorScheme.primary : theme.colorScheme.outline, shape: BoxShape.circle)),
+                const SizedBox(width: AppSpacing.sm),
                 Container(width: 8, height: 8, decoration: BoxDecoration(color: theme.colorScheme.outline.withValues(alpha: 0.5), shape: BoxShape.circle)),
               ],
             ),
@@ -476,6 +474,7 @@ class _GenerateScreenState extends State<GenerateScreen> {
 
     if (viewModel.state == GenerateState.error) {
       return ErrorState(
+        key: const ValueKey('error'),
         message: viewModel.errorMessage ?? 'An unexpected error occurred.',
         onRetry: () => viewModel.generatePost(_controller.text),
       );
@@ -483,6 +482,7 @@ class _GenerateScreenState extends State<GenerateScreen> {
 
     if (viewModel.state == GenerateState.rateLimited) {
       return ErrorState(
+        key: const ValueKey('rateLimited'),
         title: 'Rate Limit Reached',
         message: viewModel.errorMessage ?? 'Provider quota limit reached.',
         icon: Icons.hourglass_empty_rounded,
@@ -501,6 +501,7 @@ class _GenerateScreenState extends State<GenerateScreen> {
 
     if (isSuccess) {
       return Column(
+        key: const ValueKey('success'),
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           SwipeableOutputCard(
@@ -508,7 +509,6 @@ class _GenerateScreenState extends State<GenerateScreen> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                // Header action row
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
@@ -532,7 +532,7 @@ class _GenerateScreenState extends State<GenerateScreen> {
                                 extra: {
                                   'generatedText': viewModel.formattedContent ?? '',
                                   'provider': settings.selectedProvider,
-                                  'apiKey': '', // resolved inside CardGeneratorScreen via secure storage
+                                  'apiKey': '',
                                   'modelId': settings.selectedModel!,
                                 },
                               );
@@ -555,8 +555,6 @@ class _GenerateScreenState extends State<GenerateScreen> {
                   ],
                 ),
                 const Divider(height: AppSpacing.base),
-
-                // Display toggles
                 SingleChildScrollView(
                   scrollDirection: Axis.horizontal,
                   child: Row(
@@ -585,8 +583,6 @@ class _GenerateScreenState extends State<GenerateScreen> {
                   ),
                 ),
                 const SizedBox(height: AppSpacing.base),
-
-                // Output post body
                 TypewriterMarkdown(
                   data: viewModel.formattedContent ?? '',
                 ),
@@ -594,8 +590,6 @@ class _GenerateScreenState extends State<GenerateScreen> {
             ),
           ),
           const SizedBox(height: AppSpacing.md),
-
-          // Refinement pills section
           if (viewModel.canUndo)
             Padding(
               padding: const EdgeInsets.only(bottom: AppSpacing.sm),
@@ -674,89 +668,69 @@ class _GenerateScreenState extends State<GenerateScreen> {
       );
     }
 
-    // Undo snackbar on refinement if available handled in success section via action
-    // Idle Hero View — editorial with example prompts
-    return Center(
-      child: Padding(
-        padding: const EdgeInsets.symmetric(vertical: AppSpacing.xl),
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Container(
-              width: 64,
-              height: 64,
-              decoration: BoxDecoration(
-                gradient: LinearGradient(
-                  colors: [
-                    (theme.brightness == Brightness.dark ? AppColors.darkTeal : AppColors.lightTeal).withValues(alpha: 0.18),
-                    (theme.brightness == Brightness.dark ? AppColors.darkViolet : AppColors.lightViolet).withValues(alpha: 0.22)
-                  ],
-                  begin: Alignment.topLeft,
-                  end: Alignment.bottomRight,
-                ),
-                borderRadius: AppSpacing.borderRadiusLg,
-                border: Border.all(
-                    color: (theme.brightness == Brightness.dark ? AppColors.darkTeal : AppColors.lightTeal).withValues(alpha: 0.14)),
+    // Idle — flat typographic, no gradient card
+    return Container(
+      key: const ValueKey('idle'),
+      padding: const EdgeInsets.symmetric(vertical: AppSpacing.lg, horizontal: AppSpacing.base),
+      decoration: BoxDecoration(
+        color: theme.colorScheme.surfaceContainerHighest.withValues(alpha: 0.35),
+        borderRadius: AppSpacing.borderRadiusMd,
+        border: Border.all(color: theme.colorScheme.outline.withValues(alpha: 0.5)),
+      ),
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Icon(Icons.auto_awesome_rounded, size: 22, color: theme.colorScheme.onSurface.withValues(alpha: 0.45)),
+          const SizedBox(height: AppSpacing.sm),
+          Text(
+            'Curate Football Posts',
+            style: theme.textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w700, color: theme.colorScheme.onSurface.withValues(alpha: 0.85), letterSpacing: -0.2),
+          ),
+          const SizedBox(height: 4),
+          Text(
+            'Paste a URL, enter news, or scan an image to start.',
+            style: theme.textTheme.bodySmall?.copyWith(color: theme.colorScheme.onSurface.withValues(alpha: 0.55)),
+            textAlign: TextAlign.center,
+          ),
+          const SizedBox(height: AppSpacing.base),
+          Wrap(
+            spacing: AppSpacing.sm,
+            runSpacing: AppSpacing.sm,
+            alignment: WrapAlignment.center,
+            children: [
+              TextButton(
+                onPressed: () {
+                  Haptics.lightImpact();
+                  _controller.text = 'Harimau Malaya secure dramatic 2-1 victory over rivals in Bukit Jalil with late winner from Faisal Halim.';
+                  setState(() {});
+                },
+                child: const Text('Try sample news'),
               ),
-              child: Icon(Icons.auto_awesome_rounded,
-                  size: 30,
-                  color: theme.brightness == Brightness.dark ? AppColors.darkTeal : AppColors.lightTeal),
-            ),
-            const SizedBox(height: AppSpacing.base),
-            Text(
-              'Curate Football Posts',
-              style: theme.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w700, color: theme.colorScheme.onSurface, letterSpacing: -0.3),
-            ),
-            const SizedBox(height: 6),
-            ConstrainedBox(
-              constraints: const BoxConstraints(maxWidth: 300),
-              child: Text(
-                'Paste a URL, enter news, or scan an image to start.',
-                style: theme.textTheme.bodySmall?.copyWith(color: theme.colorScheme.onSurface.withValues(alpha: 0.6)),
-                textAlign: TextAlign.center,
-              ),
-            ),
-            const SizedBox(height: AppSpacing.lg),
-            Wrap(
-              spacing: AppSpacing.sm,
-              runSpacing: AppSpacing.sm,
-              alignment: WrapAlignment.center,
-              children: [
-                _IdleExampleChip(
-                  label: 'Try sample news',
-                  icon: Icons.article_outlined,
-                  onTap: () {
-                    _controller.text = 'Harimau Malaya secure dramatic 2-1 victory over rivals in Bukit Jalil with late winner from Faisal Halim.';
+              TextButton(
+                onPressed: () async {
+                  final data = await Clipboard.getData(Clipboard.kTextPlain);
+                  if (data?.text != null) {
+                    _controller.text = data!.text!;
                     setState(() {});
-                  },
-                ),
-                _IdleExampleChip(
-                  label: 'Paste URL',
-                  icon: Icons.link_rounded,
-                  onTap: () async {
-                    final data = await Clipboard.getData(Clipboard.kTextPlain);
-                    if (data?.text != null) {
-                      _controller.text = data!.text!;
-                      setState(() {});
-                    }
-                  },
-                ),
-                _IdleExampleChip(
-                  label: 'Scan Image',
-                  icon: Icons.document_scanner_outlined,
-                  onTap: () {
-                    OcrExtractionSheet.show(context, onSourceSelected: (s) => viewModel.extractTextFromImage(s));
-                  },
-                ),
-              ],
-            ),
-          ],
-        ),
+                  }
+                },
+                child: const Text('Paste URL'),
+              ),
+              TextButton(
+                onPressed: () {
+                  OcrExtractionSheet.show(context, onSourceSelected: (s) => viewModel.extractTextFromImage(s));
+                },
+                child: const Text('Scan Image'),
+              ),
+            ],
+          ),
+        ],
       ),
     );
   }
 }
 
+// ignore: unused_element
 class _IdleExampleChip extends StatelessWidget {
   const _IdleExampleChip({required this.label, required this.icon, required this.onTap});
   final String label;
