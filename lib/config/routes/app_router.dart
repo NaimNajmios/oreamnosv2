@@ -11,6 +11,7 @@ import '../../ui/features/card_generator/views/card_generator_screen.dart';
 import '../../ui/features/generate/views/reading_mode_screen.dart';
 import '../../ui/features/settings/views/debug_log_screen.dart';
 import '../../data/models/ai_provider.dart';
+import '../../domain/models/card_brief.dart';
 import '../../domain/models/curated_post.dart';
 
 /// Route path constants.
@@ -85,12 +86,46 @@ GoRouter createAppRouter() {
       GoRoute(
         path: RoutePaths.cardGenerator,
         builder: (context, state) {
-          final args = state.extra as Map<String, dynamic>;
+          final extra = state.extra;
+          if (extra is CardBrief) {
+            return CardGeneratorScreen(brief: extra);
+          }
+          if (extra is Map<String, dynamic>) {
+            // Back-compat: legacy map with generatedText/provider/modelId
+            // or new map with headline/subtext
+            if (extra['headline'] != null || extra['subtext'] != null) {
+              try {
+                final brief = CardBrief.fromJson(extra);
+                if (!brief.isEmpty) return CardGeneratorScreen(brief: brief);
+              } catch (_) {}
+            }
+            // Legacy: generatedText only
+            final legacyText = extra['generatedText'] as String?;
+            if (legacyText != null) {
+              final p = extra['provider'];
+              final m = extra['modelId'] as String?;
+              // Minimal fallback — treat legacy text as headline
+              final headline = legacyText.split('\n').first.trim();
+              final subtext = legacyText.trim().length > headline.length
+                  ? legacyText.substring(headline.length).trim().split('\n').first.trim()
+                  : '';
+              // Provider detection
+              AiProvider provider = AiProvider.gemini;
+              if (p is AiProvider) provider = p;
+              return CardGeneratorScreen(
+                brief: CardBrief(
+                  headline: headline.isEmpty ? legacyText.trim() : headline,
+                  subtext: subtext,
+                  provider: provider,
+                  modelId: m ?? '',
+                ),
+              );
+            }
+          }
+          // Fallback: missing/invalid extra — show error shell
           return CardGeneratorScreen(
-            generatedText: args['generatedText'] as String,
-            provider: args['provider'] as AiProvider,
-            apiKey: args['apiKey'] as String? ?? '',
-            modelId: args['modelId'] as String,
+            brief: const CardBrief(headline: '', subtext: '', provider: AiProvider.gemini, modelId: ''),
+            hasError: true,
           );
         },
       ),

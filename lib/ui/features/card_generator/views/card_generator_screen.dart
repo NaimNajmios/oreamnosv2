@@ -3,28 +3,26 @@ import 'package:provider/provider.dart';
 
 import 'package:oreamnos/config/theme/app_colors.dart';
 import 'package:oreamnos/config/theme/app_spacing.dart';
-import 'package:oreamnos/data/models/ai_provider.dart';
+import 'package:oreamnos/domain/models/card_brief.dart';
 import 'package:oreamnos/ui/core/utils/haptics.dart';
-import 'package:oreamnos/ui/core/widgets/app_chip.dart';
 import 'package:oreamnos/ui/core/widgets/error_state.dart';
 import 'package:oreamnos/ui/features/settings/view_models/settings_view_model.dart';
 import '../view_models/card_generator_view_model.dart';
 import '../widgets/card_canvas.dart';
+import '../widgets/card_stage.dart';
+import '../widgets/design_dock.dart';
 import '../widgets/export_bottom_sheet.dart';
+import '../widgets/inline_edit_bar.dart';
 
-/// 3-Zone Card Generator Screen for visual social media graphic production.
+/// Sparse companion Card Studio — light visual to accompany caption.
 class CardGeneratorScreen extends StatefulWidget {
-  final String generatedText;
-  final AiProvider provider;
-  final String apiKey;
-  final String modelId;
+  final CardBrief brief;
+  final bool hasError;
 
   const CardGeneratorScreen({
     super.key,
-    required this.generatedText,
-    required this.provider,
-    required this.apiKey,
-    required this.modelId,
+    required this.brief,
+    this.hasError = false,
   });
 
   @override
@@ -38,83 +36,84 @@ class _CardGeneratorScreenState extends State<CardGeneratorScreen> {
   void initState() {
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) async {
-      String apiKey = widget.apiKey;
-      if (apiKey.isEmpty) {
-        try {
-          final settings = context.read<SettingsViewModel>();
-          apiKey = await settings.getApiKeyForProvider(widget.provider) ?? '';
-        } catch (_) {}
-      }
+      if (widget.hasError || widget.brief.isEmpty) return;
+      String apiKey = '';
+      try {
+        apiKey = await context.read<SettingsViewModel>().getApiKeyForProvider(widget.brief.provider) ?? '';
+      } catch (_) {}
       if (!mounted) return;
-      context.read<CardGeneratorViewModel>().extractData(
-            widget.generatedText,
-            widget.provider,
-            apiKey,
-            widget.modelId,
-          );
+      await context.read<CardGeneratorViewModel>().initialize(widget.brief, apiKey);
     });
   }
 
   Future<void> _handleSaveToGallery() async {
-    final viewModel = context.read<CardGeneratorViewModel>();
-    final success = await viewModel.saveToGallery(_boundaryKey);
-    if (mounted) {
-      if (success) {
-        Haptics.mediumImpact();
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: const Row(
-              children: [
-                Icon(Icons.check_circle_rounded, color: Colors.white, size: 18),
-                SizedBox(width: 8),
-                Text('Card saved to gallery successfully'),
-              ],
-            ),
-            backgroundColor: AppColors.success,
-            behavior: SnackBarBehavior.floating,
-            shape: RoundedRectangleBorder(borderRadius: AppSpacing.borderRadiusSm),
+    final vm = context.read<CardGeneratorViewModel>();
+    final success = await vm.saveToGallery(_boundaryKey);
+    if (!mounted) return;
+    if (success) {
+      Haptics.mediumImpact();
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: const Row(
+            children: [
+              Icon(Icons.check_circle_rounded, color: Colors.white, size: 18),
+              SizedBox(width: 8),
+              Text('Card saved to gallery'),
+            ],
           ),
-        );
-      } else {
-        Haptics.heavyImpact();
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: const Row(
-              children: [
-                Icon(Icons.error_outline_rounded, color: Colors.white, size: 18),
-                SizedBox(width: 8),
-                Text('Failed to save image to gallery'),
-              ],
-            ),
-            backgroundColor: AppColors.error,
-            behavior: SnackBarBehavior.floating,
-            shape: RoundedRectangleBorder(borderRadius: AppSpacing.borderRadiusSm),
+          backgroundColor: AppColors.success,
+          behavior: SnackBarBehavior.floating,
+          shape: RoundedRectangleBorder(borderRadius: AppSpacing.borderRadiusSm),
+        ),
+      );
+    } else {
+      Haptics.heavyImpact();
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: const Row(
+            children: [
+              Icon(Icons.error_outline_rounded, color: Colors.white, size: 18),
+              SizedBox(width: 8),
+              Text('Failed to save image'),
+            ],
           ),
-        );
-      }
+          backgroundColor: AppColors.error,
+          behavior: SnackBarBehavior.floating,
+          shape: RoundedRectangleBorder(borderRadius: AppSpacing.borderRadiusSm),
+        ),
+      );
     }
   }
 
   @override
   Widget build(BuildContext context) {
-    final viewModel = context.watch<CardGeneratorViewModel>();
+    final vm = context.watch<CardGeneratorViewModel>();
     final theme = Theme.of(context);
+
+    // Invalid entry (deep link / empty brief)
+    if (widget.hasError || widget.brief.isEmpty) {
+      return Scaffold(
+        appBar: AppBar(title: Text('Card Studio', style: theme.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w700, letterSpacing: -0.3))),
+        body: ErrorState(
+          title: 'No card data',
+          message: 'Generate a post first, then open Card Studio from the Generated Post card.',
+          retryLabel: 'Back',
+          onRetry: () => Navigator.of(context).maybePop(),
+        ),
+      );
+    }
+
+    final hasData = vm.cardData != null;
 
     return Scaffold(
       appBar: AppBar(
-        title: Text(
-          'Card Generator',
-          style: theme.textTheme.titleMedium?.copyWith(
-            fontWeight: FontWeight.w700,
-            letterSpacing: -0.3,
-          ),
-        ),
+        title: Text('Card Studio', style: theme.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w700, letterSpacing: -0.3)),
         actions: [
-          if (viewModel.cardData != null) ...[
+          if (hasData) ...[
             IconButton(
               icon: const Icon(Icons.share_rounded),
               tooltip: 'Share Card',
-              onPressed: () => viewModel.shareCard(_boundaryKey),
+              onPressed: () => vm.shareCard(_boundaryKey),
             ),
             IconButton(
               icon: const Icon(Icons.download_rounded),
@@ -124,7 +123,7 @@ class _CardGeneratorScreenState extends State<CardGeneratorScreen> {
                 ExportBottomSheet.show(
                   context,
                   onSaveToGallery: _handleSaveToGallery,
-                  onShare: () => viewModel.shareCard(_boundaryKey),
+                  onShare: () => vm.shareCard(_boundaryKey),
                 );
               },
             ),
@@ -132,226 +131,112 @@ class _CardGeneratorScreenState extends State<CardGeneratorScreen> {
           ],
         ],
       ),
-      body: viewModel.isExtracting
-          ? Center(
-              child: Padding(
-                padding: const EdgeInsets.all(AppSpacing.xxl),
-                child: Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    SizedBox(
-                      width: 32,
-                      height: 32,
-                      child: CircularProgressIndicator(
-                        strokeWidth: 2.5,
-                        valueColor: AlwaysStoppedAnimation<Color>(theme.colorScheme.primary),
-                      ),
-                    ),
-                    const SizedBox(height: AppSpacing.lg),
-                    Text(
-                      'Extracting Highlights & Quotes...',
-                      style: theme.textTheme.titleSmall?.copyWith(
-                        fontWeight: FontWeight.w600,
-                      ),
-                    ),
-                    const SizedBox(height: 4),
-                    Text(
-                      'Formatting visual layout with AI',
-                      style: theme.textTheme.bodySmall?.copyWith(
-                        color: theme.colorScheme.onSurface.withValues(alpha: 0.6),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            )
-          : viewModel.extractionError != null
-              ? ErrorState(
-                  title: 'Extraction Failed',
-                  message: viewModel.extractionError!,
-                  retryLabel: 'Retry Extraction',
-                  onRetry: () async {
-                    String apiKey = widget.apiKey;
-                    if (apiKey.isEmpty) {
-                      try {
-                        apiKey = await context.read<SettingsViewModel>().getApiKeyForProvider(widget.provider) ?? '';
-                      } catch (_) {}
-                    }
-                    viewModel.extractData(
-                      widget.generatedText,
-                      widget.provider,
-                      apiKey,
-                      widget.modelId,
-                    );
-                  },
-                )
-              : viewModel.cardData != null
-                  ? Column(
-                      children: [
-                        // Zone 2: Live Canvas Preview
-                        Expanded(
-                          child: Center(
-                            child: SingleChildScrollView(
-                              padding: const EdgeInsets.all(AppSpacing.base),
-                              child: Container(
-                                constraints: const BoxConstraints(maxWidth: 380),
-                                decoration: BoxDecoration(
-                                  borderRadius: AppSpacing.borderRadiusMd,
-                                  boxShadow: AppSpacing.elevatedShadow,
-                                ),
-                                clipBehavior: Clip.antiAlias,
-                                child: RepaintBoundary(
-                                  key: _boundaryKey,
-                                  child: CardCanvas(
-                                    cardData: viewModel.cardData!,
-                                    template: viewModel.selectedTemplate,
-                                    background: viewModel.selectedBackground,
-                                    font: viewModel.selectedFont,
-                                  ),
-                                ),
-                              ),
-                            ),
-                          ),
-                        ),
-
-                        // Zone 3: Bottom Design Studio Panel
-                        _buildDesignPanel(context, viewModel),
-                      ],
-                    )
-                  : const Center(child: Text('No data extracted.')),
+      body: _buildBody(context, vm, theme, hasData),
     );
   }
 
-  Widget _buildDesignPanel(BuildContext context, CardGeneratorViewModel viewModel) {
-    final theme = Theme.of(context);
-
-    return Container(
-      decoration: BoxDecoration(
-        color: theme.colorScheme.surface,
-        border: Border(
-          top: BorderSide(color: theme.colorScheme.outline, width: 1),
+  Widget _buildBody(BuildContext context, CardGeneratorViewModel vm, ThemeData theme, bool hasData) {
+    // Extracting skeleton — keep stage visible with seeded data if available
+    if (vm.isExtracting && !hasData) {
+      return Center(
+        child: Padding(
+          padding: const EdgeInsets.all(AppSpacing.xxl),
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              SizedBox(
+                width: 32,
+                height: 32,
+                child: CircularProgressIndicator(strokeWidth: 2.5, valueColor: AlwaysStoppedAnimation<Color>(theme.colorScheme.primary)),
+              ),
+              const SizedBox(height: AppSpacing.lg),
+              Text('Polishing card…', style: theme.textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w600)),
+              const SizedBox(height: 4),
+              Text('AI is tightening the headline for visual punch', style: theme.textTheme.bodySmall?.copyWith(color: theme.colorScheme.onSurface.withValues(alpha: 0.6))),
+            ],
+          ),
         ),
-      ),
-      padding: const EdgeInsets.symmetric(vertical: AppSpacing.md),
-      child: SafeArea(
-        top: false,
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            // 1. Template Selector
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: AppSpacing.screenHorizontal),
-              child: Text(
-                'TEMPLATE',
-                style: theme.textTheme.labelSmall?.copyWith(
-                  color: theme.colorScheme.primary,
-                  fontWeight: FontWeight.w700,
-                  letterSpacing: 1.1,
-                ),
-              ),
-            ),
-            const SizedBox(height: AppSpacing.sm),
-            SingleChildScrollView(
-              scrollDirection: Axis.horizontal,
-              padding: const EdgeInsets.symmetric(horizontal: AppSpacing.screenHorizontal),
-              child: Row(
-                children: [
-                  AppChip(
-                    label: 'Standard',
-                    selected: viewModel.selectedTemplate == CardTemplate.playerSpotlight,
-                    onTap: () => viewModel.setTemplate(CardTemplate.playerSpotlight),
-                  ),
-                  const SizedBox(width: AppSpacing.sm),
-                  AppChip(
-                    label: 'Quote',
-                    selected: viewModel.selectedTemplate == CardTemplate.headlineQuote,
-                    onTap: () => viewModel.setTemplate(CardTemplate.headlineQuote),
-                  ),
-                  const SizedBox(width: AppSpacing.sm),
-                  AppChip(
-                    label: 'Breaking',
-                    selected: viewModel.selectedTemplate == CardTemplate.breakingNews,
-                    onTap: () => viewModel.setTemplate(CardTemplate.breakingNews),
-                  ),
-                ],
-              ),
-            ),
-            const SizedBox(height: AppSpacing.md),
+      );
+    }
 
-            // 2. Background Selector
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: AppSpacing.screenHorizontal),
-              child: Text(
-                'BACKGROUND',
-                style: theme.textTheme.labelSmall?.copyWith(
-                  color: theme.colorScheme.primary,
-                  fontWeight: FontWeight.w700,
-                  letterSpacing: 1.1,
+    if (vm.extractionError != null && !hasData) {
+      return ErrorState(
+        title: 'Polish Failed',
+        message: vm.extractionError!,
+        retryLabel: 'Retry',
+        onRetry: () async {
+          String apiKey = '';
+          try {
+            apiKey = await context.read<SettingsViewModel>().getApiKeyForProvider(widget.brief.provider) ?? '';
+          } catch (_) {}
+          vm.extractData(apiKey);
+        },
+      );
+    }
+
+    if (!hasData) {
+      return const Center(child: Text('No data.'));
+    }
+
+    final isPolishing = vm.isExtracting;
+
+    return Column(
+      children: [
+        // Stage + optional polishing banner
+        Expanded(
+          child: Stack(
+            children: [
+              CardStage(
+                boundaryKey: _boundaryKey,
+                aspectRatio: vm.selectedRatio.ratio,
+                child: CardCanvas(
+                  cardData: vm.cardData!,
+                  template: vm.selectedTemplate,
+                  font: vm.selectedFont,
+                  backgroundImage: vm.backgroundImage,
+                  scrimOpacity: vm.scrimOpacity,
+                  useVignette: vm.useVignette,
                 ),
               ),
-            ),
-            const SizedBox(height: AppSpacing.sm),
-            SingleChildScrollView(
-              scrollDirection: Axis.horizontal,
-              padding: const EdgeInsets.symmetric(horizontal: AppSpacing.screenHorizontal),
-              child: Row(
-                children: CardBackground.values.map((bg) {
-                  final isSelected = viewModel.selectedBackground == bg;
-                  return Padding(
-                    padding: const EdgeInsets.only(right: AppSpacing.sm),
-                    child: AppChip(
-                      label: bg.name.toUpperCase(),
-                      selected: isSelected,
-                      onTap: () => viewModel.setBackground(bg),
+              if (isPolishing)
+                Positioned(
+                  top: 12,
+                  left: 0,
+                  right: 0,
+                  child: Center(
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                      decoration: BoxDecoration(
+                        color: theme.colorScheme.surface.withValues(alpha: 0.92),
+                        borderRadius: AppSpacing.borderRadiusPill,
+                        border: Border.all(color: theme.colorScheme.outline.withValues(alpha: 0.5)),
+                        boxShadow: AppSpacing.softShadow,
+                      ),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          SizedBox(width: 12, height: 12, child: CircularProgressIndicator(strokeWidth: 1.6, color: theme.colorScheme.primary)),
+                          const SizedBox(width: 8),
+                          Text('Polishing…', style: theme.textTheme.labelSmall?.copyWith(fontWeight: FontWeight.w600)),
+                        ],
+                      ),
                     ),
-                  );
-                }).toList(),
-              ),
-            ),
-            const SizedBox(height: AppSpacing.md),
-
-            // 3. Typography Selector
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: AppSpacing.screenHorizontal),
-              child: Text(
-                'TYPOGRAPHY',
-                style: theme.textTheme.labelSmall?.copyWith(
-                  color: theme.colorScheme.primary,
-                  fontWeight: FontWeight.w700,
-                  letterSpacing: 1.1,
+                  ),
                 ),
-              ),
-            ),
-            const SizedBox(height: AppSpacing.sm),
-            SingleChildScrollView(
-              scrollDirection: Axis.horizontal,
-              padding: const EdgeInsets.symmetric(horizontal: AppSpacing.screenHorizontal),
-              child: Row(
-                children: [
-                  AppChip(
-                    label: 'Inter Sans',
-                    selected: viewModel.selectedFont == AppFont.defaultFont,
-                    onTap: () => viewModel.setFont(AppFont.defaultFont),
-                  ),
-                  const SizedBox(width: AppSpacing.sm),
-                  AppChip(
-                    label: 'Lora Serif',
-                    selected: viewModel.selectedFont == AppFont.classicSerif,
-                    onTap: () => viewModel.setFont(AppFont.classicSerif),
-                  ),
-                  const SizedBox(width: AppSpacing.sm),
-                  AppChip(
-                    label: 'Space Mono',
-                    selected: viewModel.selectedFont == AppFont.typewriter,
-                    onTap: () => viewModel.setFont(AppFont.typewriter),
-                  ),
-                ],
-              ),
-            ),
-          ],
+            ],
+          ),
         ),
-      ),
+
+        // Inline edit — always visible when hasData
+        InlineEditBar(viewModel: vm),
+
+        // Dock — scrollable, stays below edit bar
+        Flexible(
+          child: SingleChildScrollView(
+            child: DesignDock(viewModel: vm),
+          ),
+        ),
+      ],
     );
   }
 }

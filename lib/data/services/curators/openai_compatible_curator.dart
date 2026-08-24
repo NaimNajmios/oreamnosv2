@@ -7,7 +7,7 @@ import 'package:oreamnos/domain/services/generation_prompt_manager.dart';
 import 'package:oreamnos/domain/services/json_cleaner.dart';
 import 'package:oreamnos/domain/models/curated_post.dart';
 
-import 'package:oreamnos/ui/features/card_generator/view_models/card_generator_view_model.dart';
+import 'package:oreamnos/domain/models/card_brief.dart';
 
 class OpenAICompatibleCurator implements IContentCurator {
   OpenAICompatibleCurator(this.baseUrl);
@@ -96,13 +96,12 @@ class OpenAICompatibleCurator implements IContentCurator {
 
   @override
   Future<String> extractCardData({
-    required String generatedText,
+    required CardBrief brief,
     required String modelId,
     required String apiKey,
-    required CardTemplate template,
   }) async {
     final systemPrompt = CardPromptManager.buildSystemPrompt();
-    final userPrompt = CardPromptManager.buildUserPrompt(template, generatedText);
+    final userPrompt = CardPromptManager.buildUserPrompt(brief);
 
     final url = Uri.parse('$baseUrl/chat/completions');
 

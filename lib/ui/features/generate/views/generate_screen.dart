@@ -6,6 +6,7 @@ import 'package:go_router/go_router.dart';
 import 'package:oreamnos/config/routes/app_router.dart';
 import 'package:oreamnos/config/theme/app_spacing.dart';
 import 'package:oreamnos/data/services/web_scraper_service.dart';
+import 'package:oreamnos/domain/models/card_brief.dart';
 import 'package:oreamnos/ui/core/utils/haptics.dart';
 import 'package:oreamnos/ui/core/widgets/app_button.dart';
 import 'package:oreamnos/ui/core/widgets/app_card.dart';
@@ -535,19 +536,17 @@ class _GenerateScreenState extends State<GenerateScreen> {
                       children: [
                         IconButton(
                           icon: const Icon(Icons.image_outlined, size: 20),
-                          tooltip: 'Card Generator',
+                          tooltip: 'Card Studio',
                           onPressed: () {
                             final settings = context.read<SettingsViewModel>();
                             if (settings.selectedModel != null) {
-                              context.push(
-                                RoutePaths.cardGenerator,
-                                extra: {
-                                  'generatedText': post.bodyMarkdown,
-                                  'provider': settings.selectedProvider,
-                                  'apiKey': '',
-                                  'modelId': settings.selectedModel!,
-                                },
+                              final brief = CardBrief.fromPost(
+                                title: post.title,
+                                bodyMarkdown: post.bodyMarkdown,
+                                provider: settings.selectedProvider,
+                                modelId: settings.selectedModel!,
                               );
+                              context.push(RoutePaths.cardGenerator, extra: brief);
                             }
                           },
                         ),
