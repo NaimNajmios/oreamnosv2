@@ -1,10 +1,12 @@
 import 'dart:async';
+import 'dart:convert';
 import 'package:uuid/uuid.dart';
 import 'package:oreamnos/data/services/curator_factory.dart';
 import 'package:oreamnos/ui/features/settings/view_models/settings_view_model.dart';
 import 'package:oreamnos/data/services/web_scraper_service.dart';
 import 'package:oreamnos/data/services/usage_service.dart';
 import 'package:oreamnos/domain/models/usage_log.dart';
+import 'package:oreamnos/domain/models/curated_post.dart';
 import 'package:oreamnos/data/models/ai_provider.dart';
 
 import 'package:image_picker/image_picker.dart';
@@ -56,10 +58,16 @@ class GenerateViewModel extends ChangeNotifier with WidgetsBindingObserver {
   GeneratingStep _generatingStep = GeneratingStep.idle;
   GeneratingStep get generatingStep => _generatingStep;
 
-  String? _generatedContent;
-  String? get generatedContent => _generatedContent;
+  CuratedPost? _curatedPost;
+  CuratedPost? get curatedPost => _curatedPost;
 
-  // Undo history for refinements
+  // Compat: some screens still expect String
+  String? get generatedContent => _curatedPost?.rawMarkdown;
+  // For undo/history we store serialized CuratedPost
+  // ignore: unused_field
+  String? _legacyGeneratedContentForCompat;
+
+  // Undo history for refinements — store serialized CuratedPost
   final List<String> _historyStack = [];
   bool get canUndo => _historyStack.isNotEmpty;
 
@@ -89,9 +97,6 @@ class GenerateViewModel extends ChangeNotifier with WidgetsBindingObserver {
     await _settingsViewModel.setSelectedProvider(provider);
     if (_pendingInput != null) {
       await generatePost(_pendingInput!);
-    } else if (_generatedContent != null) {
-      // Just re-generate with the last successful input? Or just use the original pending input?
-      // For simplicity, we just trigger generation with the pending input, which should be stored
     }
   }
 
@@ -124,31 +129,13 @@ class GenerateViewModel extends ChangeNotifier with WidgetsBindingObserver {
   }
 
   String? get formattedContent {
-    if (_generatedContent == null) return null;
-    String content = _generatedContent!;
-
-    if (!_showTitle) {
-      content = content.replaceFirst(RegExp(r'^\s*#+[^\n]*\n+'), '');
-      // Fallback: if still starts with bold title line, strip first line length>10
-      if (content.startsWith('**') && content.contains('\n')) {
-        // keep as is – user toggled off but content may have bold title
-      }
-    }
-
-    if (!_showHashtags) {
-      // Remove trailing hashtag block (one or more lines of hashtags at end)
-      content = content.replaceAll(RegExp(r'(\n\s*#[^\n]*)+$'), '');
-      // Also remove inline contiguous hashtags paragraph at end
-      content = content.replaceAll(RegExp(r'\n+(#[^\s#]+\s*)+$'), '');
-    }
-
-    if (!_showSource) {
-      // Case-insensitive, handles "Sumber:", "Source:", "Sumber —", with optional url
-      content = content.replaceAll(RegExp(r'\n+\s*(Sumber|Source)\s*[:\-—][^\n]*$', caseSensitive: false), '');
-    }
-
-    return content.trim();
+    if (_curatedPost == null) return null;
+    return _curatedPost!.toMarkdownFiltered(showTitle: _showTitle, showHashtags: _showHashtags, showSource: _showSource);
   }
+
+  // For reading mode / card generator that needs body only
+  String? get formattedBody => _curatedPost?.bodyMarkdown;
+  SourceAttribution? get sourceAttribution => _curatedPost?.source;
 
   ValidationResult validateForGenerate(String input) {
     final trimmed = input.trim();
@@ -176,14 +163,22 @@ class GenerateViewModel extends ChangeNotifier with WidgetsBindingObserver {
     return const ValidationResult.valid();
   }
 
-  void _pushHistory(String content) {
-    _historyStack.add(content);
+  void _pushHistory(CuratedPost content) {
+    _historyStack.add(jsonEncode(content.toJson()));
     if (_historyStack.length > 20) _historyStack.removeAt(0);
   }
 
   bool undoLastRefinement() {
     if (_historyStack.isEmpty) return false;
-    _generatedContent = _historyStack.removeLast();
+    final jsonStr = _historyStack.removeLast();
+    try {
+      final map = jsonDecode(jsonStr) as Map<String, dynamic>;
+      _curatedPost = CuratedPost.fromJson(map);
+    } catch (_) {
+      // fallback: treat as legacy markdown
+      _curatedPost = CuratedPost.fromMarkdownFallback(jsonStr);
+    }
+    _legacyGeneratedContentForCompat = _curatedPost?.rawMarkdown;
     _state = GenerateState.success;
     notifyListeners();
     return true;
@@ -229,9 +224,9 @@ class GenerateViewModel extends ChangeNotifier with WidgetsBindingObserver {
     _generatingStep = GeneratingStep.prompting;
     _errorMessage = null;
     _validationMessage = null;
-    _generatedContent = null;
+    _curatedPost = null;
+    _legacyGeneratedContentForCompat = null;
     _suggestedFallbackProvider = null;
-    // keep pendingInput as source of truth for retry
     _pendingInput = input.trim();
     _addRecentInput(_pendingInput!);
     notifyListeners();
@@ -240,24 +235,26 @@ class GenerateViewModel extends ChangeNotifier with WidgetsBindingObserver {
     final provider = _settingsViewModel.selectedProvider;
 
     try {
-      String contentToCurate = _pendingInput!.trim();
+      dynamic contentToCurate = _pendingInput!.trim();
+      String? sourceUrl;
       
-      // Extract text if input is a URL — staged feedback
-      if (WebScraperService.isUrl(contentToCurate)) {
+      if (WebScraperService.isUrl(contentToCurate as String)) {
         _generatingStep = GeneratingStep.scraping;
         notifyListeners();
         try {
-          contentToCurate = await WebScraperService.extractTextFromUrl(contentToCurate).timeout(const Duration(seconds: 10));
+          final article = await WebScraperService.extractArticleFromUrl(contentToCurate).timeout(const Duration(seconds: 10));
+          contentToCurate = article;
+          sourceUrl = article.url;
+          if (article.text.trim().isEmpty) {
+            LogService().warning('Scrape returned empty, falling back to raw input');
+            contentToCurate = _pendingInput!;
+            sourceUrl = _pendingInput;
+          }
         } on TimeoutException {
           throw Exception('URL extraction timed out. Please paste the article text manually.');
         }
         _generatingStep = GeneratingStep.prompting;
         notifyListeners();
-        if (contentToCurate.trim().isEmpty || contentToCurate.trim() == _pendingInput) {
-          // If scrape returned empty or just url, keep original but warn via log
-          LogService().warning('Scrape returned empty, falling back to raw input');
-          contentToCurate = _pendingInput!;
-        }
       }
       
       final modelId = _settingsViewModel.selectedModel;
@@ -272,16 +269,16 @@ class GenerateViewModel extends ChangeNotifier with WidgetsBindingObserver {
 
       final curator = CuratorFactory.getCurator(provider);
 
-      _generatedContent = await curator.generatePost(
-        contentOrUrl: contentToCurate,
+      _curatedPost = await curator.generateStructuredPost(
+        content: contentToCurate,
         modelId: modelId,
         apiKey: apiKey,
-        tone: _settingsViewModel.toneMode,
-        defaultHashtags: _settingsViewModel.autoAppendHashtags ? _settingsViewModel.defaultHashtags : '',
+        sourceUrl: sourceUrl,
       );
+      _legacyGeneratedContentForCompat = _curatedPost!.rawMarkdown;
 
       stopwatch.stop();
-      final estimatedTokens = ((contentToCurate.length + (_generatedContent?.length ?? 0)) / 4).round();
+      final estimatedTokens = ((input.length + (_curatedPost?.rawMarkdown.length ?? 0)) / 4).round();
       _usageService.logUsage(UsageLog(
         id: const Uuid().v4(),
         timestamp: DateTime.now(),
@@ -327,7 +324,6 @@ class GenerateViewModel extends ChangeNotifier with WidgetsBindingObserver {
         _errorMessage = 'Network error. Please check your connection and try again.';
         _state = GenerateState.error;
       } else {
-        // Sanitize: strip "Exception:" prefix for user display
         final raw = e.toString();
         final clean = raw.startsWith('Exception:') ? raw.substring(10).trim() : raw;
         _errorMessage = clean.length > 220 ? '${clean.substring(0, 220)}…' : clean;
@@ -340,7 +336,6 @@ class GenerateViewModel extends ChangeNotifier with WidgetsBindingObserver {
           'There was an error generating your post.',
         );
       }
-      // Reset step if we finished with error/rateLimited
       if (_state != GenerateState.generating) {
         _generatingStep = GeneratingStep.idle;
       }
@@ -350,14 +345,13 @@ class GenerateViewModel extends ChangeNotifier with WidgetsBindingObserver {
   }
 
   Future<void> refineContent(String instruction) async {
-    if (_generatedContent == null || _generatedContent!.isEmpty) return;
+    if (_curatedPost == null) return;
 
     _state = GenerateState.generating;
     _generatingStep = GeneratingStep.prompting;
     _errorMessage = null;
     _validationMessage = null;
-    // Preserve history for undo
-    _pushHistory(_generatedContent!);
+    _pushHistory(_curatedPost!);
     notifyListeners();
 
     final stopwatch = Stopwatch()..start();
@@ -376,18 +370,39 @@ class GenerateViewModel extends ChangeNotifier with WidgetsBindingObserver {
 
       final curator = CuratorFactory.getCurator(provider);
       
-      final refinementPrompt = 'Please refine the following social media post based on this instruction: "$instruction". Keep the original tone if not specified otherwise.\n\nPost:\n$_generatedContent';
+      // Structured refinement: keep source, refine title/body
+      final currentJson = jsonEncode(_curatedPost!.toJson());
+      final refinementContent = 'Arahan penambahbaikan: "$instruction".\n'
+          'Kekalkan sumber yang sama (${_curatedPost!.source.url ?? _curatedPost!.source.label}).\n'
+          'JSON semasa:\n$currentJson\n\n'
+          'Kembalikan JSON dengan struktur yang sama (title, body, hashtags, source) — perbaiki title/body/hashtags mengikut arahan, jangan ubah source.url.';
 
-      _generatedContent = await curator.generatePost(
-        contentOrUrl: refinementPrompt,
+      final refined = await curator.generateStructuredPost(
+        content: refinementContent,
         modelId: modelId,
         apiKey: apiKey,
-        tone: _settingsViewModel.toneMode,
-        defaultHashtags: '', // Do not auto-append hashtags again on refinement
+        sourceUrl: _curatedPost!.source.url,
       );
 
+      // Merge: if refined title empty, keep old
+      _curatedPost = CuratedPost(
+        title: refined.title.isEmpty ? _curatedPost!.title : refined.title,
+        bodyMarkdown: refined.bodyMarkdown.isEmpty ? _curatedPost!.bodyMarkdown : refined.bodyMarkdown,
+        hashtags: refined.hashtags.isEmpty ? _curatedPost!.hashtags : refined.hashtags,
+        source: _curatedPost!.source, // never change source on refinement
+        rawMarkdown: '', // will be rebuilt
+      );
+      // Rebuild rawMarkdown via fromJson logic
+      _curatedPost = CuratedPost.fromJson({
+        'title': _curatedPost!.title,
+        'body': _curatedPost!.bodyMarkdown,
+        'hashtags': _curatedPost!.hashtags,
+        'source': _curatedPost!.source.toJson(),
+      });
+      _legacyGeneratedContentForCompat = _curatedPost!.rawMarkdown;
+
       stopwatch.stop();
-      final estimatedTokens = ((refinementPrompt.length + (_generatedContent?.length ?? 0)) / 4).round();
+      final estimatedTokens = ((refinementContent.length + (_curatedPost?.rawMarkdown.length ?? 0)) / 4).round();
       _usageService.logUsage(UsageLog(
         id: const Uuid().v4(),
         timestamp: DateTime.now(),
@@ -453,7 +468,8 @@ class GenerateViewModel extends ChangeNotifier with WidgetsBindingObserver {
   void reset() {
     _state = GenerateState.idle;
     _generatingStep = GeneratingStep.idle;
-    _generatedContent = null;
+    _curatedPost = null;
+    _legacyGeneratedContentForCompat = null;
     _errorMessage = null;
     _validationMessage = null;
     _suggestedFallbackProvider = null;
@@ -492,4 +508,3 @@ class GenerateViewModel extends ChangeNotifier with WidgetsBindingObserver {
     }
   }
 }
-

@@ -103,9 +103,10 @@ class _TypewriterMarkdownState extends State<TypewriterMarkdown> {
       selectable: true,
       styleSheet: MarkdownStyleSheet(
         p: theme.textTheme.bodyMedium?.copyWith(
-          height: 1.55,
+          height: 1.65,
           color: theme.colorScheme.onSurface,
         ),
+        pPadding: const EdgeInsets.only(bottom: 12),
         h1: theme.textTheme.headlineMedium?.copyWith(
           fontWeight: FontWeight.w700,
           letterSpacing: -0.5,

@@ -12,13 +12,14 @@ import 'package:oreamnos/ui/core/widgets/app_card.dart';
 import 'package:oreamnos/ui/core/widgets/app_chip.dart';
 import 'package:oreamnos/ui/core/widgets/app_copy_button.dart';
 import 'package:oreamnos/ui/core/widgets/app_input.dart';
+import 'package:oreamnos/ui/core/widgets/curated_post_sections.dart';
 import 'package:oreamnos/ui/core/widgets/error_state.dart';
 import 'package:oreamnos/ui/core/widgets/ocr_extraction_sheet.dart';
 import 'package:oreamnos/ui/core/widgets/refinement_pill.dart';
 import 'package:oreamnos/ui/core/widgets/section_header.dart';
 import 'package:oreamnos/ui/core/widgets/skeleton_loader.dart';
+import 'package:oreamnos/ui/core/widgets/source_attribution_card.dart';
 import 'package:oreamnos/ui/core/widgets/swipeable_output_card.dart';
-import 'package:oreamnos/ui/core/widgets/typewriter_markdown.dart';
 import 'package:oreamnos/ui/features/settings/view_models/settings_view_model.dart';
 import 'package:oreamnos/ui/features/settings/views/widgets/add_pill_dialog.dart';
 import '../view_models/generate_view_model.dart';
@@ -80,7 +81,7 @@ class _GenerateScreenState extends State<GenerateScreen> {
     final isUrl = WebScraperService.isUrl(_controller.text.trim());
     final hasContent = _controller.text.trim().isNotEmpty;
     final isGenerating = viewModel.state == GenerateState.generating;
-    final isSuccess = viewModel.state == GenerateState.success && viewModel.formattedContent != null;
+    final isSuccess = viewModel.state == GenerateState.success && viewModel.curatedPost != null;
 
     final validationMsg = viewModel.validationMessage ?? viewModel.errorMessage;
     final needsConfig = validationMsg != null && (validationMsg.toLowerCase().contains('api key') || validationMsg.toLowerCase().contains('model'));
@@ -185,7 +186,7 @@ class _GenerateScreenState extends State<GenerateScreen> {
     final toneLabel = settings.toneMode[0].toUpperCase() + settings.toneMode.substring(1);
     final charCount = _controller.text.length;
     final wordCount = _controller.text.trim().isEmpty ? 0 : _controller.text.trim().split(RegExp(r'\s+')).length;
-    final isSuccess = viewModel.state == GenerateState.success && viewModel.formattedContent != null;
+    final isSuccess = viewModel.state == GenerateState.success && viewModel.curatedPost != null;
 
     return AppCard(
       padding: const EdgeInsets.all(AppSpacing.base),
@@ -509,12 +510,14 @@ class _GenerateScreenState extends State<GenerateScreen> {
     }
 
     if (isSuccess) {
+      final post = viewModel.curatedPost!;
+      final copyText = post.toMarkdownFiltered(showTitle: viewModel.showTitle, showHashtags: viewModel.showHashtags, showSource: false);
       return Column(
         key: const ValueKey('success'),
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           SwipeableOutputCard(
-            content: viewModel.formattedContent ?? '',
+            content: copyText,
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
@@ -539,7 +542,7 @@ class _GenerateScreenState extends State<GenerateScreen> {
                               context.push(
                                 RoutePaths.cardGenerator,
                                 extra: {
-                                  'generatedText': viewModel.formattedContent ?? '',
+                                  'generatedText': post.bodyMarkdown,
                                   'provider': settings.selectedProvider,
                                   'apiKey': '',
                                   'modelId': settings.selectedModel!,
@@ -554,11 +557,11 @@ class _GenerateScreenState extends State<GenerateScreen> {
                           onPressed: () {
                             context.push(
                               RoutePaths.readingMode,
-                              extra: viewModel.formattedContent ?? '',
+                              extra: {'curatedPost': post},
                             );
                           },
                         ),
-                        AppCopyButton(textToCopy: viewModel.formattedContent ?? ''),
+                        AppCopyButton(textToCopy: copyText),
                       ],
                     ),
                   ],
@@ -592,9 +595,16 @@ class _GenerateScreenState extends State<GenerateScreen> {
                   ),
                 ),
                 const SizedBox(height: AppSpacing.base),
-                TypewriterMarkdown(
-                  data: viewModel.formattedContent ?? '',
-                ),
+                TitleBlock(title: post.title, visible: viewModel.showTitle),
+                BodyBlock(bodyMarkdown: post.bodyMarkdown),
+                if (viewModel.showHashtags && post.hashtags.isNotEmpty) ...[
+                  const SizedBox(height: AppSpacing.base),
+                  HashtagChips(hashtags: post.hashtags, visible: true),
+                ],
+                if (viewModel.showSource && !post.source.isEmpty) ...[
+                  const SizedBox(height: AppSpacing.base),
+                  SourceAttributionCard(source: post.source),
+                ],
               ],
             ),
           ),
@@ -631,7 +641,7 @@ class _GenerateScreenState extends State<GenerateScreen> {
                   label: 'Rephrase',
                   icon: Icons.refresh_rounded,
                   onTap: () => viewModel.refineContent(
-                    'Rephrase the post to make it more engaging and slightly different, but keep the core message.',
+                    'Rephrase the report to be more formal and concise while keeping all facts and a neutral tone.',
                   ),
                 ),
                 const SizedBox(width: AppSpacing.sm),
@@ -639,7 +649,7 @@ class _GenerateScreenState extends State<GenerateScreen> {
                   label: 'Check Flow',
                   icon: Icons.auto_fix_high_rounded,
                   onTap: () => viewModel.refineContent(
-                    'Improve the flow and readability of the post.',
+                    'Improve the flow and clarity of the report without adding new facts.',
                   ),
                 ),
                 const SizedBox(width: AppSpacing.sm),
@@ -647,7 +657,7 @@ class _GenerateScreenState extends State<GenerateScreen> {
                   label: 'Shorter',
                   icon: Icons.compress_rounded,
                   onTap: () => viewModel.refineContent(
-                    'Make the post more concise and shorter.',
+                    'Make the report shorter, 100-120 words, keeping a formal style.',
                   ),
                 ),
                 ...context.watch<SettingsViewModel>().customPills.map(

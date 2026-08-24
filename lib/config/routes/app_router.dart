@@ -11,6 +11,7 @@ import '../../ui/features/card_generator/views/card_generator_screen.dart';
 import '../../ui/features/generate/views/reading_mode_screen.dart';
 import '../../ui/features/settings/views/debug_log_screen.dart';
 import '../../data/models/ai_provider.dart';
+import '../../domain/models/curated_post.dart';
 
 /// Route path constants.
 abstract final class RoutePaths {
@@ -59,7 +60,17 @@ GoRouter createAppRouter() {
       GoRoute(
         path: RoutePaths.readingMode,
         builder: (context, state) {
-          final content = state.extra as String? ?? '';
+          final extra = state.extra;
+          if (extra is String) {
+            return ReadingModeScreen(content: extra);
+          }
+          if (extra is Map<String, dynamic> && extra['curatedPost'] != null) {
+            final cp = extra['curatedPost'];
+            if (cp is CuratedPost) return ReadingModeScreen(content: cp.rawMarkdown, curatedPost: cp);
+          }
+          // Fallback for CuratedPost directly
+          if (extra is CuratedPost) return ReadingModeScreen(content: extra.rawMarkdown, curatedPost: extra);
+          final content = extra as String? ?? '';
           return ReadingModeScreen(content: content);
         },
       ),

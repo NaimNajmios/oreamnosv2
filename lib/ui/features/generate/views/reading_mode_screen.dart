@@ -5,8 +5,11 @@ import 'package:share_plus/share_plus.dart';
 
 import 'package:oreamnos/config/theme/app_colors.dart';
 import 'package:oreamnos/config/theme/app_spacing.dart';
+import 'package:oreamnos/domain/models/curated_post.dart';
 import 'package:oreamnos/ui/core/utils/haptics.dart';
 import 'package:oreamnos/ui/core/widgets/app_card.dart';
+import 'package:oreamnos/ui/core/widgets/curated_post_sections.dart';
+import 'package:oreamnos/ui/core/widgets/source_attribution_card.dart';
 import 'package:oreamnos/ui/core/widgets/typewriter_markdown.dart';
 
 /// Full-screen distraction-free reading mode with editorial type ramp.
@@ -14,9 +17,11 @@ class ReadingModeScreen extends StatelessWidget {
   const ReadingModeScreen({
     super.key,
     required this.content,
+    this.curatedPost,
   });
 
   final String content;
+  final CuratedPost? curatedPost;
 
   @override
   Widget build(BuildContext context) {
@@ -38,9 +43,23 @@ class ReadingModeScreen extends StatelessWidget {
                     AppSpacing.xl,
                     100, // Space for bottom action bar
                   ),
-                  child: TypewriterMarkdown(
-                    data: content,
-                  ),
+                  child: curatedPost != null
+                      ? Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            TitleBlock(title: curatedPost!.title),
+                            BodyBlock(bodyMarkdown: curatedPost!.bodyMarkdown),
+                            if (curatedPost!.hashtags.isNotEmpty) ...[
+                              const SizedBox(height: AppSpacing.base),
+                              HashtagChips(hashtags: curatedPost!.hashtags),
+                            ],
+                            if (!curatedPost!.source.isEmpty) ...[
+                              const SizedBox(height: AppSpacing.base),
+                              SourceAttributionCard(source: curatedPost!.source),
+                            ],
+                          ],
+                        )
+                      : TypewriterMarkdown(data: content),
                 ),
               ),
             ),
