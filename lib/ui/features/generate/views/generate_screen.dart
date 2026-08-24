@@ -81,6 +81,14 @@ class _GenerateScreenState extends State<GenerateScreen> {
     final isGenerating = viewModel.state == GenerateState.generating;
     final isSuccess = viewModel.state == GenerateState.success && viewModel.formattedContent != null;
 
+    final settings = context.watch<SettingsViewModel>();
+    final validationMsg = viewModel.validationMessage ?? viewModel.errorMessage;
+    final needsConfig = validationMsg != null && (validationMsg.toLowerCase().contains('api key') || validationMsg.toLowerCase().contains('model'));
+    // Config strip values
+    final providerLabel = settings.selectedProvider.displayName;
+    final modelLabel = settings.selectedModel ?? 'Auto';
+    final toneLabel = settings.toneMode[0].toUpperCase() + settings.toneMode.substring(1);
+
     return Scaffold(
       appBar: AppBar(
         title: Text(
@@ -114,13 +122,75 @@ class _GenerateScreenState extends State<GenerateScreen> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
+                  // Validation banner (pre-flight)
+                  if (needsConfig && viewModel.state == GenerateState.error)
+                    Container(
+                      margin: const EdgeInsets.only(bottom: AppSpacing.base),
+                      padding: const EdgeInsets.symmetric(horizontal: AppSpacing.md, vertical: AppSpacing.sm),
+                      decoration: BoxDecoration(
+                        color: theme.colorScheme.errorContainer.withValues(alpha: 0.6),
+                        borderRadius: AppSpacing.borderRadiusSm,
+                        border: Border.all(color: theme.colorScheme.error.withValues(alpha: 0.2)),
+                      ),
+                      child: Row(
+                        children: [
+                          Icon(Icons.warning_amber_rounded, size: 18, color: theme.colorScheme.error),
+                          const SizedBox(width: AppSpacing.sm),
+                          Expanded(
+                            child: Text(
+                              // ignore: dead_code, dead_null_aware_expression
+                              validationMsg ?? '',
+                              style: theme.textTheme.bodySmall?.copyWith(color: theme.colorScheme.onErrorContainer, fontWeight: FontWeight.w500),
+                            ),
+                          ),
+                          TextButton(
+                            onPressed: () {
+                              Haptics.lightImpact();
+                              context.push(RoutePaths.settings);
+                            },
+                            child: const Text('Configure'),
+                          ),
+                        ],
+                      ),
+                    ),
                   // Top Input Card
                   _buildInputCard(context, viewModel, isUrl, hasContent, isGenerating),
+                  const SizedBox(height: AppSpacing.sm),
+                  // Config strip — trust & quick switch
+                  SingleChildScrollView(
+                    scrollDirection: Axis.horizontal,
+                    child: Row(
+                      children: [
+                        AppChip(
+                          label: providerLabel,
+                          icon: Icons.smart_toy_outlined,
+                          selected: false,
+                          onTap: () => context.push(RoutePaths.settings),
+                        ),
+                        const SizedBox(width: AppSpacing.sm),
+                        AppChip(
+                          label: modelLabel,
+                          icon: Icons.memory_rounded,
+                          selected: false,
+                          onTap: () => context.push(RoutePaths.settings),
+                        ),
+                        const SizedBox(width: AppSpacing.sm),
+                        AppChip(
+                          label: toneLabel,
+                          icon: Icons.tune_rounded,
+                          selected: false,
+                          onTap: () => context.push(RoutePaths.settings),
+                        ),
+                      ],
+                    ),
+                  ),
                   const SizedBox(height: AppSpacing.base),
 
                   // Primary CTA Button
                   AppButton(
-                    label: isGenerating ? 'Curating Post...' : 'Generate Post',
+                    label: isGenerating
+                        ? (viewModel.generatingStep == GeneratingStep.scraping ? 'Extracting URL...' : 'Curating Post...')
+                        : 'Generate Post',
                     icon: Icons.auto_awesome_rounded,
                     isLoading: isGenerating,
                     onPressed: (!hasContent || isGenerating)
@@ -130,6 +200,29 @@ class _GenerateScreenState extends State<GenerateScreen> {
                             viewModel.generatePost(_controller.text);
                           },
                   ),
+                  if (viewModel.recentInputs.isNotEmpty && !isGenerating && !isSuccess) ...[
+                    const SizedBox(height: AppSpacing.md),
+                    Text('Recent', style: theme.textTheme.labelSmall?.copyWith(color: theme.colorScheme.onSurface.withValues(alpha: 0.5), letterSpacing: 0.8)),
+                    const SizedBox(height: AppSpacing.sm),
+                    SingleChildScrollView(
+                      scrollDirection: Axis.horizontal,
+                      child: Row(
+                        children: viewModel.recentInputs.map((r) {
+                          final truncated = r.length > 32 ? '${r.substring(0, 32)}…' : r;
+                          return Padding(
+                            padding: const EdgeInsets.only(right: AppSpacing.sm),
+                            child: AppChip(
+                              label: truncated,
+                              onTap: () {
+                                _controller.text = r;
+                                setState(() {});
+                              },
+                            ),
+                          );
+                        }).toList(),
+                      ),
+                    ),
+                  ],
                   const SizedBox(height: AppSpacing.xl),
 
                   // Result State Area
@@ -173,39 +266,43 @@ class _GenerateScreenState extends State<GenerateScreen> {
             Container(
               padding: const EdgeInsets.symmetric(
                 horizontal: AppSpacing.md,
-                vertical: AppSpacing.xs,
+                vertical: AppSpacing.sm,
               ),
               decoration: BoxDecoration(
-                color: theme.colorScheme.primaryContainer.withValues(alpha: 0.6),
-                borderRadius: AppSpacing.borderRadiusPill,
-                border: Border.all(color: theme.colorScheme.outline, width: 1),
+                color: theme.colorScheme.surfaceContainerHighest.withValues(alpha: 0.7),
+                borderRadius: AppSpacing.borderRadiusSm,
+                border: Border.all(color: theme.colorScheme.outline.withValues(alpha: 0.6), width: 1),
               ),
               child: Row(
                 children: [
-                  Icon(
-                    Icons.link_rounded,
-                    size: 16,
-                    color: theme.colorScheme.primary,
+                  Container(
+                    width: 28,
+                    height: 28,
+                    decoration: BoxDecoration(
+                      color: theme.colorScheme.primary.withValues(alpha: 0.12),
+                      borderRadius: AppSpacing.borderRadiusXs,
+                    ),
+                    child: Icon(Icons.link_rounded, size: 16, color: theme.colorScheme.primary),
                   ),
-                  const SizedBox(width: 8),
+                  const SizedBox(width: AppSpacing.sm),
                   Expanded(
                     child: Text(
                       _controller.text.trim(),
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                       style: theme.textTheme.bodySmall?.copyWith(
-                        color: theme.colorScheme.primary,
+                        color: theme.colorScheme.onSurface,
                         fontWeight: FontWeight.w500,
                       ),
                     ),
                   ),
-                  IconButton(
-                    icon: const Icon(Icons.close_rounded, size: 16),
-                    padding: EdgeInsets.zero,
-                    constraints: const BoxConstraints(),
-                    color: theme.colorScheme.primary,
-                    onPressed: _clearInput,
-                    tooltip: 'Clear URL',
+                  InkWell(
+                    onTap: _clearInput,
+                    borderRadius: AppSpacing.borderRadiusPill,
+                    child: Padding(
+                      padding: const EdgeInsets.all(4),
+                      child: Icon(Icons.close_rounded, size: 16, color: theme.colorScheme.onSurface.withValues(alpha: 0.6)),
+                    ),
                   ),
                 ],
               ),
@@ -215,22 +312,13 @@ class _GenerateScreenState extends State<GenerateScreen> {
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              // Trailing action buttons (OCR + Paste / Clear)
-              Row(
+              // Action pills — labeled for discoverability
+              Wrap(
+                spacing: AppSpacing.sm,
                 children: [
-                  IconButton(
-                    icon: viewModel.isExtractingImage
-                        ? SizedBox(
-                            width: 18,
-                            height: 18,
-                            child: CircularProgressIndicator(
-                              strokeWidth: 2,
-                              valueColor: AlwaysStoppedAnimation<Color>(theme.colorScheme.primary),
-                            ),
-                          )
-                        : const Icon(Icons.document_scanner_outlined, size: 20),
-                    tooltip: 'Extract from Image (OCR)',
-                    onPressed: isGenerating
+                  // Scan Image pill
+                  InkWell(
+                    onTap: isGenerating
                         ? null
                         : () {
                             OcrExtractionSheet.show(
@@ -240,25 +328,69 @@ class _GenerateScreenState extends State<GenerateScreen> {
                               },
                             );
                           },
-                  ),
-                  IconButton(
-                    icon: Icon(
-                      hasContent ? Icons.clear_rounded : Icons.content_paste_rounded,
-                      size: 20,
+                    borderRadius: AppSpacing.borderRadiusPill,
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
+                      decoration: BoxDecoration(
+                        color: theme.colorScheme.surfaceContainerHighest.withValues(alpha: 0.8),
+                        borderRadius: AppSpacing.borderRadiusPill,
+                        border: Border.all(color: theme.colorScheme.outline, width: 1),
+                      ),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          if (viewModel.isExtractingImage)
+                            SizedBox(
+                              width: 14,
+                              height: 14,
+                              child: CircularProgressIndicator(strokeWidth: 2, valueColor: AlwaysStoppedAnimation<Color>(theme.colorScheme.primary)),
+                            )
+                          else
+                            Icon(Icons.document_scanner_outlined, size: 14, color: theme.colorScheme.primary),
+                          const SizedBox(width: 6),
+                          Text('Scan Image', style: theme.textTheme.labelSmall?.copyWith(fontWeight: FontWeight.w600, color: theme.colorScheme.onSurface)),
+                        ],
+                      ),
                     ),
-                    tooltip: hasContent ? 'Clear' : 'Paste from clipboard',
-                    onPressed: isGenerating
-                        ? null
-                        : (hasContent ? _clearInput : _pasteFromClipboard),
+                  ),
+                  InkWell(
+                    onTap: isGenerating ? null : (hasContent ? _clearInput : _pasteFromClipboard),
+                    borderRadius: AppSpacing.borderRadiusPill,
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
+                      decoration: BoxDecoration(
+                        color: hasContent ? theme.colorScheme.surface : theme.colorScheme.primary.withValues(alpha: 0.08),
+                        borderRadius: AppSpacing.borderRadiusPill,
+                        border: Border.all(color: hasContent ? theme.colorScheme.outline : theme.colorScheme.primary.withValues(alpha: 0.2), width: 1),
+                      ),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Icon(hasContent ? Icons.clear_rounded : Icons.content_paste_rounded, size: 14, color: hasContent ? theme.colorScheme.onSurface.withValues(alpha: 0.7) : theme.colorScheme.primary),
+                          const SizedBox(width: 6),
+                          Text(hasContent ? 'Clear' : 'Paste', style: theme.textTheme.labelSmall?.copyWith(fontWeight: FontWeight.w600, color: hasContent ? theme.colorScheme.onSurface.withValues(alpha: 0.7) : theme.colorScheme.primary)),
+                        ],
+                      ),
+                    ),
                   ),
                 ],
               ),
-              // Character / Word count
+              // Character / Word count with limit warning
               if (hasContent)
-                Text(
-                  '$wordCount words • $charCount chars',
-                  style: theme.textTheme.labelSmall?.copyWith(
-                    color: theme.colorScheme.onSurface.withValues(alpha: 0.5),
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                  decoration: BoxDecoration(
+                    color: charCount > 8000
+                        ? theme.colorScheme.error.withValues(alpha: 0.08)
+                        : Colors.transparent,
+                    borderRadius: AppSpacing.borderRadiusXs,
+                  ),
+                  child: Text(
+                    '$wordCount words • $charCount chars',
+                    style: theme.textTheme.labelSmall?.copyWith(
+                      color: charCount > 8000 ? theme.colorScheme.error : theme.colorScheme.onSurface.withValues(alpha: 0.5),
+                      fontWeight: charCount > 8000 ? FontWeight.w700 : FontWeight.w600,
+                    ),
                   ),
                 ),
             ],
@@ -275,6 +407,7 @@ class _GenerateScreenState extends State<GenerateScreen> {
     bool isSuccess,
   ) {
     if (viewModel.state == GenerateState.generating) {
+      final isScraping = viewModel.generatingStep == GeneratingStep.scraping;
       return AppCard(
         padding: const EdgeInsets.all(AppSpacing.xl),
         child: Column(
@@ -294,13 +427,36 @@ class _GenerateScreenState extends State<GenerateScreen> {
                 ),
                 const SizedBox(width: AppSpacing.sm),
                 Text(
-                  'Synthesizing post with AI...',
+                  isScraping ? 'Extracting article content...' : 'Synthesizing post with AI...',
                   style: theme.textTheme.bodySmall?.copyWith(
                     color: theme.colorScheme.onSurface.withValues(alpha: 0.6),
                   ),
                 ),
               ],
             ),
+            const SizedBox(height: AppSpacing.md),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Container(
+                    width: 8,
+                    height: 8,
+                    decoration: BoxDecoration(color: isScraping ? theme.colorScheme.primary : theme.colorScheme.outline, shape: BoxShape.circle)),
+                const SizedBox(width: 6),
+                Container(
+                    width: 8,
+                    height: 8,
+                    decoration: BoxDecoration(color: !isScraping ? theme.colorScheme.primary : theme.colorScheme.outline, shape: BoxShape.circle)),
+                const SizedBox(width: 6),
+                Container(width: 8, height: 8, decoration: BoxDecoration(color: theme.colorScheme.outline.withValues(alpha: 0.5), shape: BoxShape.circle)),
+              ],
+            ),
+            if (isScraping)
+              Padding(
+                padding: const EdgeInsets.only(top: AppSpacing.sm),
+                child: Text('This may take a few seconds for URL extraction',
+                    style: theme.textTheme.labelSmall?.copyWith(color: theme.colorScheme.onSurface.withValues(alpha: 0.45))),
+              ),
           ],
         ),
       );
@@ -356,17 +512,15 @@ class _GenerateScreenState extends State<GenerateScreen> {
                         IconButton(
                           icon: const Icon(Icons.image_outlined, size: 20),
                           tooltip: 'Card Generator',
-                          onPressed: () async {
+                          onPressed: () {
                             final settings = context.read<SettingsViewModel>();
                             if (settings.selectedModel != null) {
-                              final apiKey = await settings.getApiKeyForProvider(settings.selectedProvider);
-                              if (!context.mounted) return;
                               context.push(
                                 RoutePaths.cardGenerator,
                                 extra: {
                                   'generatedText': viewModel.formattedContent ?? '',
                                   'provider': settings.selectedProvider,
-                                  'apiKey': apiKey ?? '',
+                                  'apiKey': '', // resolved inside CardGeneratorScreen via secure storage
                                   'modelId': settings.selectedModel!,
                                 },
                               );
@@ -430,6 +584,30 @@ class _GenerateScreenState extends State<GenerateScreen> {
           const SizedBox(height: AppSpacing.md),
 
           // Refinement pills section
+          if (viewModel.canUndo)
+            Padding(
+              padding: const EdgeInsets.only(bottom: AppSpacing.sm),
+              child: Align(
+                alignment: Alignment.centerLeft,
+                child: InkWell(
+                  onTap: () {
+                    viewModel.undoLastRefinement();
+                    Haptics.mediumImpact();
+                    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: const Text('Undid last refinement'), duration: const Duration(seconds: 2)));
+                  },
+                  borderRadius: AppSpacing.borderRadiusPill,
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
+                    decoration: BoxDecoration(color: theme.colorScheme.surfaceContainerHighest, borderRadius: AppSpacing.borderRadiusPill, border: Border.all(color: theme.colorScheme.outline)),
+                    child: Row(mainAxisSize: MainAxisSize.min, children: [
+                      Icon(Icons.undo_rounded, size: 14, color: theme.colorScheme.primary),
+                      const SizedBox(width: 6),
+                      Text('Undo', style: theme.textTheme.labelSmall?.copyWith(fontWeight: FontWeight.w600)),
+                    ]),
+                  ),
+                ),
+              ),
+            ),
           SingleChildScrollView(
             scrollDirection: Axis.horizontal,
             child: Row(
@@ -484,44 +662,109 @@ class _GenerateScreenState extends State<GenerateScreen> {
       );
     }
 
-    // Idle Hero View
+    // Undo snackbar on refinement if available handled in success section via action
+    // Idle Hero View — editorial with example prompts
     return Center(
       child: Padding(
-        padding: const EdgeInsets.symmetric(vertical: AppSpacing.xxl),
+        padding: const EdgeInsets.symmetric(vertical: AppSpacing.xl),
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
             Container(
-              width: 56,
-              height: 56,
+              width: 64,
+              height: 64,
               decoration: BoxDecoration(
-                color: theme.colorScheme.primaryContainer.withValues(alpha: 0.5),
+                gradient: LinearGradient(
+                  colors: [theme.colorScheme.primary.withValues(alpha: 0.18), theme.colorScheme.primaryContainer.withValues(alpha: 0.5)],
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                ),
                 borderRadius: AppSpacing.borderRadiusLg,
+                border: Border.all(color: theme.colorScheme.primary.withValues(alpha: 0.12)),
               ),
-              child: Icon(
-                Icons.auto_awesome_rounded,
-                size: 28,
-                color: theme.colorScheme.primary,
-              ),
+              child: Icon(Icons.auto_awesome_rounded, size: 30, color: theme.colorScheme.primary),
             ),
             const SizedBox(height: AppSpacing.base),
             Text(
               'Curate Football Posts',
-              style: theme.textTheme.titleMedium?.copyWith(
-                fontWeight: FontWeight.w700,
-                color: theme.colorScheme.onSurface,
+              style: theme.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w700, color: theme.colorScheme.onSurface, letterSpacing: -0.3),
+            ),
+            const SizedBox(height: 6),
+            ConstrainedBox(
+              constraints: const BoxConstraints(maxWidth: 300),
+              child: Text(
+                'Paste a URL, enter news, or scan an image to start.',
+                style: theme.textTheme.bodySmall?.copyWith(color: theme.colorScheme.onSurface.withValues(alpha: 0.6)),
+                textAlign: TextAlign.center,
               ),
             ),
-            const SizedBox(height: 4),
-            Text(
-              'Paste a URL, enter news, or scan an image to start.',
-              style: theme.textTheme.bodySmall?.copyWith(
-                color: theme.colorScheme.onSurface.withValues(alpha: 0.6),
-              ),
-              textAlign: TextAlign.center,
+            const SizedBox(height: AppSpacing.lg),
+            Wrap(
+              spacing: AppSpacing.sm,
+              runSpacing: AppSpacing.sm,
+              alignment: WrapAlignment.center,
+              children: [
+                _IdleExampleChip(
+                  label: 'Try sample news',
+                  icon: Icons.article_outlined,
+                  onTap: () {
+                    _controller.text = 'Harimau Malaya secure dramatic 2-1 victory over rivals in Bukit Jalil with late winner from Faisal Halim.';
+                    setState(() {});
+                  },
+                ),
+                _IdleExampleChip(
+                  label: 'Paste URL',
+                  icon: Icons.link_rounded,
+                  onTap: () async {
+                    final data = await Clipboard.getData(Clipboard.kTextPlain);
+                    if (data?.text != null) {
+                      _controller.text = data!.text!;
+                      setState(() {});
+                    }
+                  },
+                ),
+                _IdleExampleChip(
+                  label: 'Scan Image',
+                  icon: Icons.document_scanner_outlined,
+                  onTap: () {
+                    OcrExtractionSheet.show(context, onSourceSelected: (s) => viewModel.extractTextFromImage(s));
+                  },
+                ),
+              ],
             ),
           ],
         ),
+      ),
+    );
+  }
+}
+
+class _IdleExampleChip extends StatelessWidget {
+  const _IdleExampleChip({required this.label, required this.icon, required this.onTap});
+  final String label;
+  final IconData icon;
+  final VoidCallback onTap;
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    return InkWell(
+      onTap: () {
+        Haptics.lightImpact();
+        onTap();
+      },
+      borderRadius: AppSpacing.borderRadiusPill,
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+        decoration: BoxDecoration(
+          color: theme.colorScheme.surface,
+          borderRadius: AppSpacing.borderRadiusPill,
+          border: Border.all(color: theme.colorScheme.outline, width: 1),
+        ),
+        child: Row(mainAxisSize: MainAxisSize.min, children: [
+          Icon(icon, size: 14, color: theme.colorScheme.primary),
+          const SizedBox(width: 6),
+          Text(label, style: theme.textTheme.labelSmall?.copyWith(fontWeight: FontWeight.w600)),
+        ]),
       ),
     );
   }

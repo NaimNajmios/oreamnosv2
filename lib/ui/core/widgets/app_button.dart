@@ -77,55 +77,61 @@ class _AppButtonState extends State<AppButton> with SingleTickerProviderStateMix
     final enabled = widget.onPressed != null && !widget.isLoading;
 
     final bgColor = widget.backgroundColor ??
-        (enabled ? theme.colorScheme.primary : theme.colorScheme.primary.withValues(alpha: 0.4));
-    final fgColor = widget.foregroundColor ?? theme.colorScheme.onPrimary;
+        (enabled ? theme.colorScheme.primary : theme.colorScheme.onSurface.withValues(alpha: 0.12));
+    final fgColor = widget.foregroundColor ??
+        (enabled ? theme.colorScheme.onPrimary : theme.colorScheme.onSurface.withValues(alpha: 0.38));
 
-    return GestureDetector(
-      onTapDown: _handleTapDown,
-      onTapUp: _handleTapUp,
-      onTapCancel: _handleTapCancel,
-      behavior: HitTestBehavior.opaque,
-      child: AnimatedBuilder(
-        animation: _scaleAnimation,
-        builder: (context, child) => Transform.scale(
-          scale: AppMotion.shouldReduceMotion(context) ? 1.0 : _scaleAnimation.value,
-          child: child,
-        ),
-        child: Container(
-          height: widget.height,
-          decoration: BoxDecoration(
-            color: bgColor,
-            borderRadius: AppSpacing.borderRadiusPill,
+    return Semantics(
+      button: true,
+      enabled: enabled,
+      label: widget.label,
+      child: GestureDetector(
+        onTapDown: _handleTapDown,
+        onTapUp: _handleTapUp,
+        onTapCancel: _handleTapCancel,
+        behavior: HitTestBehavior.opaque,
+        child: AnimatedBuilder(
+          animation: _scaleAnimation,
+          builder: (context, child) => Transform.scale(
+            scale: AppMotion.shouldReduceMotion(context) ? 1.0 : _scaleAnimation.value,
+            child: child,
           ),
-          padding: const EdgeInsets.symmetric(horizontal: 20),
-          child: Center(
-            child: widget.isLoading
-                ? SizedBox(
-                    width: 20,
-                    height: 20,
-                    child: CircularProgressIndicator(
-                      strokeWidth: 2,
-                      valueColor: AlwaysStoppedAnimation<Color>(fgColor),
-                    ),
-                  )
-                : Row(
-                    mainAxisSize: MainAxisSize.min,
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      if (widget.icon != null) ...[
-                        Icon(widget.icon, size: 18, color: fgColor),
-                        const SizedBox(width: 8),
-                      ],
-                      Text(
-                        widget.label,
-                        style: theme.textTheme.labelLarge?.copyWith(
-                          color: fgColor,
-                          fontWeight: FontWeight.w600,
-                          letterSpacing: 0.1,
-                        ),
+          child: Container(
+            height: widget.height,
+            decoration: BoxDecoration(
+              color: bgColor,
+              borderRadius: AppSpacing.borderRadiusPill,
+            ),
+            padding: const EdgeInsets.symmetric(horizontal: 20),
+            child: Center(
+              child: widget.isLoading
+                  ? SizedBox(
+                      width: 20,
+                      height: 20,
+                      child: CircularProgressIndicator(
+                        strokeWidth: 2,
+                        valueColor: AlwaysStoppedAnimation<Color>(fgColor),
                       ),
-                    ],
-                  ),
+                    )
+                  : Row(
+                      mainAxisSize: MainAxisSize.min,
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        if (widget.icon != null) ...[
+                          Icon(widget.icon, size: 18, color: fgColor),
+                          const SizedBox(width: 8),
+                        ],
+                        Text(
+                          widget.label,
+                          style: theme.textTheme.labelLarge?.copyWith(
+                            color: fgColor,
+                            fontWeight: FontWeight.w600,
+                            letterSpacing: 0.1,
+                          ),
+                        ),
+                      ],
+                    ),
+            ),
           ),
         ),
       ),

@@ -19,7 +19,7 @@ class WebScraperService {
           'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8',
           'Accept-Language': 'en-US,en;q=0.5',
         },
-      );
+      ).timeout(const Duration(seconds: 8));
       
       if (response.statusCode != 200) {
         debugPrint('WebScraper warning: Failed to load page (Status ${response.statusCode}). Falling back to raw URL.');

@@ -7,6 +7,7 @@ import 'package:oreamnos/data/models/ai_provider.dart';
 import 'package:oreamnos/ui/core/utils/haptics.dart';
 import 'package:oreamnos/ui/core/widgets/app_chip.dart';
 import 'package:oreamnos/ui/core/widgets/error_state.dart';
+import 'package:oreamnos/ui/features/settings/view_models/settings_view_model.dart';
 import '../view_models/card_generator_view_model.dart';
 import '../widgets/card_canvas.dart';
 import '../widgets/export_bottom_sheet.dart';
@@ -36,11 +37,19 @@ class _CardGeneratorScreenState extends State<CardGeneratorScreen> {
   @override
   void initState() {
     super.initState();
-    WidgetsBinding.instance.addPostFrameCallback((_) {
+    WidgetsBinding.instance.addPostFrameCallback((_) async {
+      String apiKey = widget.apiKey;
+      if (apiKey.isEmpty) {
+        try {
+          final settings = context.read<SettingsViewModel>();
+          apiKey = await settings.getApiKeyForProvider(widget.provider) ?? '';
+        } catch (_) {}
+      }
+      if (!mounted) return;
       context.read<CardGeneratorViewModel>().extractData(
             widget.generatedText,
             widget.provider,
-            widget.apiKey,
+            apiKey,
             widget.modelId,
           );
     });
@@ -161,11 +170,17 @@ class _CardGeneratorScreenState extends State<CardGeneratorScreen> {
                   title: 'Extraction Failed',
                   message: viewModel.extractionError!,
                   retryLabel: 'Retry Extraction',
-                  onRetry: () {
+                  onRetry: () async {
+                    String apiKey = widget.apiKey;
+                    if (apiKey.isEmpty) {
+                      try {
+                        apiKey = await context.read<SettingsViewModel>().getApiKeyForProvider(widget.provider) ?? '';
+                      } catch (_) {}
+                    }
                     viewModel.extractData(
                       widget.generatedText,
                       widget.provider,
-                      widget.apiKey,
+                      apiKey,
                       widget.modelId,
                     );
                   },

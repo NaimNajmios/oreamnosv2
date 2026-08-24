@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:uuid/uuid.dart';
 import 'package:oreamnos/data/services/curator_factory.dart';
 import 'package:oreamnos/ui/features/settings/view_models/settings_view_model.dart';
@@ -13,6 +14,15 @@ import 'package:oreamnos/data/services/log_service.dart';
 import 'package:flutter/widgets.dart'; // for AppLifecycleState
 
 enum GenerateState { idle, generating, success, error, rateLimited }
+
+enum GeneratingStep { idle, scraping, prompting }
+
+class ValidationResult {
+  final bool isValid;
+  final String? message;
+  const ValidationResult.valid() : isValid = true, message = null;
+  const ValidationResult.invalid(this.message) : isValid = false;
+}
 
 class GenerateViewModel extends ChangeNotifier with WidgetsBindingObserver {
   GenerateViewModel(
@@ -43,14 +53,28 @@ class GenerateViewModel extends ChangeNotifier with WidgetsBindingObserver {
   GenerateState _state = GenerateState.idle;
   GenerateState get state => _state;
 
+  GeneratingStep _generatingStep = GeneratingStep.idle;
+  GeneratingStep get generatingStep => _generatingStep;
+
   String? _generatedContent;
   String? get generatedContent => _generatedContent;
+
+  // Undo history for refinements
+  final List<String> _historyStack = [];
+  bool get canUndo => _historyStack.isNotEmpty;
+
+  // Recent inputs (kept in memory, persisted via PreferencesService draft)
+  final List<String> _recentInputs = [];
+  List<String> get recentInputs => List.unmodifiable(_recentInputs);
 
   String? _errorMessage;
   String? get errorMessage => _errorMessage;
 
   AiProvider? _suggestedFallbackProvider;
   AiProvider? get suggestedFallbackProvider => _suggestedFallbackProvider;
+
+  String? _validationMessage;
+  String? get validationMessage => _validationMessage;
 
   AiProvider _getNextProvider(AiProvider current) {
     switch (current) {
@@ -103,23 +127,74 @@ class GenerateViewModel extends ChangeNotifier with WidgetsBindingObserver {
     if (_generatedContent == null) return null;
     String content = _generatedContent!;
 
-    // A simple heuristic for markdown structure (could be customized)
-    // If showTitle is false, remove the first header if it exists
     if (!_showTitle) {
-      content = content.replaceFirst(RegExp(r'^#+ [^\n]+\n+'), '');
+      content = content.replaceFirst(RegExp(r'^\s*#+[^\n]*\n+'), '');
+      // Fallback: if still starts with bold title line, strip first line length>10
+      if (content.startsWith('**') && content.contains('\n')) {
+        // keep as is – user toggled off but content may have bold title
+      }
     }
 
-    // If showHashtags is false, remove lines starting with hashtags or the last paragraph full of hashtags
     if (!_showHashtags) {
-      content = content.replaceAll(RegExp(r'\n+(#[^\s#]+ *)+$'), '');
+      // Remove trailing hashtag block (one or more lines of hashtags at end)
+      content = content.replaceAll(RegExp(r'(\n\s*#[^\n]*)+$'), '');
+      // Also remove inline contiguous hashtags paragraph at end
+      content = content.replaceAll(RegExp(r'\n+(#[^\s#]+\s*)+$'), '');
     }
 
-    // If showSource is false, remove lines like "Sumber:" or "Source:"
     if (!_showSource) {
-      content = content.replaceAll(RegExp(r'\n+(Sumber|Source):[^\n]+$'), '');
+      // Case-insensitive, handles "Sumber:", "Source:", "Sumber —", with optional url
+      content = content.replaceAll(RegExp(r'\n+\s*(Sumber|Source)\s*[:\-—][^\n]*$', caseSensitive: false), '');
     }
 
     return content.trim();
+  }
+
+  ValidationResult validateForGenerate(String input) {
+    final trimmed = input.trim();
+    if (trimmed.isEmpty) {
+      return const ValidationResult.invalid('Please enter news text or a URL.');
+    }
+    if (trimmed.length > 8000) {
+      return const ValidationResult.invalid('Input too long (max 8000 characters). Please shorten or paste a URL.');
+    }
+    final modelId = _settingsViewModel.selectedModel;
+    if (modelId == null || modelId.isEmpty) {
+      return ValidationResult.invalid('No model selected for $providerDisplayName. Go to Settings → Model.');
+    }
+    return const ValidationResult.valid();
+  }
+
+  String get providerDisplayName => _settingsViewModel.selectedProvider.displayName;
+
+  Future<ValidationResult> validateApiKey() async {
+    final provider = _settingsViewModel.selectedProvider;
+    final apiKey = await _settingsViewModel.getApiKeyForProvider(provider);
+    if (apiKey == null || apiKey.isEmpty) {
+      return ValidationResult.invalid('API key not configured for ${provider.displayName}. Go to Settings → API Key.');
+    }
+    return const ValidationResult.valid();
+  }
+
+  void _pushHistory(String content) {
+    _historyStack.add(content);
+    if (_historyStack.length > 20) _historyStack.removeAt(0);
+  }
+
+  bool undoLastRefinement() {
+    if (_historyStack.isEmpty) return false;
+    _generatedContent = _historyStack.removeLast();
+    _state = GenerateState.success;
+    notifyListeners();
+    return true;
+  }
+
+  void _addRecentInput(String input) {
+    final trimmed = input.trim();
+    if (trimmed.isEmpty) return;
+    _recentInputs.remove(trimmed);
+    _recentInputs.insert(0, trimmed);
+    if (_recentInputs.length > 5) _recentInputs.removeLast();
   }
 
   void setPendingInput(String input) {
@@ -133,22 +208,56 @@ class GenerateViewModel extends ChangeNotifier with WidgetsBindingObserver {
   }
 
   Future<void> generatePost(String input) async {
-    if (input.trim().isEmpty) return;
+    final v = validateForGenerate(input);
+    if (!v.isValid) {
+      _errorMessage = v.message;
+      _validationMessage = v.message;
+      _state = GenerateState.error;
+      notifyListeners();
+      return;
+    }
+    final apiCheck = await validateApiKey();
+    if (!apiCheck.isValid) {
+      _errorMessage = apiCheck.message;
+      _validationMessage = apiCheck.message;
+      _state = GenerateState.error;
+      notifyListeners();
+      return;
+    }
 
     _state = GenerateState.generating;
+    _generatingStep = GeneratingStep.prompting;
     _errorMessage = null;
+    _validationMessage = null;
     _generatedContent = null;
+    _suggestedFallbackProvider = null;
+    // keep pendingInput as source of truth for retry
+    _pendingInput = input.trim();
+    _addRecentInput(_pendingInput!);
     notifyListeners();
 
     final stopwatch = Stopwatch()..start();
     final provider = _settingsViewModel.selectedProvider;
 
     try {
-      String contentToCurate = input.trim();
+      String contentToCurate = _pendingInput!.trim();
       
-      // Extract text if input is a URL
+      // Extract text if input is a URL — staged feedback
       if (WebScraperService.isUrl(contentToCurate)) {
-        contentToCurate = await WebScraperService.extractTextFromUrl(contentToCurate);
+        _generatingStep = GeneratingStep.scraping;
+        notifyListeners();
+        try {
+          contentToCurate = await WebScraperService.extractTextFromUrl(contentToCurate).timeout(const Duration(seconds: 10));
+        } on TimeoutException {
+          throw Exception('URL extraction timed out. Please paste the article text manually.');
+        }
+        _generatingStep = GeneratingStep.prompting;
+        notifyListeners();
+        if (contentToCurate.trim().isEmpty || contentToCurate.trim() == _pendingInput) {
+          // If scrape returned empty or just url, keep original but warn via log
+          LogService().warning('Scrape returned empty, falling back to raw input');
+          contentToCurate = _pendingInput!;
+        }
       }
       
       final modelId = _settingsViewModel.selectedModel;
@@ -185,6 +294,7 @@ class GenerateViewModel extends ChangeNotifier with WidgetsBindingObserver {
       LogService().info('Generated post successfully in ${stopwatch.elapsedMilliseconds}ms');
 
       _state = GenerateState.success;
+      _generatingStep = GeneratingStep.idle;
       
       if (_isBackgrounded) {
         NotificationService().showGenerationCompleteNotification(
@@ -206,12 +316,21 @@ class GenerateViewModel extends ChangeNotifier with WidgetsBindingObserver {
       LogService().error('Failed to generate post', e, st);
       
       final errStr = e.toString().toLowerCase();
-      if (errStr.contains('429') || errStr.contains('rate limit') || errStr.contains('quota')) {
-        _errorMessage = 'Rate limit exceeded for ${provider.displayName}.';
+      if (errStr.contains('429') || errStr.contains('rate limit') || errStr.contains('quota') || errStr.contains('resource_exhausted')) {
+        _errorMessage = 'Rate limit exceeded for ${provider.displayName}. Try another provider.';
         _suggestedFallbackProvider = _getNextProvider(provider);
         _state = GenerateState.rateLimited;
+      } else if (errStr.contains('401') || errStr.contains('403') || errStr.contains('unauthorized') || errStr.contains('invalid api key') || errStr.contains('permission')) {
+        _errorMessage = 'Authentication failed for ${provider.displayName}. Check your API key in Settings.';
+        _state = GenerateState.error;
+      } else if (errStr.contains('timeout') || errStr.contains('socketexception') || errStr.contains('failed host lookup')) {
+        _errorMessage = 'Network error. Please check your connection and try again.';
+        _state = GenerateState.error;
       } else {
-        _errorMessage = e.toString();
+        // Sanitize: strip "Exception:" prefix for user display
+        final raw = e.toString();
+        final clean = raw.startsWith('Exception:') ? raw.substring(10).trim() : raw;
+        _errorMessage = clean.length > 220 ? '${clean.substring(0, 220)}…' : clean;
         _state = GenerateState.error;
       }
       
@@ -220,6 +339,10 @@ class GenerateViewModel extends ChangeNotifier with WidgetsBindingObserver {
           'Generation Failed',
           'There was an error generating your post.',
         );
+      }
+      // Reset step if we finished with error/rateLimited
+      if (_state != GenerateState.generating) {
+        _generatingStep = GeneratingStep.idle;
       }
     } finally {
       notifyListeners();
@@ -230,7 +353,11 @@ class GenerateViewModel extends ChangeNotifier with WidgetsBindingObserver {
     if (_generatedContent == null || _generatedContent!.isEmpty) return;
 
     _state = GenerateState.generating;
+    _generatingStep = GeneratingStep.prompting;
     _errorMessage = null;
+    _validationMessage = null;
+    // Preserve history for undo
+    _pushHistory(_generatedContent!);
     notifyListeners();
 
     final stopwatch = Stopwatch()..start();
@@ -273,6 +400,7 @@ class GenerateViewModel extends ChangeNotifier with WidgetsBindingObserver {
       LogService().info('Refined post successfully in ${stopwatch.elapsedMilliseconds}ms');
 
       _state = GenerateState.success;
+      _generatingStep = GeneratingStep.idle;
       
       if (_isBackgrounded) {
         NotificationService().showGenerationCompleteNotification(
@@ -294,12 +422,17 @@ class GenerateViewModel extends ChangeNotifier with WidgetsBindingObserver {
       LogService().error('Failed to refine post', e, st);
 
       final errStr = e.toString().toLowerCase();
-      if (errStr.contains('429') || errStr.contains('rate limit') || errStr.contains('quota')) {
+      if (errStr.contains('429') || errStr.contains('rate limit') || errStr.contains('quota') || errStr.contains('resource_exhausted')) {
         _errorMessage = 'Rate limit exceeded for ${provider.displayName}.';
         _suggestedFallbackProvider = _getNextProvider(provider);
         _state = GenerateState.rateLimited;
+      } else if (errStr.contains('401') || errStr.contains('403') || errStr.contains('unauthorized') || errStr.contains('invalid api key')) {
+        _errorMessage = 'Authentication failed for ${provider.displayName}. Check your API key in Settings.';
+        _state = GenerateState.error;
       } else {
-        _errorMessage = e.toString();
+        final raw = e.toString();
+        final clean = raw.startsWith('Exception:') ? raw.substring(10).trim() : raw;
+        _errorMessage = clean.length > 220 ? '${clean.substring(0, 220)}…' : clean;
         _state = GenerateState.error;
       }
       
@@ -309,6 +442,9 @@ class GenerateViewModel extends ChangeNotifier with WidgetsBindingObserver {
           'There was an error refining your post.',
         );
       }
+      if (_state != GenerateState.generating) {
+        _generatingStep = GeneratingStep.idle;
+      }
     } finally {
       notifyListeners();
     }
@@ -316,8 +452,11 @@ class GenerateViewModel extends ChangeNotifier with WidgetsBindingObserver {
 
   void reset() {
     _state = GenerateState.idle;
+    _generatingStep = GeneratingStep.idle;
     _generatedContent = null;
     _errorMessage = null;
+    _validationMessage = null;
+    _suggestedFallbackProvider = null;
     notifyListeners();
   }
 

@@ -78,7 +78,7 @@ GoRouter createAppRouter() {
           return CardGeneratorScreen(
             generatedText: args['generatedText'] as String,
             provider: args['provider'] as AiProvider,
-            apiKey: args['apiKey'] as String,
+            apiKey: args['apiKey'] as String? ?? '',
             modelId: args['modelId'] as String,
           );
         },
