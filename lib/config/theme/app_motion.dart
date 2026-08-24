@@ -15,6 +15,11 @@ abstract final class AppMotion {
 
   // === Accessibility ===
   static bool shouldReduceMotion(BuildContext context) {
-    return MediaQuery.maybeDisableAnimationsOf(context) ?? false;
+    try {
+      return MediaQuery.maybeDisableAnimationsOf(context) ??
+          WidgetsBinding.instance.platformDispatcher.accessibilityFeatures.disableAnimations;
+    } catch (_) {
+      return WidgetsBinding.instance.platformDispatcher.accessibilityFeatures.disableAnimations;
+    }
   }
 }

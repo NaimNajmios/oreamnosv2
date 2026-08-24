@@ -25,11 +25,20 @@ class _TypewriterMarkdownState extends State<TypewriterMarkdown> {
   String _displayedText = '';
   Timer? _timer;
   int _currentIndex = 0;
+  bool _didInitAnimation = false;
 
   @override
   void initState() {
     super.initState();
-    _startAnimation();
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    if (!_didInitAnimation) {
+      _didInitAnimation = true;
+      _startAnimation();
+    }
   }
 
   @override

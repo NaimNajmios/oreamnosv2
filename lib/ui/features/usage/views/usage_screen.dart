@@ -14,16 +14,24 @@ import '../../../core/widgets/section_header.dart';
 import '../../../core/widgets/stat_card.dart';
 import 'widgets/usage_chart.dart';
 
-/// Serene Editorial Usage & Analytics screen.
-class UsageScreen extends StatelessWidget {
+/// Serene Editorial Usage & Analytics screen — grouped, filtered, responsive.
+class UsageScreen extends StatefulWidget {
   const UsageScreen({super.key});
+
+  @override
+  State<UsageScreen> createState() => _UsageScreenState();
+}
+
+class _UsageScreenState extends State<UsageScreen> {
+  String _filter = 'all';
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final usageService = context.watch<UsageService>();
-    final logs = usageService.logs;
+    final logsAll = usageService.logs;
+    final logs = _filter == 'all' ? logsAll : logsAll.where((l) => l.providerId.toLowerCase() == _filter).toList();
 
     int totalTokens = 0;
     int successCount = 0;
@@ -73,67 +81,171 @@ class UsageScreen extends StatelessWidget {
                     vertical: AppSpacing.base,
                   ),
                   children: [
-                    // 3 Metric StatCards — colorful flat tints
-                    Row(
-                      children: [
-                        Expanded(
-                          child: StatCard(
-                            title: 'Tokens',
-                            value: NumberFormat.compact().format(totalTokens),
-                            subtitle: '$totalTokens est.',
-                            icon: Icons.data_usage_rounded,
-                            iconColor: AppColors.lightTeal,
-                            iconBackground: AppColors.lightTealSoft.withValues(alpha: 0.6),
-                            accentColor: AppColors.lightTeal,
-                          ),
-                        ),
-                        const SizedBox(width: AppSpacing.sm),
-                        Expanded(
-                          child: StatCard(
-                            title: 'Success',
-                            value: '${successRate.toStringAsFixed(0)}%',
-                            subtitle: '$successCount / ${logs.length}',
-                            icon: Icons.check_circle_outline_rounded,
-                            valueColor: successRate >= 90
-                                ? AppColors.success
-                                : theme.colorScheme.primary,
-                            iconColor: successRate >= 90 ? AppColors.success : AppColors.lightViolet,
-                            iconBackground: successRate >= 90
-                                ? AppColors.successSoft.withValues(alpha: 0.6)
-                                : AppColors.lightVioletSoft.withValues(alpha: 0.6),
-                            accentColor: successRate >= 90 ? AppColors.success : AppColors.lightViolet,
-                          ),
-                        ),
-                        const SizedBox(width: AppSpacing.sm),
-                        Expanded(
-                          child: StatCard(
-                            title: 'Avg Latency',
-                            value: '${avgLatency}ms',
-                            subtitle: 'Per prompt',
-                            icon: Icons.speed_rounded,
-                            iconColor: AppColors.lightAmber,
-                            iconBackground: AppColors.lightAmberSoft.withValues(alpha: 0.6),
-                            accentColor: AppColors.lightAmber,
-                          ),
-                        ),
-                      ],
+                    // 3 Metric StatCards — responsive, no truncation
+                    LayoutBuilder(
+                      builder: (context, constraints) {
+                        final isNarrow = constraints.maxWidth < 380;
+                        final tokensCard = StatCard(
+                          title: 'Tokens',
+                          value: NumberFormat.compact().format(totalTokens),
+                          subtitle: '$totalTokens est.',
+                          icon: Icons.data_usage_rounded,
+                          iconColor: isDark ? AppColors.darkTeal : AppColors.lightTeal,
+                          iconBackground: (isDark ? AppColors.darkTealSoft : AppColors.lightTealSoft).withValues(alpha: 0.6),
+                          accentColor: isDark ? AppColors.darkTeal : AppColors.lightTeal,
+                        );
+                        final successCard = StatCard(
+                          title: 'Success',
+                          value: '${successRate.toStringAsFixed(0)}%',
+                          subtitle: '$successCount / ${logs.length}',
+                          icon: Icons.check_circle_outline_rounded,
+                          valueColor: successRate >= 90 ? AppColors.success : theme.colorScheme.primary,
+                          iconColor: successRate >= 90
+                              ? AppColors.success
+                              : (isDark ? AppColors.darkViolet : AppColors.lightViolet),
+                          iconBackground: successRate >= 90
+                              ? AppColors.successSoft.withValues(alpha: 0.6)
+                              : (isDark ? AppColors.darkVioletSoft : AppColors.lightVioletSoft).withValues(alpha: 0.6),
+                          accentColor: successRate >= 90 ? AppColors.success : (isDark ? AppColors.darkViolet : AppColors.lightViolet),
+                        );
+                        final latencyCard = StatCard(
+                          title: 'Avg Latency',
+                          value: '${avgLatency}ms',
+                          subtitle: 'Per prompt',
+                          icon: Icons.speed_rounded,
+                          iconColor: isDark ? AppColors.darkAmber : AppColors.lightAmber,
+                          iconBackground: (isDark ? AppColors.darkAmberSoft : AppColors.lightAmberSoft).withValues(alpha: 0.6),
+                          accentColor: isDark ? AppColors.darkAmber : AppColors.lightAmber,
+                        );
+                        if (isNarrow) {
+                          return Column(
+                            children: [
+                              SizedBox(width: double.infinity, child: successCard),
+                              const SizedBox(height: AppSpacing.sm),
+                              Row(children: [Expanded(child: tokensCard), const SizedBox(width: AppSpacing.sm), Expanded(child: latencyCard)]),
+                            ],
+                          );
+                        }
+                        return Row(
+                          children: [
+                            Expanded(child: tokensCard),
+                            const SizedBox(width: AppSpacing.sm),
+                            Expanded(child: successCard),
+                            const SizedBox(width: AppSpacing.sm),
+                            Expanded(child: latencyCard),
+                          ],
+                        );
+                      },
                     ),
-                    const SizedBox(height: AppSpacing.lg),
+                    const SizedBox(height: AppSpacing.base),
 
-                    // Usage Chart
-                    const SectionHeader(title: 'Token Usage History'),
-                    UsageChart(logs: logs),
-                    const SizedBox(height: AppSpacing.lg),
+                    // Usage Chart — grouped card with legend
+                    AppCard(
+                      padding: const EdgeInsets.all(AppSpacing.base),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Row(
+                            children: [
+                              Container(
+                                width: 28,
+                                height: 28,
+                                decoration: BoxDecoration(
+                                  color: (isDark ? AppColors.darkVioletSoft : AppColors.lightVioletSoft).withValues(alpha: 0.35),
+                                  borderRadius: AppSpacing.borderRadiusXs,
+                                ),
+                                child: Icon(Icons.show_chart_rounded, size: 14, color: isDark ? AppColors.darkViolet : AppColors.lightViolet),
+                              ),
+                              const SizedBox(width: AppSpacing.sm),
+                              Text('Token Usage History', style: theme.textTheme.labelSmall?.copyWith(letterSpacing: 0.8, fontWeight: FontWeight.w700, color: theme.colorScheme.onSurface.withValues(alpha: 0.6))),
+                              const Spacer(),
+                              // Legend
+                              Wrap(
+                                spacing: 10,
+                                children: [
+                                  _LegendDot(color: isDark ? AppColors.darkTeal : AppColors.lightTeal, label: 'Tokens'),
+                                  _LegendDot(color: isDark ? AppColors.darkViolet : AppColors.lightViolet, label: 'Trend'),
+                                  _LegendDot(color: AppColors.error, label: 'Fail'),
+                                ],
+                              ),
+                            ],
+                          ),
+                          const SizedBox(height: AppSpacing.md),
+                          UsageChart(logs: logs),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(height: AppSpacing.xxl),
+                    Divider(thickness: 1, height: 1, color: theme.colorScheme.outlineVariant.withValues(alpha: 0.55)),
+                    const SizedBox(height: AppSpacing.base),
 
-                    // Recent Requests
+                    // Recent Requests — filter + date-grouped compact
                     const SectionHeader(title: 'Recent Requests'),
-                    ListView.separated(
-                      shrinkWrap: true,
-                      physics: const NeverScrollableScrollPhysics(),
-                      itemCount: logs.length,
-                      separatorBuilder: (context, index) => const SizedBox(height: AppSpacing.sm),
-                      itemBuilder: (context, index) => _buildLogCard(context, logs[index]),
-                    ),
+                    if (logsAll.isNotEmpty) ...[
+                      SingleChildScrollView(
+                        scrollDirection: Axis.horizontal,
+                        child: Row(
+                          children: [
+                            _FilterChip(label: 'All', selected: _filter == 'all', onTap: () => setState(() => _filter = 'all')),
+                            const SizedBox(width: AppSpacing.sm),
+                            for (final p in ['gemini', 'groq', 'openrouter', 'cerebras'])
+                              if (logsAll.any((l) => l.providerId.toLowerCase() == p)) ...[
+                                _FilterChip(
+                                  label: p[0].toUpperCase() + p.substring(1),
+                                  selected: _filter == p,
+                                  onTap: () => setState(() => _filter = p),
+                                ),
+                                const SizedBox(width: AppSpacing.sm),
+                              ],
+                          ],
+                        ),
+                      ),
+                      const SizedBox(height: AppSpacing.md),
+                    ],
+                    if (logs.isEmpty && _filter != 'all')
+                      Padding(
+                        padding: const EdgeInsets.symmetric(vertical: AppSpacing.lg),
+                        child: Text('No requests for this provider.', style: theme.textTheme.bodySmall?.copyWith(color: theme.colorScheme.onSurface.withValues(alpha: 0.5))),
+                      )
+                    else
+                      Builder(
+                        builder: (context) {
+                          final now = DateTime.now();
+                          final grouped = <String, List<UsageLog>>{};
+                          final order = <String>[];
+                          for (final l in logs) {
+                            final d = l.timestamp;
+                            String key;
+                            if (d.year == now.year && d.month == now.month && d.day == now.day) {
+                              key = 'Today';
+                            } else if (d.year == now.year && d.month == now.month && d.day == now.day - 1) {
+                              key = 'Yesterday';
+                            } else {
+                              key = DateFormat('MMM d, yyyy').format(d);
+                            }
+                            if (!grouped.containsKey(key)) {
+                              grouped[key] = [];
+                              order.add(key);
+                            }
+                            grouped[key]!.add(l);
+                          }
+                          return Column(
+                            crossAxisAlignment: CrossAxisAlignment.stretch,
+                            children: [
+                              for (final dateKey in order) ...[
+                                Padding(
+                                  padding: const EdgeInsets.only(bottom: AppSpacing.xs, top: AppSpacing.sm),
+                                  child: Text(dateKey.toUpperCase(), style: theme.textTheme.labelSmall?.copyWith(letterSpacing: 0.6, color: theme.colorScheme.onSurface.withValues(alpha: 0.45), fontWeight: FontWeight.w700, fontSize: 10)),
+                                ),
+                                for (final log in grouped[dateKey]!) ...[
+                                  _buildLogCard(context, log),
+                                  const SizedBox(height: AppSpacing.sm),
+                                ],
+                              ],
+                            ],
+                          );
+                        },
+                      ),
                     const SizedBox(height: AppSpacing.xl),
                   ],
                 ),
@@ -151,15 +263,12 @@ class UsageScreen extends StatelessWidget {
 
     return AppCard(
       accentColor: providerTint,
-      padding: const EdgeInsets.symmetric(
-        horizontal: AppSpacing.base,
-        vertical: AppSpacing.md,
-      ),
+      padding: const EdgeInsets.symmetric(horizontal: AppSpacing.base, vertical: 12),
       child: Row(
         children: [
           Container(
-            width: 32,
-            height: 32,
+            width: 28,
+            height: 28,
             decoration: BoxDecoration(
               color: providerSoft,
               shape: BoxShape.circle,
@@ -167,7 +276,7 @@ class UsageScreen extends StatelessWidget {
             child: Icon(
               log.isSuccess ? Icons.check_rounded : Icons.close_rounded,
               color: log.isSuccess ? providerTint : AppColors.error,
-              size: 18,
+              size: 14,
             ),
           ),
           const SizedBox(width: AppSpacing.md),
@@ -179,10 +288,10 @@ class UsageScreen extends StatelessWidget {
                   log.providerId.toUpperCase(),
                   style: theme.textTheme.titleSmall?.copyWith(
                     fontWeight: FontWeight.w700,
-                    fontSize: 13,
+                    fontSize: 12,
                   ),
                 ),
-                const SizedBox(height: 2),
+                const SizedBox(height: 1),
                 Text(
                   timeStr,
                   style: theme.textTheme.bodySmall?.copyWith(
@@ -193,25 +302,14 @@ class UsageScreen extends StatelessWidget {
               ],
             ),
           ),
-          Column(
-            crossAxisAlignment: CrossAxisAlignment.end,
-            children: [
-              Text(
-                '${log.estimatedTokens} tokens',
-                style: theme.textTheme.titleSmall?.copyWith(
-                  fontWeight: FontWeight.w600,
-                  fontSize: 13,
-                ),
-              ),
-              const SizedBox(height: 2),
-              Text(
-                '${log.latencyMs}ms',
-                style: theme.textTheme.bodySmall?.copyWith(
-                  color: theme.colorScheme.onSurface.withValues(alpha: 0.5),
-                  fontSize: 11,
-                ),
-              ),
-            ],
+          const SizedBox(width: AppSpacing.sm),
+          Text(
+            '${log.estimatedTokens} tokens • ${log.latencyMs}ms',
+            style: theme.textTheme.labelSmall?.copyWith(
+              fontWeight: FontWeight.w600,
+              color: theme.colorScheme.onSurface.withValues(alpha: 0.75),
+              fontSize: 11,
+            ),
           ),
         ],
       ),
@@ -278,5 +376,47 @@ class UsageScreen extends StatelessWidget {
       Haptics.heavyImpact();
       service.clearLogs();
     }
+  }
+}
+
+class _LegendDot extends StatelessWidget {
+  const _LegendDot({required this.color, required this.label});
+  final Color color;
+  final String label;
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Container(width: 8, height: 8, decoration: BoxDecoration(color: color, shape: BoxShape.circle)),
+        const SizedBox(width: 4),
+        Text(label, style: theme.textTheme.labelSmall?.copyWith(fontSize: 10, color: theme.colorScheme.onSurface.withValues(alpha: 0.6), fontWeight: FontWeight.w600)),
+      ],
+    );
+  }
+}
+
+class _FilterChip extends StatelessWidget {
+  const _FilterChip({required this.label, required this.selected, required this.onTap});
+  final String label;
+  final bool selected;
+  final VoidCallback onTap;
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final bg = selected ? (isDark ? AppColors.darkVioletSoft : AppColors.lightVioletSoft).withValues(alpha: 0.45) : theme.colorScheme.surface;
+    final fg = selected ? (isDark ? AppColors.darkViolet : AppColors.lightViolet) : theme.colorScheme.onSurface.withValues(alpha: 0.7);
+    final border = selected ? (isDark ? AppColors.darkViolet : AppColors.lightViolet) : theme.colorScheme.outline;
+    return InkWell(
+      onTap: onTap,
+      borderRadius: AppSpacing.borderRadiusPill,
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+        decoration: BoxDecoration(color: bg, borderRadius: AppSpacing.borderRadiusPill, border: Border.all(color: border, width: selected ? 1.5 : 1)),
+        child: Text(label, style: theme.textTheme.labelSmall?.copyWith(color: fg, fontWeight: selected ? FontWeight.w700 : FontWeight.w600)),
+      ),
+    );
   }
 }

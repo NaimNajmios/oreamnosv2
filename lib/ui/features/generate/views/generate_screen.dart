@@ -248,84 +248,93 @@ class _GenerateScreenState extends State<GenerateScreen> {
           ],
           const SizedBox(height: AppSpacing.md),
           Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            crossAxisAlignment: CrossAxisAlignment.center,
             children: [
-              Wrap(
-                spacing: AppSpacing.sm,
-                children: [
-                  InkWell(
-                    onTap: isGenerating
-                        ? null
-                        : () {
-                            OcrExtractionSheet.show(
-                              context,
-                              onSourceSelected: (source) {
-                                viewModel.extractTextFromImage(source);
-                              },
-                            );
-                          },
-                    borderRadius: AppSpacing.borderRadiusPill,
-                    child: Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
-                      decoration: BoxDecoration(
-                        color: theme.colorScheme.surfaceContainerHighest.withValues(alpha: 0.8),
-                        borderRadius: AppSpacing.borderRadiusPill,
-                        border: Border.all(color: theme.colorScheme.outline, width: 1),
-                      ),
-                      child: Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          if (viewModel.isExtractingImage)
-                            SizedBox(
-                              width: 14,
-                              height: 14,
-                              child: CircularProgressIndicator(strokeWidth: 2, valueColor: AlwaysStoppedAnimation<Color>(theme.colorScheme.primary)),
-                            )
-                          else
-                            Icon(Icons.document_scanner_outlined, size: 14, color: theme.colorScheme.primary),
-                          const SizedBox(width: 6),
-                          Text('Scan Image', style: theme.textTheme.labelSmall?.copyWith(fontWeight: FontWeight.w600, color: theme.colorScheme.onSurface)),
-                        ],
-                      ),
-                    ),
-                  ),
-                  InkWell(
-                    onTap: isGenerating ? null : (hasContent ? _clearInput : _pasteFromClipboard),
-                    borderRadius: AppSpacing.borderRadiusPill,
-                    child: Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
-                      decoration: BoxDecoration(
-                        color: hasContent ? theme.colorScheme.surface : theme.colorScheme.primary.withValues(alpha: 0.08),
-                        borderRadius: AppSpacing.borderRadiusPill,
-                        border: Border.all(color: hasContent ? theme.colorScheme.outline : theme.colorScheme.primary.withValues(alpha: 0.2), width: 1),
-                      ),
-                      child: Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          Icon(hasContent ? Icons.clear_rounded : Icons.content_paste_rounded, size: 14, color: hasContent ? theme.colorScheme.onSurface.withValues(alpha: 0.7) : theme.colorScheme.primary),
-                          const SizedBox(width: 6),
-                          Text(hasContent ? 'Clear' : 'Paste', style: theme.textTheme.labelSmall?.copyWith(fontWeight: FontWeight.w600, color: hasContent ? theme.colorScheme.onSurface.withValues(alpha: 0.7) : theme.colorScheme.primary)),
-                        ],
+              Expanded(
+                child: Wrap(
+                  spacing: AppSpacing.sm,
+                  runSpacing: AppSpacing.xs,
+                  children: [
+                    InkWell(
+                      onTap: isGenerating
+                          ? null
+                          : () {
+                              OcrExtractionSheet.show(
+                                context,
+                                onSourceSelected: (source) {
+                                  viewModel.extractTextFromImage(source);
+                                },
+                              );
+                            },
+                      borderRadius: AppSpacing.borderRadiusPill,
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
+                        decoration: BoxDecoration(
+                          color: theme.colorScheme.surfaceContainerHighest.withValues(alpha: 0.8),
+                          borderRadius: AppSpacing.borderRadiusPill,
+                          border: Border.all(color: theme.colorScheme.outline, width: 1),
+                        ),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            if (viewModel.isExtractingImage)
+                              SizedBox(
+                                width: 14,
+                                height: 14,
+                                child: CircularProgressIndicator(strokeWidth: 2, valueColor: AlwaysStoppedAnimation<Color>(theme.colorScheme.primary)),
+                              )
+                            else
+                              Icon(Icons.document_scanner_outlined, size: 14, color: theme.colorScheme.primary),
+                            const SizedBox(width: 6),
+                            Text('Scan Image', style: theme.textTheme.labelSmall?.copyWith(fontWeight: FontWeight.w600, color: theme.colorScheme.onSurface)),
+                          ],
+                        ),
                       ),
                     ),
-                  ),
-                ],
+                    InkWell(
+                      onTap: isGenerating ? null : (hasContent ? _clearInput : _pasteFromClipboard),
+                      borderRadius: AppSpacing.borderRadiusPill,
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
+                        decoration: BoxDecoration(
+                          color: hasContent ? theme.colorScheme.surface : theme.colorScheme.primary.withValues(alpha: 0.08),
+                          borderRadius: AppSpacing.borderRadiusPill,
+                          border: Border.all(color: hasContent ? theme.colorScheme.outline : theme.colorScheme.primary.withValues(alpha: 0.2), width: 1),
+                        ),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Icon(hasContent ? Icons.clear_rounded : Icons.content_paste_rounded, size: 14, color: hasContent ? theme.colorScheme.onSurface.withValues(alpha: 0.7) : theme.colorScheme.primary),
+                            const SizedBox(width: 6),
+                            Text(hasContent ? 'Clear' : 'Paste', style: theme.textTheme.labelSmall?.copyWith(fontWeight: FontWeight.w600, color: hasContent ? theme.colorScheme.onSurface.withValues(alpha: 0.7) : theme.colorScheme.primary)),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
               ),
-              if (hasContent)
-                Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                  decoration: BoxDecoration(
-                    color: charCount > 8000 ? theme.colorScheme.error.withValues(alpha: 0.08) : Colors.transparent,
-                    borderRadius: AppSpacing.borderRadiusXs,
-                  ),
-                  child: Text(
-                    '$wordCount words • $charCount chars',
-                    style: theme.textTheme.labelSmall?.copyWith(
-                      color: charCount > 8000 ? theme.colorScheme.error : theme.colorScheme.onSurface.withValues(alpha: 0.5),
-                      fontWeight: charCount > 8000 ? FontWeight.w700 : FontWeight.w600,
+              if (hasContent) ...[
+                const SizedBox(width: AppSpacing.sm),
+                Flexible(
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                    decoration: BoxDecoration(
+                      color: charCount > 8000 ? theme.colorScheme.error.withValues(alpha: 0.08) : Colors.transparent,
+                      borderRadius: AppSpacing.borderRadiusXs,
+                    ),
+                    child: Text(
+                      '$wordCount words • $charCount chars',
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: theme.textTheme.labelSmall?.copyWith(
+                        color: charCount > 8000 ? theme.colorScheme.error : theme.colorScheme.onSurface.withValues(alpha: 0.5),
+                        fontWeight: charCount > 8000 ? FontWeight.w700 : FontWeight.w600,
+                      ),
                     ),
                   ),
                 ),
+              ],
             ],
           ),
           const SizedBox(height: AppSpacing.md),

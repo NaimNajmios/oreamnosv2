@@ -53,26 +53,28 @@ class StatCard extends StatelessWidget {
                       child: Text(
                         title.toUpperCase(),
                         maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
+                        overflow: TextOverflow.fade,
+                        softWrap: false,
                         style: theme.textTheme.labelSmall?.copyWith(
                           fontWeight: FontWeight.w700,
-                          letterSpacing: 0.8,
+                          letterSpacing: 0.4,
                           color: theme.colorScheme.onSurface.withValues(alpha: 0.5),
+                          fontSize: 10,
                         ),
                       ),
                     ),
                     if (icon != null) ...[
-                      const SizedBox(width: 8),
+                      const SizedBox(width: 6),
                       Container(
-                        width: 28,
-                        height: 28,
+                        width: 24,
+                        height: 24,
                         decoration: BoxDecoration(
                           color: iconBackground ?? theme.colorScheme.primaryContainer.withValues(alpha: 0.5),
                           borderRadius: AppSpacing.borderRadiusXs,
                         ),
                         child: Icon(
                           icon,
-                          size: 14,
+                          size: 12,
                           color: iconColor ?? theme.colorScheme.primary,
                         ),
                       ),

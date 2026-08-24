@@ -73,7 +73,7 @@ void main() {
 
     // Verify 3 navigation destinations
     expect(find.text('Generate'), findsOneWidget);
-    expect(find.text('Library'), findsOneWidget);
+    expect(find.text('Usage'), findsOneWidget);
     expect(find.text('Settings'), findsOneWidget);
 
     // Verify the Generate CTA button
@@ -116,8 +116,8 @@ void main() {
     await tester.pumpWidget(_buildTestApp(preferencesService, sharedPrefs));
     await tester.pumpAndSettle();
 
-    // Tap on Library tab in NavigationBar
-    await tester.tap(find.text('Library'));
+    // Tap on Usage tab in NavigationBar
+    await tester.tap(find.text('Usage'));
     await tester.pumpAndSettle();
 
     // Verify Usage & Analytics title

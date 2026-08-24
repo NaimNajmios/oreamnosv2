@@ -5,7 +5,7 @@ import 'package:oreamnos/config/routes/app_router.dart';
 import 'package:oreamnos/config/theme/app_colors.dart';
 import 'package:oreamnos/ui/core/utils/haptics.dart';
 
-/// Modern App Shell with Material 3 NavigationBar (Generate, Library, Settings).
+/// Modern App Shell with Material 3 NavigationBar (Generate, Usage, Settings).
 class ModernAppShell extends StatelessWidget {
   const ModernAppShell({super.key, required this.child});
 
@@ -61,7 +61,7 @@ class ModernAppShell extends StatelessWidget {
             NavigationDestination(
               icon: const Icon(Icons.analytics_outlined),
               selectedIcon: Icon(Icons.analytics_rounded, color: iconColors[1]),
-              label: 'Library',
+              label: 'Usage',
             ),
             NavigationDestination(
               icon: const Icon(Icons.tune_outlined),
