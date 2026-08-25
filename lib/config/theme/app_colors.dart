@@ -90,7 +90,7 @@ abstract final class AppColors {
   static const Color forestAccent = Color(0xFF4CAF50);
   static const Color forestAccentSoft = Color(0xFF1B5E20);
 
-  // === Forest Alternate Palette (muted sage — use via feature flag) ===
+  // === Forest Alternate Palette (muted sage) ===
   static const Color forestAltBg = Color(0xFF111A14);
   static const Color forestAltSurface = Color(0xFF1C2B1E);
   static const Color forestAltSurfaceMuted = Color(0xFF2A3D2C);
@@ -187,3 +187,5 @@ abstract final class AppColors {
   static const Color forestBackground = forestBg;
   static const Color forestOnSurface = forestTextPrimary;
 }
+
+

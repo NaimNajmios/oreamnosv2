@@ -8,6 +8,7 @@ import 'package:go_router/go_router.dart';
 import 'package:oreamnos/config/routes/app_router.dart';
 import 'package:oreamnos/config/theme/app_colors.dart';
 import 'package:oreamnos/config/theme/app_spacing.dart';
+import 'package:oreamnos/config/theme/app_typography.dart';
 import 'package:oreamnos/data/services/web_scraper_service.dart';
 import 'package:oreamnos/domain/models/card_brief.dart';
 import 'package:oreamnos/ui/core/utils/haptics.dart';
@@ -353,11 +354,13 @@ class _GenerateScreenState extends State<GenerateScreen> {
                       '$wordCount words • $charCount chars',
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
-                      style: theme.textTheme.labelSmall?.copyWith(
-                        color: charCount > 8000 ? theme.colorScheme.error : theme.colorScheme.onSurface.withValues(alpha: 0.5),
-                        fontWeight: charCount > 8000 ? FontWeight.w700 : FontWeight.w600,
+                      style: AppTypography.mono(
+                        fontSize: 11,
+                        fontWeight: charCount > 8000 ? FontWeight.w700 : FontWeight.w500,
+                        color: charCount > 8000 ? theme.colorScheme.error : theme.colorScheme.onSurface.withValues(alpha: 0.55),
                       ),
                     ),
+
                   ),
                 ),
               ],

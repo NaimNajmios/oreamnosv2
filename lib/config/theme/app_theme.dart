@@ -1,3 +1,4 @@
+import 'dart:math' as math;
 import 'package:flutter/material.dart';
 
 import 'app_colors.dart';
@@ -19,6 +20,7 @@ abstract final class AppTheme {
       accent: AppColors.lightAccent,
       accentSoft: AppColors.lightAccentSoft,
       dynamicColorScheme: dynamicColorScheme,
+      paletteName: 'Light',
     );
   }
 
@@ -35,6 +37,7 @@ abstract final class AppTheme {
       accent: AppColors.darkAccent,
       accentSoft: AppColors.darkAccentSoft,
       dynamicColorScheme: dynamicColorScheme,
+      paletteName: 'Dark',
     );
   }
 
@@ -51,6 +54,7 @@ abstract final class AppTheme {
       accent: AppColors.deepBlueAccent,
       accentSoft: AppColors.deepBlueAccentSoft,
       dynamicColorScheme: null,
+      paletteName: 'Deep Blue',
     );
   }
 
@@ -67,6 +71,7 @@ abstract final class AppTheme {
       accent: AppColors.midnightNoirAccent,
       accentSoft: AppColors.midnightNoirAccentSoft,
       dynamicColorScheme: null,
+      paletteName: 'Midnight Noir',
     );
   }
 
@@ -83,6 +88,7 @@ abstract final class AppTheme {
       accent: AppColors.solarizedLightAccent,
       accentSoft: AppColors.solarizedLightAccentSoft,
       dynamicColorScheme: dynamicColorScheme,
+      paletteName: 'Solarized Light',
     );
   }
 
@@ -99,6 +105,7 @@ abstract final class AppTheme {
       accent: AppColors.cyberpunkAccent,
       accentSoft: AppColors.cyberpunkAccentSoft,
       dynamicColorScheme: null,
+      paletteName: 'Cyberpunk',
     );
   }
 
@@ -115,6 +122,7 @@ abstract final class AppTheme {
       accent: AppColors.matchdayAccent,
       accentSoft: AppColors.matchdayAccentSoft,
       dynamicColorScheme: dynamicColorScheme,
+      paletteName: 'Matchday',
     );
   }
 
@@ -131,6 +139,7 @@ abstract final class AppTheme {
       accent: AppColors.forestAccent,
       accentSoft: AppColors.forestAccentSoft,
       dynamicColorScheme: null,
+      paletteName: 'Forest',
     );
   }
 
@@ -147,9 +156,12 @@ abstract final class AppTheme {
       accent: AppColors.forestAltAccent,
       accentSoft: AppColors.forestAltAccentSoft,
       dynamicColorScheme: null,
+      paletteName: 'Forest Alt',
     );
   }
 
+
+  // === Theme Builder with WCAG Contrast Checking ===
   static ThemeData _buildTheme({
     required Brightness brightness,
     required Color bg,
@@ -161,9 +173,16 @@ abstract final class AppTheme {
     required Color textTertiary,
     required Color accent,
     required Color accentSoft,
+    required String paletteName,
     ColorScheme? dynamicColorScheme,
   }) {
     final isDark = brightness == Brightness.dark;
+
+    // Runtime contrast ratio validation (WCAG 3.0:1 floor)
+    _validateContrast(textPrimary, bg, minRatio: 3.0, contextName: '$paletteName (text on bg)');
+    _validateContrast(textPrimary, surface, minRatio: 3.0, contextName: '$paletteName (text on surface)');
+
+    final onAccentColor = isDark ? const Color(0xFF0F172A) : Colors.white;
 
     final colorScheme = dynamicColorScheme != null
         ? dynamicColorScheme.copyWith(
@@ -176,11 +195,11 @@ abstract final class AppTheme {
         : ColorScheme(
             brightness: brightness,
             primary: accent,
-            onPrimary: isDark ? const Color(0xFF0F172A) : Colors.white,
+            onPrimary: onAccentColor,
             primaryContainer: accentSoft,
-            onPrimaryContainer: accent,
+            onPrimaryContainer: isDark ? Colors.white : accent,
             secondary: accent,
-            onSecondary: isDark ? const Color(0xFF0F172A) : Colors.white,
+            onSecondary: onAccentColor,
             surface: surface,
             onSurface: textPrimary,
             surfaceContainer: surfaceMuted,
@@ -190,6 +209,7 @@ abstract final class AppTheme {
             error: AppColors.error,
             onError: Colors.white,
           );
+
 
     final textTheme = AppTypography.textTheme(textPrimary);
 
@@ -207,7 +227,7 @@ abstract final class AppTheme {
         centerTitle: false,
         titleTextStyle: textTheme.titleMedium?.copyWith(
           fontWeight: FontWeight.w700,
-          letterSpacing: -0.2,
+          letterSpacing: 0,
         ),
         iconTheme: IconThemeData(color: textPrimary, size: 22),
       ),
@@ -228,7 +248,7 @@ abstract final class AppTheme {
         selectedColor: accentSoft,
         labelStyle: textTheme.labelSmall?.copyWith(
           color: textPrimary,
-          fontWeight: FontWeight.w600,
+          fontWeight: FontWeight.w500,
         ),
         side: BorderSide(color: border, width: 1),
         padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
@@ -236,13 +256,13 @@ abstract final class AppTheme {
       elevatedButtonTheme: ElevatedButtonThemeData(
         style: ElevatedButton.styleFrom(
           backgroundColor: accent,
-          foregroundColor: isDark ? const Color(0xFF0F172A) : Colors.white,
+          foregroundColor: onAccentColor,
           shape: const RoundedRectangleBorder(
             borderRadius: AppSpacing.borderRadiusPill,
           ),
           elevation: 0,
           padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
-          textStyle: textTheme.labelLarge?.copyWith(fontWeight: FontWeight.w600),
+          textStyle: textTheme.labelLarge?.copyWith(fontWeight: FontWeight.w500),
         ),
       ),
       outlinedButtonTheme: OutlinedButtonThemeData(
@@ -253,7 +273,7 @@ abstract final class AppTheme {
             borderRadius: AppSpacing.borderRadiusPill,
           ),
           padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
-          textStyle: textTheme.labelLarge?.copyWith(fontWeight: FontWeight.w600),
+          textStyle: textTheme.labelLarge?.copyWith(fontWeight: FontWeight.w500),
         ),
       ),
       textButtonTheme: TextButtonThemeData(
@@ -262,7 +282,7 @@ abstract final class AppTheme {
           shape: const RoundedRectangleBorder(
             borderRadius: AppSpacing.borderRadiusPill,
           ),
-          textStyle: textTheme.labelLarge?.copyWith(fontWeight: FontWeight.w600),
+          textStyle: textTheme.labelLarge?.copyWith(fontWeight: FontWeight.w500),
         ),
       ),
       inputDecorationTheme: InputDecorationTheme(
@@ -284,8 +304,12 @@ abstract final class AppTheme {
         ),
         errorBorder: OutlineInputBorder(
           borderRadius: AppSpacing.borderRadiusMd,
-          borderSide: const BorderSide(color: AppColors.error, width: 1),
+          borderSide: const BorderSide(
+            color: AppColors.error,
+            width: 1,
+          ),
         ),
+
         contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
       ),
       navigationBarTheme: NavigationBarThemeData(
@@ -297,7 +321,7 @@ abstract final class AppTheme {
           final isSelected = states.contains(WidgetState.selected);
           return textTheme.labelSmall?.copyWith(
             color: isSelected ? accent : textSecondary,
-            fontWeight: isSelected ? FontWeight.w700 : FontWeight.w500,
+            fontWeight: isSelected ? FontWeight.w600 : FontWeight.w500,
           );
         }),
         iconTheme: WidgetStateProperty.resolveWith((states) {
@@ -328,9 +352,10 @@ abstract final class AppTheme {
       bottomSheetTheme: BottomSheetThemeData(
         backgroundColor: surface,
         elevation: 0,
+        modalBarrierColor: Colors.black.withValues(alpha: 0.5),
         shape: const RoundedRectangleBorder(
           borderRadius: BorderRadius.vertical(
-            top: Radius.circular(AppSpacing.radiusLg),
+            top: Radius.circular(24),
           ),
           side: BorderSide(color: Colors.transparent),
         ),
@@ -355,4 +380,40 @@ abstract final class AppTheme {
       ),
     );
   }
+
+  // === Relative Luminance and Contrast Calculation ===
+  static double _channelLuminance(double value) {
+    return value <= 0.03928
+        ? value / 12.92
+        : math.pow((value + 0.055) / 1.055, 2.4).toDouble();
+  }
+
+  static double _colorLuminance(Color color) {
+    final r = _channelLuminance(color.r);
+    final g = _channelLuminance(color.g);
+    final b = _channelLuminance(color.b);
+    return 0.2126 * r + 0.7152 * g + 0.0722 * b;
+  }
+
+  static double calculateContrastRatio(Color c1, Color c2) {
+    final l1 = _colorLuminance(c1);
+    final l2 = _colorLuminance(c2);
+    final lighter = math.max(l1, l2);
+    final darker = math.min(l1, l2);
+    return (lighter + 0.05) / (darker + 0.05);
+  }
+
+  static void _validateContrast(
+    Color foreground,
+    Color background, {
+    double minRatio = 3.0,
+    required String contextName,
+  }) {
+    final ratio = calculateContrastRatio(foreground, background);
+    assert(
+      ratio >= minRatio,
+      'Contrast violation in $contextName: ratio ${ratio.toStringAsFixed(2)}:1 is below minimum ${minRatio.toStringAsFixed(1)}:1',
+    );
+  }
 }
+

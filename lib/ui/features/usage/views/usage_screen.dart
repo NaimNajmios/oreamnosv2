@@ -7,6 +7,7 @@ import '../../../../config/routes/app_router.dart';
 
 import '../../../../config/theme/app_colors.dart';
 import '../../../../config/theme/app_spacing.dart';
+import '../../../../config/theme/app_typography.dart';
 import '../../../../data/services/usage_service.dart';
 import '../../../../domain/models/usage_log.dart';
 import '../../../core/utils/haptics.dart';
@@ -313,15 +314,16 @@ class _UsageScreenState extends State<UsageScreen> {
           const SizedBox(width: AppSpacing.sm),
           Text(
             '${log.estimatedTokens} tokens • ${log.latencyMs}ms',
-            style: theme.textTheme.labelSmall?.copyWith(
-              fontWeight: FontWeight.w600,
-              color: theme.colorScheme.onSurface.withValues(alpha: 0.75),
+            style: AppTypography.mono(
               fontSize: 11,
+              fontWeight: FontWeight.w500,
+              color: theme.colorScheme.onSurface.withValues(alpha: 0.75),
             ),
           ),
         ],
       ),
     );
+
   }
 
   Future<void> _confirmClear(BuildContext context, UsageService service) async {

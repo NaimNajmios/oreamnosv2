@@ -1,5 +1,4 @@
 /// Supported theme modes for the Oreamnos app.
-/// Matches the Android app's three theme options plus system default.
 enum AppThemeMode {
   light('Light'),
   dark('Dark'),
@@ -14,4 +13,14 @@ enum AppThemeMode {
   const AppThemeMode(this.label);
 
   final String label;
+
+  static AppThemeMode fromString(String? value) {
+    if (value == null) return AppThemeMode.system;
+    return AppThemeMode.values.firstWhere(
+      (mode) => mode.name == value,
+      orElse: () => AppThemeMode.system,
+    );
+  }
 }
+
+

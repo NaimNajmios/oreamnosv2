@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:oreamnos/config/theme/app_spacing.dart';
+import 'package:oreamnos/config/theme/app_typography.dart';
 import 'app_card.dart';
 
 /// Analytics stat card with prominent metric and metadata label.
@@ -89,22 +90,23 @@ class StatCard extends StatelessWidget {
                     value,
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
-                    style: theme.textTheme.headlineMedium?.copyWith(
+                    style: AppTypography.figure(
+                      fontSize: 26,
                       fontWeight: FontWeight.w700,
-                      letterSpacing: -0.5,
                       color: valueColor ?? theme.colorScheme.onSurface,
                     ),
                   ),
                 ),
                 if (subtitle != null) ...[
-                  const SizedBox(height: 2),
+                  const SizedBox(height: 3),
                   Text(
                     subtitle!,
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
-                    style: theme.textTheme.bodySmall?.copyWith(
-                      color: theme.colorScheme.onSurface.withValues(alpha: 0.6),
+                    style: AppTypography.mono(
                       fontSize: 11,
+                      fontWeight: FontWeight.w400,
+                      color: theme.colorScheme.onSurface.withValues(alpha: 0.6),
                     ),
                   ),
                 ],
@@ -114,5 +116,6 @@ class StatCard extends StatelessWidget {
         ],
       ),
     );
+
   }
 }

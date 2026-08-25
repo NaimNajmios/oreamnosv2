@@ -45,10 +45,7 @@ class PreferencesService {
 
   AppThemeMode get themeMode {
     final value = _prefs.getString(AppConstants.keyThemeMode);
-    return AppThemeMode.values.firstWhere(
-      (mode) => mode.name == value,
-      orElse: () => AppThemeMode.system,
-    );
+    return AppThemeMode.fromString(value);
   }
 
   Future<bool> setThemeMode(AppThemeMode mode) {

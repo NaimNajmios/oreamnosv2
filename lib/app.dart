@@ -115,6 +115,8 @@ class _OreamnosAppState extends State<OreamnosApp> {
             materialThemeMode = ThemeMode.system;
         }
 
+
+
         return MaterialApp.router(
           title: AppConstants.appName,
           theme: themeData,

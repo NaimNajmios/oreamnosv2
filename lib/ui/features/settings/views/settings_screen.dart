@@ -23,7 +23,7 @@ class SettingsScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     final viewModel = context.watch<SettingsViewModel>();
     final theme = Theme.of(context);
-    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final isDark = theme.brightness == Brightness.dark;
     final teal = isDark ? AppColors.darkTeal : AppColors.lightTeal;
     final tealSoft = isDark ? AppColors.darkTealSoft : AppColors.lightTealSoft;
     final amber = isDark ? AppColors.darkAmber : AppColors.lightAmber;
@@ -39,7 +39,7 @@ class SettingsScreen extends StatelessWidget {
           'Settings',
           style: theme.textTheme.titleMedium?.copyWith(
             fontWeight: FontWeight.w700,
-            letterSpacing: -0.3,
+            letterSpacing: 0,
           ),
         ),
       ),
@@ -233,3 +233,5 @@ class SettingsScreen extends StatelessWidget {
     );
   }
 }
+
+

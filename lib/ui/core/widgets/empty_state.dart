@@ -1,10 +1,10 @@
 import 'package:flutter/material.dart';
-import 'package:oreamnos/config/theme/app_motion.dart';
-import 'package:oreamnos/config/theme/app_spacing.dart';
 import 'app_button.dart';
 
-/// Illustrated serene empty state widget — now with breathing animation.
-class EmptyState extends StatefulWidget {
+/// Pure Sciuro empty state widget:
+/// Centered column, 32dp outer padding, 80dp outlined icon at 50% opacity,
+/// 24dp gap, bodyLarge message in onSurfaceVariant, and an optional primary CTA button.
+class EmptyState extends StatelessWidget {
   const EmptyState({
     super.key,
     required this.icon,
@@ -25,86 +25,50 @@ class EmptyState extends StatefulWidget {
   final Color? iconBackground;
 
   @override
-  State<EmptyState> createState() => _EmptyStateState();
-}
-
-class _EmptyStateState extends State<EmptyState> with SingleTickerProviderStateMixin {
-  late AnimationController _controller;
-  late Animation<double> _scale;
-
-  @override
-  void initState() {
-    super.initState();
-    _controller = AnimationController(vsync: this, duration: const Duration(milliseconds: 1200));
-    _scale = Tween<double>(begin: 1.0, end: 1.05).animate(CurvedAnimation(parent: _controller, curve: Curves.easeInOut));
-    // Start breathing if not reduced motion — single forward+reverse to allow pumpAndSettle in tests
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (!mounted) return;
-      if (AppMotion.shouldReduceMotion(context)) return;
-      _controller.forward().then((_) {
-        if (mounted && !AppMotion.shouldReduceMotion(context)) _controller.reverse();
-      });
-    });
-  }
-
-  @override
-  void dispose() {
-    _controller.dispose();
-    super.dispose();
-  }
-
-  @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final colorScheme = theme.colorScheme;
+    final primaryIconColor = iconColor ?? colorScheme.primary;
 
     return Center(
       child: Padding(
-        padding: const EdgeInsets.all(AppSpacing.xxl),
+        padding: const EdgeInsets.all(32.0),
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
+          mainAxisSize: MainAxisSize.min,
           children: [
-            AnimatedBuilder(
-              animation: _scale,
-              builder: (context, child) => Transform.scale(scale: _scale.value, child: child),
-              child: Container(
-                width: 64,
-                height: 64,
-                decoration: BoxDecoration(
-                  color: widget.iconBackground ?? theme.colorScheme.primaryContainer.withValues(alpha: 0.5),
-                  borderRadius: AppSpacing.borderRadiusLg,
-                ),
-                child: Icon(
-                  widget.icon,
-                  size: 32,
-                  color: widget.iconColor ?? theme.colorScheme.primary,
-                ),
-              ),
+            // Outlined Icon at 80dp / 50% opacity
+            Icon(
+              icon,
+              size: 80,
+              color: primaryIconColor.withValues(alpha: 0.5),
             ),
-            const SizedBox(height: AppSpacing.lg),
+            const SizedBox(height: 24),
             Text(
-              widget.title,
+              title,
               style: theme.textTheme.titleMedium?.copyWith(
                 fontWeight: FontWeight.w700,
+                letterSpacing: 0,
               ),
               textAlign: TextAlign.center,
             ),
-            const SizedBox(height: AppSpacing.xs),
+            const SizedBox(height: 8),
             ConstrainedBox(
-              constraints: const BoxConstraints(maxWidth: 320),
+              constraints: const BoxConstraints(maxWidth: 340),
               child: Text(
-                widget.description,
-                style: theme.textTheme.bodyMedium?.copyWith(
-                  color: theme.colorScheme.onSurface.withValues(alpha: 0.6),
+                description,
+                style: theme.textTheme.bodyLarge?.copyWith(
+                  color: colorScheme.onSurface.withValues(alpha: 0.65),
                 ),
                 textAlign: TextAlign.center,
               ),
             ),
-            if (widget.actionLabel != null && widget.onAction != null) ...[
-              const SizedBox(height: AppSpacing.xl),
+            if (actionLabel != null && onAction != null) ...[
+              const SizedBox(height: 24),
               AppButton(
-                label: widget.actionLabel!,
+                label: actionLabel!,
                 height: 44,
-                onPressed: widget.onAction,
+                onPressed: onAction,
               ),
             ],
           ],
@@ -113,3 +77,4 @@ class _EmptyStateState extends State<EmptyState> with SingleTickerProviderStateM
     );
   }
 }
+
