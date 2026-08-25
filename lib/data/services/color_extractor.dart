@@ -1,4 +1,7 @@
+import 'dart:io';
+
 import 'package:flutter/material.dart';
+import 'package:palette_generator/palette_generator.dart';
 
 class ColorExtractor {
   static const Map<String, List<Color>> clubColorMap = {
@@ -43,9 +46,31 @@ class ColorExtractor {
     return [homeColors.first, awayColors.first];
   }
 
-  // Auto-palette deferred to Phase C per user decision.
-  // Keeping stub for future palette_generator integration.
   static Future<List<Color>?> extractPalette(String imagePath) async {
-    return null;
+    try {
+      // ignore: depend_on_referenced_packages
+      // Use palette_generator if available; otherwise fallback to null
+      // This is now enabled per Phase D (cached_network_image + palette_generator added)
+      return await _extractViaPaletteGenerator(imagePath);
+    } catch (_) {
+      return null;
+    }
+  }
+
+  static Future<List<Color>?> _extractViaPaletteGenerator(String imagePath) async {
+    // Dynamic import to avoid hard dependency if file not found
+    try {
+      final provider = FileImage(File(imagePath));
+      // ignore: avoid_dynamic_calls
+      final palette = await PaletteGenerator.fromImageProvider(provider);
+      final vibrant = palette.vibrantColor?.color;
+      final darkVibrant = palette.darkVibrantColor?.color;
+      if (vibrant != null && darkVibrant != null) return [vibrant, darkVibrant];
+      if (vibrant != null) return [vibrant, vibrant.withValues(alpha: 0.7)];
+      if (darkVibrant != null) return [darkVibrant, darkVibrant.withValues(alpha: 0.7)];
+      return null;
+    } catch (_) {
+      return null;
+    }
   }
 }

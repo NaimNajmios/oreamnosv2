@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'dart:isolate';
 
 class JsonCleaner {
   static String clean(String input) {
@@ -25,5 +26,11 @@ class JsonCleaner {
   static Map<String, dynamic> decode(String input) {
     final cleaned = clean(input);
     return jsonDecode(cleaned) as Map<String, dynamic>;
+  }
+
+  static Future<Map<String, dynamic>> decodeIsolate(String input) async {
+    // Offload JSON parsing to isolate — for large AI responses
+    final cleaned = clean(input);
+    return await Isolate.run(() => jsonDecode(cleaned) as Map<String, dynamic>);
   }
 }
