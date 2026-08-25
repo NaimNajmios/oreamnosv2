@@ -53,7 +53,7 @@ class SettingsTile extends StatelessWidget {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      title.toUpperCase(),
+                      title,
                       style: theme.textTheme.titleSmall,
                     ),
                     if (subtitle != null) ...[

@@ -73,24 +73,50 @@ class _OreamnosAppState extends State<OreamnosApp> {
 
     return DynamicColorBuilder(
       builder: (ColorScheme? lightDynamic, ColorScheme? darkDynamic) {
-        ThemeData themeData;
-        ThemeData? darkThemeData;
-        ThemeMode materialThemeMode;
+        final ThemeData themeData;
+        final ThemeData? darkThemeData;
+        final ThemeMode materialThemeMode;
 
         switch (themeMode) {
           case AppThemeMode.light:
-            themeData = AppTheme.lightTheme(dynamicColorScheme: lightDynamic);
+            themeData = AppTheme.light(dynamicColorScheme: lightDynamic);
             darkThemeData = null;
             materialThemeMode = ThemeMode.light;
           case AppThemeMode.dark:
-            themeData = AppTheme.darkTheme(dynamicColorScheme: darkDynamic);
+            themeData = AppTheme.dark(dynamicColorScheme: darkDynamic);
+            darkThemeData = null;
+            materialThemeMode = ThemeMode.dark;
+          case AppThemeMode.deepBlue:
+            themeData = AppTheme.deepBlue();
+            darkThemeData = null;
+            materialThemeMode = ThemeMode.dark;
+          case AppThemeMode.midnightNoir:
+            themeData = AppTheme.midnightNoir();
+            darkThemeData = null;
+            materialThemeMode = ThemeMode.dark;
+          case AppThemeMode.solarizedLight:
+            themeData = AppTheme.solarizedLight(dynamicColorScheme: lightDynamic);
+            darkThemeData = null;
+            materialThemeMode = ThemeMode.light;
+          case AppThemeMode.cyberpunk:
+            themeData = AppTheme.cyberpunk();
+            darkThemeData = null;
+            materialThemeMode = ThemeMode.dark;
+          case AppThemeMode.matchday:
+            themeData = AppTheme.matchday(dynamicColorScheme: lightDynamic);
+            darkThemeData = null;
+            materialThemeMode = ThemeMode.light;
+          case AppThemeMode.forest:
+            themeData = AppTheme.forest();
             darkThemeData = null;
             materialThemeMode = ThemeMode.dark;
           case AppThemeMode.system:
-            themeData = AppTheme.lightTheme(dynamicColorScheme: lightDynamic);
-            darkThemeData = AppTheme.darkTheme(dynamicColorScheme: darkDynamic);
+            themeData = AppTheme.light(dynamicColorScheme: lightDynamic);
+            darkThemeData = AppTheme.dark(dynamicColorScheme: darkDynamic);
             materialThemeMode = ThemeMode.system;
         }
+
+
 
         return MaterialApp.router(
           title: AppConstants.appName,

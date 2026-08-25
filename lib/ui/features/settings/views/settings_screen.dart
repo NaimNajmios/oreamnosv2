@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 
 import 'package:oreamnos/config/routes/app_router.dart';
 import 'package:oreamnos/config/theme/app_spacing.dart';
+import 'package:oreamnos/ui/core/utils/haptics.dart';
 import 'package:oreamnos/ui/core/widgets/section_header.dart';
 import 'package:oreamnos/ui/core/widgets/settings_tile.dart';
 import 'package:oreamnos/domain/models/app_theme_mode.dart';
@@ -46,15 +47,69 @@ class SettingsScreen extends StatelessWidget {
               // Theme Toggle
               const SectionHeader(title: 'Appearance'),
               const SizedBox(height: AppSpacing.md),
-              Center(
-                child: SegmentedPillToggle<AppThemeMode>(
-                  items: const [AppThemeMode.system, AppThemeMode.light, AppThemeMode.dark],
-                  selectedItem: viewModel.themeMode,
-                  onChanged: (mode) => viewModel.setThemeMode(mode),
-                  itemLabelBuilder: (mode) => mode.label,
+              SizedBox(
+                height: 80,
+                child: ListView.builder(
+                  scrollDirection: Axis.horizontal,
+                  itemCount: AppThemeMode.values.length,
+                  itemBuilder: (context, index) {
+                    final mode = AppThemeMode.values[index];
+                    final isSelected = viewModel.themeMode == mode;
+                    
+                    Color previewColor;
+                    switch (mode) {
+                      case AppThemeMode.light: previewColor = Colors.grey.shade300; break;
+                      case AppThemeMode.dark: previewColor = Colors.grey.shade900; break;
+                      case AppThemeMode.deepBlue: previewColor = const Color(0xFF1E3A8A); break;
+                      case AppThemeMode.midnightNoir: previewColor = const Color(0xFF171717); break;
+                      case AppThemeMode.solarizedLight: previewColor = const Color(0xFFFDF6E3); break;
+                      case AppThemeMode.cyberpunk: previewColor = const Color(0xFFFF003C); break;
+                      case AppThemeMode.matchday: previewColor = const Color(0xFFDC2626); break;
+                      case AppThemeMode.forest: previewColor = const Color(0xFF2E7D32); break;
+                      case AppThemeMode.system: previewColor = theme.colorScheme.primary; break;
+                    }
+
+                    return Padding(
+                      padding: const EdgeInsets.only(right: AppSpacing.md),
+                      child: GestureDetector(
+                        onTap: () {
+                          Haptics.lightImpact();
+                          viewModel.setThemeMode(mode);
+                        },
+                        child: Column(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Container(
+                              width: 48,
+                              height: 48,
+                              decoration: BoxDecoration(
+                                shape: BoxShape.circle,
+                                color: previewColor,
+                                border: Border.all(
+                                  color: isSelected ? theme.colorScheme.primary : theme.colorScheme.outline.withOpacity(0.3),
+                                  width: isSelected ? 2 : 1,
+                                ),
+                              ),
+                              child: isSelected 
+                                  ? Icon(Icons.check_rounded, color: previewColor.computeLuminance() > 0.5 ? Colors.black : Colors.white)
+                                  : null,
+                            ),
+                            const SizedBox(height: AppSpacing.xs),
+                            Text(
+                              mode.label,
+                              style: theme.textTheme.labelSmall?.copyWith(
+                                color: isSelected ? theme.colorScheme.onSurface : theme.colorScheme.onSurfaceVariant,
+                                fontWeight: isSelected ? FontWeight.w700 : FontWeight.w500,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    );
+                  },
                 ),
               ),
-              const SizedBox(height: AppSpacing.xxl),
+              const SizedBox(height: AppSpacing.xl),
 
               // AI Provider Section
               const SectionHeader(title: 'AI Provider'),

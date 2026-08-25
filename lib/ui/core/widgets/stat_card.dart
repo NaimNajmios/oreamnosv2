@@ -52,7 +52,7 @@ class StatCard extends StatelessWidget {
                   children: [
                     Expanded(
                       child: Text(
-                        title.toUpperCase(),
+                        title,
                         maxLines: 1,
                         overflow: TextOverflow.fade,
                         softWrap: false,

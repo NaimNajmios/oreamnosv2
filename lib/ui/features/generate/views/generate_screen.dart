@@ -13,6 +13,7 @@ import 'package:oreamnos/data/services/web_scraper_service.dart';
 import 'package:oreamnos/domain/models/card_brief.dart';
 import 'package:oreamnos/ui/core/utils/haptics.dart';
 import 'package:oreamnos/ui/core/widgets/app_button.dart';
+import 'package:oreamnos/ui/core/widgets/app_outlined_button.dart';
 import 'package:oreamnos/ui/core/widgets/app_card.dart';
 import 'package:oreamnos/ui/core/widgets/app_chip.dart';
 import 'package:oreamnos/ui/core/widgets/app_copy_button.dart';
@@ -198,19 +199,43 @@ class _GenerateScreenState extends State<GenerateScreen> {
                             ],
                           ),
                         ),
-                      // Capture Section — single card (input + config footer + CTA + recent ExpansionTile)
-                      _buildCaptureCard(context, viewModel, isUrl, hasContent, isGenerating),
-                      const SizedBox(height: AppSpacing.xxl),
-                      Divider(thickness: 1, height: 1, color: theme.colorScheme.outlineVariant.withValues(alpha: 0.55)),
-                      const SizedBox(height: AppSpacing.base),
-                      const SectionHeader(title: 'Output'),
-                      const SizedBox(height: AppSpacing.sm),
-                      AnimatedSwitcher(
-                        duration: const Duration(milliseconds: 220),
-                        switchInCurve: Curves.easeOutCubic,
-                        switchOutCurve: Curves.easeInCubic,
-                        child: _buildResultArea(context, theme, viewModel, isSuccess),
-                      ),
+                        // Capture Section (Hidden on Success)
+                        if (!isSuccess)
+                          _buildCaptureCard(context, viewModel, isUrl, hasContent, isGenerating),
+                        
+                        // Output Section (Hidden when Idle)
+                        if (viewModel.state != GenerateState.idle) ...[
+                          if (!isSuccess) ...[
+                            const SizedBox(height: AppSpacing.xxl),
+                            Divider(thickness: 1, height: 1, color: theme.colorScheme.outlineVariant.withValues(alpha: 0.55)),
+                            const SizedBox(height: AppSpacing.base),
+                            const SectionHeader(title: 'Output'),
+                            const SizedBox(height: AppSpacing.sm),
+                          ],
+                          AnimatedSwitcher(
+                            duration: const Duration(milliseconds: 220),
+                            switchInCurve: Curves.easeOutCubic,
+                            switchOutCurve: Curves.easeInCubic,
+                            child: Column(
+                              key: ValueKey(viewModel.state),
+                              children: [
+                                _buildResultArea(context, theme, viewModel, isSuccess),
+                                if (isSuccess) ...[
+                                  const SizedBox(height: AppSpacing.xl),
+                                  AppOutlinedButton(
+                                    label: 'New Entry',
+                                    icon: Icons.add_rounded,
+                                    onPressed: () {
+                                      _handleClear();
+                                      // Note: To clear curatedPost, we should clear pending inputs
+                                      viewModel.reset();
+                                    },
+                                  ),
+                                ],
+                              ],
+                            ),
+                          ),
+                        ],
                     ],
                   ),
                 ),

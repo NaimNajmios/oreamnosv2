@@ -7,9 +7,11 @@ import 'package:oreamnos/config/theme/app_spacing.dart';
 import 'package:oreamnos/domain/models/card_brief.dart';
 import 'package:oreamnos/ui/core/utils/haptics.dart';
 import 'package:oreamnos/ui/core/widgets/error_state.dart';
+import 'package:oreamnos/ui/core/widgets/empty_state.dart';
 import 'package:oreamnos/ui/core/widgets/kickoff_loading_indicator.dart';
 import 'package:oreamnos/ui/features/settings/view_models/settings_view_model.dart';
 import 'package:oreamnos/core/providers/settings_provider.dart';
+import '../../generate/view_models/generate_view_model.dart';
 import '../view_models/card_generator_view_model.dart';
 import '../widgets/card_canvas.dart';
 import '../widgets/card_stage.dart';
@@ -34,25 +36,47 @@ class CardGeneratorScreen extends ConsumerStatefulWidget {
 
 class _CardGeneratorScreenState extends ConsumerState<CardGeneratorScreen> {
   final GlobalKey _boundaryKey = GlobalKey();
+  late CardBrief _activeBrief;
+  bool _hasError = false;
 
   @override
   void initState() {
     super.initState();
+    _activeBrief = widget.brief;
+    _hasError = widget.hasError;
+
     WidgetsBinding.instance.addPostFrameCallback((_) async {
-      if (widget.hasError || widget.brief.isEmpty) return;
+      if (_hasError) return;
+      
+      // Auto-load from GenerateViewModel if brief is empty
+      if (_activeBrief.isEmpty) {
+        final generateVm = legacy_provider.Provider.of<GenerateViewModel>(context, listen: false);
+        if (generateVm.curatedPost != null) {
+          final settings = legacy_provider.Provider.of<SettingsViewModel>(context, listen: false);
+          if (settings.selectedModel != null) {
+            _activeBrief = CardBrief.fromPost(
+              title: generateVm.curatedPost!.title,
+              bodyMarkdown: generateVm.curatedPost!.bodyMarkdown,
+              provider: settings.selectedProvider,
+              modelId: settings.selectedModel!,
+            );
+          }
+        }
+      }
+
+      if (_activeBrief.isEmpty) return;
+
       String apiKey = '';
       try {
-        // Prefer Riverpod settings, fallback to legacy
-        apiKey = await ref.read(settingsProvider.notifier).getApiKeyForProvider(widget.brief.provider) ?? '';
+        apiKey = await ref.read(settingsProvider.notifier).getApiKeyForProvider(_activeBrief.provider) ?? '';
         if (apiKey.isEmpty) {
           if (!mounted) return;
-          // ignore: use_build_context_synchronously
-          apiKey = await legacy_provider.Provider.of<SettingsViewModel>(context, listen: false).getApiKeyForProvider(widget.brief.provider) ?? '';
+          apiKey = await legacy_provider.Provider.of<SettingsViewModel>(context, listen: false).getApiKeyForProvider(_activeBrief.provider) ?? '';
         }
       } catch (_) {}
       if (!mounted) return;
-      // ignore: use_build_context_synchronously
-      await legacy_provider.Provider.of<CardGeneratorViewModel>(context, listen: false).initialize(widget.brief, apiKey);
+      await legacy_provider.Provider.of<CardGeneratorViewModel>(context, listen: false).initialize(_activeBrief, apiKey);
+      setState(() {});
     });
   }
 
@@ -101,14 +125,13 @@ class _CardGeneratorScreenState extends ConsumerState<CardGeneratorScreen> {
       final theme = Theme.of(context);
 
     // Invalid entry (deep link / empty brief)
-    if (widget.hasError || widget.brief.isEmpty) {
+    if (_hasError || _activeBrief.isEmpty) {
       return Scaffold(
         appBar: AppBar(title: Text('Card Studio', style: theme.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w700, letterSpacing: -0.3))),
-        body: ErrorState(
+        body: const EmptyState(
           title: 'No card data',
-          message: 'Generate a post first, then open Card Studio from the Generated Post card.',
-          retryLabel: 'Back',
-          onRetry: () => Navigator.of(context).maybePop(),
+          description: 'Go to Generate to create a post first. Your card will appear here automatically.',
+          icon: Icons.image_not_supported_rounded,
         ),
       );
     }

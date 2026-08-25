@@ -95,6 +95,14 @@ void main() {
     // Verify Settings screen sections
     expect(find.text('Appearance'), findsOneWidget);
     expect(find.text('AI Provider'), findsOneWidget);
+
+    // Scroll until Post Settings section is visible
+    await tester.scrollUntilVisible(
+      find.text('Post Settings'),
+      200,
+      scrollable: find.byType(Scrollable).first,
+    );
+    await tester.pumpAndSettle();
     expect(find.text('Post Settings'), findsOneWidget);
 
     // Scroll until Advanced section is visible
