@@ -1,6 +1,9 @@
 import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 import 'package:intl/intl.dart';
+
+import '../../../../config/routes/app_router.dart';
 
 import '../../../../config/theme/app_colors.dart';
 import '../../../../config/theme/app_spacing.dart';
@@ -56,6 +59,11 @@ class _UsageScreenState extends State<UsageScreen> {
           ),
         ),
         actions: [
+          IconButton(
+            icon: const Icon(Icons.history_rounded),
+            tooltip: 'Session History',
+            onPressed: () => context.push(RoutePaths.sessionHistory),
+          ),
           if (logs.isNotEmpty)
             IconButton(
               icon: const Icon(Icons.delete_outline_rounded),
@@ -285,7 +293,7 @@ class _UsageScreenState extends State<UsageScreen> {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  log.providerId.toUpperCase(),
+                  log.providerModelText.toUpperCase(),
                   style: theme.textTheme.titleSmall?.copyWith(
                     fontWeight: FontWeight.w700,
                     fontSize: 12,

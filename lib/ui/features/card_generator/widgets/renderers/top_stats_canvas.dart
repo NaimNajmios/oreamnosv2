@@ -12,25 +12,106 @@ class TopStatsCanvas extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final colors = config.colorPair;
+    final fontMultiplier = config.fontSizeMultiplier;
+    final stats = data.stats;
+
     return Container(
       decoration: BoxDecoration(gradient: GradientBuilder.vertical(colors)),
       child: Stack(
         children: [
-          if (config.showScrim) Positioned.fill(child: Container(decoration: BoxDecoration(gradient: GradientBuilder.scrimFor(config.scrimType, config.overlayOpacity)))),
+          if (config.showScrim)
+            Positioned.fill(
+              child: Container(decoration: BoxDecoration(gradient: GradientBuilder.scrimFor(config.scrimType, config.overlayOpacity))),
+            ),
           Padding(
-            padding: const EdgeInsets.all(28),
+            padding: const EdgeInsets.all(24),
             child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Container(padding: const EdgeInsets.symmetric(horizontal:10, vertical:4), decoration: BoxDecoration(color: Colors.white.withValues(alpha: 0.14), borderRadius: BorderRadius.circular(20)), child: Text('Top Stats', style: GoogleFonts.jetBrainsMono(color: Colors.white70, fontSize:10, letterSpacing:1))),
-                const SizedBox(height:12),
-                Text(data.headline, style: GoogleFonts.inter(color: Colors.white, fontSize: 22 * config.fontSizeMultiplier, fontWeight: FontWeight.w900, height:1.1, shadows: config.textShadowRadius>0?[Shadow(color: config.textShadowColor, blurRadius: config.textShadowRadius)]:null)),
-                const SizedBox(height:8),
-                if (data.subtext.isNotEmpty && data.subtext!='N/A') Text(data.subtext, style: GoogleFonts.inter(color: Colors.white70, fontSize: 13)),
-                if (data.microStat!=null && data.microStat!='N/A') Padding(padding: const EdgeInsets.only(top:10), child: Container(padding: const EdgeInsets.symmetric(horizontal:10, vertical:6), decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(20)), child: Text(data.microStat!, style: const TextStyle(color: Colors.black, fontSize:12, fontWeight: FontWeight.w800)))),
-                const Spacer(),
-                Text('Oreamnos', style: GoogleFonts.jetBrainsMono(color: Colors.white.withValues(alpha: 0.7), fontSize:11)),
+                Row(
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                      decoration: BoxDecoration(color: Colors.white.withValues(alpha: 0.16), borderRadius: BorderRadius.circular(16)),
+                      child: Text('MATCH METRICS', style: GoogleFonts.jetBrainsMono(color: Colors.white, fontSize: 10, fontWeight: FontWeight.w700, letterSpacing: 1)),
+                    ),
+                    const Spacer(),
+                    if (data.matchContext != 'N/A')
+                      Text(data.matchContext, style: GoogleFonts.jetBrainsMono(color: Colors.white70, fontSize: 10)),
+                  ],
+                ),
+                const SizedBox(height: 12),
+                Expanded(
+                  child: stats.isNotEmpty
+                      ? GridView.builder(
+                          physics: const NeverScrollableScrollPhysics(),
+                          gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                            crossAxisCount: 2,
+                            childAspectRatio: 1.3,
+                            crossAxisSpacing: 12,
+                            mainAxisSpacing: 12,
+                          ),
+                          itemCount: stats.length.clamp(0, 4),
+                          itemBuilder: (context, index) {
+                            final s = stats[index];
+                            return Container(
+                              padding: const EdgeInsets.all(12),
+                              decoration: BoxDecoration(
+                                color: Colors.black.withValues(alpha: 0.35),
+                                borderRadius: BorderRadius.circular(14),
+                                border: Border.all(color: Colors.white.withValues(alpha: 0.1)),
+                              ),
+                              child: Column(
+                                mainAxisAlignment: MainAxisAlignment.center,
+                                children: [
+                                  Text(
+                                    s.value,
+                                    style: GoogleFonts.jetBrainsMono(
+                                      color: Colors.amberAccent,
+                                      fontSize: 26 * fontMultiplier,
+                                      fontWeight: FontWeight.w900,
+                                    ),
+                                    maxLines: 1,
+                                    overflow: TextOverflow.ellipsis,
+                                  ),
+                                  const SizedBox(height: 4),
+                                  Text(
+                                    s.label.toUpperCase(),
+                                    style: GoogleFonts.inter(
+                                      color: Colors.white,
+                                      fontSize: 10,
+                                      fontWeight: FontWeight.w700,
+                                      letterSpacing: 0.8,
+                                    ),
+                                    textAlign: TextAlign.center,
+                                    maxLines: 2,
+                                    overflow: TextOverflow.ellipsis,
+                                  ),
+                                  if (s.context != 'N/A') ...[
+                                    const SizedBox(height: 2),
+                                    Text(
+                                      s.context,
+                                      style: GoogleFonts.inter(color: Colors.white54, fontSize: 9),
+                                      textAlign: TextAlign.center,
+                                      maxLines: 1,
+                                      overflow: TextOverflow.ellipsis,
+                                    ),
+                                  ],
+                                ],
+                              ),
+                            );
+                          },
+                        )
+                      : Center(
+                          child: Text(
+                            data.subtext.isNotEmpty ? data.subtext : 'Top Performance Stats',
+                            style: GoogleFonts.inter(color: Colors.white70, fontSize: 12),
+                            textAlign: TextAlign.center,
+                          ),
+                        ),
+                ),
+                const SizedBox(height: 8),
+                Text('Oreamnos Key Stats', style: GoogleFonts.jetBrainsMono(color: Colors.white.withValues(alpha: 0.6), fontSize: 10)),
               ],
             ),
           ),

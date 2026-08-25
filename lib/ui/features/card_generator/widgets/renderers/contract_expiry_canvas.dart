@@ -12,25 +12,118 @@ class ContractExpiryCanvas extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final colors = config.colorPair;
+    final fontMultiplier = config.fontSizeMultiplier;
+    final players = data.expiringPlayers;
+
     return Container(
       decoration: BoxDecoration(gradient: GradientBuilder.vertical(colors)),
       child: Stack(
         children: [
-          if (config.showScrim) Positioned.fill(child: Container(decoration: BoxDecoration(gradient: GradientBuilder.scrimFor(config.scrimType, config.overlayOpacity)))),
+          if (config.showScrim)
+            Positioned.fill(
+              child: Container(decoration: BoxDecoration(gradient: GradientBuilder.scrimFor(config.scrimType, config.overlayOpacity))),
+            ),
           Padding(
-            padding: const EdgeInsets.all(28),
+            padding: const EdgeInsets.all(24),
             child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Container(padding: const EdgeInsets.symmetric(horizontal:10, vertical:4), decoration: BoxDecoration(color: Colors.white.withValues(alpha: 0.14), borderRadius: BorderRadius.circular(20)), child: Text('Contract Expiry', style: GoogleFonts.jetBrainsMono(color: Colors.white70, fontSize:10, letterSpacing:1))),
-                const SizedBox(height:12),
-                Text(data.headline, style: GoogleFonts.inter(color: Colors.white, fontSize: 22 * config.fontSizeMultiplier, fontWeight: FontWeight.w900, height:1.1, shadows: config.textShadowRadius>0?[Shadow(color: config.textShadowColor, blurRadius: config.textShadowRadius)]:null)),
-                const SizedBox(height:8),
-                if (data.subtext.isNotEmpty && data.subtext!='N/A') Text(data.subtext, style: GoogleFonts.inter(color: Colors.white70, fontSize: 13)),
-                if (data.microStat!=null && data.microStat!='N/A') Padding(padding: const EdgeInsets.only(top:10), child: Container(padding: const EdgeInsets.symmetric(horizontal:10, vertical:6), decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(20)), child: Text(data.microStat!, style: const TextStyle(color: Colors.black, fontSize:12, fontWeight: FontWeight.w800)))),
-                const Spacer(),
-                Text('Oreamnos', style: GoogleFonts.jetBrainsMono(color: Colors.white.withValues(alpha: 0.7), fontSize:11)),
+                Row(
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                      decoration: BoxDecoration(color: Colors.amberAccent.withValues(alpha: 0.25), borderRadius: BorderRadius.circular(16)),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          const Icon(Icons.timer_outlined, color: Colors.amberAccent, size: 12),
+                          const SizedBox(width: 4),
+                          Text('CONTRACT WATCH', style: GoogleFonts.jetBrainsMono(color: Colors.amberAccent, fontSize: 10, fontWeight: FontWeight.w800, letterSpacing: 1)),
+                        ],
+                      ),
+                    ),
+                    const Spacer(),
+                    if (data.seasonYear != 'N/A')
+                      Text(data.seasonYear, style: GoogleFonts.jetBrainsMono(color: Colors.white70, fontSize: 10)),
+                  ],
+                ),
+                const SizedBox(height: 10),
+                Text(
+                  data.teamName,
+                  style: GoogleFonts.inter(
+                    color: Colors.white,
+                    fontSize: 22 * fontMultiplier,
+                    fontWeight: FontWeight.w900,
+                    height: 1.1,
+                  ),
+                ),
+                const SizedBox(height: 12),
+                Expanded(
+                  child: Container(
+                    padding: const EdgeInsets.all(12),
+                    decoration: BoxDecoration(
+                      color: Colors.black.withValues(alpha: 0.35),
+                      borderRadius: BorderRadius.circular(14),
+                      border: Border.all(color: Colors.white.withValues(alpha: 0.1)),
+                    ),
+                    child: players.isNotEmpty
+                        ? ListView.separated(
+                            physics: const NeverScrollableScrollPhysics(),
+                            itemCount: players.length.clamp(0, 4),
+                            separatorBuilder: (_, _) => const Divider(height: 10, color: Colors.white12),
+                            itemBuilder: (context, index) {
+                              final p = players[index];
+                              return Row(
+                                children: [
+                                  Expanded(
+                                    child: Column(
+                                      crossAxisAlignment: CrossAxisAlignment.start,
+                                      children: [
+                                        Text(
+                                          p.playerName,
+                                          style: GoogleFonts.inter(color: Colors.white, fontSize: 13, fontWeight: FontWeight.w700),
+                                          maxLines: 1,
+                                          overflow: TextOverflow.ellipsis,
+                                        ),
+                                        Text(
+                                          '${p.position} • Val: ${p.marketValue != 'N/A' ? p.marketValue : 'TBD'}',
+                                          style: GoogleFonts.inter(color: Colors.white70, fontSize: 11),
+                                          maxLines: 1,
+                                          overflow: TextOverflow.ellipsis,
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                  Container(
+                                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                                    decoration: BoxDecoration(
+                                      color: Colors.white.withValues(alpha: 0.15),
+                                      borderRadius: BorderRadius.circular(8),
+                                    ),
+                                    child: Text(
+                                      'Exp: ${p.expiresIn}',
+                                      style: GoogleFonts.jetBrainsMono(
+                                        color: Colors.white,
+                                        fontSize: 10,
+                                        fontWeight: FontWeight.w800,
+                                      ),
+                                    ),
+                                  ),
+                                ],
+                              );
+                            },
+                          )
+                        : Center(
+                            child: Text(
+                              data.subtext.isNotEmpty ? data.subtext : 'Contract Expiry Tracker',
+                              style: GoogleFonts.inter(color: Colors.white70, fontSize: 12),
+                              textAlign: TextAlign.center,
+                            ),
+                          ),
+                  ),
+                ),
+                const SizedBox(height: 8),
+                Text('Oreamnos Contract Tracker', style: GoogleFonts.jetBrainsMono(color: Colors.white.withValues(alpha: 0.6), fontSize: 10)),
               ],
             ),
           ),

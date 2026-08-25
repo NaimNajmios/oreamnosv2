@@ -41,5 +41,22 @@ class UsageService extends ChangeNotifier {
     await _prefs.remove(_keyLogs);
     notifyListeners();
   }
+
+  double getSuccessRateByProvider(String providerId) {
+    final providerLogs = _logs.where((l) => l.providerId.toLowerCase() == providerId.toLowerCase()).toList();
+    if (providerLogs.isEmpty) return 0.0;
+    final successes = providerLogs.where((l) => l.isSuccess).length;
+    return (successes / providerLogs.length) * 100.0;
+  }
+
+  Map<String, double> getAllSuccessRates() {
+    final map = <String, double>{};
+    for (final p in ['gemini', 'groq', 'openrouter', 'cerebras']) {
+      if (_logs.any((l) => l.providerId.toLowerCase() == p)) {
+        map[p] = getSuccessRateByProvider(p);
+      }
+    }
+    return map;
+  }
 }
 

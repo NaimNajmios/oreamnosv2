@@ -58,16 +58,22 @@ class ColorExtractor {
   }
 
   static Future<List<Color>?> _extractViaPaletteGenerator(String imagePath) async {
-    // Dynamic import to avoid hard dependency if file not found
     try {
-      final provider = FileImage(File(imagePath));
-      // ignore: avoid_dynamic_calls
-      final palette = await PaletteGenerator.fromImageProvider(provider);
+      final file = File(imagePath);
+      if (!await file.exists()) return null;
+      final provider = ResizeImage(FileImage(file), width: 200);
+      final palette = await PaletteGenerator.fromImageProvider(
+        provider,
+        maximumColorCount: 16,
+      );
       final vibrant = palette.vibrantColor?.color;
       final darkVibrant = palette.darkVibrantColor?.color;
+      final dominant = palette.dominantColor?.color;
       if (vibrant != null && darkVibrant != null) return [vibrant, darkVibrant];
+      if (vibrant != null && dominant != null && vibrant != dominant) return [vibrant, dominant];
       if (vibrant != null) return [vibrant, vibrant.withValues(alpha: 0.7)];
       if (darkVibrant != null) return [darkVibrant, darkVibrant.withValues(alpha: 0.7)];
+      if (dominant != null) return [dominant, dominant.withValues(alpha: 0.7)];
       return null;
     } catch (_) {
       return null;

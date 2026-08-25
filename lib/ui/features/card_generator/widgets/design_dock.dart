@@ -106,12 +106,34 @@ class _DesignDockState extends State<DesignDock> {
             Divider(height: 1, color: theme.colorScheme.outlineVariant.withValues(alpha: 0.6)),
             Padding(
               padding: const EdgeInsets.fromLTRB(AppSpacing.screenHorizontal, AppSpacing.md, AppSpacing.screenHorizontal, 0),
-              child: BackgroundPicker(
-                image: vm.backgroundImage,
-                scrim: vm.scrimOpacity,
-                onScrimChanged: vm.setScrim,
-                onPick: vm.pickImage,
-                onRemove: vm.removeImage,
+              child: Column(
+                children: [
+                  BackgroundPicker(
+                    image: vm.backgroundImage,
+                    scrim: vm.scrimOpacity,
+                    onScrimChanged: vm.setScrim,
+                    onPick: vm.pickImage,
+                    onRemove: vm.removeImage,
+                  ),
+                  if (vm.hasImage && vm.extractedPalette != null) ...[
+                    const SizedBox(height: AppSpacing.sm),
+                    Row(
+                      children: [
+                        const Icon(Icons.palette_outlined, size: 16),
+                        const SizedBox(width: 6),
+                        Text('Auto-Extract Palette', style: theme.textTheme.labelSmall?.copyWith(fontWeight: FontWeight.w600)),
+                        const Spacer(),
+                        Switch.adaptive(
+                          value: vm.useAutoPalette,
+                          onChanged: (v) {
+                            Haptics.selectionClick();
+                            vm.setAutoPalette(v);
+                          },
+                        ),
+                      ],
+                    ),
+                  ],
+                ],
               ),
             ),
             const SizedBox(height: AppSpacing.md),

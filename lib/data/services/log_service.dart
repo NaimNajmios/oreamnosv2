@@ -1,69 +1,181 @@
+import 'dart:async';
+import 'dart:convert';
 import 'package:flutter/foundation.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+
+enum LogLevel { debug, info, warning, error }
+
+extension LogLevelX on LogLevel {
+  String get label => switch (this) {
+        LogLevel.debug => 'DEBUG',
+        LogLevel.info => 'INFO',
+        LogLevel.warning => 'WARN',
+        LogLevel.error => 'ERROR',
+      };
+}
 
 class LogEntry {
   final DateTime timestamp;
   final String level;
   final String message;
   final String? error;
+  final String tag;
+  final String? details;
 
   LogEntry({
     required this.timestamp,
     required this.level,
     required this.message,
     this.error,
+    this.tag = 'App',
+    this.details,
   });
+
+  String get formattedTime {
+    final h = timestamp.hour.toString().padLeft(2, '0');
+    final m = timestamp.minute.toString().padLeft(2, '0');
+    final s = timestamp.second.toString().padLeft(2, '0');
+    final ms = (timestamp.millisecond % 1000).toString().padLeft(3, '0');
+    return '$h:$m:$s.$ms';
+  }
+
+  String get formattedDate {
+    final y = timestamp.year.toString();
+    final mo = timestamp.month.toString().padLeft(2, '0');
+    final d = timestamp.day.toString().padLeft(2, '0');
+    return '$y-$mo-$d $formattedTime';
+  }
+
+  LogLevel get logLevel {
+    switch (level.toUpperCase()) {
+      case 'DEBUG':
+        return LogLevel.debug;
+      case 'WARN':
+      case 'WARNING':
+        return LogLevel.warning;
+      case 'ERROR':
+        return LogLevel.error;
+      default:
+        return LogLevel.info;
+    }
+  }
+
+  Map<String, dynamic> toJson() => {
+        'timestamp': timestamp.toIso8601String(),
+        'level': level,
+        'message': message,
+        if (error != null) 'error': error,
+        'tag': tag,
+        if (details != null) 'details': details,
+      };
+
+  factory LogEntry.fromJson(Map<String, dynamic> json) => LogEntry(
+        timestamp: DateTime.parse(json['timestamp'] as String),
+        level: json['level'] as String? ?? 'INFO',
+        message: json['message'] as String? ?? '',
+        error: json['error'] as String?,
+        tag: json['tag'] as String? ?? 'App',
+        details: json['details'] as String?,
+      );
 }
 
 /// Abstraction for logging — enables Riverpod injection + mocking.
-/// Phase 0: introduced alongside the existing singleton to allow incremental
-/// migration. Phase A will replace `LogService()` direct calls with
-/// `ref.watch(logServiceProvider)`.
 abstract class ILogService implements Listenable {
   List<LogEntry> get logs;
-  void info(String message);
-  void warning(String message);
+  void debug(String message, {String tag = 'App', String? details});
+  void info(String message, {String tag = 'App', String? details});
+  void warning(String message, {String tag = 'App', String? details});
   void error(String message, [dynamic error, StackTrace? stackTrace]);
   void clear();
 }
 
-/// A simple in-memory ring buffer for debugging logs.
+/// A persistent in-memory ring buffer for debugging logs.
 class LogService extends ChangeNotifier implements ILogService {
   static final LogService _instance = LogService._internal();
   factory LogService() => _instance;
-  LogService._internal();
+  LogService._internal() {
+    _initPersistence();
+  }
 
   /// Test-only constructor — creates a non-singleton instance for injection.
   @visibleForTesting
-  LogService.test();
+  LogService.test() {
+    _initPersistence();
+  }
 
+  static const String _keyLogs = 'logs_v2';
   final List<LogEntry> _logs = [];
   final int _maxLogs = 200;
+  bool _isNotificationPending = false;
+  Timer? _persistTimer;
 
   @override
   List<LogEntry> get logs => List.unmodifiable(_logs);
 
-  @override
-  void info(String message) {
-    _addLog(level: 'INFO', message: message);
+  Future<void> _initPersistence() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final saved = prefs.getStringList(_keyLogs);
+      if (saved != null && saved.isNotEmpty && _logs.isEmpty) {
+        for (final item in saved) {
+          try {
+            _logs.add(LogEntry.fromJson(jsonDecode(item) as Map<String, dynamic>));
+          } catch (_) {}
+        }
+        _scheduleThrottledNotify();
+      }
+    } catch (_) {}
+  }
+
+  void _scheduleSave() {
+    _persistTimer?.cancel();
+    _persistTimer = Timer(const Duration(milliseconds: 500), () async {
+      try {
+        final prefs = await SharedPreferences.getInstance();
+        final list = _logs.take(100).map((e) => jsonEncode(e.toJson())).toList();
+        await prefs.setStringList(_keyLogs, list);
+      } catch (_) {}
+    });
   }
 
   @override
-  void warning(String message) {
-    _addLog(level: 'WARN', message: message);
+  void debug(String message, {String tag = 'App', String? details}) {
+    _addLog(level: 'DEBUG', message: message, tag: tag, details: details);
+  }
+
+  @override
+  void info(String message, {String tag = 'App', String? details}) {
+    _addLog(level: 'INFO', message: message, tag: tag, details: details);
+  }
+
+  @override
+  void warning(String message, {String tag = 'App', String? details}) {
+    _addLog(level: 'WARN', message: message, tag: tag, details: details);
   }
 
   @override
   void error(String message, [dynamic error, StackTrace? stackTrace]) {
-    _addLog(level: 'ERROR', message: message, error: '$error\n$stackTrace');
+    _addLog(level: 'ERROR', message: message, error: '$error\n$stackTrace', tag: 'App');
   }
 
   @override
   void clear() {
     _logs.clear();
+    _persistTimer?.cancel();
+    SharedPreferences.getInstance().then((p) => p.remove(_keyLogs)).ignore();
     notifyListeners();
   }
 
-  void _addLog({required String level, required String message, String? error}) {
+  void _scheduleThrottledNotify() {
+    if (_isNotificationPending) return;
+    _isNotificationPending = true;
+    scheduleMicrotask(() {
+      _isNotificationPending = false;
+      notifyListeners();
+    });
+  }
+
+  void _addLog({required String level, required String message, String? error, String tag = 'App', String? details}) {
     if (_logs.length >= _maxLogs) {
       _logs.removeAt(0);
     }
@@ -72,11 +184,14 @@ class LogService extends ChangeNotifier implements ILogService {
       level: level,
       message: message,
       error: error,
+      tag: tag,
+      details: details,
     ));
     if (kDebugMode) {
-      print('[$level] $message ${error != null ? '\nError: $error' : ''}');
+      print('[$level][$tag] $message ${error != null ? '\nError: $error' : ''}');
     }
-    notifyListeners();
+    _scheduleThrottledNotify();
+    _scheduleSave();
   }
 }
 

@@ -1,9 +1,12 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 import 'package:go_router/go_router.dart';
 
 import 'package:oreamnos/config/routes/app_router.dart';
+import 'package:oreamnos/config/theme/app_colors.dart';
 import 'package:oreamnos/config/theme/app_spacing.dart';
 import 'package:oreamnos/data/services/web_scraper_service.dart';
 import 'package:oreamnos/domain/models/card_brief.dart';
@@ -14,15 +17,19 @@ import 'package:oreamnos/ui/core/widgets/app_chip.dart';
 import 'package:oreamnos/ui/core/widgets/app_copy_button.dart';
 import 'package:oreamnos/ui/core/widgets/app_input.dart';
 import 'package:oreamnos/ui/core/widgets/curated_post_sections.dart';
+import 'package:oreamnos/ui/core/widgets/enhanced_loading_card.dart';
 import 'package:oreamnos/ui/core/widgets/error_state.dart';
+import 'package:oreamnos/ui/core/widgets/input_clear_button.dart';
+import 'package:oreamnos/ui/core/widgets/link_preview_card.dart';
 import 'package:oreamnos/ui/core/widgets/ocr_extraction_sheet.dart';
 import 'package:oreamnos/ui/core/widgets/refinement_pill.dart';
 import 'package:oreamnos/ui/core/widgets/section_header.dart';
-import 'package:oreamnos/ui/core/widgets/skeleton_loader.dart';
 import 'package:oreamnos/ui/core/widgets/source_attribution_card.dart';
+import 'package:oreamnos/ui/core/widgets/success_overlay.dart';
 import 'package:oreamnos/ui/core/widgets/swipeable_output_card.dart';
 import 'package:oreamnos/ui/features/settings/view_models/settings_view_model.dart';
 import 'package:oreamnos/ui/features/settings/views/widgets/add_pill_dialog.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import '../view_models/generate_view_model.dart';
 
 class GenerateScreen extends StatefulWidget {
@@ -34,6 +41,8 @@ class GenerateScreen extends StatefulWidget {
 
 class _GenerateScreenState extends State<GenerateScreen> {
   final _controller = TextEditingController();
+  bool _showSuccessOverlay = false;
+  bool _lastSuccessState = false;
 
   @override
   void initState() {
@@ -52,6 +61,15 @@ class _GenerateScreenState extends State<GenerateScreen> {
     setState(() {});
   }
 
+  Future<void> _checkAndShowSuccessOverlay() async {
+    final prefs = await SharedPreferences.getInstance();
+    final shown = prefs.getBool('hasShownSuccessOverlay') ?? false;
+    if (!shown && mounted) {
+      await prefs.setBool('hasShownSuccessOverlay', true);
+      setState(() => _showSuccessOverlay = true);
+    }
+  }
+
   Future<void> _pasteFromClipboard() async {
     final data = await Clipboard.getData(Clipboard.kTextPlain);
     if (data?.text != null && data!.text!.isNotEmpty) {
@@ -61,10 +79,27 @@ class _GenerateScreenState extends State<GenerateScreen> {
     }
   }
 
-  void _clearInput() {
+  void _handleClear() {
+    final prevText = _controller.text;
     _controller.clear();
-    Haptics.lightImpact();
     setState(() {});
+    if (mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: const Text('Input text cleared'),
+          action: SnackBarAction(
+            label: 'Undo',
+            textColor: AppColors.success,
+            onPressed: () {
+              _controller.text = prevText;
+              setState(() {});
+            },
+          ),
+          behavior: SnackBarBehavior.floating,
+          shape: RoundedRectangleBorder(borderRadius: AppSpacing.borderRadiusSm),
+        ),
+      );
+    }
   }
 
   @override
@@ -83,6 +118,15 @@ class _GenerateScreenState extends State<GenerateScreen> {
     final hasContent = _controller.text.trim().isNotEmpty;
     final isGenerating = viewModel.state == GenerateState.generating;
     final isSuccess = viewModel.state == GenerateState.success && viewModel.curatedPost != null;
+
+    if (isSuccess && !_lastSuccessState) {
+      _lastSuccessState = true;
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        _checkAndShowSuccessOverlay();
+      });
+    } else if (!isSuccess) {
+      _lastSuccessState = false;
+    }
 
     final validationMsg = viewModel.validationMessage ?? viewModel.errorMessage;
     final needsConfig = validationMsg != null && (validationMsg.toLowerCase().contains('api key') || validationMsg.toLowerCase().contains('model'));
@@ -108,67 +152,76 @@ class _GenerateScreenState extends State<GenerateScreen> {
           const SizedBox(width: AppSpacing.xs),
         ],
       ),
-      body: SafeArea(
-        child: Center(
-          child: ConstrainedBox(
-            constraints: const BoxConstraints(maxWidth: AppSpacing.maxContentWidth),
-            child: SingleChildScrollView(
-              padding: const EdgeInsets.symmetric(
-                horizontal: AppSpacing.screenHorizontal,
-                vertical: AppSpacing.base,
-              ),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
-                  // Validation banner (pre-flight)
-                  if (needsConfig && viewModel.state == GenerateState.error)
-                    Container(
-                      margin: const EdgeInsets.only(bottom: AppSpacing.base),
-                      padding: const EdgeInsets.symmetric(horizontal: AppSpacing.md, vertical: AppSpacing.sm),
-                      decoration: BoxDecoration(
-                        color: theme.colorScheme.errorContainer.withValues(alpha: 0.6),
-                        borderRadius: AppSpacing.borderRadiusSm,
-                        border: Border.all(color: theme.colorScheme.error.withValues(alpha: 0.2)),
-                      ),
-                      child: Row(
-                        children: [
-                          Icon(Icons.warning_amber_rounded, size: 18, color: theme.colorScheme.error),
-                          const SizedBox(width: AppSpacing.sm),
-                          Expanded(
-                            child: Text(
-                              // ignore: dead_code, dead_null_aware_expression
-                              validationMsg ?? '',
-                              style: theme.textTheme.bodySmall?.copyWith(color: theme.colorScheme.onErrorContainer, fontWeight: FontWeight.w500),
-                            ),
-                          ),
-                          TextButton(
-                            onPressed: () {
-                              Haptics.lightImpact();
-                              context.push(RoutePaths.settings);
-                            },
-                            child: const Text('Configure'),
-                          ),
-                        ],
-                      ),
-                    ),
-                  // Capture Section — single card (input + config footer + CTA + recent ExpansionTile)
-                  _buildCaptureCard(context, viewModel, isUrl, hasContent, isGenerating),
-                  const SizedBox(height: AppSpacing.xxl),
-                  Divider(thickness: 1, height: 1, color: theme.colorScheme.outlineVariant.withValues(alpha: 0.55)),
-                  const SizedBox(height: AppSpacing.base),
-                  const SectionHeader(title: 'Output'),
-                  const SizedBox(height: AppSpacing.sm),
-                  AnimatedSwitcher(
-                    duration: const Duration(milliseconds: 220),
-                    switchInCurve: Curves.easeOutCubic,
-                    switchOutCurve: Curves.easeInCubic,
-                    child: _buildResultArea(context, theme, viewModel, isSuccess),
+      body: Stack(
+        children: [
+          SafeArea(
+            child: Center(
+              child: ConstrainedBox(
+                constraints: const BoxConstraints(maxWidth: AppSpacing.maxContentWidth),
+                child: SingleChildScrollView(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: AppSpacing.screenHorizontal,
+                    vertical: AppSpacing.base,
                   ),
-                ],
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      // Validation banner (pre-flight)
+                      if (needsConfig && viewModel.state == GenerateState.error)
+                        Container(
+                          margin: const EdgeInsets.only(bottom: AppSpacing.base),
+                          padding: const EdgeInsets.symmetric(horizontal: AppSpacing.md, vertical: AppSpacing.sm),
+                          decoration: BoxDecoration(
+                            color: theme.colorScheme.errorContainer.withValues(alpha: 0.6),
+                            borderRadius: AppSpacing.borderRadiusSm,
+                            border: Border.all(color: theme.colorScheme.error.withValues(alpha: 0.2)),
+                          ),
+                          child: Row(
+                            children: [
+                              Icon(Icons.warning_amber_rounded, size: 18, color: theme.colorScheme.error),
+                              const SizedBox(width: AppSpacing.sm),
+                              Expanded(
+                                child: Text(
+                                  validationMsg,
+                                  style: theme.textTheme.bodySmall?.copyWith(color: theme.colorScheme.onErrorContainer, fontWeight: FontWeight.w500),
+                                ),
+                              ),
+                              TextButton(
+                                onPressed: () {
+                                  Haptics.lightImpact();
+                                  context.push(RoutePaths.settings);
+                                },
+                                child: const Text('Configure'),
+                              ),
+                            ],
+                          ),
+                        ),
+                      // Capture Section — single card (input + config footer + CTA + recent ExpansionTile)
+                      _buildCaptureCard(context, viewModel, isUrl, hasContent, isGenerating),
+                      const SizedBox(height: AppSpacing.xxl),
+                      Divider(thickness: 1, height: 1, color: theme.colorScheme.outlineVariant.withValues(alpha: 0.55)),
+                      const SizedBox(height: AppSpacing.base),
+                      const SectionHeader(title: 'Output'),
+                      const SizedBox(height: AppSpacing.sm),
+                      AnimatedSwitcher(
+                        duration: const Duration(milliseconds: 220),
+                        switchInCurve: Curves.easeOutCubic,
+                        switchOutCurve: Curves.easeInCubic,
+                        child: _buildResultArea(context, theme, viewModel, isSuccess),
+                      ),
+                    ],
+                  ),
+                ),
               ),
             ),
           ),
-        ),
+          if (_showSuccessOverlay)
+            SuccessOverlay(
+              onDismiss: () {
+                if (mounted) setState(() => _showSuccessOverlay = false);
+              },
+            ),
+        ],
       ),
     );
   }
@@ -203,49 +256,15 @@ class _GenerateScreenState extends State<GenerateScreen> {
           ),
           if (isUrl) ...[
             const SizedBox(height: AppSpacing.sm),
-            Container(
-              padding: const EdgeInsets.symmetric(
-                horizontal: AppSpacing.md,
-                vertical: AppSpacing.sm,
-              ),
-              decoration: BoxDecoration(
-                color: theme.colorScheme.surfaceContainerHighest.withValues(alpha: 0.7),
-                borderRadius: AppSpacing.borderRadiusSm,
-                border: Border.all(color: theme.colorScheme.outline.withValues(alpha: 0.6), width: 1),
-              ),
-              child: Row(
-                children: [
-                  Container(
-                    width: 28,
-                    height: 28,
-                    decoration: BoxDecoration(
-                      color: theme.colorScheme.primary.withValues(alpha: 0.12),
-                      borderRadius: AppSpacing.borderRadiusXs,
-                    ),
-                    child: Icon(Icons.link_rounded, size: 16, color: theme.colorScheme.primary),
-                  ),
-                  const SizedBox(width: AppSpacing.sm),
-                  Expanded(
-                    child: Text(
-                      _controller.text.trim(),
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: theme.textTheme.bodySmall?.copyWith(
-                        color: theme.colorScheme.onSurface,
-                        fontWeight: FontWeight.w500,
-                      ),
-                    ),
-                  ),
-                  InkWell(
-                    onTap: _clearInput,
-                    borderRadius: AppSpacing.borderRadiusPill,
-                    child: Padding(
-                      padding: const EdgeInsets.all(4),
-                      child: Icon(Icons.close_rounded, size: 16, color: theme.colorScheme.onSurface.withValues(alpha: 0.6)),
-                    ),
-                  ),
-                ],
-              ),
+            LinkPreviewCard(
+              url: _controller.text.trim(),
+              isLoading: isGenerating,
+              onExtract: isGenerating
+                  ? null
+                  : () {
+                      FocusScope.of(context).unfocus();
+                      viewModel.generatePost(_controller.text);
+                    },
             ),
           ],
           const SizedBox(height: AppSpacing.md),
@@ -293,26 +312,31 @@ class _GenerateScreenState extends State<GenerateScreen> {
                         ),
                       ),
                     ),
-                    InkWell(
-                      onTap: isGenerating ? null : (hasContent ? _clearInput : _pasteFromClipboard),
-                      borderRadius: AppSpacing.borderRadiusPill,
-                      child: Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
-                        decoration: BoxDecoration(
-                          color: hasContent ? theme.colorScheme.surface : theme.colorScheme.primary.withValues(alpha: 0.08),
-                          borderRadius: AppSpacing.borderRadiusPill,
-                          border: Border.all(color: hasContent ? theme.colorScheme.outline : theme.colorScheme.primary.withValues(alpha: 0.2), width: 1),
-                        ),
-                        child: Row(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            Icon(hasContent ? Icons.clear_rounded : Icons.content_paste_rounded, size: 14, color: hasContent ? theme.colorScheme.onSurface.withValues(alpha: 0.7) : theme.colorScheme.primary),
-                            const SizedBox(width: 6),
-                            Text(hasContent ? 'Clear' : 'Paste', style: theme.textTheme.labelSmall?.copyWith(fontWeight: FontWeight.w600, color: hasContent ? theme.colorScheme.onSurface.withValues(alpha: 0.7) : theme.colorScheme.primary)),
-                          ],
+                    if (hasContent)
+                      InputClearButton(
+                        onClear: _handleClear,
+                      )
+                    else
+                      InkWell(
+                        onTap: isGenerating ? null : _pasteFromClipboard,
+                        borderRadius: AppSpacing.borderRadiusPill,
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
+                          decoration: BoxDecoration(
+                            color: theme.colorScheme.primary.withValues(alpha: 0.08),
+                            borderRadius: AppSpacing.borderRadiusPill,
+                            border: Border.all(color: theme.colorScheme.primary.withValues(alpha: 0.2), width: 1),
+                          ),
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Icon(Icons.content_paste_rounded, size: 14, color: theme.colorScheme.primary),
+                              const SizedBox(width: 6),
+                              Text('Paste', style: theme.textTheme.labelSmall?.copyWith(fontWeight: FontWeight.w600, color: theme.colorScheme.primary)),
+                            ],
+                          ),
                         ),
                       ),
-                    ),
                   ],
                 ),
               ),
@@ -434,52 +458,9 @@ class _GenerateScreenState extends State<GenerateScreen> {
   ) {
     if (viewModel.state == GenerateState.generating) {
       final isScraping = viewModel.generatingStep == GeneratingStep.scraping;
-      return AppCard(
+      return EnhancedLoadingCard(
         key: const ValueKey('generating'),
-        padding: const EdgeInsets.all(AppSpacing.base),
-        child: Column(
-          children: [
-            SkeletonLoader.outputCard(context),
-            const SizedBox(height: AppSpacing.base),
-            Row(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                SizedBox(
-                  width: 14,
-                  height: 14,
-                  child: CircularProgressIndicator(
-                    strokeWidth: 2,
-                    valueColor: AlwaysStoppedAnimation<Color>(theme.colorScheme.primary),
-                  ),
-                ),
-                const SizedBox(width: AppSpacing.sm),
-                Text(
-                  isScraping ? 'Extracting article content...' : 'Synthesizing post with AI...',
-                  style: theme.textTheme.bodySmall?.copyWith(
-                    color: theme.colorScheme.onSurface.withValues(alpha: 0.6),
-                  ),
-                ),
-              ],
-            ),
-            const SizedBox(height: AppSpacing.sm),
-            Row(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                Container(width: 8, height: 8, decoration: BoxDecoration(color: isScraping ? theme.colorScheme.primary : theme.colorScheme.outline, shape: BoxShape.circle)),
-                const SizedBox(width: AppSpacing.sm),
-                Container(width: 8, height: 8, decoration: BoxDecoration(color: !isScraping ? theme.colorScheme.primary : theme.colorScheme.outline, shape: BoxShape.circle)),
-                const SizedBox(width: AppSpacing.sm),
-                Container(width: 8, height: 8, decoration: BoxDecoration(color: theme.colorScheme.outline.withValues(alpha: 0.5), shape: BoxShape.circle)),
-              ],
-            ),
-            if (isScraping)
-              Padding(
-                padding: const EdgeInsets.only(top: AppSpacing.sm),
-                child: Text('This may take a few seconds for URL extraction',
-                    style: theme.textTheme.labelSmall?.copyWith(color: theme.colorScheme.onSurface.withValues(alpha: 0.45))),
-              ),
-          ],
-        ),
+        type: isScraping ? LoadingType.extracting : LoadingType.generating,
       );
     }
 

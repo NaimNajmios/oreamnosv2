@@ -12,25 +12,119 @@ class StartingXICanvas extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final colors = config.colorPair;
+    final fontMultiplier = config.fontSizeMultiplier;
+    final players = data.starters;
+
     return Container(
       decoration: BoxDecoration(gradient: GradientBuilder.vertical(colors)),
       child: Stack(
         children: [
-          if (config.showScrim) Positioned.fill(child: Container(decoration: BoxDecoration(gradient: GradientBuilder.scrimFor(config.scrimType, config.overlayOpacity)))),
+          if (config.showScrim)
+            Positioned.fill(
+              child: Container(decoration: BoxDecoration(gradient: GradientBuilder.scrimFor(config.scrimType, config.overlayOpacity))),
+            ),
           Padding(
-            padding: const EdgeInsets.all(28),
+            padding: const EdgeInsets.all(24),
             child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Container(padding: const EdgeInsets.symmetric(horizontal:10, vertical:4), decoration: BoxDecoration(color: Colors.white.withValues(alpha: 0.14), borderRadius: BorderRadius.circular(20)), child: Text('Starting XI', style: GoogleFonts.jetBrainsMono(color: Colors.white70, fontSize:10, letterSpacing:1))),
-                const SizedBox(height:12),
-                Text(data.headline, style: GoogleFonts.inter(color: Colors.white, fontSize: 22 * config.fontSizeMultiplier, fontWeight: FontWeight.w900, height:1.1, shadows: config.textShadowRadius>0?[Shadow(color: config.textShadowColor, blurRadius: config.textShadowRadius)]:null)),
-                const SizedBox(height:8),
-                if (data.subtext.isNotEmpty && data.subtext!='N/A') Text(data.subtext, style: GoogleFonts.inter(color: Colors.white70, fontSize: 13)),
-                if (data.microStat!=null && data.microStat!='N/A') Padding(padding: const EdgeInsets.only(top:10), child: Container(padding: const EdgeInsets.symmetric(horizontal:10, vertical:6), decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(20)), child: Text(data.microStat!, style: const TextStyle(color: Colors.black, fontSize:12, fontWeight: FontWeight.w800)))),
-                const Spacer(),
-                Text('Oreamnos', style: GoogleFonts.jetBrainsMono(color: Colors.white.withValues(alpha: 0.7), fontSize:11)),
+                Row(
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                      decoration: BoxDecoration(color: Colors.white.withValues(alpha: 0.16), borderRadius: BorderRadius.circular(16)),
+                      child: Text('STARTING XI', style: GoogleFonts.jetBrainsMono(color: Colors.white, fontSize: 10, fontWeight: FontWeight.w700, letterSpacing: 1)),
+                    ),
+                    const Spacer(),
+                    if (data.formation != 'N/A')
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                        decoration: BoxDecoration(color: Colors.white.withValues(alpha: 0.22), borderRadius: BorderRadius.circular(16)),
+                        child: Text(data.formation, style: GoogleFonts.jetBrainsMono(color: Colors.white, fontSize: 11, fontWeight: FontWeight.w800)),
+                      ),
+                  ],
+                ),
+                const SizedBox(height: 12),
+                Text(
+                  data.teamName,
+                  style: GoogleFonts.inter(
+                    color: Colors.white,
+                    fontSize: 22 * fontMultiplier,
+                    fontWeight: FontWeight.w900,
+                    height: 1.1,
+                  ),
+                ),
+                if (data.manager != 'N/A') ...[
+                  const SizedBox(height: 4),
+                  Text('Manager: ${data.manager}', style: GoogleFonts.inter(color: Colors.white70, fontSize: 12)),
+                ],
+                const SizedBox(height: 12),
+                Expanded(
+                  child: Container(
+                    padding: const EdgeInsets.all(12),
+                    decoration: BoxDecoration(
+                      color: Colors.black.withValues(alpha: 0.3),
+                      borderRadius: BorderRadius.circular(14),
+                      border: Border.all(color: Colors.white.withValues(alpha: 0.1)),
+                    ),
+                    child: players.isNotEmpty
+                        ? GridView.builder(
+                            physics: const NeverScrollableScrollPhysics(),
+                            gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                              crossAxisCount: 2,
+                              childAspectRatio: 4.5,
+                              crossAxisSpacing: 8,
+                              mainAxisSpacing: 4,
+                            ),
+                            itemCount: players.length.clamp(0, 11),
+                            itemBuilder: (context, index) {
+                              final p = players[index];
+                              return Row(
+                                children: [
+                                  Container(
+                                    width: 22,
+                                    height: 22,
+                                    decoration: BoxDecoration(
+                                      color: Colors.white.withValues(alpha: 0.2),
+                                      shape: BoxShape.circle,
+                                    ),
+                                    alignment: Alignment.center,
+                                    child: Text(
+                                      p.number,
+                                      style: GoogleFonts.jetBrainsMono(color: Colors.white, fontSize: 10, fontWeight: FontWeight.w700),
+                                    ),
+                                  ),
+                                  const SizedBox(width: 6),
+                                  Expanded(
+                                    child: Text(
+                                      p.name,
+                                      style: GoogleFonts.inter(color: Colors.white, fontSize: 11, fontWeight: FontWeight.w600),
+                                      maxLines: 1,
+                                      overflow: TextOverflow.ellipsis,
+                                    ),
+                                  ),
+                                ],
+                              );
+                            },
+                          )
+                        : Center(
+                            child: Text(
+                              data.subtext.isNotEmpty ? data.subtext : 'Lineup Announced',
+                              style: GoogleFonts.inter(color: Colors.white70, fontSize: 12),
+                              textAlign: TextAlign.center,
+                            ),
+                          ),
+                  ),
+                ),
+                const SizedBox(height: 8),
+                Row(
+                  children: [
+                    Text('Oreamnos Lineup', style: GoogleFonts.jetBrainsMono(color: Colors.white.withValues(alpha: 0.6), fontSize: 10)),
+                    const Spacer(),
+                    if (data.subs.isNotEmpty)
+                      Text('${data.subs.length} Subs', style: GoogleFonts.jetBrainsMono(color: Colors.white.withValues(alpha: 0.6), fontSize: 10)),
+                  ],
+                ),
               ],
             ),
           ),

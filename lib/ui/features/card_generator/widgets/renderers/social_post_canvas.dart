@@ -12,25 +12,100 @@ class SocialPostCanvas extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final colors = config.colorPair;
+    final fontMultiplier = config.fontSizeMultiplier;
+
     return Container(
       decoration: BoxDecoration(gradient: GradientBuilder.vertical(colors)),
       child: Stack(
         children: [
-          if (config.showScrim) Positioned.fill(child: Container(decoration: BoxDecoration(gradient: GradientBuilder.scrimFor(config.scrimType, config.overlayOpacity)))),
+          if (config.showScrim)
+            Positioned.fill(
+              child: Container(decoration: BoxDecoration(gradient: GradientBuilder.scrimFor(config.scrimType, config.overlayOpacity))),
+            ),
           Padding(
-            padding: const EdgeInsets.all(28),
+            padding: const EdgeInsets.all(26),
             child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Container(padding: const EdgeInsets.symmetric(horizontal:10, vertical:4), decoration: BoxDecoration(color: Colors.white.withValues(alpha: 0.14), borderRadius: BorderRadius.circular(20)), child: Text('Social Post', style: GoogleFonts.jetBrainsMono(color: Colors.white70, fontSize:10, letterSpacing:1))),
-                const SizedBox(height:12),
-                Text(data.headline, style: GoogleFonts.inter(color: Colors.white, fontSize: 22 * config.fontSizeMultiplier, fontWeight: FontWeight.w900, height:1.1, shadows: config.textShadowRadius>0?[Shadow(color: config.textShadowColor, blurRadius: config.textShadowRadius)]:null)),
-                const SizedBox(height:8),
-                if (data.subtext.isNotEmpty && data.subtext!='N/A') Text(data.subtext, style: GoogleFonts.inter(color: Colors.white70, fontSize: 13)),
-                if (data.microStat!=null && data.microStat!='N/A') Padding(padding: const EdgeInsets.only(top:10), child: Container(padding: const EdgeInsets.symmetric(horizontal:10, vertical:6), decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(20)), child: Text(data.microStat!, style: const TextStyle(color: Colors.black, fontSize:12, fontWeight: FontWeight.w800)))),
+                // Social Header
+                Row(
+                  children: [
+                    Container(
+                      width: 40,
+                      height: 40,
+                      decoration: BoxDecoration(
+                        color: Colors.white.withValues(alpha: 0.2),
+                        shape: BoxShape.circle,
+                      ),
+                      alignment: Alignment.center,
+                      child: Text(
+                        data.name.isNotEmpty && data.name != 'N/A' ? data.name[0].toUpperCase() : '⚽',
+                        style: GoogleFonts.inter(color: Colors.white, fontSize: 16, fontWeight: FontWeight.w800),
+                      ),
+                    ),
+                    const SizedBox(width: 10),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Row(
+                            children: [
+                              Flexible(
+                                child: Text(
+                                  data.name != 'N/A' && data.name.isNotEmpty ? data.name : 'Oreamnos Sport',
+                                  style: GoogleFonts.inter(color: Colors.white, fontSize: 13, fontWeight: FontWeight.w800),
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                ),
+                              ),
+                              if (data.verified) ...[
+                                const SizedBox(width: 4),
+                                const Icon(Icons.verified_rounded, color: Colors.blueAccent, size: 14),
+                              ],
+                            ],
+                          ),
+                          Text(
+                            data.handle != 'N/A' ? data.handle : '@oreamnos',
+                            style: GoogleFonts.inter(color: Colors.white70, fontSize: 11),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ],
+                      ),
+                    ),
+                    if (data.mediaType != 'N/A')
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                        decoration: BoxDecoration(color: Colors.white.withValues(alpha: 0.14), borderRadius: BorderRadius.circular(12)),
+                        child: Text(data.mediaType.toUpperCase(), style: GoogleFonts.jetBrainsMono(color: Colors.white70, fontSize: 9, fontWeight: FontWeight.w700)),
+                      ),
+                  ],
+                ),
                 const Spacer(),
-                Text('Oreamnos', style: GoogleFonts.jetBrainsMono(color: Colors.white.withValues(alpha: 0.7), fontSize:11)),
+                // Post Content
+                Text(
+                  data.content,
+                  style: GoogleFonts.inter(
+                    color: Colors.white,
+                    fontSize: 18 * fontMultiplier,
+                    fontWeight: FontWeight.w600,
+                    height: 1.35,
+                    shadows: config.textShadowRadius > 0 ? [Shadow(color: config.textShadowColor, blurRadius: config.textShadowRadius)] : null,
+                  ),
+                  maxLines: 6,
+                  overflow: TextOverflow.ellipsis,
+                ),
+                const Spacer(),
+                // Metrics
+                if (data.metrics != 'N/A' && data.metrics.isNotEmpty) ...[
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                    decoration: BoxDecoration(color: Colors.black.withValues(alpha: 0.3), borderRadius: BorderRadius.circular(12)),
+                    child: Text(data.metrics, style: GoogleFonts.jetBrainsMono(color: Colors.white70, fontSize: 10)),
+                  ),
+                  const SizedBox(height: 8),
+                ],
+                Text('Oreamnos Social Feed', style: GoogleFonts.jetBrainsMono(color: Colors.white.withValues(alpha: 0.6), fontSize: 10)),
               ],
             ),
           ),

@@ -7,6 +7,7 @@ import '../../ui/features/shell/views/modern_app_shell.dart';
 import '../../ui/features/settings/views/pill_manager_screen.dart';
 import '../../ui/features/settings/views/hashtag_manager_screen.dart';
 import '../../ui/features/usage/views/usage_screen.dart';
+import '../../ui/features/usage/views/session_list_screen.dart';
 import '../../ui/features/card_generator/views/card_generator_screen.dart';
 import '../../ui/features/generate/views/reading_mode_screen.dart';
 import '../../ui/features/settings/views/debug_log_screen.dart';
@@ -25,6 +26,7 @@ abstract final class RoutePaths {
   static const String library = '/library';
   static const String cardGenerator = '/card-generator';
   static const String debugLogs = '/debug-logs';
+  static const String sessionHistory = '/sessions';
 }
 
 final rootNavigatorKey = GlobalKey<NavigatorState>();
@@ -132,6 +134,10 @@ GoRouter createAppRouter() {
       GoRoute(
         path: RoutePaths.debugLogs,
         builder: (context, state) => const DebugLogScreen(),
+      ),
+      GoRoute(
+        path: RoutePaths.sessionHistory,
+        builder: (context, state) => const SessionListScreen(),
       ),
     ],
   );

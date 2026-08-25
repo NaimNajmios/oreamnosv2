@@ -46,14 +46,10 @@ class WebScraperService {
         pageTitle = document.querySelector('title')?.text.trim();
         if (pageTitle != null && pageTitle.isEmpty) pageTitle = null;
         // og:title fallback
-        if (pageTitle == null) {
-          pageTitle = document.querySelector('meta[property="og:title"]')?.attributes['content']?.trim();
-        }
+        pageTitle ??= document.querySelector('meta[property="og:title"]')?.attributes['content']?.trim();
         description = document.querySelector('meta[name="description"]')?.attributes['content']?.trim();
         if (description != null && description.isEmpty) description = null;
-        if (description == null) {
-          description = document.querySelector('meta[property="og:description"]')?.attributes['content']?.trim();
-        }
+        description ??= document.querySelector('meta[property="og:description"]')?.attributes['content']?.trim();
       } catch (_) {}
 
       String text;

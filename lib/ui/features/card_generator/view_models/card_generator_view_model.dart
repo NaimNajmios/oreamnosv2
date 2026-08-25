@@ -2,6 +2,7 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:oreamnos/data/services/card_data_extractor.dart';
+import 'package:oreamnos/data/services/color_extractor.dart';
 import 'package:oreamnos/data/services/export_service.dart';
 import 'package:oreamnos/domain/models/card_brief.dart';
 import 'package:oreamnos/domain/models/card_data.dart';
@@ -257,6 +258,14 @@ class CardGeneratorViewModel extends ChangeNotifier {
     notifyListeners();
   }
 
+  bool useAutoPalette = false;
+  List<Color>? extractedPalette;
+
+  void setAutoPalette(bool v) {
+    useAutoPalette = v;
+    notifyListeners();
+  }
+
   // --- Image picking ---
   Future<void> pickImage(ImageSource source) async {
     try {
@@ -264,6 +273,7 @@ class CardGeneratorViewModel extends ChangeNotifier {
       final xfile = await picker.pickImage(source: source, imageQuality: 85);
       if (xfile != null) {
         backgroundImage = File(xfile.path);
+        extractedPalette = await ColorExtractor.extractPalette(xfile.path);
         notifyListeners();
       }
     } catch (e) {
@@ -273,6 +283,8 @@ class CardGeneratorViewModel extends ChangeNotifier {
 
   void removeImage() {
     backgroundImage = null;
+    extractedPalette = null;
+    useAutoPalette = false;
     notifyListeners();
   }
 

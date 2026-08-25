@@ -10,12 +10,14 @@ import 'package:dio/dio.dart';
 /// Flutter adaptation per Phase A spec: MAX_RETRIES=4, BASE 500ms, CAP 60s.
 class RetryInterceptor extends QueuedInterceptor {
   RetryInterceptor({
+    this.dio,
     this.maxRetries = 4,
     this.baseDelayMs = 500,
     this.maxDelayMs = 60000,
     this.backoffMultiplier = 2.0,
   });
 
+  final Dio? dio;
   final int maxRetries;
   final int baseDelayMs;
   final int maxDelayMs;
@@ -65,12 +67,13 @@ class RetryInterceptor extends QueuedInterceptor {
     final opts = err.requestOptions;
     opts.extra = Map<String, dynamic>.from(opts.extra)..['retryCount'] = retries + 1;
     try {
-      final response = await Dio(
+      final client = dio ?? Dio(
         BaseOptions(
           connectTimeout: const Duration(seconds: 30),
           receiveTimeout: const Duration(seconds: 60),
         ),
-      ).fetch(opts);
+      );
+      final response = await client.fetch(opts);
       handler.resolve(response);
     } catch (e) {
       handler.next(err);
