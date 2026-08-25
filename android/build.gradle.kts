@@ -1,7 +1,5 @@
-@file:Suppress("DEPRECATION")
-
 import com.android.build.gradle.BaseExtension
-import org.jetbrains.kotlin.gradle.tasks.KotlinCompile
+
 allprojects {
     repositories {
         google()
@@ -13,20 +11,11 @@ subprojects {
     if (name != "app") {
         afterEvaluate {
             extensions.findByType(BaseExtension::class.java)?.apply {
-                compileSdkVersion(36)
-                if (name == "quick_settings") {
-                    namespace = "io.apparence.quick_settings"
-                }
                 compileOptions {
                     sourceCompatibility = JavaVersion.VERSION_17
                     targetCompatibility = JavaVersion.VERSION_17
                 }
             }
-        }
-    }
-    tasks.withType<KotlinCompile>().configureEach {
-        compilerOptions {
-            jvmTarget.set(org.jetbrains.kotlin.gradle.dsl.JvmTarget.JVM_17)
         }
     }
 }
