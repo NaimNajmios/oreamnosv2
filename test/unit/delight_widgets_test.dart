@@ -78,9 +78,9 @@ void main() {
       expect(find.text('theathletic.com'), findsOneWidget);
       expect(find.text('Sensational Title'), findsOneWidget);
       expect(find.text('Article summary description'), findsOneWidget);
-      expect(find.text('EXTRACT'), findsOneWidget);
+      expect(find.text('Extract'), findsOneWidget);
 
-      await tester.tap(find.text('EXTRACT'));
+      await tester.tap(find.text('Extract'));
       await tester.pumpAndSettle();
       expect(extractClicked, isTrue);
     });

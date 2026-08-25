@@ -72,12 +72,12 @@ void main() {
     expect(find.widgetWithText(AppBar, 'Oreamnos'), findsOneWidget);
 
     // Verify 3 navigation destinations
-    expect(find.text('GENERATE'), findsOneWidget);
-    expect(find.text('STUDIO'), findsOneWidget);
-    expect(find.text('SETTINGS'), findsOneWidget);
+    expect(find.text('Generate'), findsOneWidget);
+    expect(find.text('Studio'), findsOneWidget);
+    expect(find.text('Settings'), findsOneWidget);
 
     // Verify the Generate CTA button
-    expect(find.text('GENERATE POST'), findsOneWidget);
+    expect(find.text('Generate Post'), findsOneWidget);
   });
 
   testWidgets('Navigation bar switches to Settings and shows grouped sections', (WidgetTester tester) async {
@@ -89,23 +89,23 @@ void main() {
     await tester.pumpAndSettle();
 
     // Tap on Settings tab in NavigationBar
-    await tester.tap(find.text('SETTINGS'));
+    await tester.tap(find.text('Settings'));
     await tester.pumpAndSettle();
 
     // Verify Settings screen sections
-    expect(find.text('APPEARANCE'), findsOneWidget);
-    expect(find.text('AI PROVIDER'), findsOneWidget);
-    expect(find.text('POST SETTINGS'), findsOneWidget);
+    expect(find.text('Appearance'), findsOneWidget);
+    expect(find.text('AI Provider'), findsOneWidget);
+    expect(find.text('Post Settings'), findsOneWidget);
 
     // Scroll until Advanced section is visible
     await tester.scrollUntilVisible(
-      find.text('ADVANCED'),
+      find.text('Advanced'),
       200,
       scrollable: find.byType(Scrollable).first,
     );
     await tester.pumpAndSettle();
 
-    expect(find.text('ADVANCED'), findsOneWidget);
+    expect(find.text('Advanced'), findsOneWidget);
   });
 
   testWidgets('Navigation bar switches to Studio tab', (WidgetTester tester) async {
@@ -117,7 +117,7 @@ void main() {
     await tester.pumpAndSettle();
 
     // Tap on Studio tab in NavigationBar
-    await tester.tap(find.text('STUDIO'));
+    await tester.tap(find.text('Studio'));
     await tester.pumpAndSettle();
 
     // Verify Card Studio title

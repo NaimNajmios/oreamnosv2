@@ -92,12 +92,12 @@ class _AppOutlinedButtonState extends State<AppOutlinedButton> with SingleTicker
           scale: AppMotion.shouldReduceMotion(context) ? 1.0 : _scaleAnimation.value,
           child: child,
         ),
-        child: Container(
+          child: Container(
           height: widget.height,
           decoration: BoxDecoration(
             color: Colors.transparent,
             borderRadius: AppSpacing.borderRadiusPill,
-            border: Border.all(color: outlineColor, width: 2),
+            border: Border.all(color: outlineColor, width: 1),
           ),
           padding: const EdgeInsets.symmetric(horizontal: 24),
           child: Center(
@@ -118,11 +118,9 @@ class _AppOutlinedButtonState extends State<AppOutlinedButton> with SingleTicker
                         const SizedBox(width: 12),
                       ],
                       Text(
-                        widget.label.toUpperCase(),
+                        widget.label,
                         style: theme.textTheme.labelLarge?.copyWith(
                           color: fgColor,
-                          fontWeight: FontWeight.w700,
-                          letterSpacing: 1.0,
                         ),
                       ),
                     ],

@@ -56,7 +56,7 @@ class AppChip extends StatelessWidget {
           decoration: BoxDecoration(
             color: bg,
             borderRadius: AppSpacing.borderRadiusPill,
-            border: Border.all(color: border, width: 2),
+            border: Border.all(color: border, width: 1),
           ),
           child: Row(
             mainAxisSize: MainAxisSize.min,
@@ -66,11 +66,9 @@ class AppChip extends StatelessWidget {
                 const SizedBox(width: 8),
               ],
               Text(
-                label.toUpperCase(),
+                label,
                 style: theme.textTheme.labelMedium?.copyWith(
                   color: textCol,
-                  fontWeight: FontWeight.w700,
-                  letterSpacing: 0.5,
                 ),
               ),
               if (count != null) ...[
@@ -85,7 +83,7 @@ class AppChip extends StatelessWidget {
                     count.toString(),
                     style: theme.textTheme.labelSmall?.copyWith(
                       color: textCol,
-                      fontWeight: FontWeight.w700,
+                      fontWeight: FontWeight.w600,
                       fontSize: 10,
                     ),
                   ),

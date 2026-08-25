@@ -37,11 +37,11 @@ class EmptyState extends StatelessWidget {
           mainAxisAlignment: MainAxisAlignment.center,
           mainAxisSize: MainAxisSize.min,
           children: [
-            // Stark 100% opacity Icon
+            // Soft rounded container for icon
             Container(
               padding: const EdgeInsets.all(24),
               decoration: BoxDecoration(
-                border: Border.all(color: colorScheme.outline, width: 2),
+                color: iconBackground ?? colorScheme.primaryContainer.withValues(alpha: 0.5),
                 shape: BoxShape.circle,
               ),
               child: Icon(
@@ -52,17 +52,17 @@ class EmptyState extends StatelessWidget {
             ),
             const SizedBox(height: 32),
             Text(
-              title.toUpperCase(),
-              style: theme.textTheme.headlineSmall,
+              title,
+              style: theme.textTheme.headlineSmall?.copyWith(
+                fontWeight: FontWeight.w600,
+              ),
               textAlign: TextAlign.center,
             ),
             const SizedBox(height: 16),
             Text(
-              '> ${description.toUpperCase()}', // Terminal-style prefix
+              description,
               style: theme.textTheme.bodyMedium?.copyWith(
-                fontFamily: 'IBM Plex Mono', // Monospace override
                 color: colorScheme.onSurface.withValues(alpha: 0.7),
-                letterSpacing: 1.0,
               ),
               textAlign: TextAlign.center,
             ),

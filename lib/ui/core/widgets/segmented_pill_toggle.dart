@@ -21,7 +21,6 @@ class SegmentedPillToggle<T> extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final isDark = theme.brightness == Brightness.dark;
 
     return Container(
       decoration: BoxDecoration(
@@ -29,7 +28,7 @@ class SegmentedPillToggle<T> extends StatelessWidget {
         borderRadius: BorderRadius.circular(AppSpacing.radiusPill),
         border: Border.all(
           color: theme.colorScheme.outline,
-          width: 2.0,
+          width: 1.0,
         ),
       ),
       child: Row(
@@ -60,7 +59,7 @@ class SegmentedPillToggle<T> extends StatelessWidget {
                 duration: AppMotion.micro,
                 curve: AppMotion.curveMicro,
                 style: theme.textTheme.labelLarge!.copyWith(
-                  fontWeight: FontWeight.w700,
+                  fontWeight: isSelected ? FontWeight.w600 : FontWeight.w500,
                   color: isSelected ? theme.colorScheme.surface : theme.colorScheme.onSurface,
                 ),
                 child: Text(label),

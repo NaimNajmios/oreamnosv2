@@ -73,26 +73,24 @@ class _OreamnosAppState extends State<OreamnosApp> {
 
     return DynamicColorBuilder(
       builder: (ColorScheme? lightDynamic, ColorScheme? darkDynamic) {
-        final ThemeData themeData;
-        final ThemeData? darkThemeData;
-        final ThemeMode materialThemeMode;
+        ThemeData themeData;
+        ThemeData? darkThemeData;
+        ThemeMode materialThemeMode;
 
         switch (themeMode) {
-          case AppThemeMode.flashMode:
-            themeData = AppTheme.flash(dynamicColorScheme: lightDynamic);
+          case AppThemeMode.light:
+            themeData = AppTheme.lightTheme(dynamicColorScheme: lightDynamic);
             darkThemeData = null;
             materialThemeMode = ThemeMode.light;
-          case AppThemeMode.voidMode:
-            themeData = AppTheme.voidTheme(dynamicColorScheme: darkDynamic);
+          case AppThemeMode.dark:
+            themeData = AppTheme.darkTheme(dynamicColorScheme: darkDynamic);
             darkThemeData = null;
             materialThemeMode = ThemeMode.dark;
           case AppThemeMode.system:
-            themeData = AppTheme.flash(dynamicColorScheme: lightDynamic);
-            darkThemeData = AppTheme.voidTheme(dynamicColorScheme: darkDynamic);
+            themeData = AppTheme.lightTheme(dynamicColorScheme: lightDynamic);
+            darkThemeData = AppTheme.darkTheme(dynamicColorScheme: darkDynamic);
             materialThemeMode = ThemeMode.system;
         }
-
-
 
         return MaterialApp.router(
           title: AppConstants.appName,

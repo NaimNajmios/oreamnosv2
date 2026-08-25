@@ -35,26 +35,25 @@ class ErrorState extends StatelessWidget {
         children: [
           Container(
             padding: const EdgeInsets.all(16),
-            decoration: BoxDecoration(
-              border: Border.all(color: AppColors.error, width: 2),
+            decoration: const BoxDecoration(
+              color: AppColors.errorSoft,
               shape: BoxShape.circle,
             ),
             child: Icon(icon, color: AppColors.error, size: 24),
           ),
           const SizedBox(height: AppSpacing.lg),
           Text(
-            title.toUpperCase(),
+            title,
             style: theme.textTheme.titleMedium?.copyWith(
-              fontWeight: FontWeight.w700,
+              fontWeight: FontWeight.w600,
               color: AppColors.error,
             ),
             textAlign: TextAlign.center,
           ),
           const SizedBox(height: AppSpacing.sm),
           Text(
-            '> ERROR:\n$message',
+            message,
             style: theme.textTheme.bodyMedium?.copyWith(
-              fontFamily: 'IBM Plex Mono',
               color: theme.colorScheme.onSurface,
             ),
             textAlign: TextAlign.center,

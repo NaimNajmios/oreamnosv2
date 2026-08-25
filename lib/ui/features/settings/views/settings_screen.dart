@@ -3,9 +3,7 @@ import 'package:provider/provider.dart';
 import 'package:go_router/go_router.dart';
 
 import 'package:oreamnos/config/routes/app_router.dart';
-import 'package:oreamnos/config/theme/app_colors.dart';
 import 'package:oreamnos/config/theme/app_spacing.dart';
-import 'package:oreamnos/ui/core/widgets/app_card.dart';
 import 'package:oreamnos/ui/core/widgets/section_header.dart';
 import 'package:oreamnos/ui/core/widgets/settings_tile.dart';
 import 'package:oreamnos/domain/models/app_theme_mode.dart';
@@ -16,7 +14,7 @@ import 'widgets/model_selection_dialog.dart';
 import 'widgets/provider_selection_dialog.dart';
 import 'widgets/tone_selection_dialog.dart';
 
-/// Aperture Settings hub.
+/// Minimalist Settings hub.
 class SettingsScreen extends StatelessWidget {
   const SettingsScreen({super.key});
 
@@ -28,12 +26,12 @@ class SettingsScreen extends StatelessWidget {
     return Scaffold(
       appBar: AppBar(
         title: Text(
-          'SETTINGS',
+          'Settings',
           style: theme.textTheme.headlineSmall,
         ),
         bottom: PreferredSize(
-          preferredSize: const Size.fromHeight(2),
-          child: Container(color: theme.colorScheme.outline, height: 2),
+          preferredSize: const Size.fromHeight(1),
+          child: Container(color: theme.colorScheme.outline, height: 1),
         ),
       ),
       body: Center(
@@ -46,20 +44,20 @@ class SettingsScreen extends StatelessWidget {
             ),
             children: [
               // Theme Toggle
-              const SectionHeader(title: 'APPEARANCE'),
+              const SectionHeader(title: 'Appearance'),
               const SizedBox(height: AppSpacing.md),
               Center(
                 child: SegmentedPillToggle<AppThemeMode>(
-                  items: const [AppThemeMode.system, AppThemeMode.flashMode, AppThemeMode.voidMode],
+                  items: const [AppThemeMode.system, AppThemeMode.light, AppThemeMode.dark],
                   selectedItem: viewModel.themeMode,
                   onChanged: (mode) => viewModel.setThemeMode(mode),
-                  itemLabelBuilder: (mode) => mode.label.toUpperCase(),
+                  itemLabelBuilder: (mode) => mode.label,
                 ),
               ),
               const SizedBox(height: AppSpacing.xxl),
 
               // AI Provider Section
-              const SectionHeader(title: 'AI PROVIDER'),
+              const SectionHeader(title: 'AI Provider'),
               const Divider(),
               SettingsTile(
                 leadingIcon: Icons.smart_toy_outlined,
@@ -87,7 +85,7 @@ class SettingsScreen extends StatelessWidget {
               const SizedBox(height: AppSpacing.xxl),
 
               // Post Settings Section
-              const SectionHeader(title: 'POST SETTINGS'),
+              const SectionHeader(title: 'Post Settings'),
               const Divider(),
               SettingsTile(
                 leadingIcon: Icons.tune_rounded,
@@ -152,7 +150,7 @@ class SettingsScreen extends StatelessWidget {
               const SizedBox(height: AppSpacing.xxl),
 
               // Usage & Analytics Section
-              const SectionHeader(title: 'USAGE & ANALYTICS'),
+              const SectionHeader(title: 'Usage & Analytics'),
               const Divider(),
               SettingsTile(
                 leadingIcon: Icons.analytics_outlined,
@@ -164,7 +162,7 @@ class SettingsScreen extends StatelessWidget {
               const SizedBox(height: AppSpacing.xxl),
 
               // Advanced Section
-              const SectionHeader(title: 'ADVANCED'),
+              const SectionHeader(title: 'Advanced'),
               const Divider(),
               SettingsTile(
                 leadingIcon: Icons.bug_report_outlined,

@@ -40,7 +40,7 @@ class ModernAppShell extends StatelessWidget {
       bottomNavigationBar: Container(
         decoration: BoxDecoration(
           border: Border(
-            top: BorderSide(color: theme.colorScheme.outline, width: 2),
+            top: BorderSide(color: theme.colorScheme.outline, width: 1),
           ),
         ),
         child: NavigationBar(
@@ -50,17 +50,17 @@ class ModernAppShell extends StatelessWidget {
             NavigationDestination(
               icon: Icon(Icons.auto_awesome_outlined, color: onSurface),
               selectedIcon: Icon(Icons.auto_awesome_rounded, color: onSurface),
-              label: 'GENERATE',
+              label: 'Generate',
             ),
             NavigationDestination(
               icon: Icon(Icons.palette_outlined, color: onSurface),
               selectedIcon: Icon(Icons.palette_rounded, color: onSurface),
-              label: 'STUDIO',
+              label: 'Studio',
             ),
             NavigationDestination(
               icon: Icon(Icons.tune_outlined, color: onSurface),
               selectedIcon: Icon(Icons.tune_rounded, color: onSurface),
-              label: 'SETTINGS',
+              label: 'Settings',
             ),
           ],
         ),

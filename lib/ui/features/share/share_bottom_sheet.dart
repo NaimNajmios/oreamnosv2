@@ -63,20 +63,20 @@ class _ShareBottomSheetState extends State<ShareBottomSheet> {
               Container(
                 padding: const EdgeInsets.all(8),
                 decoration: BoxDecoration(
-                  border: Border.all(color: theme.colorScheme.outline, width: 2),
+                  color: theme.colorScheme.primaryContainer.withValues(alpha: 0.3),
                   shape: BoxShape.circle,
                 ),
                 child: Icon(
                   Icons.auto_awesome_rounded,
                   size: 20,
-                  color: theme.colorScheme.onSurface,
+                  color: theme.colorScheme.primary,
                 ),
               ),
               const SizedBox(width: AppSpacing.md),
               Text(
-                'SHARE TO OREAMNOS',
+                'Share to Oreamnos',
                 style: theme.textTheme.titleMedium?.copyWith(
-                  fontWeight: FontWeight.w700,
+                  fontWeight: FontWeight.w600,
                 ),
               ),
             ],
@@ -93,7 +93,6 @@ class _ShareBottomSheetState extends State<ShareBottomSheet> {
               overflow: TextOverflow.ellipsis,
               style: theme.textTheme.bodyMedium?.copyWith(
                 height: 1.4,
-                fontFamily: 'IBM Plex Mono',
               ),
             ),
           ),
@@ -101,11 +100,10 @@ class _ShareBottomSheetState extends State<ShareBottomSheet> {
 
           // Tone Selector
           Text(
-            'SELECT TONE',
-            style: theme.textTheme.labelSmall?.copyWith(
-              color: theme.colorScheme.onSurface,
-              fontWeight: FontWeight.w700,
-              letterSpacing: 1.1,
+            'Select Tone',
+            style: theme.textTheme.labelMedium?.copyWith(
+              color: theme.colorScheme.onSurfaceVariant,
+              fontWeight: FontWeight.w600,
             ),
           ),
           const SizedBox(height: AppSpacing.sm),

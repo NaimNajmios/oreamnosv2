@@ -30,16 +30,16 @@ class AppCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final radius = borderRadius ?? AppSpacing.borderRadiusMd;
+    final radius = borderRadius ?? AppSpacing.borderRadiusLg;
 
     Widget card = Container(
       margin: margin,
       decoration: BoxDecoration(
         color: backgroundColor ?? theme.colorScheme.surface,
-        borderRadius: radius, // should be 0px via theme/spacing
+        borderRadius: radius,
         border: Border.all(
           color: borderColor ?? theme.colorScheme.outline,
-          width: 2, // 2px stark border
+          width: 1, // 1px subtle border
         ),
         boxShadow: boxShadow ?? AppSpacing.subtleShadow(theme.brightness == Brightness.dark),
       ),
@@ -52,7 +52,7 @@ class AppCard extends StatelessWidget {
                 left: 0,
                 top: 0,
                 bottom: 0,
-                width: 4, // 4px stark accent line
+                width: 4,
                 child: Container(color: accentColor),
               ),
             Padding(

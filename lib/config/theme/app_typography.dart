@@ -1,96 +1,96 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 
-/// Brutalist typography ramp for the Aperture design system.
-/// Uses Space Grotesk for all UI text roles and IBM Plex Mono for numeric & tabular figures.
+/// Clean typography ramp for the Minimalist design system.
+/// Uses Inter for UI text and IBM Plex Mono for numeric & tabular figures.
 abstract final class AppTypography {
   static TextTheme textTheme(Color textColor) {
     return TextTheme(
-      // Display: Bold (w700), tight tracking
-      displayLarge: GoogleFonts.spaceGrotesk(
+      // Display
+      displayLarge: GoogleFonts.inter(
         fontSize: 57,
         height: 64 / 57,
-        fontWeight: FontWeight.w700,
-        color: textColor,
-        letterSpacing: -1.5,
-      ),
-      displayMedium: GoogleFonts.spaceGrotesk(
-        fontSize: 45,
-        height: 52 / 45,
-        fontWeight: FontWeight.w700,
+        fontWeight: FontWeight.w600,
         color: textColor,
         letterSpacing: -1.0,
       ),
-      displaySmall: GoogleFonts.spaceGrotesk(
-        fontSize: 36,
-        height: 44 / 36,
-        fontWeight: FontWeight.w700,
+      displayMedium: GoogleFonts.inter(
+        fontSize: 45,
+        height: 52 / 45,
+        fontWeight: FontWeight.w600,
         color: textColor,
         letterSpacing: -0.5,
       ),
+      displaySmall: GoogleFonts.inter(
+        fontSize: 36,
+        height: 44 / 36,
+        fontWeight: FontWeight.w600,
+        color: textColor,
+        letterSpacing: 0,
+      ),
 
-      // Headline: Bold (w700), zero tracking
-      headlineLarge: GoogleFonts.spaceGrotesk(
+      // Headline
+      headlineLarge: GoogleFonts.inter(
         fontSize: 32,
         height: 40 / 32,
-        fontWeight: FontWeight.w700,
+        fontWeight: FontWeight.w600,
         color: textColor,
         letterSpacing: 0,
       ),
-      headlineMedium: GoogleFonts.spaceGrotesk(
+      headlineMedium: GoogleFonts.inter(
         fontSize: 28,
         height: 36 / 28,
-        fontWeight: FontWeight.w700,
+        fontWeight: FontWeight.w600,
         color: textColor,
         letterSpacing: 0,
       ),
-      headlineSmall: GoogleFonts.spaceGrotesk(
+      headlineSmall: GoogleFonts.inter(
         fontSize: 24,
         height: 32 / 24,
-        fontWeight: FontWeight.w700,
+        fontWeight: FontWeight.w600,
         color: textColor,
         letterSpacing: 0,
       ),
 
-      // Title: Bold (w700) for all titles
-      titleLarge: GoogleFonts.spaceGrotesk(
+      // Title
+      titleLarge: GoogleFonts.inter(
         fontSize: 22,
         height: 28 / 22,
-        fontWeight: FontWeight.w700,
+        fontWeight: FontWeight.w500,
         color: textColor,
         letterSpacing: 0,
       ),
-      titleMedium: GoogleFonts.spaceGrotesk(
+      titleMedium: GoogleFonts.inter(
         fontSize: 16,
         height: 24 / 16,
-        fontWeight: FontWeight.w700,
+        fontWeight: FontWeight.w500,
         color: textColor,
-        letterSpacing: 0.15,
+        letterSpacing: 0,
       ),
-      titleSmall: GoogleFonts.spaceGrotesk(
+      titleSmall: GoogleFonts.inter(
         fontSize: 14,
         height: 20 / 14,
-        fontWeight: FontWeight.w700,
+        fontWeight: FontWeight.w500,
         color: textColor,
-        letterSpacing: 0.1,
+        letterSpacing: 0,
       ),
 
-      // Body: Regular (w400)
-      bodyLarge: GoogleFonts.spaceGrotesk(
+      // Body
+      bodyLarge: GoogleFonts.inter(
         fontSize: 16,
         height: 24 / 16,
         fontWeight: FontWeight.w400,
         color: textColor,
         letterSpacing: 0,
       ),
-      bodyMedium: GoogleFonts.spaceGrotesk(
+      bodyMedium: GoogleFonts.inter(
         fontSize: 14,
         height: 20 / 14,
         fontWeight: FontWeight.w400,
         color: textColor,
         letterSpacing: 0,
       ),
-      bodySmall: GoogleFonts.spaceGrotesk(
+      bodySmall: GoogleFonts.inter(
         fontSize: 12,
         height: 16 / 12,
         fontWeight: FontWeight.w400,
@@ -98,34 +98,34 @@ abstract final class AppTypography {
         letterSpacing: 0,
       ),
 
-      // Label: Bold (w700), stark uppercase style intended
-      labelLarge: GoogleFonts.spaceGrotesk(
+      // Label: Medium weight, standard tracking
+      labelLarge: GoogleFonts.inter(
         fontSize: 14,
         height: 20 / 14,
-        fontWeight: FontWeight.w700,
+        fontWeight: FontWeight.w500,
         color: textColor,
-        letterSpacing: 1.0,
+        letterSpacing: 0,
       ),
-      labelMedium: GoogleFonts.spaceGrotesk(
+      labelMedium: GoogleFonts.inter(
         fontSize: 12,
         height: 16 / 12,
-        fontWeight: FontWeight.w700,
+        fontWeight: FontWeight.w500,
         color: textColor,
-        letterSpacing: 1.0,
+        letterSpacing: 0,
       ),
-      labelSmall: GoogleFonts.spaceGrotesk(
+      labelSmall: GoogleFonts.inter(
         fontSize: 11,
         height: 16 / 11,
-        fontWeight: FontWeight.w700,
+        fontWeight: FontWeight.w500,
         color: textColor,
-        letterSpacing: 1.0,
+        letterSpacing: 0,
       ),
     );
   }
 
   /// Input text style helper
   static TextStyle input(Color color) {
-    return GoogleFonts.spaceGrotesk(
+    return GoogleFonts.inter(
       fontSize: 15,
       height: 22 / 15,
       fontWeight: FontWeight.w400,

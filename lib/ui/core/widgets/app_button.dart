@@ -102,10 +102,6 @@ class _AppButtonState extends State<AppButton> with SingleTickerProviderStateMix
             decoration: BoxDecoration(
               color: bgColor,
               borderRadius: AppSpacing.borderRadiusPill,
-              border: Border.all(
-                color: widget.backgroundColor != null ? Colors.transparent : theme.colorScheme.onSurface,
-                width: 2,
-              ),
             ),
             padding: const EdgeInsets.symmetric(horizontal: 24),
             child: Center(
@@ -128,11 +124,9 @@ class _AppButtonState extends State<AppButton> with SingleTickerProviderStateMix
                           const SizedBox(width: 12),
                         ],
                         Text(
-                          widget.label.toUpperCase(),
+                          widget.label,
                           style: theme.textTheme.labelLarge?.copyWith(
                             color: fgColor,
-                            fontWeight: FontWeight.w700,
-                            letterSpacing: 1.0,
                           ),
                         ),
                       ],
