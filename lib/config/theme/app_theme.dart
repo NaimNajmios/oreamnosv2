@@ -54,6 +54,102 @@ abstract final class AppTheme {
     );
   }
 
+  static ThemeData midnightNoir() {
+    return _buildTheme(
+      brightness: Brightness.dark,
+      bg: AppColors.midnightNoirBg,
+      surface: AppColors.midnightNoirSurface,
+      surfaceMuted: AppColors.midnightNoirSurfaceMuted,
+      border: AppColors.midnightNoirBorder,
+      textPrimary: AppColors.midnightNoirTextPrimary,
+      textSecondary: AppColors.midnightNoirTextSecondary,
+      textTertiary: AppColors.midnightNoirTextTertiary,
+      accent: AppColors.midnightNoirAccent,
+      accentSoft: AppColors.midnightNoirAccentSoft,
+      dynamicColorScheme: null,
+    );
+  }
+
+  static ThemeData solarizedLight({ColorScheme? dynamicColorScheme}) {
+    return _buildTheme(
+      brightness: Brightness.light,
+      bg: AppColors.solarizedLightBg,
+      surface: AppColors.solarizedLightSurface,
+      surfaceMuted: AppColors.solarizedLightSurfaceMuted,
+      border: AppColors.solarizedLightBorder,
+      textPrimary: AppColors.solarizedLightTextPrimary,
+      textSecondary: AppColors.solarizedLightTextSecondary,
+      textTertiary: AppColors.solarizedLightTextTertiary,
+      accent: AppColors.solarizedLightAccent,
+      accentSoft: AppColors.solarizedLightAccentSoft,
+      dynamicColorScheme: dynamicColorScheme,
+    );
+  }
+
+  static ThemeData cyberpunk() {
+    return _buildTheme(
+      brightness: Brightness.dark,
+      bg: AppColors.cyberpunkBg,
+      surface: AppColors.cyberpunkSurface,
+      surfaceMuted: AppColors.cyberpunkSurfaceMuted,
+      border: AppColors.cyberpunkBorder,
+      textPrimary: AppColors.cyberpunkTextPrimary,
+      textSecondary: AppColors.cyberpunkTextSecondary,
+      textTertiary: AppColors.cyberpunkTextTertiary,
+      accent: AppColors.cyberpunkAccent,
+      accentSoft: AppColors.cyberpunkAccentSoft,
+      dynamicColorScheme: null,
+    );
+  }
+
+  static ThemeData matchday({ColorScheme? dynamicColorScheme}) {
+    return _buildTheme(
+      brightness: Brightness.light,
+      bg: AppColors.matchdayBg,
+      surface: AppColors.matchdaySurface,
+      surfaceMuted: AppColors.matchdaySurfaceMuted,
+      border: AppColors.matchdayBorder,
+      textPrimary: AppColors.matchdayTextPrimary,
+      textSecondary: AppColors.matchdayTextSecondary,
+      textTertiary: AppColors.matchdayTextTertiary,
+      accent: AppColors.matchdayAccent,
+      accentSoft: AppColors.matchdayAccentSoft,
+      dynamicColorScheme: dynamicColorScheme,
+    );
+  }
+
+  static ThemeData forest() {
+    return _buildTheme(
+      brightness: Brightness.dark,
+      bg: AppColors.forestBg,
+      surface: AppColors.forestSurface,
+      surfaceMuted: AppColors.forestSurfaceMuted,
+      border: AppColors.forestBorder,
+      textPrimary: AppColors.forestTextPrimary,
+      textSecondary: AppColors.forestTextSecondary,
+      textTertiary: AppColors.forestTextTertiary,
+      accent: AppColors.forestAccent,
+      accentSoft: AppColors.forestAccentSoft,
+      dynamicColorScheme: null,
+    );
+  }
+
+  static ThemeData forestAlt() {
+    return _buildTheme(
+      brightness: Brightness.dark,
+      bg: AppColors.forestAltBg,
+      surface: AppColors.forestAltSurface,
+      surfaceMuted: AppColors.forestAltSurfaceMuted,
+      border: AppColors.forestAltBorder,
+      textPrimary: AppColors.forestAltTextPrimary,
+      textSecondary: AppColors.forestAltTextSecondary,
+      textTertiary: AppColors.forestAltTextTertiary,
+      accent: AppColors.forestAltAccent,
+      accentSoft: AppColors.forestAltAccentSoft,
+      dynamicColorScheme: null,
+    );
+  }
+
   static ThemeData _buildTheme({
     required Brightness brightness,
     required Color bg,

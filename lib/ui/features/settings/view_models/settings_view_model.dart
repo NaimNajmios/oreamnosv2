@@ -39,6 +39,9 @@ class SettingsViewModel extends ChangeNotifier {
   late List<CustomPill> _customPills;
   List<CustomPill> get customPills => _customPills;
 
+  late double _readingTextSize;
+  double get readingTextSize => _readingTextSize;
+
   String? _currentApiKey;
   String? get currentApiKey => _currentApiKey;
 
@@ -51,6 +54,7 @@ class SettingsViewModel extends ChangeNotifier {
     _hashtagGroups = _preferencesService.hashtagGroups;
     _autoAppendHashtags = _preferencesService.autoAppendHashtags;
     _customPills = _preferencesService.customPills;
+    _readingTextSize = _preferencesService.readingTextSize;
     
     await _loadApiKey(_selectedProvider);
 
@@ -168,6 +172,14 @@ class SettingsViewModel extends ChangeNotifier {
       return g.copyWith(isDefault: false);
     }).toList();
     await _preferencesService.setHashtagGroups(_hashtagGroups);
+    notifyListeners();
+  }
+
+  Future<void> setReadingTextSize(double size) async {
+    final clamped = size.clamp(12.0, 24.0);
+    if (_readingTextSize == clamped) return;
+    await _preferencesService.setReadingTextSize(clamped);
+    _readingTextSize = clamped;
     notifyListeners();
   }
 }

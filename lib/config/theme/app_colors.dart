@@ -35,6 +35,72 @@ abstract final class AppColors {
   static const Color deepBlueAccent = Color(0xFF3B82F6);
   static const Color deepBlueAccentSoft = Color(0xFF1E293B);
 
+  // === Midnight Noir Theme Tokens (pure monochrome) ===
+  static const Color midnightNoirBg = Color(0xFF000000);
+  static const Color midnightNoirSurface = Color(0xFF0A0A0A);
+  static const Color midnightNoirSurfaceMuted = Color(0xFF1A1A1A);
+  static const Color midnightNoirBorder = Color(0xFF2A2A2A);
+  static const Color midnightNoirTextPrimary = Color(0xFFF5F5F5);
+  static const Color midnightNoirTextSecondary = Color(0xFFA3A3A3);
+  static const Color midnightNoirTextTertiary = Color(0xFF525252);
+  static const Color midnightNoirAccent = Color(0xFFFFFFFF);
+  static const Color midnightNoirAccentSoft = Color(0xFF262626);
+
+  // === Solarized Light Theme Tokens ===
+  static const Color solarizedLightBg = Color(0xFFFDF6E3);
+  static const Color solarizedLightSurface = Color(0xFFEEE8D5);
+  static const Color solarizedLightSurfaceMuted = Color(0xFFE6DDC3);
+  static const Color solarizedLightBorder = Color(0xFF93A1A1);
+  static const Color solarizedLightTextPrimary = Color(0xFF073642);
+  static const Color solarizedLightTextSecondary = Color(0xFF586E75);
+  static const Color solarizedLightTextTertiary = Color(0xFF93A1A1);
+  static const Color solarizedLightAccent = Color(0xFF268BD2);
+  static const Color solarizedLightAccentSoft = Color(0xFFD6EAF8);
+
+  // === Cyberpunk Theme Tokens (neon) ===
+  static const Color cyberpunkBg = Color(0xFF0D0221);
+  static const Color cyberpunkSurface = Color(0xFF1A0533);
+  static const Color cyberpunkSurfaceMuted = Color(0xFF2A0A4A);
+  static const Color cyberpunkBorder = Color(0xFF6A0DAD);
+  static const Color cyberpunkTextPrimary = Color(0xFFF0F0FF);
+  static const Color cyberpunkTextSecondary = Color(0xFF00F0FF);
+  static const Color cyberpunkTextTertiary = Color(0xFFB794F6);
+  static const Color cyberpunkAccent = Color(0xFFFE00FE);
+  static const Color cyberpunkAccentSoft = Color(0xFF4A0A6B);
+
+  // === Matchday Theme Tokens (stadium light) ===
+  static const Color matchdayBg = Color(0xFFF0F2F5);
+  static const Color matchdaySurface = Color(0xFFFFFFFF);
+  static const Color matchdaySurfaceMuted = Color(0xFFF7F8FA);
+  static const Color matchdayBorder = Color(0xFFE2E8F0);
+  static const Color matchdayTextPrimary = Color(0xFF0F172A);
+  static const Color matchdayTextSecondary = Color(0xFF475569);
+  static const Color matchdayTextTertiary = Color(0xFF94A3B8);
+  static const Color matchdayAccent = Color(0xFFFF4500);
+  static const Color matchdayAccentSoft = Color(0xFFFFEDE5);
+
+  // === Forest Theme Tokens (primary — deep emerald) ===
+  static const Color forestBg = Color(0xFF0A1A12);
+  static const Color forestSurface = Color(0xFF132A1F);
+  static const Color forestSurfaceMuted = Color(0xFF1E3A2E);
+  static const Color forestBorder = Color(0xFF2D4A3A);
+  static const Color forestTextPrimary = Color(0xFFE8F5E9);
+  static const Color forestTextSecondary = Color(0xFFA5D6A7);
+  static const Color forestTextTertiary = Color(0xFF6B8F71);
+  static const Color forestAccent = Color(0xFF4CAF50);
+  static const Color forestAccentSoft = Color(0xFF1B5E20);
+
+  // === Forest Alternate Palette (muted sage — use via feature flag) ===
+  static const Color forestAltBg = Color(0xFF111A14);
+  static const Color forestAltSurface = Color(0xFF1C2B1E);
+  static const Color forestAltSurfaceMuted = Color(0xFF2A3D2C);
+  static const Color forestAltBorder = Color(0xFF3A4F3E);
+  static const Color forestAltTextPrimary = Color(0xFFE8EDE9);
+  static const Color forestAltTextSecondary = Color(0xFFB8C5B9);
+  static const Color forestAltTextTertiary = Color(0xFF8A9A8B);
+  static const Color forestAltAccent = Color(0xFF7FA883);
+  static const Color forestAltAccentSoft = Color(0xFF253528);
+
   // === Colorful Flat Categorical Tokens (light / dark variants) ===
   // Teal — AI / provider
   static const Color lightTeal = Color(0xFF0EA5E9);
@@ -99,4 +165,25 @@ abstract final class AppColors {
   static const Color deepBlueBackground = deepBlueBg;
   static const Color deepBlueOnSurface = deepBlueTextPrimary;
   static const Color deepBlueOnPrimary = Colors.white;
+
+  static const Color midnightNoirPrimary = midnightNoirAccent;
+  static const Color midnightNoirBackground = midnightNoirBg;
+  static const Color midnightNoirOnSurface = midnightNoirTextPrimary;
+  static const Color midnightNoirOnPrimary = Colors.black;
+
+  static const Color solarizedLightPrimary = solarizedLightAccent;
+  static const Color solarizedLightBackground = solarizedLightBg;
+  static const Color solarizedLightOnSurface = solarizedLightTextPrimary;
+
+  static const Color cyberpunkPrimary = cyberpunkAccent;
+  static const Color cyberpunkBackground = cyberpunkBg;
+  static const Color cyberpunkOnSurface = cyberpunkTextPrimary;
+
+  static const Color matchdayPrimary = matchdayAccent;
+  static const Color matchdayBackground = matchdayBg;
+  static const Color matchdayOnSurface = matchdayTextPrimary;
+
+  static const Color forestPrimary = forestAccent;
+  static const Color forestBackground = forestBg;
+  static const Color forestOnSurface = forestTextPrimary;
 }

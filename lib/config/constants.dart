@@ -45,4 +45,5 @@ abstract final class AppConstants {
   static const String keyThemeMode = 'theme_mode';
   static const String keyDefaultHashtags = 'default_hashtags';
   static const String keyAutoAppendHashtags = 'auto_append_hashtags';
+  static const String keyReadingTextSize = 'reading_text_size';
 }

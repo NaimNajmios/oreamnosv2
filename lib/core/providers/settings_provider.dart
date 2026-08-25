@@ -17,6 +17,7 @@ class SettingsState {
   final bool autoAppendHashtags;
   final List<CustomPill> customPills;
   final String? currentApiKey;
+  final double readingTextSize;
 
   const SettingsState({
     this.isInitialized = false,
@@ -29,6 +30,7 @@ class SettingsState {
     this.autoAppendHashtags = true,
     this.customPills = const [],
     this.currentApiKey,
+    this.readingTextSize = 16.0,
   });
 
   SettingsState copyWith({
@@ -42,6 +44,7 @@ class SettingsState {
     bool? autoAppendHashtags,
     List<CustomPill>? customPills,
     String? currentApiKey,
+    double? readingTextSize,
   }) {
     return SettingsState(
       isInitialized: isInitialized ?? this.isInitialized,
@@ -54,6 +57,7 @@ class SettingsState {
       autoAppendHashtags: autoAppendHashtags ?? this.autoAppendHashtags,
       customPills: customPills ?? this.customPills,
       currentApiKey: currentApiKey ?? this.currentApiKey,
+      readingTextSize: readingTextSize ?? this.readingTextSize,
     );
   }
 }
@@ -74,6 +78,7 @@ class SettingsNotifier extends Notifier<SettingsState> {
       hashtagGroups: prefs.hashtagGroups,
       autoAppendHashtags: prefs.autoAppendHashtags,
       customPills: prefs.customPills,
+      readingTextSize: prefs.readingTextSize,
     );
   }
 
@@ -202,6 +207,14 @@ class SettingsNotifier extends Notifier<SettingsState> {
     final prefs = ref.read(preferencesServiceProvider);
     await prefs.setHashtagGroups(updated);
     state = state.copyWith(hashtagGroups: updated, defaultHashtags: newHashtags);
+  }
+
+  Future<void> setReadingTextSize(double size) async {
+    final clamped = size.clamp(12.0, 24.0);
+    if (state.readingTextSize == clamped) return;
+    final prefs = ref.read(preferencesServiceProvider);
+    await prefs.setReadingTextSize(clamped);
+    state = state.copyWith(readingTextSize: clamped);
   }
 }
 

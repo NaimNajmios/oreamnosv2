@@ -24,6 +24,16 @@ class ThemeSelectionDialog extends StatelessWidget {
         return AppColors.darkAccent;
       case AppThemeMode.deepBlue:
         return AppColors.deepBlueAccent;
+      case AppThemeMode.midnightNoir:
+        return AppColors.midnightNoirAccent;
+      case AppThemeMode.solarizedLight:
+        return AppColors.solarizedLightAccent;
+      case AppThemeMode.cyberpunk:
+        return AppColors.cyberpunkAccent;
+      case AppThemeMode.matchday:
+        return AppColors.matchdayAccent;
+      case AppThemeMode.forest:
+        return AppColors.forestAccent;
       case AppThemeMode.system:
         return Colors.blueGrey;
     }
@@ -43,27 +53,28 @@ class ThemeSelectionDialog extends StatelessWidget {
       backgroundColor: theme.colorScheme.surface,
       child: ConstrainedBox(
         constraints: const BoxConstraints(maxWidth: 400),
-        child: Padding(
-          padding: const EdgeInsets.all(AppSpacing.xl),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              Text(
-                'Theme & Appearance',
-                style: theme.textTheme.titleMedium?.copyWith(
-                  fontWeight: FontWeight.w700,
+        child: SingleChildScrollView(
+          child: Padding(
+            padding: const EdgeInsets.all(AppSpacing.xl),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                Text(
+                  'Theme & Appearance',
+                  style: theme.textTheme.titleMedium?.copyWith(
+                    fontWeight: FontWeight.w700,
+                  ),
                 ),
-              ),
-              const SizedBox(height: AppSpacing.xs),
-              Text(
-                'Select your preferred color theme.',
-                style: theme.textTheme.bodySmall?.copyWith(
-                  color: theme.colorScheme.onSurface.withValues(alpha: 0.6),
+                const SizedBox(height: AppSpacing.xs),
+                Text(
+                  'Select your preferred color theme.',
+                  style: theme.textTheme.bodySmall?.copyWith(
+                    color: theme.colorScheme.onSurface.withValues(alpha: 0.6),
+                  ),
                 ),
-              ),
-              const SizedBox(height: AppSpacing.md),
-              ...AppThemeMode.values.map((mode) {
+                const SizedBox(height: AppSpacing.md),
+                ...AppThemeMode.values.map((mode) {
                 final isSelected = currentTheme == mode;
                 final swatchColor = _getThemeSwatch(mode);
 
@@ -120,14 +131,15 @@ class ThemeSelectionDialog extends StatelessWidget {
                 );
               }),
               const SizedBox(height: AppSpacing.md),
-              Align(
-                alignment: Alignment.centerRight,
-                child: TextButton(
-                  onPressed: () => Navigator.of(context).pop(),
-                  child: const Text('Cancel'),
+                Align(
+                  alignment: Alignment.centerRight,
+                  child: TextButton(
+                    onPressed: () => Navigator.of(context).pop(),
+                    child: const Text('Cancel'),
+                  ),
                 ),
-              ),
-            ],
+              ],
+            ),
           ),
         ),
       ),

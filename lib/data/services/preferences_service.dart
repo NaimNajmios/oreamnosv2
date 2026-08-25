@@ -129,4 +129,11 @@ class PreferencesService {
     final list = pills.map((e) => jsonEncode(e.toJson())).toList();
     return _prefs.setStringList('custom_refinement_pills', list);
   }
+
+  // === Reading Text Size (persistent) ===
+  double get readingTextSize => _prefs.getDouble(AppConstants.keyReadingTextSize) ?? 16.0;
+
+  Future<bool> setReadingTextSize(double size) {
+    return _prefs.setDouble(AppConstants.keyReadingTextSize, size.clamp(12.0, 24.0));
+  }
 }

@@ -86,8 +86,27 @@ class _OreamnosAppState extends State<OreamnosApp> {
             darkThemeData = null;
             materialThemeMode = ThemeMode.dark;
           case AppThemeMode.deepBlue:
-            // Deep Blue is a custom dark theme — force dark mode
             themeData = AppTheme.deepBlue();
+            darkThemeData = null;
+            materialThemeMode = ThemeMode.dark;
+          case AppThemeMode.midnightNoir:
+            themeData = AppTheme.midnightNoir();
+            darkThemeData = null;
+            materialThemeMode = ThemeMode.dark;
+          case AppThemeMode.solarizedLight:
+            themeData = AppTheme.solarizedLight(dynamicColorScheme: lightDynamic);
+            darkThemeData = null;
+            materialThemeMode = ThemeMode.light;
+          case AppThemeMode.cyberpunk:
+            themeData = AppTheme.cyberpunk();
+            darkThemeData = null;
+            materialThemeMode = ThemeMode.dark;
+          case AppThemeMode.matchday:
+            themeData = AppTheme.matchday(dynamicColorScheme: lightDynamic);
+            darkThemeData = null;
+            materialThemeMode = ThemeMode.light;
+          case AppThemeMode.forest:
+            themeData = AppTheme.forest();
             darkThemeData = null;
             materialThemeMode = ThemeMode.dark;
           case AppThemeMode.system:
