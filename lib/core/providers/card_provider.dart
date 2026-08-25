@@ -81,19 +81,21 @@ class CardGeneratorNotifier extends Notifier<CardGeneratorState> {
 
   void updateHeadline(String v) {
     final data = state.cardData;
+    final trimmed = v.trim();
     if (data == null) {
-      state = state.copyWith(cardData: CardData.fromBrief(headline: v.trim(), subtext: ''));
+      state = state.copyWith(cardData: CardData.sparse(headline: trimmed.isEmpty ? 'Generated Card' : trimmed, subtext: ''));
     } else {
-      state = state.copyWith(cardData: data.copyWith(headline: v.trim()));
+      state = state.copyWith(cardData: _copyHeadline(data, trimmed));
     }
   }
 
   void updateSubtext(String v) {
     final data = state.cardData;
+    final trimmed = v.trim();
     if (data == null) {
-      state = state.copyWith(cardData: CardData.fromBrief(headline: '', subtext: v.trim()));
+      state = state.copyWith(cardData: CardData.sparse(headline: 'Generated Card', subtext: trimmed));
     } else {
-      state = state.copyWith(cardData: data.copyWith(subtext: v.trim()));
+      state = state.copyWith(cardData: _copySubtext(data, trimmed));
     }
   }
 
@@ -101,14 +103,77 @@ class CardGeneratorNotifier extends Notifier<CardGeneratorState> {
     final data = state.cardData;
     final trimmed = v.trim();
     if (data == null) {
-      state = state.copyWith(cardData: CardData.fromBrief(headline: '', subtext: '', microStat: trimmed.isEmpty ? null : trimmed));
+      state = state.copyWith(cardData: CardData.sparse(headline: 'Generated Card', subtext: '', microStat: trimmed.isEmpty ? null : trimmed));
     } else {
-      if (trimmed.isEmpty) {
-        state = state.copyWith(cardData: data.copyWith(clearMicroStat: true));
-      } else {
-        state = state.copyWith(cardData: data.copyWith(microStat: trimmed));
-      }
+      state = state.copyWith(cardData: _copyMicroStat(data, trimmed));
     }
+  }
+
+  CardData _copyHeadline(CardData data, String trimmed) {
+    return data.map(
+      playerSpotlight: (d) => d.copyWith(playerName: trimmed.isEmpty ? 'N/A' : trimmed),
+      headlineQuote: (d) => d.copyWith(headline: trimmed.isEmpty ? 'N/A' : trimmed),
+      topStats: (d) => d,
+      transferNews: (d) => d.copyWith(playerName: trimmed.isEmpty ? 'N/A' : trimmed),
+      breakingNews: (d) => d.copyWith(headline: trimmed.isEmpty ? 'N/A' : trimmed),
+      matchPreview: (d) => d.copyWith(homeTeam: trimmed.isEmpty ? 'N/A' : trimmed),
+      detailedScoreboard: (d) => d.copyWith(homeTeam: trimmed.isEmpty ? 'N/A' : trimmed),
+      onThisDay: (d) => d.copyWith(headline: trimmed.isEmpty ? 'N/A' : trimmed),
+      startingXI: (d) => d.copyWith(teamName: trimmed.isEmpty ? 'N/A' : trimmed),
+      matchStatsComparison: (d) => d.copyWith(homeTeam: trimmed.isEmpty ? 'N/A' : trimmed),
+      socialPost: (d) => d.copyWith(content: trimmed.isEmpty ? 'N/A' : trimmed),
+      rivalry: (d) => d.copyWith(player1Name: trimmed.isEmpty ? 'N/A' : trimmed),
+      tableStandings: (d) => d.copyWith(leagueName: trimmed.isEmpty ? 'N/A' : trimmed),
+      injuryReport: (d) => d.copyWith(teamName: trimmed.isEmpty ? 'N/A' : trimmed),
+      contractExpiry: (d) => d.copyWith(teamName: trimmed.isEmpty ? 'N/A' : trimmed),
+      awardNominee: (d) => d.copyWith(awardName: trimmed.isEmpty ? 'N/A' : trimmed),
+      sparse: (d) => d.copyWith(headline: trimmed.isEmpty ? 'Generated Card' : trimmed),
+    );
+  }
+
+  CardData _copySubtext(CardData data, String trimmed) {
+    return data.map(
+      playerSpotlight: (d) => d.copyWith(keyQuote: trimmed.isEmpty ? 'N/A' : trimmed),
+      headlineQuote: (d) => d.copyWith(subtext: trimmed.isEmpty ? 'N/A' : trimmed),
+      topStats: (d) => d,
+      transferNews: (d) => d.copyWith(quote: trimmed.isEmpty ? 'N/A' : trimmed),
+      breakingNews: (d) => d.copyWith(subtext: trimmed.isEmpty ? 'N/A' : trimmed),
+      matchPreview: (d) => d.copyWith(competition: trimmed.isEmpty ? 'N/A' : trimmed),
+      detailedScoreboard: (d) => d.copyWith(competition: trimmed.isEmpty ? 'N/A' : trimmed),
+      onThisDay: (d) => d.copyWith(significance: trimmed.isEmpty ? 'N/A' : trimmed),
+      startingXI: (d) => d.copyWith(manager: trimmed.isEmpty ? 'N/A' : trimmed),
+      matchStatsComparison: (d) => d,
+      socialPost: (d) => d.copyWith(metrics: trimmed.isEmpty ? 'N/A' : trimmed),
+      rivalry: (d) => d.copyWith(verdict: trimmed.isEmpty ? 'N/A' : trimmed),
+      tableStandings: (d) => d.copyWith(matchday: trimmed.isEmpty ? 'N/A' : trimmed),
+      injuryReport: (d) => d.copyWith(nextMatch: trimmed.isEmpty ? 'N/A' : trimmed),
+      contractExpiry: (d) => d.copyWith(seasonYear: trimmed.isEmpty ? 'N/A' : trimmed),
+      awardNominee: (d) => d.copyWith(category: trimmed.isEmpty ? 'N/A' : trimmed),
+      sparse: (d) => d.copyWith(subtext: trimmed),
+    );
+  }
+
+  CardData _copyMicroStat(CardData data, String trimmed) {
+    final isClear = trimmed.isEmpty;
+    return data.map(
+      playerSpotlight: (d) => d.copyWith(keyAction: isClear ? 'N/A' : trimmed),
+      headlineQuote: (d) => d.copyWith(category: isClear ? 'N/A' : trimmed),
+      topStats: (d) => d,
+      transferNews: (d) => d.copyWith(fee: isClear ? 'N/A' : trimmed),
+      breakingNews: (d) => d.copyWith(label: isClear ? '🚨 BREAKING' : trimmed),
+      matchPreview: (d) => d.copyWith(homeForm: isClear ? 'N/A' : trimmed),
+      detailedScoreboard: (d) => d.copyWith(possession: isClear ? 'N/A' : trimmed),
+      onThisDay: (d) => d,
+      startingXI: (d) => d.copyWith(formation: isClear ? 'N/A' : trimmed),
+      matchStatsComparison: (d) => d,
+      socialPost: (d) => d.copyWith(handle: isClear ? 'N/A' : trimmed),
+      rivalry: (d) => d.copyWith(headToHead: isClear ? 'N/A' : trimmed),
+      tableStandings: (d) => d.copyWith(highlightedTeam: isClear ? 'N/A' : trimmed),
+      injuryReport: (d) => d.copyWith(recoveryPercentage: isClear ? 'N/A' : trimmed),
+      contractExpiry: (d) => d.copyWith(wage: isClear ? 'N/A' : trimmed),
+      awardNominee: (d) => d.copyWith(currentFavorite: isClear ? 'N/A' : trimmed),
+      sparse: (d) => d.copyWith(microStat: isClear ? null : trimmed),
+    );
   }
 
   Future<void> pickImage(ImageSource source) async {

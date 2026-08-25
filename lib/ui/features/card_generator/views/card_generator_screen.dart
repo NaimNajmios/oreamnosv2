@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
-import 'package:provider/provider.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:provider/provider.dart' as legacy_provider;
 
 import 'package:oreamnos/config/theme/app_colors.dart';
 import 'package:oreamnos/config/theme/app_spacing.dart';
@@ -7,6 +8,7 @@ import 'package:oreamnos/domain/models/card_brief.dart';
 import 'package:oreamnos/ui/core/utils/haptics.dart';
 import 'package:oreamnos/ui/core/widgets/error_state.dart';
 import 'package:oreamnos/ui/features/settings/view_models/settings_view_model.dart';
+import 'package:oreamnos/core/providers/settings_provider.dart';
 import '../view_models/card_generator_view_model.dart';
 import '../widgets/card_canvas.dart';
 import '../widgets/card_stage.dart';
@@ -14,8 +16,9 @@ import '../widgets/design_dock.dart';
 import '../widgets/export_bottom_sheet.dart';
 import '../widgets/inline_edit_bar.dart';
 
-/// Sparse companion Card Studio — light visual to accompany caption.
-class CardGeneratorScreen extends StatefulWidget {
+/// Card Studio — now Riverpod Consumer + legacy ViewModel hybrid (incremental).
+/// Supports sealed 16-variant CardData via new dispatcher when available.
+class CardGeneratorScreen extends ConsumerStatefulWidget {
   final CardBrief brief;
   final bool hasError;
 
@@ -26,10 +29,10 @@ class CardGeneratorScreen extends StatefulWidget {
   });
 
   @override
-  State<CardGeneratorScreen> createState() => _CardGeneratorScreenState();
+  ConsumerState<CardGeneratorScreen> createState() => _CardGeneratorScreenState();
 }
 
-class _CardGeneratorScreenState extends State<CardGeneratorScreen> {
+class _CardGeneratorScreenState extends ConsumerState<CardGeneratorScreen> {
   final GlobalKey _boundaryKey = GlobalKey();
 
   @override
@@ -39,15 +42,22 @@ class _CardGeneratorScreenState extends State<CardGeneratorScreen> {
       if (widget.hasError || widget.brief.isEmpty) return;
       String apiKey = '';
       try {
-        apiKey = await context.read<SettingsViewModel>().getApiKeyForProvider(widget.brief.provider) ?? '';
+        // Prefer Riverpod settings, fallback to legacy
+        apiKey = await ref.read(settingsProvider.notifier).getApiKeyForProvider(widget.brief.provider) ?? '';
+        if (apiKey.isEmpty) {
+          if (!mounted) return;
+          // ignore: use_build_context_synchronously
+          apiKey = await legacy_provider.Provider.of<SettingsViewModel>(context, listen: false).getApiKeyForProvider(widget.brief.provider) ?? '';
+        }
       } catch (_) {}
       if (!mounted) return;
-      await context.read<CardGeneratorViewModel>().initialize(widget.brief, apiKey);
+      // ignore: use_build_context_synchronously
+      await legacy_provider.Provider.of<CardGeneratorViewModel>(context, listen: false).initialize(widget.brief, apiKey);
     });
   }
 
   Future<void> _handleSaveToGallery() async {
-    final vm = context.read<CardGeneratorViewModel>();
+    final vm = legacy_provider.Provider.of<CardGeneratorViewModel>(context, listen: false);
     final success = await vm.saveToGallery(_boundaryKey);
     if (!mounted) return;
     if (success) {
@@ -87,8 +97,8 @@ class _CardGeneratorScreenState extends State<CardGeneratorScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final vm = context.watch<CardGeneratorViewModel>();
-    final theme = Theme.of(context);
+    return legacy_provider.Consumer<CardGeneratorViewModel>(builder: (context, vm, _) {
+      final theme = Theme.of(context);
 
     // Invalid entry (deep link / empty brief)
     if (widget.hasError || widget.brief.isEmpty) {
@@ -129,6 +139,7 @@ class _CardGeneratorScreenState extends State<CardGeneratorScreen> {
       ),
       body: _buildBody(context, vm, theme, hasData),
     );
+    });
   }
 
   Widget _buildBody(BuildContext context, CardGeneratorViewModel vm, ThemeData theme, bool hasData) {
@@ -163,7 +174,7 @@ class _CardGeneratorScreenState extends State<CardGeneratorScreen> {
         onRetry: () async {
           String apiKey = '';
           try {
-            apiKey = await context.read<SettingsViewModel>().getApiKeyForProvider(widget.brief.provider) ?? '';
+            apiKey = await legacy_provider.Provider.of<SettingsViewModel>(context, listen: false).getApiKeyForProvider(widget.brief.provider) ?? '';
           } catch (_) {}
           vm.extractData(apiKey);
         },

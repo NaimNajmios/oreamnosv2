@@ -168,14 +168,32 @@ class CardGeneratorViewModel extends ChangeNotifier {
     notifyListeners();
   }
 
-  // --- Inline editing (local, no LLM) ---
+  // --- Inline editing (local, no LLM) — now handles sealed 16 variants (maps to sparse fallback)
   void updateHeadline(String value) {
     final v = value.trim();
     if (cardData == null) {
-      cardData = CardData.fromBrief(headline: v, subtext: '');
+      cardData = CardData.sparse(headline: v.isEmpty ? 'Generated Card' : v, subtext: '');
     } else {
-      // Enforce 60 char cap at word boundary for display, but store full for export editing
-      cardData = cardData!.copyWith(headline: v);
+      final d = cardData!;
+      cardData = d.map(
+        playerSpotlight: (x) => x.copyWith(playerName: v.isEmpty ? 'N/A' : v),
+        headlineQuote: (x) => x.copyWith(headline: v.isEmpty ? 'N/A' : v),
+        topStats: (x) => x,
+        transferNews: (x) => x.copyWith(playerName: v.isEmpty ? 'N/A' : v),
+        breakingNews: (x) => x.copyWith(headline: v.isEmpty ? 'N/A' : v),
+        matchPreview: (x) => x.copyWith(homeTeam: v.isEmpty ? 'N/A' : v),
+        detailedScoreboard: (x) => x.copyWith(homeTeam: v.isEmpty ? 'N/A' : v),
+        onThisDay: (x) => x.copyWith(headline: v.isEmpty ? 'N/A' : v),
+        startingXI: (x) => x.copyWith(teamName: v.isEmpty ? 'N/A' : v),
+        matchStatsComparison: (x) => x.copyWith(homeTeam: v.isEmpty ? 'N/A' : v),
+        socialPost: (x) => x.copyWith(content: v.isEmpty ? 'N/A' : v),
+        rivalry: (x) => x.copyWith(player1Name: v.isEmpty ? 'N/A' : v),
+        tableStandings: (x) => x.copyWith(leagueName: v.isEmpty ? 'N/A' : v),
+        injuryReport: (x) => x.copyWith(teamName: v.isEmpty ? 'N/A' : v),
+        contractExpiry: (x) => x.copyWith(teamName: v.isEmpty ? 'N/A' : v),
+        awardNominee: (x) => x.copyWith(awardName: v.isEmpty ? 'N/A' : v),
+        sparse: (x) => x.copyWith(headline: v.isEmpty ? 'Generated Card' : v),
+      );
     }
     notifyListeners();
   }
@@ -183,23 +201,58 @@ class CardGeneratorViewModel extends ChangeNotifier {
   void updateSubtext(String value) {
     final v = value.trim();
     if (cardData == null) {
-      cardData = CardData.fromBrief(headline: '', subtext: v);
+      cardData = CardData.sparse(headline: 'Generated Card', subtext: v);
     } else {
-      cardData = cardData!.copyWith(subtext: v);
+      final d = cardData!;
+      cardData = d.map(
+        playerSpotlight: (x) => x.copyWith(keyQuote: v.isEmpty ? 'N/A' : v),
+        headlineQuote: (x) => x.copyWith(subtext: v.isEmpty ? 'N/A' : v),
+        topStats: (x) => x,
+        transferNews: (x) => x.copyWith(quote: v.isEmpty ? 'N/A' : v),
+        breakingNews: (x) => x.copyWith(subtext: v.isEmpty ? 'N/A' : v),
+        matchPreview: (x) => x.copyWith(competition: v.isEmpty ? 'N/A' : v),
+        detailedScoreboard: (x) => x.copyWith(competition: v.isEmpty ? 'N/A' : v),
+        onThisDay: (x) => x.copyWith(significance: v.isEmpty ? 'N/A' : v),
+        startingXI: (x) => x.copyWith(manager: v.isEmpty ? 'N/A' : v),
+        matchStatsComparison: (x) => x,
+        socialPost: (x) => x.copyWith(metrics: v.isEmpty ? 'N/A' : v),
+        rivalry: (x) => x.copyWith(verdict: v.isEmpty ? 'N/A' : v),
+        tableStandings: (x) => x.copyWith(matchday: v.isEmpty ? 'N/A' : v),
+        injuryReport: (x) => x.copyWith(nextMatch: v.isEmpty ? 'N/A' : v),
+        contractExpiry: (x) => x.copyWith(seasonYear: v.isEmpty ? 'N/A' : v),
+        awardNominee: (x) => x.copyWith(category: v.isEmpty ? 'N/A' : v),
+        sparse: (x) => x.copyWith(subtext: v),
+      );
     }
     notifyListeners();
   }
 
   void updateMicroStat(String value) {
     final v = value.trim();
+    final isClear = v.isEmpty;
     if (cardData == null) {
-      cardData = CardData.fromBrief(headline: '', subtext: '', microStat: v.isEmpty ? null : v);
+      cardData = CardData.sparse(headline: 'Generated Card', subtext: '', microStat: isClear ? null : v);
     } else {
-      if (v.isEmpty) {
-        cardData = cardData!.copyWith(clearMicroStat: true);
-      } else {
-        cardData = cardData!.copyWith(microStat: v);
-      }
+      final d = cardData!;
+      cardData = d.map(
+        playerSpotlight: (x) => x.copyWith(keyAction: isClear ? 'N/A' : v),
+        headlineQuote: (x) => x.copyWith(category: isClear ? 'N/A' : v),
+        topStats: (x) => x,
+        transferNews: (x) => x.copyWith(fee: isClear ? 'N/A' : v),
+        breakingNews: (x) => x.copyWith(label: isClear ? '🚨 BREAKING' : v),
+        matchPreview: (x) => x.copyWith(homeForm: isClear ? 'N/A' : v),
+        detailedScoreboard: (x) => x.copyWith(possession: isClear ? 'N/A' : v),
+        onThisDay: (x) => x,
+        startingXI: (x) => x.copyWith(formation: isClear ? 'N/A' : v),
+        matchStatsComparison: (x) => x,
+        socialPost: (x) => x.copyWith(handle: isClear ? 'N/A' : v),
+        rivalry: (x) => x.copyWith(headToHead: isClear ? 'N/A' : v),
+        tableStandings: (x) => x.copyWith(highlightedTeam: isClear ? 'N/A' : v),
+        injuryReport: (x) => x.copyWith(recoveryPercentage: isClear ? 'N/A' : v),
+        contractExpiry: (x) => x.copyWith(wage: isClear ? 'N/A' : v),
+        awardNominee: (x) => x.copyWith(currentFavorite: isClear ? 'N/A' : v),
+        sparse: (x) => x.copyWith(microStat: isClear ? null : v),
+      );
     }
     notifyListeners();
   }

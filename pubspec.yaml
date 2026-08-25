@@ -32,7 +32,7 @@ dependencies:
   auto_size_text: ^3.0.0
 
   # JSON Serialization
-  json_annotation: ^4.9.0
+  json_annotation: ^4.12.0
   equatable: ^2.0.7
 
   # Markdown Rendering
