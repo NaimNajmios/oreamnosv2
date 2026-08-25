@@ -275,6 +275,17 @@ class GenerateViewModel extends ChangeNotifier with WidgetsBindingObserver {
         apiKey: apiKey,
         sourceUrl: sourceUrl,
       );
+
+      // Inject user configured hashtags
+      if (_settingsViewModel.defaultHashtags.isNotEmpty) {
+        final tags = _settingsViewModel.defaultHashtags
+            .split(RegExp(r'\s+'))
+            .map((e) => e.replaceAll('#', '').trim())
+            .where((e) => e.isNotEmpty)
+            .toList();
+        _curatedPost = _curatedPost!.copyWith(hashtags: tags);
+      }
+
       _legacyGeneratedContentForCompat = _curatedPost!.rawMarkdown;
 
       stopwatch.stop();
@@ -377,7 +388,7 @@ class GenerateViewModel extends ChangeNotifier with WidgetsBindingObserver {
       final refinementContent = 'Arahan penambahbaikan: "$instruction".\n'
           'Kekalkan sumber yang sama (${_curatedPost!.source.url ?? _curatedPost!.source.label}).\n'
           'JSON semasa:\n$currentJson\n\n'
-          'Kembalikan JSON dengan struktur yang sama (title, body, hashtags, source) — perbaiki title/body/hashtags mengikut arahan, jangan ubah source.url.';
+          'Kembalikan JSON dengan struktur yang sama (title, body, source) — perbaiki title/body mengikut arahan, jangan ubah source.url.';
 
       final refined = await curator.generateStructuredPost(
         content: refinementContent,

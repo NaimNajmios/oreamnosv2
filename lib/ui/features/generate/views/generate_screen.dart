@@ -1,7 +1,10 @@
 import 'dart:async';
+import 'dart:io';
 
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:flutter_svg/flutter_svg.dart';
+import 'package:flutter_animate/flutter_animate.dart';
 import 'package:provider/provider.dart';
 import 'package:go_router/go_router.dart';
 
@@ -199,6 +202,28 @@ class _GenerateScreenState extends State<GenerateScreen> {
                             ],
                           ),
                         ),
+                        // App Icon Decoration
+                        if (!isSuccess)
+                          Padding(
+                            padding: const EdgeInsets.only(bottom: AppSpacing.xl),
+                            child: Center(
+                              child: SvgPicture.asset(
+                                'icon/icon_kickoff_transparent.svg',
+                                width: 72,
+                                height: 72,
+                                colorFilter: ColorFilter.mode(theme.colorScheme.primary, BlendMode.srcIn),
+                              ).animate(onPlay: (controller) {
+                                bool isTest = false;
+                                try {
+                                  isTest = Platform.environment.containsKey('FLUTTER_TEST');
+                                } catch (_) {}
+                                if (!isTest) {
+                                  controller.repeat();
+                                }
+                              }).rotate(duration: const Duration(seconds: 4), curve: Curves.linear),
+                            ),
+                          ),
+
                         // Capture Section (Hidden on Success)
                         if (!isSuccess)
                           _buildCaptureCard(context, viewModel, isUrl, hasContent, isGenerating),

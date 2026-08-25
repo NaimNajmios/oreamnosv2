@@ -28,7 +28,10 @@ class SettingsScreen extends StatelessWidget {
       appBar: AppBar(
         title: Text(
           'Settings',
-          style: theme.textTheme.headlineSmall,
+          style: theme.textTheme.titleMedium?.copyWith(
+            fontWeight: FontWeight.w700,
+            letterSpacing: -0.3,
+          ),
         ),
         bottom: PreferredSize(
           preferredSize: const Size.fromHeight(1),

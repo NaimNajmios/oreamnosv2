@@ -72,6 +72,37 @@ class CuratedPost extends Equatable {
     required this.rawMarkdown,
   });
 
+  CuratedPost copyWith({
+    String? title,
+    String? bodyMarkdown,
+    List<String>? hashtags,
+    SourceAttribution? source,
+  }) {
+    final newTitle = title ?? this.title;
+    final newBody = bodyMarkdown ?? this.bodyMarkdown;
+    final newHashtags = hashtags ?? this.hashtags;
+    final newSource = source ?? this.source;
+
+    final buf = StringBuffer();
+    if (newTitle.isNotEmpty) {
+      buf.writeln(newTitle);
+      buf.writeln();
+    }
+    if (newBody.isNotEmpty) buf.writeln(newBody);
+    if (newHashtags.isNotEmpty) {
+      if (newBody.isNotEmpty) buf.writeln();
+      buf.write(newHashtags.map((h) => '#$h').join(' '));
+    }
+
+    return CuratedPost(
+      title: newTitle,
+      bodyMarkdown: newBody,
+      hashtags: newHashtags,
+      source: newSource,
+      rawMarkdown: buf.toString().trim(),
+    );
+  }
+
   /// Regex to strip emoji (broad unicode ranges).
   static final RegExp _emojiRegex = RegExp(
     r'[\u{1F600}-\u{1F64F}\u{1F300}-\u{1F5FF}\u{1F680}-\u{1F6FF}\u{1F900}-\u{1F9FF}\u{2600}-\u{26FF}\u{2700}-\u{27BF}\u{FE00}-\u{FE0F}\u{1FA70}-\u{1FAFF}]',

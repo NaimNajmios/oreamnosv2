@@ -11,8 +11,7 @@ class GenerationPromptManager {
     buf.writeln('FORMAT OUTPUT WAJIB: Kembalikan SAHAJA satu objek JSON yang sah dengan struktur tepat:');
     buf.writeln('{');
     buf.writeln('  "title": "Tajuk satu baris, jelas, formal, maksimum 100 aksara, tanpa markdown atau emoji",');
-    buf.writeln('  "body": "Kandungan utama Bahasa Melayu formal, neutral. Panjang MESTI berkadar dengan sumber asal — jangan tambah atau reka fakta. Jika sumber pendek, body pendek; jika sumber panjang, body lebih panjang tetapi kekal padat. JANGAN masukkan tajuk, hashtag atau sumber di dalam body. JANGAN guna emoji.",');
-    buf.writeln('  "hashtags": ["tag1", "tag2", "tag3"],');
+    buf.writeln('  "body": "Kandungan utama Bahasa Melayu formal, neutral. Panjang MESTI berkadar dengan sumber asal — jangan tambah atau reka fakta. Jika sumber pendek, body pendek; jika sumber panjang, body lebih panjang tetapi kekal padat. JANGAN masukkan tajuk atau sumber di dalam body. JANGAN guna emoji.",');
     buf.writeln('  "source": {"label": "Nama sumber/domain", "url": "https://... atau string kosong jika tiada URL"}');
     buf.writeln('}');
     buf.writeln('');
@@ -20,7 +19,6 @@ class GenerationPromptManager {
     buf.writeln('- Panjang body MESTI bergantung pada sumber asal — ringkaskan sumber tanpa menambah fakta baharu, jangan panjangkan secara buatan.');
     buf.writeln('- Perenggan MESTI mengikut struktur kandungan sumber asal — pecahkan mengikut perubahan aspek/fakta dalam sumber, bukan rekayasa. Gunakan perenggan baharu (\\n\\n) untuk kebolehbacaan bila body melebihi satu perenggan padat.');
     buf.writeln('- Setiap perenggan 30-60 patah perkataan; jangan hantar satu perenggan yang terlalu panjang. Jika sumber asal hanya satu perenggan, kekalkan 1-2 perenggan padat; jika sumber ada beberapa aspek, guna 2-4 perenggan.');
-    buf.writeln('- hashtags: 3-6 tag relevan Bahasa Melayu tanpa simbol #, tanpa emoji.');
     if (sourceUrl != null && sourceUrl.isNotEmpty) {
       buf.writeln('- Sumber input ialah URL: $sourceUrl — tetapkan source.url kepada URL tersebut dan source.label kepada domain/nama sumber.');
     } else {
@@ -62,11 +60,6 @@ class GenerationPromptManager {
             'type': 'string',
             'description': 'Kandungan utama Bahasa Melayu formal, panjang berkadar dengan sumber asal, 1-4 perenggan dipisah \\n\\n, tanpa emoji, jangan reka fakta'
           },
-          'hashtags': {
-            'type': 'array',
-            'items': {'type': 'string'},
-            'description': '3-6 hashtag tanpa #',
-          },
           'source': {
             'type': 'object',
             'properties': {
@@ -75,7 +68,7 @@ class GenerationPromptManager {
             },
           },
         },
-        'required': ['title', 'body', 'hashtags', 'source'],
+        'required': ['title', 'body', 'source'],
       };
 
   /// For legacy markdown fallback prompt (not used in structured flow)
