@@ -5,12 +5,14 @@ class KickoffLoadingIndicator extends StatefulWidget {
   final double size;
   final Color? backgroundColor;
   final Color? foregroundColor;
+  final bool showCenterElements;
 
   const KickoffLoadingIndicator({
     super.key,
     this.size = 24.0,
     this.backgroundColor,
     this.foregroundColor,
+    this.showCenterElements = true,
   });
 
   @override
@@ -59,6 +61,7 @@ class _KickoffLoadingIndicatorState extends State<KickoffLoadingIndicator>
               animationValue: _controller.value,
               backgroundColor: resolvedBackgroundColor,
               foregroundColor: resolvedForegroundColor,
+              showCenterElements: widget.showCenterElements,
             ),
           );
         },
@@ -71,11 +74,13 @@ class KickoffLoadingPainter extends CustomPainter {
   final double animationValue;
   final Color backgroundColor;
   final Color foregroundColor;
+  final bool showCenterElements;
 
   KickoffLoadingPainter({
     required this.animationValue,
     required this.backgroundColor,
     required this.foregroundColor,
+    required this.showCenterElements,
   });
 
   @override
@@ -93,16 +98,22 @@ class KickoffLoadingPainter extends CustomPainter {
     canvas.drawCircle(center, 248.0, bgPaint);
 
     // 2. Draw static center elements
-    final strokePaint = Paint()
-      ..color = foregroundColor
-      ..style = PaintingStyle.stroke
-      ..strokeWidth = 12.0;
-    canvas.drawCircle(center, 56.0, strokePaint);
+    if (showCenterElements) {
+      final strokePaint = Paint()
+        ..color = foregroundColor
+        ..style = PaintingStyle.stroke
+        ..strokeWidth = 12.0;
+      canvas.drawCircle(center, 56.0, strokePaint);
+
+      final innerDotPaint = Paint()
+        ..color = foregroundColor
+        ..style = PaintingStyle.fill;
+      canvas.drawCircle(center, 10.0, innerDotPaint);
+    }
 
     final dotPaint = Paint()
       ..color = foregroundColor
       ..style = PaintingStyle.fill;
-    canvas.drawCircle(center, 10.0, dotPaint);
 
     // 3. Draw rotating orbiting dots
     canvas.save();
@@ -125,6 +136,7 @@ class KickoffLoadingPainter extends CustomPainter {
   bool shouldRepaint(covariant KickoffLoadingPainter oldDelegate) {
     return oldDelegate.animationValue != animationValue ||
            oldDelegate.backgroundColor != backgroundColor ||
-           oldDelegate.foregroundColor != foregroundColor;
+           oldDelegate.foregroundColor != foregroundColor ||
+           oldDelegate.showCenterElements != showCenterElements;
   }
 }

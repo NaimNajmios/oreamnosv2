@@ -106,6 +106,7 @@ class _EnhancedLoadingCardState extends State<EnhancedLoadingCard> with TickerPr
                         foregroundColor: widget.type == LoadingType.extracting
                               ? (isDark ? AppColors.darkTeal : AppColors.lightTeal)
                               : theme.colorScheme.primary,
+                        showCenterElements: false,
                       ),
                       Text(
                         '$percent%',
