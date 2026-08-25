@@ -72,12 +72,12 @@ void main() {
     expect(find.widgetWithText(AppBar, 'Oreamnos'), findsOneWidget);
 
     // Verify 3 navigation destinations
-    expect(find.text('Generate'), findsOneWidget);
-    expect(find.text('Studio'), findsOneWidget);
-    expect(find.text('Settings'), findsOneWidget);
+    expect(find.text('GENERATE'), findsOneWidget);
+    expect(find.text('STUDIO'), findsOneWidget);
+    expect(find.text('SETTINGS'), findsOneWidget);
 
     // Verify the Generate CTA button
-    expect(find.text('Generate Post'), findsOneWidget);
+    expect(find.text('GENERATE POST'), findsOneWidget);
   });
 
   testWidgets('Navigation bar switches to Settings and shows grouped sections', (WidgetTester tester) async {
@@ -89,10 +89,11 @@ void main() {
     await tester.pumpAndSettle();
 
     // Tap on Settings tab in NavigationBar
-    await tester.tap(find.text('Settings'));
+    await tester.tap(find.text('SETTINGS'));
     await tester.pumpAndSettle();
 
     // Verify Settings screen sections
+    expect(find.text('APPEARANCE'), findsOneWidget);
     expect(find.text('AI PROVIDER'), findsOneWidget);
     expect(find.text('POST SETTINGS'), findsOneWidget);
 
@@ -105,7 +106,6 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.text('ADVANCED'), findsOneWidget);
-    expect(find.text('APPEARANCE'), findsOneWidget);
   });
 
   testWidgets('Navigation bar switches to Studio tab', (WidgetTester tester) async {
@@ -117,7 +117,7 @@ void main() {
     await tester.pumpAndSettle();
 
     // Tap on Studio tab in NavigationBar
-    await tester.tap(find.text('Studio'));
+    await tester.tap(find.text('STUDIO'));
     await tester.pumpAndSettle();
 
     // Verify Card Studio title

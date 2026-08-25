@@ -56,20 +56,21 @@ class AppChip extends StatelessWidget {
           decoration: BoxDecoration(
             color: bg,
             borderRadius: AppSpacing.borderRadiusPill,
-            border: Border.all(color: border, width: selected ? 1.5 : 1),
+            border: Border.all(color: border, width: 2),
           ),
           child: Row(
             mainAxisSize: MainAxisSize.min,
             children: [
               if (icon != null) ...[
-                Icon(icon, size: 15, color: textCol),
-                const SizedBox(width: 6),
+                Icon(icon, size: 16, color: textCol),
+                const SizedBox(width: 8),
               ],
               Text(
-                label,
+                label.toUpperCase(),
                 style: theme.textTheme.labelMedium?.copyWith(
                   color: textCol,
-                  fontWeight: selected ? FontWeight.w600 : FontWeight.w500,
+                  fontWeight: FontWeight.w700,
+                  letterSpacing: 0.5,
                 ),
               ),
               if (count != null) ...[

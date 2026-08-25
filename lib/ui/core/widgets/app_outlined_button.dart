@@ -97,9 +97,9 @@ class _AppOutlinedButtonState extends State<AppOutlinedButton> with SingleTicker
           decoration: BoxDecoration(
             color: Colors.transparent,
             borderRadius: AppSpacing.borderRadiusPill,
-            border: Border.all(color: outlineColor, width: 1),
+            border: Border.all(color: outlineColor, width: 2),
           ),
-          padding: const EdgeInsets.symmetric(horizontal: 20),
+          padding: const EdgeInsets.symmetric(horizontal: 24),
           child: Center(
             child: widget.isLoading
                 ? SizedBox(
@@ -114,15 +114,15 @@ class _AppOutlinedButtonState extends State<AppOutlinedButton> with SingleTicker
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
                       if (widget.icon != null) ...[
-                        Icon(widget.icon, size: 18, color: fgColor),
-                        const SizedBox(width: 8),
+                        Icon(widget.icon, size: 20, color: fgColor),
+                        const SizedBox(width: 12),
                       ],
                       Text(
-                        widget.label,
+                        widget.label.toUpperCase(),
                         style: theme.textTheme.labelLarge?.copyWith(
                           color: fgColor,
-                          fontWeight: FontWeight.w600,
-                          letterSpacing: 0.1,
+                          fontWeight: FontWeight.w700,
+                          letterSpacing: 1.0,
                         ),
                       ),
                     ],

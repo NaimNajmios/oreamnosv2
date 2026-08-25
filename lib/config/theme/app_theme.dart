@@ -5,161 +5,41 @@ import 'app_colors.dart';
 import 'app_spacing.dart';
 import 'app_typography.dart';
 
-/// 'Serene Editorial' ThemeData builder.
+/// 'Aperture' ThemeData builder.
 abstract final class AppTheme {
-  static ThemeData light({ColorScheme? dynamicColorScheme}) {
+  static ThemeData flash({ColorScheme? dynamicColorScheme}) {
     return _buildTheme(
       brightness: Brightness.light,
-      bg: AppColors.lightBg,
-      surface: AppColors.lightSurface,
-      surfaceMuted: AppColors.lightSurfaceMuted,
-      border: AppColors.lightBorder,
-      textPrimary: AppColors.lightTextPrimary,
-      textSecondary: AppColors.lightTextSecondary,
-      textTertiary: AppColors.lightTextTertiary,
-      accent: AppColors.lightAccent,
-      accentSoft: AppColors.lightAccentSoft,
+      bg: AppColors.flashBg,
+      surface: AppColors.flashSurface,
+      surfaceMuted: AppColors.flashSurfaceMuted,
+      border: AppColors.flashBorder,
+      textPrimary: AppColors.flashTextPrimary,
+      textSecondary: AppColors.flashTextSecondary,
+      textTertiary: AppColors.flashTextTertiary,
+      accent: AppColors.flashAccent,
+      accentSoft: AppColors.flashAccentSoft,
       dynamicColorScheme: dynamicColorScheme,
-      paletteName: 'Light',
+      paletteName: 'Flash',
     );
   }
 
-  static ThemeData dark({ColorScheme? dynamicColorScheme}) {
+  static ThemeData voidTheme({ColorScheme? dynamicColorScheme}) {
     return _buildTheme(
       brightness: Brightness.dark,
-      bg: AppColors.darkBg,
-      surface: AppColors.darkSurface,
-      surfaceMuted: AppColors.darkSurfaceMuted,
-      border: AppColors.darkBorder,
-      textPrimary: AppColors.darkTextPrimary,
-      textSecondary: AppColors.darkTextSecondary,
-      textTertiary: AppColors.darkTextTertiary,
-      accent: AppColors.darkAccent,
-      accentSoft: AppColors.darkAccentSoft,
+      bg: AppColors.voidBg,
+      surface: AppColors.voidSurface,
+      surfaceMuted: AppColors.voidSurfaceMuted,
+      border: AppColors.voidBorder,
+      textPrimary: AppColors.voidTextPrimary,
+      textSecondary: AppColors.voidTextSecondary,
+      textTertiary: AppColors.voidTextTertiary,
+      accent: AppColors.voidAccent,
+      accentSoft: AppColors.voidAccentSoft,
       dynamicColorScheme: dynamicColorScheme,
-      paletteName: 'Dark',
+      paletteName: 'Void',
     );
   }
-
-  static ThemeData deepBlue() {
-    return _buildTheme(
-      brightness: Brightness.dark,
-      bg: AppColors.deepBlueBg,
-      surface: AppColors.deepBlueSurface,
-      surfaceMuted: AppColors.deepBlueSurfaceMuted,
-      border: AppColors.deepBlueBorder,
-      textPrimary: AppColors.deepBlueTextPrimary,
-      textSecondary: AppColors.deepBlueTextSecondary,
-      textTertiary: AppColors.deepBlueTextTertiary,
-      accent: AppColors.deepBlueAccent,
-      accentSoft: AppColors.deepBlueAccentSoft,
-      dynamicColorScheme: null,
-      paletteName: 'Deep Blue',
-    );
-  }
-
-  static ThemeData midnightNoir() {
-    return _buildTheme(
-      brightness: Brightness.dark,
-      bg: AppColors.midnightNoirBg,
-      surface: AppColors.midnightNoirSurface,
-      surfaceMuted: AppColors.midnightNoirSurfaceMuted,
-      border: AppColors.midnightNoirBorder,
-      textPrimary: AppColors.midnightNoirTextPrimary,
-      textSecondary: AppColors.midnightNoirTextSecondary,
-      textTertiary: AppColors.midnightNoirTextTertiary,
-      accent: AppColors.midnightNoirAccent,
-      accentSoft: AppColors.midnightNoirAccentSoft,
-      dynamicColorScheme: null,
-      paletteName: 'Midnight Noir',
-    );
-  }
-
-  static ThemeData solarizedLight({ColorScheme? dynamicColorScheme}) {
-    return _buildTheme(
-      brightness: Brightness.light,
-      bg: AppColors.solarizedLightBg,
-      surface: AppColors.solarizedLightSurface,
-      surfaceMuted: AppColors.solarizedLightSurfaceMuted,
-      border: AppColors.solarizedLightBorder,
-      textPrimary: AppColors.solarizedLightTextPrimary,
-      textSecondary: AppColors.solarizedLightTextSecondary,
-      textTertiary: AppColors.solarizedLightTextTertiary,
-      accent: AppColors.solarizedLightAccent,
-      accentSoft: AppColors.solarizedLightAccentSoft,
-      dynamicColorScheme: dynamicColorScheme,
-      paletteName: 'Solarized Light',
-    );
-  }
-
-  static ThemeData cyberpunk() {
-    return _buildTheme(
-      brightness: Brightness.dark,
-      bg: AppColors.cyberpunkBg,
-      surface: AppColors.cyberpunkSurface,
-      surfaceMuted: AppColors.cyberpunkSurfaceMuted,
-      border: AppColors.cyberpunkBorder,
-      textPrimary: AppColors.cyberpunkTextPrimary,
-      textSecondary: AppColors.cyberpunkTextSecondary,
-      textTertiary: AppColors.cyberpunkTextTertiary,
-      accent: AppColors.cyberpunkAccent,
-      accentSoft: AppColors.cyberpunkAccentSoft,
-      dynamicColorScheme: null,
-      paletteName: 'Cyberpunk',
-    );
-  }
-
-  static ThemeData matchday({ColorScheme? dynamicColorScheme}) {
-    return _buildTheme(
-      brightness: Brightness.light,
-      bg: AppColors.matchdayBg,
-      surface: AppColors.matchdaySurface,
-      surfaceMuted: AppColors.matchdaySurfaceMuted,
-      border: AppColors.matchdayBorder,
-      textPrimary: AppColors.matchdayTextPrimary,
-      textSecondary: AppColors.matchdayTextSecondary,
-      textTertiary: AppColors.matchdayTextTertiary,
-      accent: AppColors.matchdayAccent,
-      accentSoft: AppColors.matchdayAccentSoft,
-      dynamicColorScheme: dynamicColorScheme,
-      paletteName: 'Matchday',
-    );
-  }
-
-  static ThemeData forest() {
-    return _buildTheme(
-      brightness: Brightness.dark,
-      bg: AppColors.forestBg,
-      surface: AppColors.forestSurface,
-      surfaceMuted: AppColors.forestSurfaceMuted,
-      border: AppColors.forestBorder,
-      textPrimary: AppColors.forestTextPrimary,
-      textSecondary: AppColors.forestTextSecondary,
-      textTertiary: AppColors.forestTextTertiary,
-      accent: AppColors.forestAccent,
-      accentSoft: AppColors.forestAccentSoft,
-      dynamicColorScheme: null,
-      paletteName: 'Forest',
-    );
-  }
-
-  static ThemeData forestAlt() {
-    return _buildTheme(
-      brightness: Brightness.dark,
-      bg: AppColors.forestAltBg,
-      surface: AppColors.forestAltSurface,
-      surfaceMuted: AppColors.forestAltSurfaceMuted,
-      border: AppColors.forestAltBorder,
-      textPrimary: AppColors.forestAltTextPrimary,
-      textSecondary: AppColors.forestAltTextSecondary,
-      textTertiary: AppColors.forestAltTextTertiary,
-      accent: AppColors.forestAltAccent,
-      accentSoft: AppColors.forestAltAccentSoft,
-      dynamicColorScheme: null,
-      paletteName: 'Forest Alt',
-    );
-  }
-
 
   // === Theme Builder with WCAG Contrast Checking ===
   static ThemeData _buildTheme({
@@ -182,7 +62,7 @@ abstract final class AppTheme {
     _validateContrast(textPrimary, bg, minRatio: 3.0, contextName: '$paletteName (text on bg)');
     _validateContrast(textPrimary, surface, minRatio: 3.0, contextName: '$paletteName (text on surface)');
 
-    final onAccentColor = isDark ? const Color(0xFF0F172A) : Colors.white;
+    final onAccentColor = isDark ? Colors.black : Colors.white;
 
     final colorScheme = dynamicColorScheme != null
         ? dynamicColorScheme.copyWith(
@@ -197,7 +77,7 @@ abstract final class AppTheme {
             primary: accent,
             onPrimary: onAccentColor,
             primaryContainer: accentSoft,
-            onPrimaryContainer: isDark ? Colors.white : accent,
+            onPrimaryContainer: isDark ? Colors.white : Colors.black,
             secondary: accent,
             onSecondary: onAccentColor,
             surface: surface,
@@ -225,33 +105,29 @@ abstract final class AppTheme {
         elevation: 0,
         scrolledUnderElevation: 0,
         centerTitle: false,
-        titleTextStyle: textTheme.titleMedium?.copyWith(
-          fontWeight: FontWeight.w700,
-          letterSpacing: 0,
-        ),
-        iconTheme: IconThemeData(color: textPrimary, size: 22),
+        titleTextStyle: textTheme.titleLarge,
+        iconTheme: IconThemeData(color: textPrimary, size: 24),
       ),
       cardTheme: CardThemeData(
         color: surface,
         elevation: 0,
         shape: RoundedRectangleBorder(
-          borderRadius: AppSpacing.borderRadiusMd,
-          side: BorderSide(color: border, width: 1),
+          borderRadius: AppSpacing.borderRadiusXs, // 0px
+          side: BorderSide(color: border, width: 2), // 2px border
         ),
         margin: EdgeInsets.zero,
       ),
       chipTheme: ChipThemeData(
         shape: const RoundedRectangleBorder(
-          borderRadius: AppSpacing.borderRadiusPill,
+          borderRadius: AppSpacing.borderRadiusPill, // 999px
         ),
         backgroundColor: surfaceMuted,
-        selectedColor: accentSoft,
-        labelStyle: textTheme.labelSmall?.copyWith(
+        selectedColor: accent,
+        labelStyle: textTheme.labelMedium?.copyWith(
           color: textPrimary,
-          fontWeight: FontWeight.w500,
         ),
-        side: BorderSide(color: border, width: 1),
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+        side: BorderSide(color: border, width: 2),
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
       ),
       elevatedButtonTheme: ElevatedButtonThemeData(
         style: ElevatedButton.styleFrom(
@@ -261,120 +137,120 @@ abstract final class AppTheme {
             borderRadius: AppSpacing.borderRadiusPill,
           ),
           elevation: 0,
-          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
-          textStyle: textTheme.labelLarge?.copyWith(fontWeight: FontWeight.w500),
+          padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
+          textStyle: textTheme.labelLarge,
         ),
       ),
       outlinedButtonTheme: OutlinedButtonThemeData(
         style: OutlinedButton.styleFrom(
           foregroundColor: textPrimary,
-          side: BorderSide(color: border, width: 1),
+          side: BorderSide(color: border, width: 2),
           shape: const RoundedRectangleBorder(
             borderRadius: AppSpacing.borderRadiusPill,
           ),
-          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
-          textStyle: textTheme.labelLarge?.copyWith(fontWeight: FontWeight.w500),
+          padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
+          textStyle: textTheme.labelLarge,
         ),
       ),
       textButtonTheme: TextButtonThemeData(
         style: TextButton.styleFrom(
-          foregroundColor: accent,
+          foregroundColor: textPrimary,
           shape: const RoundedRectangleBorder(
             borderRadius: AppSpacing.borderRadiusPill,
           ),
-          textStyle: textTheme.labelLarge?.copyWith(fontWeight: FontWeight.w500),
+          textStyle: textTheme.labelLarge,
         ),
       ),
       inputDecorationTheme: InputDecorationTheme(
         filled: true,
         fillColor: surface,
-        hintStyle: textTheme.bodyMedium?.copyWith(color: textTertiary),
-        labelStyle: textTheme.bodyMedium?.copyWith(color: textSecondary),
+        hintStyle: textTheme.bodyLarge?.copyWith(color: textTertiary),
+        labelStyle: textTheme.bodyLarge?.copyWith(color: textSecondary),
         border: OutlineInputBorder(
-          borderRadius: AppSpacing.borderRadiusMd,
-          borderSide: BorderSide(color: border, width: 1),
+          borderRadius: AppSpacing.borderRadiusXs, // 0px
+          borderSide: BorderSide(color: border, width: 2),
         ),
         enabledBorder: OutlineInputBorder(
-          borderRadius: AppSpacing.borderRadiusMd,
-          borderSide: BorderSide(color: border, width: 1),
+          borderRadius: AppSpacing.borderRadiusXs,
+          borderSide: BorderSide(color: border, width: 2),
         ),
         focusedBorder: OutlineInputBorder(
-          borderRadius: AppSpacing.borderRadiusMd,
-          borderSide: BorderSide(color: accent, width: 1.5),
+          borderRadius: AppSpacing.borderRadiusXs,
+          borderSide: BorderSide(color: textPrimary, width: 4), // Extremely thick when focused
         ),
         errorBorder: OutlineInputBorder(
-          borderRadius: AppSpacing.borderRadiusMd,
+          borderRadius: AppSpacing.borderRadiusXs,
           borderSide: const BorderSide(
             color: AppColors.error,
-            width: 1,
+            width: 2,
           ),
         ),
-
-        contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+        contentPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 18),
       ),
       navigationBarTheme: NavigationBarThemeData(
-        backgroundColor: surface,
+        backgroundColor: bg,
         elevation: 0,
-        indicatorColor: accentSoft,
+        indicatorColor: Colors.transparent, // No pill indicator
         height: 68,
         labelTextStyle: WidgetStateProperty.resolveWith((states) {
           final isSelected = states.contains(WidgetState.selected);
-          return textTheme.labelSmall?.copyWith(
-            color: isSelected ? accent : textSecondary,
-            fontWeight: isSelected ? FontWeight.w600 : FontWeight.w500,
+          return AppTypography.mono(
+            fontSize: 12,
+            fontWeight: isSelected ? FontWeight.w700 : FontWeight.w400,
+            color: textPrimary,
+            letterSpacing: 1.0,
           );
         }),
         iconTheme: WidgetStateProperty.resolveWith((states) {
           final isSelected = states.contains(WidgetState.selected);
           return IconThemeData(
-            color: isSelected ? accent : textSecondary,
-            size: 24,
+            color: textPrimary,
+            size: isSelected ? 28 : 24,
           );
         }),
       ),
       dividerTheme: DividerThemeData(
         color: border,
-        thickness: 1,
-        space: 1,
+        thickness: 2, // 2px dividers
+        space: 2,
       ),
       dialogTheme: DialogThemeData(
-        backgroundColor: surface,
+        backgroundColor: bg,
         elevation: 0,
         shape: RoundedRectangleBorder(
-          borderRadius: AppSpacing.borderRadiusLg,
-          side: BorderSide(color: border, width: 1),
+          borderRadius: AppSpacing.borderRadiusXs, // 0px
+          side: BorderSide(color: border, width: 2),
         ),
-        titleTextStyle: textTheme.titleMedium?.copyWith(
-          fontWeight: FontWeight.w700,
+        titleTextStyle: textTheme.headlineSmall?.copyWith(
           color: textPrimary,
         ),
       ),
       bottomSheetTheme: BottomSheetThemeData(
-        backgroundColor: surface,
+        backgroundColor: bg,
         elevation: 0,
-        modalBarrierColor: Colors.black.withValues(alpha: 0.5),
+        modalBarrierColor: isDark 
+            ? Colors.black.withValues(alpha: 0.85) 
+            : Colors.black.withValues(alpha: 0.85),
         shape: const RoundedRectangleBorder(
-          borderRadius: BorderRadius.vertical(
-            top: Radius.circular(24),
-          ),
+          borderRadius: BorderRadius.zero, // 0px
           side: BorderSide(color: Colors.transparent),
         ),
         showDragHandle: true,
         dragHandleColor: border,
-        dragHandleSize: const Size(36, 4),
+        dragHandleSize: const Size(48, 4), // sharper longer handle
       ),
       switchTheme: SwitchThemeData(
         thumbColor: WidgetStateProperty.resolveWith((states) {
           if (states.contains(WidgetState.selected)) {
-            return accent;
+            return onAccentColor;
           }
           return textTertiary;
         }),
         trackColor: WidgetStateProperty.resolveWith((states) {
           if (states.contains(WidgetState.selected)) {
-            return accentSoft;
+            return textPrimary;
           }
-          return surfaceMuted;
+          return Colors.transparent;
         }),
         trackOutlineColor: WidgetStateProperty.all(border),
       ),
@@ -416,4 +292,3 @@ abstract final class AppTheme {
     );
   }
 }
-

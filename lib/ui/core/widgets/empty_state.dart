@@ -28,7 +28,7 @@ class EmptyState extends StatelessWidget {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final colorScheme = theme.colorScheme;
-    final primaryIconColor = iconColor ?? colorScheme.primary;
+    final primaryIconColor = iconColor ?? colorScheme.onSurface; // Stark monochrome
 
     return Center(
       child: Padding(
@@ -37,37 +37,40 @@ class EmptyState extends StatelessWidget {
           mainAxisAlignment: MainAxisAlignment.center,
           mainAxisSize: MainAxisSize.min,
           children: [
-            // Outlined Icon at 80dp / 50% opacity
-            Icon(
-              icon,
-              size: 80,
-              color: primaryIconColor.withValues(alpha: 0.5),
+            // Stark 100% opacity Icon
+            Container(
+              padding: const EdgeInsets.all(24),
+              decoration: BoxDecoration(
+                border: Border.all(color: colorScheme.outline, width: 2),
+                shape: BoxShape.circle,
+              ),
+              child: Icon(
+                icon,
+                size: 48,
+                color: primaryIconColor,
+              ),
             ),
-            const SizedBox(height: 24),
+            const SizedBox(height: 32),
             Text(
-              title,
-              style: theme.textTheme.titleMedium?.copyWith(
-                fontWeight: FontWeight.w700,
-                letterSpacing: 0,
+              title.toUpperCase(),
+              style: theme.textTheme.headlineSmall,
+              textAlign: TextAlign.center,
+            ),
+            const SizedBox(height: 16),
+            Text(
+              '> ${description.toUpperCase()}', // Terminal-style prefix
+              style: theme.textTheme.bodyMedium?.copyWith(
+                fontFamily: 'IBM Plex Mono', // Monospace override
+                color: colorScheme.onSurface.withValues(alpha: 0.7),
+                letterSpacing: 1.0,
               ),
               textAlign: TextAlign.center,
             ),
-            const SizedBox(height: 8),
-            ConstrainedBox(
-              constraints: const BoxConstraints(maxWidth: 340),
-              child: Text(
-                description,
-                style: theme.textTheme.bodyLarge?.copyWith(
-                  color: colorScheme.onSurface.withValues(alpha: 0.65),
-                ),
-                textAlign: TextAlign.center,
-              ),
-            ),
             if (actionLabel != null && onAction != null) ...[
-              const SizedBox(height: 24),
+              const SizedBox(height: 32),
               AppButton(
                 label: actionLabel!,
-                height: 44,
+                height: 48,
                 onPressed: onAction,
               ),
             ],

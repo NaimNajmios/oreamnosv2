@@ -78,41 +78,17 @@ class _OreamnosAppState extends State<OreamnosApp> {
         final ThemeMode materialThemeMode;
 
         switch (themeMode) {
-          case AppThemeMode.light:
-            themeData = AppTheme.light(dynamicColorScheme: lightDynamic);
+          case AppThemeMode.flashMode:
+            themeData = AppTheme.flash(dynamicColorScheme: lightDynamic);
             darkThemeData = null;
             materialThemeMode = ThemeMode.light;
-          case AppThemeMode.dark:
-            themeData = AppTheme.dark(dynamicColorScheme: darkDynamic);
-            darkThemeData = null;
-            materialThemeMode = ThemeMode.dark;
-          case AppThemeMode.deepBlue:
-            themeData = AppTheme.deepBlue();
-            darkThemeData = null;
-            materialThemeMode = ThemeMode.dark;
-          case AppThemeMode.midnightNoir:
-            themeData = AppTheme.midnightNoir();
-            darkThemeData = null;
-            materialThemeMode = ThemeMode.dark;
-          case AppThemeMode.solarizedLight:
-            themeData = AppTheme.solarizedLight(dynamicColorScheme: lightDynamic);
-            darkThemeData = null;
-            materialThemeMode = ThemeMode.light;
-          case AppThemeMode.cyberpunk:
-            themeData = AppTheme.cyberpunk();
-            darkThemeData = null;
-            materialThemeMode = ThemeMode.dark;
-          case AppThemeMode.matchday:
-            themeData = AppTheme.matchday(dynamicColorScheme: lightDynamic);
-            darkThemeData = null;
-            materialThemeMode = ThemeMode.light;
-          case AppThemeMode.forest:
-            themeData = AppTheme.forest();
+          case AppThemeMode.voidMode:
+            themeData = AppTheme.voidTheme(dynamicColorScheme: darkDynamic);
             darkThemeData = null;
             materialThemeMode = ThemeMode.dark;
           case AppThemeMode.system:
-            themeData = AppTheme.light(dynamicColorScheme: lightDynamic);
-            darkThemeData = AppTheme.dark(dynamicColorScheme: darkDynamic);
+            themeData = AppTheme.flash(dynamicColorScheme: lightDynamic);
+            darkThemeData = AppTheme.voidTheme(dynamicColorScheme: darkDynamic);
             materialThemeMode = ThemeMode.system;
         }
 

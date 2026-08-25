@@ -73,22 +73,10 @@ class AppInput extends StatelessWidget {
             prefixIcon: prefixIcon,
             suffixIcon: suffixIcon,
             filled: true,
-            fillColor: theme.colorScheme.surfaceContainerHighest.withValues(alpha: 0.5),
+            fillColor: theme.colorScheme.surface,
             contentPadding: const EdgeInsets.symmetric(
               horizontal: AppSpacing.base,
-              vertical: 14,
-            ),
-            border: OutlineInputBorder(
-              borderRadius: AppSpacing.borderRadiusSm,
-              borderSide: BorderSide(color: theme.colorScheme.outline, width: 1),
-            ),
-            enabledBorder: OutlineInputBorder(
-              borderRadius: AppSpacing.borderRadiusSm,
-              borderSide: BorderSide(color: theme.colorScheme.outline, width: 1),
-            ),
-            focusedBorder: OutlineInputBorder(
-              borderRadius: AppSpacing.borderRadiusSm,
-              borderSide: BorderSide(color: theme.colorScheme.primary, width: 1.5),
+              vertical: 18,
             ),
           ),
         ),

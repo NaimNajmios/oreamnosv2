@@ -78,9 +78,9 @@ class _AppButtonState extends State<AppButton> with SingleTickerProviderStateMix
     final enabled = widget.onPressed != null && !widget.isLoading;
 
     final bgColor = widget.backgroundColor ??
-        (enabled ? theme.colorScheme.primary : theme.colorScheme.onSurface.withValues(alpha: 0.12));
+        (enabled ? theme.colorScheme.onSurface : theme.colorScheme.onSurface.withValues(alpha: 0.12));
     final fgColor = widget.foregroundColor ??
-        (enabled ? theme.colorScheme.onPrimary : theme.colorScheme.onSurface.withValues(alpha: 0.38));
+        (enabled ? theme.colorScheme.surface : theme.colorScheme.onSurface.withValues(alpha: 0.38));
 
     return Semantics(
       button: true,
@@ -102,8 +102,12 @@ class _AppButtonState extends State<AppButton> with SingleTickerProviderStateMix
             decoration: BoxDecoration(
               color: bgColor,
               borderRadius: AppSpacing.borderRadiusPill,
+              border: Border.all(
+                color: widget.backgroundColor != null ? Colors.transparent : theme.colorScheme.onSurface,
+                width: 2,
+              ),
             ),
-            padding: const EdgeInsets.symmetric(horizontal: 20),
+            padding: const EdgeInsets.symmetric(horizontal: 24),
             child: Center(
               child: widget.isLoading
                   ? SizedBox(
@@ -120,15 +124,15 @@ class _AppButtonState extends State<AppButton> with SingleTickerProviderStateMix
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
                         if (widget.icon != null) ...[
-                          Icon(widget.icon, size: 18, color: fgColor),
-                          const SizedBox(width: 8),
+                          Icon(widget.icon, size: 20, color: fgColor),
+                          const SizedBox(width: 12),
                         ],
                         Text(
-                          widget.label,
+                          widget.label.toUpperCase(),
                           style: theme.textTheme.labelLarge?.copyWith(
                             color: fgColor,
-                            fontWeight: FontWeight.w600,
-                            letterSpacing: 0.1,
+                            fontWeight: FontWeight.w700,
+                            letterSpacing: 1.0,
                           ),
                         ),
                       ],

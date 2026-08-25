@@ -1,14 +1,8 @@
 /// Supported theme modes for the Oreamnos app.
 enum AppThemeMode {
-  light('Light'),
-  dark('Dark'),
-  deepBlue('Deep Blue'),
-  midnightNoir('Midnight Noir'),
-  solarizedLight('Solarized Light'),
-  cyberpunk('Cyberpunk'),
-  matchday('Matchday'),
-  forest('Forest'),
-  system('System');
+  system('System'),
+  voidMode('Void'),
+  flashMode('Flash');
 
   const AppThemeMode(this.label);
 
@@ -16,11 +10,16 @@ enum AppThemeMode {
 
   static AppThemeMode fromString(String? value) {
     if (value == null) return AppThemeMode.system;
+    // Map legacy names to new equivalents to prevent crashing on existing installs
+    if (value == 'light' || value == 'solarizedLight' || value == 'matchday') {
+      return AppThemeMode.flashMode;
+    }
+    if (value == 'dark' || value == 'deepBlue' || value == 'midnightNoir' || value == 'cyberpunk' || value == 'forest') {
+      return AppThemeMode.voidMode;
+    }
     return AppThemeMode.values.firstWhere(
       (mode) => mode.name == value,
       orElse: () => AppThemeMode.system,
     );
   }
 }
-
-

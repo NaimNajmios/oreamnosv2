@@ -157,7 +157,7 @@ class _ReadingModeScreenState extends State<ReadingModeScreen> {
                             color: theme.colorScheme.surface,
                             shape: BoxShape.circle,
                             border: Border.all(color: theme.colorScheme.outline, width: 1),
-                            boxShadow: AppSpacing.softShadow,
+                            boxShadow: AppSpacing.softShadow(theme.brightness == Brightness.dark),
                           ),
                           child: Icon(
                             Icons.close_rounded,

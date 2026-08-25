@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:oreamnos/config/theme/app_spacing.dart';
 import 'package:oreamnos/ui/core/utils/haptics.dart';
 
-/// Reusable grouped list row with icon container, title, subtitle, and trailing widget/chevron.
+/// Reusable grouped list row with brutalist styling.
 class SettingsTile extends StatelessWidget {
   const SettingsTile({
     super.key,
@@ -11,9 +11,6 @@ class SettingsTile extends StatelessWidget {
     this.leadingIcon,
     this.trailing,
     this.onTap,
-    this.showChevron = true,
-    this.iconBackgroundColor,
-    this.iconColor,
   });
 
   final String title;
@@ -21,9 +18,6 @@ class SettingsTile extends StatelessWidget {
   final IconData? leadingIcon;
   final Widget? trailing;
   final VoidCallback? onTap;
-  final bool showChevron;
-  final Color? iconBackgroundColor;
-  final Color? iconColor;
 
   @override
   Widget build(BuildContext context) {
@@ -38,28 +32,19 @@ class SettingsTile extends StatelessWidget {
                 Haptics.lightImpact();
                 onTap?.call();
               },
-        borderRadius: AppSpacing.borderRadiusSm,
+        borderRadius: BorderRadius.zero,
         child: Padding(
           padding: const EdgeInsets.symmetric(
             horizontal: AppSpacing.base,
-            vertical: 12,
+            vertical: 16,
           ),
           child: Row(
             children: [
               if (leadingIcon != null) ...[
-                Container(
-                  width: 32,
-                  height: 32,
-                  decoration: BoxDecoration(
-                    color: iconBackgroundColor ??
-                        theme.colorScheme.primaryContainer.withValues(alpha: 0.5),
-                    borderRadius: AppSpacing.borderRadiusSm,
-                  ),
-                  child: Icon(
-                    leadingIcon,
-                    size: 17,
-                    color: iconColor ?? theme.colorScheme.primary,
-                  ),
+                Icon(
+                  leadingIcon,
+                  size: 24,
+                  color: theme.colorScheme.onSurface,
                 ),
                 const SizedBox(width: AppSpacing.md),
               ],
@@ -68,17 +53,14 @@ class SettingsTile extends StatelessWidget {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      title,
-                      style: theme.textTheme.titleSmall?.copyWith(
-                        fontWeight: FontWeight.w600,
-                        letterSpacing: -0.1,
-                      ),
+                      title.toUpperCase(),
+                      style: theme.textTheme.titleSmall,
                     ),
                     if (subtitle != null) ...[
-                      const SizedBox(height: 2),
+                      const SizedBox(height: 4),
                       Text(
                         subtitle!,
-                        style: theme.textTheme.bodySmall?.copyWith(
+                        style: theme.textTheme.bodyMedium?.copyWith(
                           color: theme.colorScheme.onSurface.withValues(alpha: 0.6),
                         ),
                       ),
@@ -89,12 +71,12 @@ class SettingsTile extends StatelessWidget {
               if (trailing != null) ...[
                 const SizedBox(width: AppSpacing.sm),
                 trailing!,
-              ] else if (showChevron && onTap != null) ...[
+              ] else if (onTap != null) ...[
                 const SizedBox(width: AppSpacing.sm),
                 Icon(
-                  Icons.chevron_right_rounded,
+                  Icons.arrow_forward, // Sharp arrow instead of soft chevron
                   size: 20,
-                  color: theme.colorScheme.onSurface.withValues(alpha: 0.4),
+                  color: theme.colorScheme.onSurface,
                 ),
               ],
             ],

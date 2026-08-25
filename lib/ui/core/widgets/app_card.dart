@@ -36,12 +36,12 @@ class AppCard extends StatelessWidget {
       margin: margin,
       decoration: BoxDecoration(
         color: backgroundColor ?? theme.colorScheme.surface,
-        borderRadius: radius,
+        borderRadius: radius, // should be 0px via theme/spacing
         border: Border.all(
           color: borderColor ?? theme.colorScheme.outline,
-          width: 1,
+          width: 2, // 2px stark border
         ),
-        boxShadow: boxShadow ?? AppSpacing.subtleShadow,
+        boxShadow: boxShadow ?? AppSpacing.subtleShadow(theme.brightness == Brightness.dark),
       ),
       child: ClipRRect(
         borderRadius: radius,
@@ -52,7 +52,7 @@ class AppCard extends StatelessWidget {
                 left: 0,
                 top: 0,
                 bottom: 0,
-                width: 3,
+                width: 4, // 4px stark accent line
                 child: Container(color: accentColor),
               ),
             Padding(

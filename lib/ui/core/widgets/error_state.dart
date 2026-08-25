@@ -27,43 +27,43 @@ class ErrorState extends StatelessWidget {
 
     return AppCard(
       padding: const EdgeInsets.all(AppSpacing.xl),
-      borderColor: AppColors.error.withValues(alpha: 0.2),
-      backgroundColor: AppColors.error.withValues(alpha: 0.04),
+      borderColor: AppColors.error,
+      backgroundColor: theme.colorScheme.surface,
       child: Column(
         mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.center,
         children: [
           Container(
-            width: 48,
-            height: 48,
+            padding: const EdgeInsets.all(16),
             decoration: BoxDecoration(
-              color: AppColors.error.withValues(alpha: 0.1),
-              borderRadius: AppSpacing.borderRadiusMd,
+              border: Border.all(color: AppColors.error, width: 2),
+              shape: BoxShape.circle,
             ),
             child: Icon(icon, color: AppColors.error, size: 24),
           ),
-          const SizedBox(height: AppSpacing.md),
+          const SizedBox(height: AppSpacing.lg),
           Text(
-            title,
+            title.toUpperCase(),
             style: theme.textTheme.titleMedium?.copyWith(
               fontWeight: FontWeight.w700,
               color: AppColors.error,
             ),
             textAlign: TextAlign.center,
           ),
-          const SizedBox(height: AppSpacing.xs),
+          const SizedBox(height: AppSpacing.sm),
           Text(
-            message,
-            style: theme.textTheme.bodySmall?.copyWith(
-              color: theme.colorScheme.onSurface.withValues(alpha: 0.7),
+            '> ERROR:\n$message',
+            style: theme.textTheme.bodyMedium?.copyWith(
+              fontFamily: 'IBM Plex Mono',
+              color: theme.colorScheme.onSurface,
             ),
             textAlign: TextAlign.center,
           ),
           if (onRetry != null) ...[
-            const SizedBox(height: AppSpacing.lg),
+            const SizedBox(height: AppSpacing.xl),
             AppButton(
               label: retryLabel,
-              height: 44,
+              height: 48,
               backgroundColor: AppColors.error,
               foregroundColor: Colors.white,
               onPressed: onRetry,

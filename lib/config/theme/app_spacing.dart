@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 
-/// Spacing, radius, and layout tokens for the 'Serene Editorial' design system.
+/// Spacing, radius, and layout tokens for the 'Aperture' design system.
 abstract final class AppSpacing {
   // === 8pt Spacing Scale ===
   static const double xs = 4.0;
@@ -17,11 +17,11 @@ abstract final class AppSpacing {
   static const double screenHorizontal = 20.0;
   static const double maxContentWidth = 640.0;
 
-  // === Corner Radii ===
-  static const double radiusXs = 8.0;
-  static const double radiusSm = 12.0;
-  static const double radiusMd = 16.0;
-  static const double radiusLg = 20.0;
+  // === Corner Radii (Aperture Extremes) ===
+  static const double radiusXs = 0.0;
+  static const double radiusSm = 0.0;
+  static const double radiusMd = 0.0;
+  static const double radiusLg = 0.0;
   static const double radiusPill = 999.0;
 
   static const BorderRadius borderRadiusXs = BorderRadius.all(Radius.circular(radiusXs));
@@ -30,22 +30,22 @@ abstract final class AppSpacing {
   static const BorderRadius borderRadiusLg = BorderRadius.all(Radius.circular(radiusLg));
   static const BorderRadius borderRadiusPill = BorderRadius.all(Radius.circular(radiusPill));
 
-  // === Subtle Shadows ===
-  static List<BoxShadow> get softShadow => [
+  // === Brutalist Shadows ===
+  static List<BoxShadow> softShadow(bool isDark) => [
         BoxShadow(
-          color: Colors.black.withValues(alpha: 0.04),
-          blurRadius: 4,
-          offset: const Offset(0, 1),
+          color: isDark ? Colors.white : Colors.black,
+          blurRadius: 0,
+          offset: const Offset(4, 4),
         ),
       ];
 
-  static List<BoxShadow> get subtleShadow => softShadow;
+  static List<BoxShadow> subtleShadow(bool isDark) => softShadow(isDark);
 
-  static List<BoxShadow> get elevatedShadow => [
+  static List<BoxShadow> elevatedShadow(bool isDark) => [
         BoxShadow(
-          color: Colors.black.withValues(alpha: 0.08),
-          blurRadius: 12,
-          offset: const Offset(0, 4),
+          color: isDark ? Colors.white : Colors.black,
+          blurRadius: 0,
+          offset: const Offset(8, 8),
         ),
       ];
 }

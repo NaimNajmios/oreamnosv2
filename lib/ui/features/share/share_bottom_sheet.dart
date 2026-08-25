@@ -61,21 +61,20 @@ class _ShareBottomSheetState extends State<ShareBottomSheet> {
           Row(
             children: [
               Container(
-                width: 36,
-                height: 36,
+                padding: const EdgeInsets.all(8),
                 decoration: BoxDecoration(
-                  color: theme.colorScheme.primaryContainer,
-                  borderRadius: AppSpacing.borderRadiusSm,
+                  border: Border.all(color: theme.colorScheme.outline, width: 2),
+                  shape: BoxShape.circle,
                 ),
                 child: Icon(
                   Icons.auto_awesome_rounded,
-                  size: 18,
-                  color: theme.colorScheme.primary,
+                  size: 20,
+                  color: theme.colorScheme.onSurface,
                 ),
               ),
               const SizedBox(width: AppSpacing.md),
               Text(
-                'Share to Oreamnos',
+                'SHARE TO OREAMNOS',
                 style: theme.textTheme.titleMedium?.copyWith(
                   fontWeight: FontWeight.w700,
                 ),
@@ -87,12 +86,15 @@ class _ShareBottomSheetState extends State<ShareBottomSheet> {
           // Content Preview Card
           AppCard(
             padding: const EdgeInsets.all(AppSpacing.md),
-            backgroundColor: theme.colorScheme.surfaceContainerHighest,
+            backgroundColor: theme.colorScheme.surface,
             child: Text(
               widget.initialContent,
               maxLines: 4,
               overflow: TextOverflow.ellipsis,
-              style: theme.textTheme.bodyMedium?.copyWith(height: 1.4),
+              style: theme.textTheme.bodyMedium?.copyWith(
+                height: 1.4,
+                fontFamily: 'IBM Plex Mono',
+              ),
             ),
           ),
           const SizedBox(height: AppSpacing.lg),
@@ -101,7 +103,7 @@ class _ShareBottomSheetState extends State<ShareBottomSheet> {
           Text(
             'SELECT TONE',
             style: theme.textTheme.labelSmall?.copyWith(
-              color: theme.colorScheme.primary,
+              color: theme.colorScheme.onSurface,
               fontWeight: FontWeight.w700,
               letterSpacing: 1.1,
             ),
