@@ -20,8 +20,10 @@ final logServiceProvider = Provider<ILogService>((ref) {
   return service;
 });
 
-// Convenience ChangeNotifier provider for UI that watches logs.
-final logNotifierProvider = ChangeNotifierProvider<LogService>((ref) {
+// Convenience provider for UI that watches logs — Riverpod 3.x uses Provider.
+// UI can watch via ref.watch(logServiceProvider) and listen to Listenable via ValueListenable pattern.
+// Keep ChangeNotifier semantics via manual subscription if needed.
+final logNotifierProvider = Provider<LogService>((ref) {
   final service = LogService();
   ref.onDispose(service.dispose);
   return service;

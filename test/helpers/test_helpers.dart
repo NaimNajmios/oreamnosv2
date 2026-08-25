@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:riverpod/misc.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -45,13 +46,13 @@ Future<SharedPreferences> createMockPrefs([
 /// `tester.pumpWidget(ProviderScope(child: ...))` for Riverpod tests.
 ProviderScope withProviderScope({
   required Widget child,
-  List<Override> overrides = const [],
+  List<dynamic> overrides = const [],
 }) {
-  return ProviderScope(overrides: overrides, child: child);
+  return ProviderScope(overrides: overrides as List<Override>, child: child);
 }
 
 /// Common overrides for tests that need [PreferencesService]/[UsageService].
-List<Override> commonOverrides({
+List<dynamic> commonOverrides({
   required PreferencesService preferencesService,
   required UsageService usageService,
 }) {

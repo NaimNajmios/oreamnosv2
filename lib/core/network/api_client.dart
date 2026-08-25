@@ -1,12 +1,17 @@
 import 'package:dio/dio.dart';
+import 'package:flutter/foundation.dart';
 
-/// Dio-backed API client — Phase A will replace `http.post` in
+import 'interceptors/auth_interceptor.dart';
+import 'interceptors/error_interceptor.dart';
+import 'interceptors/logging_interceptor.dart';
+import 'interceptors/retry_interceptor.dart';
+
+/// Dio-backed API client — replaces `http.post` in
 /// `lib/data/services/curators/gemini_curator.dart:40` and
 /// `lib/data/services/curators/openai_compatible_curator.dart:42`.
 ///
-/// Phase 0: stub with sensible defaults; not yet used by curators.
-/// Verifies `dio` dependency resolves. Interceptors (logging, retry, auth,
-/// error mapping → `lib/core/error/failures.dart`) land in Phase A.
+/// Android parity: connect 30s / read 60s `GeminiService.java:930`,
+/// retry 4× base 500ms cap 60s + jitter (vs Android 5× 1000ms cap 32s).
 class ApiClient {
   ApiClient({Dio? dio})
       : _dio = dio ??
@@ -18,9 +23,12 @@ class ApiClient {
                 headers: {'Content-Type': 'application/json'},
               ),
             ) {
-    // Phase A: add interceptors
-    // _dio.interceptors.add(LogInterceptor(responseBody: true));
-    // _dio.interceptors.add(RetryInterceptor(...));
+    _dio.interceptors.addAll([
+      if (kDebugMode) LoggingInterceptor(),
+      AuthInterceptor(),
+      ErrorMappingInterceptor(),
+      RetryInterceptor(maxRetries: 4, baseDelayMs: 500, maxDelayMs: 60000),
+    ]);
   }
 
   final Dio _dio;

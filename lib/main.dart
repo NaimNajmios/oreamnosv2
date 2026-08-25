@@ -1,9 +1,11 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
-import 'package:provider/provider.dart';
+import 'package:provider/provider.dart' as legacy_provider;
 import 'package:shared_preferences/shared_preferences.dart';
 
 import 'app.dart';
+import 'core/providers/app_providers.dart';
 import 'data/services/preferences_service.dart';
 import 'data/services/usage_service.dart';
 
@@ -40,37 +42,44 @@ void main() async {
   final usageService = UsageService(sharedPrefs);
 
   runApp(
-    MultiProvider(
-      providers: [
-        Provider<PreferencesService>.value(value: preferencesService),
-        ChangeNotifierProvider<UsageService>.value(value: usageService),
-        ChangeNotifierProvider<SettingsViewModel>(
-          create: (context) => SettingsViewModel(context.read<PreferencesService>()),
-        ),
-        Provider<IVisionExtractor>(create: (_) => MLKitVisionExtractor()),
-        ChangeNotifierProxyProvider2<SettingsViewModel, IVisionExtractor, GenerateViewModel>(
-          create: (context) => GenerateViewModel(
-            context.read<SettingsViewModel>(), 
-            context.read<UsageService>(),
-            context.read<IVisionExtractor>(),
-          ),
-          update: (context, settings, visionExtractor, previous) => 
-            previous ?? GenerateViewModel(
-              settings, 
-              context.read<UsageService>(),
-              visionExtractor,
-            ),
-        ),
-        Provider<ExportService>(create: (_) => ExportService()),
-        Provider<CardDataExtractor>(create: (_) => CardDataExtractor()),
-        ChangeNotifierProvider<CardGeneratorViewModel>(
-          create: (context) => CardGeneratorViewModel(
-            extractor: context.read<CardDataExtractor>(),
-            exportService: context.read<ExportService>(),
-          ),
-        ),
+    ProviderScope(
+      overrides: [
+        sharedPreferencesProvider.overrideWithValue(sharedPrefs),
+        secureStorageProvider.overrideWithValue(secureStorage),
       ],
-      child: const OreamnosApp(),
+      child: legacy_provider.MultiProvider(
+        providers: [
+          legacy_provider.Provider<PreferencesService>.value(value: preferencesService),
+          legacy_provider.ChangeNotifierProvider<UsageService>.value(value: usageService),
+          legacy_provider.ChangeNotifierProvider<SettingsViewModel>(
+            create: (context) => SettingsViewModel(context.read<PreferencesService>()),
+          ),
+          legacy_provider.Provider<IVisionExtractor>(create: (_) => MLKitVisionExtractor()),
+          legacy_provider.ChangeNotifierProxyProvider2<SettingsViewModel, IVisionExtractor, GenerateViewModel>(
+            create: (context) => GenerateViewModel(
+              context.read<SettingsViewModel>(),
+              context.read<UsageService>(),
+              context.read<IVisionExtractor>(),
+            ),
+            update: (context, settings, visionExtractor, previous) =>
+                previous ??
+                GenerateViewModel(
+                  settings,
+                  context.read<UsageService>(),
+                  visionExtractor,
+                ),
+          ),
+          legacy_provider.Provider<ExportService>(create: (_) => ExportService()),
+          legacy_provider.Provider<CardDataExtractor>(create: (_) => CardDataExtractor()),
+          legacy_provider.ChangeNotifierProvider<CardGeneratorViewModel>(
+            create: (context) => CardGeneratorViewModel(
+              extractor: context.read<CardDataExtractor>(),
+              exportService: context.read<ExportService>(),
+            ),
+          ),
+        ],
+        child: const OreamnosApp(),
+      ),
     ),
   );
 }
