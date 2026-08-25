@@ -47,10 +47,51 @@ GoRouter createAppRouter() {
             ),
           ),
           GoRoute(
-            path: RoutePaths.usage,
-            pageBuilder: (context, state) => const NoTransitionPage(
-              child: UsageScreen(),
-            ),
+            path: RoutePaths.cardGenerator,
+            pageBuilder: (context, state) {
+              final extra = state.extra;
+              CardBrief? brief;
+              bool hasError = false;
+
+              if (extra is CardBrief) {
+                brief = extra;
+              } else if (extra is Map<String, dynamic>) {
+                if (extra['headline'] != null || extra['subtext'] != null) {
+                  try {
+                    final parsed = CardBrief.fromJson(extra);
+                    if (!parsed.isEmpty) brief = parsed;
+                  } catch (_) {}
+                }
+                if (brief == null) {
+                  final legacyText = extra['generatedText'] as String?;
+                  if (legacyText != null) {
+                    final p = extra['provider'];
+                    final m = extra['modelId'] as String?;
+                    final headline = legacyText.split('\n').first.trim();
+                    final subtext = legacyText.trim().length > headline.length
+                        ? legacyText.substring(headline.length).trim().split('\n').first.trim()
+                        : '';
+                    AiProvider provider = AiProvider.gemini;
+                    if (p is AiProvider) provider = p;
+                    brief = CardBrief(
+                      headline: headline.isEmpty ? legacyText.trim() : headline,
+                      subtext: subtext,
+                      provider: provider,
+                      modelId: m ?? '',
+                    );
+                  }
+                }
+              }
+              // If we navigated to the tab without a brief, we show an empty state instead of an error state.
+              // So hasError is only true if they tried to pass an invalid extra that we couldn't parse, 
+              // but actually let's just default to empty brief if there is no extra.
+              return NoTransitionPage(
+                child: CardGeneratorScreen(
+                  brief: brief ?? const CardBrief(headline: '', subtext: '', provider: AiProvider.gemini, modelId: ''),
+                  hasError: hasError,
+                ),
+              );
+            },
           ),
           GoRoute(
             path: RoutePaths.settings,
@@ -59,6 +100,10 @@ GoRouter createAppRouter() {
             ),
           ),
         ],
+      ),
+      GoRoute(
+        path: RoutePaths.usage,
+        builder: (context, state) => const UsageScreen(),
       ),
       GoRoute(
         path: RoutePaths.readingMode,
@@ -85,52 +130,7 @@ GoRouter createAppRouter() {
         path: RoutePaths.hashtagManager,
         builder: (context, state) => const HashtagManagerScreen(),
       ),
-      GoRoute(
-        path: RoutePaths.cardGenerator,
-        builder: (context, state) {
-          final extra = state.extra;
-          if (extra is CardBrief) {
-            return CardGeneratorScreen(brief: extra);
-          }
-          if (extra is Map<String, dynamic>) {
-            // Back-compat: legacy map with generatedText/provider/modelId
-            // or new map with headline/subtext
-            if (extra['headline'] != null || extra['subtext'] != null) {
-              try {
-                final brief = CardBrief.fromJson(extra);
-                if (!brief.isEmpty) return CardGeneratorScreen(brief: brief);
-              } catch (_) {}
-            }
-            // Legacy: generatedText only
-            final legacyText = extra['generatedText'] as String?;
-            if (legacyText != null) {
-              final p = extra['provider'];
-              final m = extra['modelId'] as String?;
-              // Minimal fallback — treat legacy text as headline
-              final headline = legacyText.split('\n').first.trim();
-              final subtext = legacyText.trim().length > headline.length
-                  ? legacyText.substring(headline.length).trim().split('\n').first.trim()
-                  : '';
-              // Provider detection
-              AiProvider provider = AiProvider.gemini;
-              if (p is AiProvider) provider = p;
-              return CardGeneratorScreen(
-                brief: CardBrief(
-                  headline: headline.isEmpty ? legacyText.trim() : headline,
-                  subtext: subtext,
-                  provider: provider,
-                  modelId: m ?? '',
-                ),
-              );
-            }
-          }
-          // Fallback: missing/invalid extra — show error shell
-          return CardGeneratorScreen(
-            brief: const CardBrief(headline: '', subtext: '', provider: AiProvider.gemini, modelId: ''),
-            hasError: true,
-          );
-        },
-      ),
+
       GoRoute(
         path: RoutePaths.debugLogs,
         builder: (context, state) => const DebugLogScreen(),

@@ -73,7 +73,7 @@ void main() {
 
     // Verify 3 navigation destinations
     expect(find.text('Generate'), findsOneWidget);
-    expect(find.text('Usage'), findsOneWidget);
+    expect(find.text('Studio'), findsOneWidget);
     expect(find.text('Settings'), findsOneWidget);
 
     // Verify the Generate CTA button
@@ -108,7 +108,7 @@ void main() {
     expect(find.text('APPEARANCE'), findsOneWidget);
   });
 
-  testWidgets('Navigation bar switches to Library / Usage tab', (WidgetTester tester) async {
+  testWidgets('Navigation bar switches to Studio tab', (WidgetTester tester) async {
     SharedPreferences.setMockInitialValues({});
     final sharedPrefs = await SharedPreferences.getInstance();
     final preferencesService = _createTestPreferencesService(sharedPrefs);
@@ -116,11 +116,11 @@ void main() {
     await tester.pumpWidget(_buildTestApp(preferencesService, sharedPrefs));
     await tester.pumpAndSettle();
 
-    // Tap on Usage tab in NavigationBar
-    await tester.tap(find.text('Usage'));
+    // Tap on Studio tab in NavigationBar
+    await tester.tap(find.text('Studio'));
     await tester.pumpAndSettle();
 
-    // Verify Usage & Analytics title
-    expect(find.text('Usage & Analytics'), findsOneWidget);
+    // Verify Card Studio title
+    expect(find.text('Card Studio'), findsOneWidget);
   });
 }

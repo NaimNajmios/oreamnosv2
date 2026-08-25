@@ -12,9 +12,8 @@ import 'package:oreamnos/core/providers/settings_provider.dart';
 import '../view_models/card_generator_view_model.dart';
 import '../widgets/card_canvas.dart';
 import '../widgets/card_stage.dart';
-import '../widgets/design_dock.dart';
+import '../widgets/picsart_tool_dock.dart';
 import '../widgets/export_bottom_sheet.dart';
-import '../widgets/inline_edit_bar.dart';
 
 /// Card Studio — now Riverpod Consumer + legacy ViewModel hybrid (incremental).
 /// Supports sealed 16-variant CardData via new dispatcher when available.
@@ -188,29 +187,26 @@ class _CardGeneratorScreenState extends ConsumerState<CardGeneratorScreen> {
     return Column(
       children: [
         Expanded(
-          child: CardStage(
-            boundaryKey: _boundaryKey,
-            aspectRatio: vm.selectedRatio.ratio,
-            child: CardCanvas(
-              cardData: vm.cardData!,
-              template: vm.selectedTemplate,
-              font: vm.selectedFont,
-              backgroundImage: vm.backgroundImage,
-              scrimOpacity: vm.scrimOpacity,
-              useVignette: vm.useVignette,
-              headlineScale: vm.headlineScale,
+          child: Container(
+            color: theme.colorScheme.surface, // or black for Picsart feel? Let's stick to theme for now
+            child: CardStage(
+              boundaryKey: _boundaryKey,
+              aspectRatio: vm.selectedRatio.ratio,
+              child: CardCanvas(
+                cardData: vm.cardData!,
+                template: vm.selectedTemplate,
+                font: vm.selectedFont,
+                backgroundImage: vm.backgroundImage,
+                scrimOpacity: vm.scrimOpacity,
+                useVignette: vm.useVignette,
+                headlineScale: vm.headlineScale,
+              ),
             ),
           ),
         ),
 
-        // Edit — 2 fields only (badge moved to Advanced)
-        InlineEditBar(viewModel: vm),
-
-        Flexible(
-          child: SingleChildScrollView(
-            child: DesignDock(viewModel: vm),
-          ),
-        ),
+        // New PicsArt-style bottom tool dock
+        PicsartToolDock(viewModel: vm),
       ],
     );
   }
