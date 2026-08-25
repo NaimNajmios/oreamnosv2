@@ -19,6 +19,11 @@ analyzer:
     - macos/**
     - linux/**
 
+custom_lint:
+  # Riverpod lint disabled in Phase 0 (riverpod_lint incompatible with current freezed/analyzer pin).
+  # Enable in Phase A after upgrading to freezed 3.x + analyzer 14.
+  # enable_all_lint_rules: true
+
 linter:
   # The lint rules applied to this project can be customized in the
   # section below to disable rules from the `package:flutter_lints/flutter.yaml`
