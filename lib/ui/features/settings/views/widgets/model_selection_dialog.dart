@@ -7,6 +7,7 @@ import 'package:oreamnos/data/services/provider_api_service.dart';
 import 'package:oreamnos/ui/core/utils/haptics.dart';
 import 'package:oreamnos/ui/core/widgets/app_input.dart';
 import 'package:oreamnos/ui/core/widgets/error_state.dart';
+import 'package:oreamnos/ui/core/widgets/kickoff_loading_indicator.dart';
 import 'package:oreamnos/ui/features/settings/view_models/settings_view_model.dart';
 
 /// Dialog to dynamically fetch, filter, and select a model for the given provider.
@@ -142,12 +143,7 @@ class _ModelSelectionDialogState extends State<ModelSelectionDialog> {
           mainAxisSize: MainAxisSize.min,
           children: [
             SizedBox(
-              width: 24,
-              height: 24,
-              child: CircularProgressIndicator(
-                strokeWidth: 2,
-                valueColor: AlwaysStoppedAnimation<Color>(theme.colorScheme.primary),
-              ),
+              child: KickoffLoadingIndicator(size: 24),
             ),
             const SizedBox(height: AppSpacing.md),
             Text(

@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:oreamnos/config/theme/app_motion.dart';
 import 'package:oreamnos/config/theme/app_spacing.dart';
 import 'package:oreamnos/ui/core/utils/haptics.dart';
+import 'package:oreamnos/ui/core/widgets/kickoff_loading_indicator.dart';
 
 /// Primary filled action button in the Serene Editorial design system.
 /// Features pill radius, smooth scale-down animation on press, and loading state.
@@ -108,9 +109,10 @@ class _AppButtonState extends State<AppButton> with SingleTickerProviderStateMix
                   ? SizedBox(
                       width: 20,
                       height: 20,
-                      child: CircularProgressIndicator(
-                        strokeWidth: 2,
-                        valueColor: AlwaysStoppedAnimation<Color>(fgColor),
+                      child: KickoffLoadingIndicator(
+                        size: 20,
+                        backgroundColor: fgColor.withValues(alpha: 0.2), // Dimmed fgColor for disc
+                        foregroundColor: fgColor, // fgColor for dots
                       ),
                     )
                   : Row(

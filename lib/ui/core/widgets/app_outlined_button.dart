@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:oreamnos/config/theme/app_motion.dart';
 import 'package:oreamnos/config/theme/app_spacing.dart';
 import 'package:oreamnos/ui/core/utils/haptics.dart';
+import 'package:oreamnos/ui/core/widgets/kickoff_loading_indicator.dart';
 
 /// Secondary outlined action button with hairline border and press animation.
 class AppOutlinedButton extends StatefulWidget {
@@ -104,9 +105,8 @@ class _AppOutlinedButtonState extends State<AppOutlinedButton> with SingleTicker
                 ? SizedBox(
                     width: 20,
                     height: 20,
-                    child: CircularProgressIndicator(
-                      strokeWidth: 2,
-                      valueColor: AlwaysStoppedAnimation<Color>(fgColor),
+                    child: KickoffLoadingIndicator(
+                      size: 20,
                     ),
                   )
                 : Row(

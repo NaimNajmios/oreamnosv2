@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:oreamnos/ui/core/widgets/enhanced_loading_card.dart';
+import 'package:oreamnos/ui/core/widgets/kickoff_loading_indicator.dart';
 import 'package:oreamnos/ui/core/widgets/input_clear_button.dart';
 import 'package:oreamnos/ui/core/widgets/link_preview_card.dart';
 import 'package:oreamnos/ui/core/widgets/success_overlay.dart';
@@ -22,7 +23,7 @@ void main() {
       );
 
       expect(find.byType(EnhancedLoadingCard), findsOneWidget);
-      expect(find.byType(CircularProgressIndicator), findsOneWidget);
+      expect(find.byType(KickoffLoadingIndicator), findsOneWidget);
 
       await tester.pump(const Duration(milliseconds: 500));
       expect(find.textContaining('Extracting'), findsWidgets);

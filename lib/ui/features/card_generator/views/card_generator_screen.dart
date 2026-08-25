@@ -7,6 +7,7 @@ import 'package:oreamnos/config/theme/app_spacing.dart';
 import 'package:oreamnos/domain/models/card_brief.dart';
 import 'package:oreamnos/ui/core/utils/haptics.dart';
 import 'package:oreamnos/ui/core/widgets/error_state.dart';
+import 'package:oreamnos/ui/core/widgets/kickoff_loading_indicator.dart';
 import 'package:oreamnos/ui/features/settings/view_models/settings_view_model.dart';
 import 'package:oreamnos/core/providers/settings_provider.dart';
 import '../view_models/card_generator_view_model.dart';
@@ -151,9 +152,9 @@ class _CardGeneratorScreenState extends ConsumerState<CardGeneratorScreen> {
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
               SizedBox(
-                width: 32,
-                height: 32,
-                child: CircularProgressIndicator(strokeWidth: 2.5, valueColor: AlwaysStoppedAnimation<Color>(theme.colorScheme.primary)),
+                width: 48,
+                height: 48,
+                child: KickoffLoadingIndicator(size: 48),
               ),
               const SizedBox(height: AppSpacing.lg),
               Text('Polishing card…', style: theme.textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w600)),

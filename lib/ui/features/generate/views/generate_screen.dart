@@ -23,6 +23,7 @@ import 'package:oreamnos/ui/core/widgets/error_state.dart';
 import 'package:oreamnos/ui/core/widgets/input_clear_button.dart';
 import 'package:oreamnos/ui/core/widgets/link_preview_card.dart';
 import 'package:oreamnos/ui/core/widgets/ocr_extraction_sheet.dart';
+import 'package:oreamnos/ui/core/widgets/kickoff_loading_indicator.dart';
 import 'package:oreamnos/ui/core/widgets/refinement_pill.dart';
 import 'package:oreamnos/ui/core/widgets/section_header.dart';
 import 'package:oreamnos/ui/core/widgets/source_attribution_card.dart';
@@ -301,9 +302,7 @@ class _GenerateScreenState extends State<GenerateScreen> {
                           children: [
                             if (viewModel.isExtractingImage)
                               SizedBox(
-                                width: 14,
-                                height: 14,
-                                child: CircularProgressIndicator(strokeWidth: 2, valueColor: AlwaysStoppedAnimation<Color>(theme.colorScheme.primary)),
+                                child: KickoffLoadingIndicator(size: 14),
                               )
                             else
                               Icon(Icons.document_scanner_outlined, size: 14, color: theme.colorScheme.primary),

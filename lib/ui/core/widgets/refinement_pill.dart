@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:oreamnos/config/theme/app_spacing.dart';
 import 'package:oreamnos/ui/core/utils/haptics.dart';
+import 'package:oreamnos/ui/core/widgets/kickoff_loading_indicator.dart';
 
 /// Interactive AI refinement suggestion pill widget.
 class RefinementPill extends StatelessWidget {
@@ -56,9 +57,8 @@ class RefinementPill extends StatelessWidget {
                 SizedBox(
                   width: 12,
                   height: 12,
-                  child: CircularProgressIndicator(
-                    strokeWidth: 2,
-                    valueColor: AlwaysStoppedAnimation<Color>(theme.colorScheme.primary),
+                  child: KickoffLoadingIndicator(
+                    size: 12,
                   ),
                 ),
                 const SizedBox(width: 6),

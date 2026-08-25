@@ -3,6 +3,7 @@ import 'package:oreamnos/config/theme/app_colors.dart';
 import 'package:oreamnos/config/theme/app_motion.dart';
 import 'package:oreamnos/config/theme/app_spacing.dart';
 import 'package:oreamnos/config/theme/app_typography.dart';
+import 'package:oreamnos/ui/core/widgets/kickoff_loading_indicator.dart';
 import 'app_card.dart';
 
 enum LoadingType {
@@ -99,15 +100,12 @@ class _EnhancedLoadingCardState extends State<EnhancedLoadingCard> with TickerPr
                   child: Stack(
                     alignment: Alignment.center,
                     children: [
-                      CircularProgressIndicator(
-                        value: progressVal,
-                        strokeWidth: 6,
-                        backgroundColor: theme.colorScheme.surfaceContainerHighest,
-                        valueColor: AlwaysStoppedAnimation<Color>(
-                          widget.type == LoadingType.extracting
+                      KickoffLoadingIndicator(
+                        size: 80,
+                        backgroundColor: theme.colorScheme.onSurface.withValues(alpha: 0.05),
+                        foregroundColor: widget.type == LoadingType.extracting
                               ? (isDark ? AppColors.darkTeal : AppColors.lightTeal)
                               : theme.colorScheme.primary,
-                        ),
                       ),
                       Text(
                         '$percent%',

@@ -12,6 +12,7 @@ import 'ui/features/settings/view_models/settings_view_model.dart';
 import 'ui/features/generate/view_models/generate_view_model.dart';
 import 'data/services/share_intent_service.dart';
 import 'ui/features/share/share_bottom_sheet.dart';
+import 'ui/core/widgets/kickoff_loading_indicator.dart';
 
 /// Root application widget.
 class OreamnosApp extends StatefulWidget {
@@ -63,7 +64,7 @@ class _OreamnosAppState extends State<OreamnosApp> {
     if (!settingsViewModel.isInitialized) {
       return const MaterialApp(
         home: Scaffold(
-          body: Center(child: CircularProgressIndicator()),
+          body: Center(child: KickoffLoadingIndicator(size: 48)),
         ),
       );
     }
