@@ -10,8 +10,10 @@ import 'package:go_router/go_router.dart';
 
 import 'package:oreamnos/config/routes/app_router.dart';
 import 'package:oreamnos/config/theme/app_colors.dart';
+import 'package:oreamnos/ui/core/dialogs/rate_limit_dialog.dart';
 import 'package:oreamnos/config/theme/app_spacing.dart';
 import 'package:oreamnos/config/theme/app_typography.dart';
+import 'package:oreamnos/config/constants.dart';
 import 'package:oreamnos/data/services/web_scraper_service.dart';
 import 'package:oreamnos/domain/models/card_brief.dart';
 import 'package:oreamnos/ui/core/utils/haptics.dart';
@@ -114,6 +116,22 @@ class _GenerateScreenState extends ConsumerState<GenerateScreen> {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    ref.listen<GenerateViewModel>(generateViewModelProvider, (prev, next) {
+      if (next.state == GenerateState.rateLimited &&
+          next.suggestedFallbackProvider != null &&
+          prev?.state != GenerateState.rateLimited) {
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          if (!context.mounted) return;
+          RateLimitDialog.show(
+            context,
+            suggestedFallbackProvider: next.suggestedFallbackProvider,
+            currentProviderName: next.providerDisplayName,
+            onRetryWithFallback: () =>
+                next.retryWithProvider(next.suggestedFallbackProvider!),
+          );
+        });
+      }
+    });
     final viewModel = ref.watch(generateViewModelProvider);
 
     if (viewModel.pendingInput != null &&
@@ -871,51 +889,94 @@ class _GenerateScreenState extends ConsumerState<GenerateScreen> {
             child: Row(
               children: [
                 RefinementPill(
-                  label: 'Rephrase',
-                  icon: Icons.refresh_rounded,
-                  onTap: () => viewModel.refineContent(
-                    'Rephrase the report to be more formal and concise while keeping all facts and a neutral tone.',
-                  ),
-                ),
+                      label: 'Rephrase',
+                      icon: Icons.refresh_rounded,
+                      onTap: () => viewModel.refineContent(
+                        'Rephrase the report to be more formal and concise while keeping all facts and a neutral tone.',
+                      ),
+                    )
+                    .animate(delay: const Duration(milliseconds: 0))
+                    .fadeIn(duration: const Duration(milliseconds: 180))
+                    .slideX(
+                      begin: -0.08,
+                      duration: const Duration(milliseconds: 180),
+                    ),
                 const SizedBox(width: AppSpacing.sm),
                 RefinementPill(
-                  label: 'Check Flow',
-                  icon: Icons.auto_fix_high_rounded,
-                  onTap: () => viewModel.refineContent(
-                    'Improve the flow and clarity of the report without adding new facts.',
-                  ),
-                ),
+                      label: 'Check Flow',
+                      icon: Icons.auto_fix_high_rounded,
+                      onTap: () => viewModel.refineContent(
+                        'Improve the flow and clarity of the report without adding new facts.',
+                      ),
+                    )
+                    .animate(delay: AppConstants.staggerDelay)
+                    .fadeIn(duration: const Duration(milliseconds: 180))
+                    .slideX(
+                      begin: -0.08,
+                      duration: const Duration(milliseconds: 180),
+                    ),
                 const SizedBox(width: AppSpacing.sm),
                 RefinementPill(
-                  label: 'Shorter',
-                  icon: Icons.compress_rounded,
-                  onTap: () => viewModel.refineContent(
-                    'Make the report shorter, 100-120 words, keeping a formal style.',
-                  ),
-                ),
+                      label: 'Shorter',
+                      icon: Icons.compress_rounded,
+                      onTap: () => viewModel.refineContent(
+                        'Make the report shorter, 100-120 words, keeping a formal style.',
+                      ),
+                    )
+                    .animate(delay: AppConstants.staggerDelay * 2)
+                    .fadeIn(duration: const Duration(milliseconds: 180))
+                    .slideX(
+                      begin: -0.08,
+                      duration: const Duration(milliseconds: 180),
+                    ),
                 ...ref
                     .watch(settingsViewModelProvider)
                     .customPills
+                    .asMap()
+                    .entries
                     .map(
-                      (pill) => Padding(
+                      (e) => Padding(
                         padding: const EdgeInsets.only(left: AppSpacing.sm),
-                        child: RefinementPill(
-                          label: pill.label,
-                          onTap: () =>
-                              viewModel.refineContent(pill.instruction),
-                          onLongPress: () {
-                            AddPillDialog.show(context, existingPill: pill);
-                          },
-                        ),
+                        child:
+                            RefinementPill(
+                                  label: e.value.label,
+                                  onTap: () => viewModel.refineContent(
+                                    e.value.instruction,
+                                  ),
+                                  onLongPress: () {
+                                    AddPillDialog.show(
+                                      context,
+                                      existingPill: e.value,
+                                    );
+                                  },
+                                )
+                                .animate(
+                                  delay:
+                                      AppConstants.staggerDelay * (3 + e.key),
+                                )
+                                .fadeIn(
+                                  duration: const Duration(milliseconds: 180),
+                                )
+                                .slideX(
+                                  begin: -0.08,
+                                  duration: const Duration(milliseconds: 180),
+                                ),
                       ),
                     ),
                 Padding(
                   padding: const EdgeInsets.only(left: AppSpacing.sm),
-                  child: RefinementPill(
-                    label: 'Add Custom Pill',
-                    icon: Icons.add_rounded,
-                    onTap: () => AddPillDialog.show(context),
-                  ),
+                  child:
+                      RefinementPill(
+                            label: 'Add Custom Pill',
+                            icon: Icons.add_rounded,
+                            onTap: () => AddPillDialog.show(context),
+                          )
+                          .animate(delay: AppConstants.staggerDelay * 4)
+                          .fadeIn(duration: const Duration(milliseconds: 180))
+                          .slideX(
+                            begin: -0.08,
+                            duration: const Duration(milliseconds: 180),
+                          ),
                 ),
               ],
             ),

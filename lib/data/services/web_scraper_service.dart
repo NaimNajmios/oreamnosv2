@@ -1,9 +1,18 @@
-import 'package:http/http.dart' as http;
+import 'package:dio/dio.dart';
 import 'package:html/parser.dart' show parse;
 import 'package:flutter/foundation.dart';
+import 'package:injectable/injectable.dart';
+import 'package:oreamnos/core/network/api_client.dart';
+import 'package:oreamnos/core/di/injection.dart';
 import 'package:oreamnos/domain/models/curated_post.dart';
 
+@lazySingleton
 class WebScraperService {
+  WebScraperService([ApiClient? client])
+    : _client = client ?? getIt<ApiClient>();
+
+  final ApiClient _client;
+
   /// Checks if the input is a valid URL.
   static bool isUrl(String text) {
     final uri = Uri.tryParse(text.trim());
@@ -16,20 +25,27 @@ class WebScraperService {
     return article.text;
   }
 
-  /// Structured extraction preserving metadata.
-  static Future<ExtractedArticle> extractArticleFromUrl(String url) async {
+  /// Static wrapper for backward compat (calls injected instance).
+  static Future<ExtractedArticle> extractArticleFromUrl(String url) {
+    return getIt<WebScraperService>().extractArticleFromUrlInternal(url);
+  }
+
+  /// Instance extraction via pooled Dio (with interceptors, timeout, retry).
+  Future<ExtractedArticle> extractArticleFromUrlInternal(String url) async {
     final trimmed = url.trim();
     try {
-      final response = await http
-          .get(
-            Uri.parse(trimmed),
-            headers: {
-              'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
-              'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8',
-              'Accept-Language': 'en-US,en;q=0.5',
-            },
-          )
-          .timeout(const Duration(seconds: 8));
+      final response = await _client.get<String>(
+        trimmed,
+        options: Options(
+          headers: {
+            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+            'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8',
+            'Accept-Language': 'en-US,en;q=0.5',
+          },
+          responseType: ResponseType.plain,
+          receiveTimeout: const Duration(seconds: 8),
+        ),
+      );
 
       final uri = Uri.tryParse(trimmed);
       final domain = uri?.host ?? '';
@@ -47,7 +63,8 @@ class WebScraperService {
         );
       }
 
-      final document = parse(response.body);
+      final htmlBody = response.data ?? '';
+      final document = parse(htmlBody);
 
       // Extract metadata
       String? pageTitle;
@@ -69,6 +86,11 @@ class WebScraperService {
             .querySelector('meta[property="og:description"]')
             ?.attributes['content']
             ?.trim();
+      } catch (_) {}
+
+      String? faviconUrl;
+      try {
+        faviconUrl = _resolveFavicon(document, trimmed, domain);
       } catch (_) {}
 
       String text;
@@ -104,9 +126,30 @@ class WebScraperService {
         domain: domain,
         pageTitle: pageTitle,
         description: description,
+        faviconUrl: faviconUrl,
       );
     } catch (e) {
       throw Exception('Failed to extract content from URL: $e');
+    }
+  }
+
+  String? _resolveFavicon(dynamic document, String baseUrl, String domain) {
+    var href =
+        document.querySelector('link[rel="icon"]')?.attributes['href'] ??
+        document.querySelector('link[rel~="icon"]')?.attributes['href'] ??
+        document
+            .querySelector('link[rel="apple-touch-icon"]')
+            ?.attributes['href'];
+    if (href == null || href.trim().isEmpty) {
+      if (domain.isEmpty) return null;
+      return 'https://www.google.com/s2/favicons?domain=$domain&sz=32';
+    }
+    href = href.trim();
+    if (href.startsWith('http')) return href;
+    try {
+      return Uri.parse(baseUrl).resolve(href).toString();
+    } catch (_) {
+      return href;
     }
   }
 

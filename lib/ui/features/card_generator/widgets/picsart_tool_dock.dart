@@ -1,10 +1,13 @@
-import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+
 import 'package:oreamnos/config/theme/app_spacing.dart';
+import 'package:oreamnos/core/di/injection.dart';
+import 'package:oreamnos/data/services/preferences_service.dart';
+import 'package:oreamnos/domain/models/card_template.dart';
 import 'package:oreamnos/ui/core/utils/haptics.dart';
 import 'package:oreamnos/ui/core/widgets/app_chip.dart';
 import 'package:oreamnos/ui/features/card_generator/view_models/card_generator_view_model.dart';
-import 'package:oreamnos/domain/models/card_template.dart';
 
 import 'background_picker.dart';
 import 'ratio_selector.dart';
@@ -200,38 +203,67 @@ class _PicsartToolDockState extends ConsumerState<PicsartToolDock> {
   }
 
   Widget _buildTemplatesPanel(ThemeData theme) {
-    final vm = ref.read(cardGeneratorViewModelProvider.notifier);
-    return Wrap(
-      spacing: AppSpacing.sm,
-      runSpacing: AppSpacing.sm,
-      alignment: WrapAlignment.center,
-      children: [
-        _TemplateChip(
-          label: 'Standard',
-          icon: Icons.view_agenda_outlined,
-          selected: vm.selectedTemplate == CardTemplate.socialPost,
-          onTap: () => vm.setTemplate(CardTemplate.socialPost),
+    final vm = ref.watch(cardGeneratorViewModelProvider);
+    return SizedBox(
+      height: 48,
+      child: SingleChildScrollView(
+        scrollDirection: Axis.horizontal,
+        physics: const BouncingScrollPhysics(),
+        padding: const EdgeInsets.symmetric(horizontal: AppSpacing.sm),
+        child: Row(
+          children: [
+            for (final t in CardTemplate.all) ...[
+              _TemplateChip(
+                label: t.displayName,
+                icon: _iconFor(t),
+                selected: vm.selectedTemplate == t,
+                onTap: () => ref
+                    .read(cardGeneratorViewModelProvider.notifier)
+                    .setTemplate(t),
+              ),
+              const SizedBox(width: AppSpacing.sm),
+            ],
+          ],
         ),
-        _TemplateChip(
-          label: 'Quote',
-          icon: Icons.format_quote_rounded,
-          selected: vm.selectedTemplate == CardTemplate.headlineQuote,
-          onTap: () => vm.setTemplate(CardTemplate.headlineQuote),
-        ),
-        _TemplateChip(
-          label: 'Breaking',
-          icon: Icons.emergency_rounded,
-          selected: vm.selectedTemplate == CardTemplate.breakingNews,
-          onTap: () => vm.setTemplate(CardTemplate.breakingNews),
-        ),
-        _TemplateChip(
-          label: 'Stat',
-          icon: Icons.military_tech_outlined,
-          selected: vm.selectedTemplate == CardTemplate.topStats,
-          onTap: () => vm.setTemplate(CardTemplate.topStats),
-        ),
-      ],
+      ),
     );
+  }
+
+  IconData _iconFor(CardTemplate t) {
+    switch (t) {
+      case CardTemplate.playerSpotlight:
+        return Icons.person_outline_rounded;
+      case CardTemplate.headlineQuote:
+        return Icons.format_quote_rounded;
+      case CardTemplate.topStats:
+        return Icons.bar_chart_rounded;
+      case CardTemplate.transferNews:
+        return Icons.swap_horiz_rounded;
+      case CardTemplate.breakingNews:
+        return Icons.emergency_rounded;
+      case CardTemplate.matchPreview:
+        return Icons.sports_soccer_rounded;
+      case CardTemplate.detailedScoreboard:
+        return Icons.scoreboard_rounded;
+      case CardTemplate.onThisDay:
+        return Icons.history_rounded;
+      case CardTemplate.startingXI:
+        return Icons.groups_rounded;
+      case CardTemplate.matchStatsComparison:
+        return Icons.compare_rounded;
+      case CardTemplate.socialPost:
+        return Icons.share_rounded;
+      case CardTemplate.rivalry:
+        return Icons.people_rounded;
+      case CardTemplate.tableStandings:
+        return Icons.leaderboard_rounded;
+      case CardTemplate.injuryReport:
+        return Icons.healing_rounded;
+      case CardTemplate.contractExpiry:
+        return Icons.description_rounded;
+      case CardTemplate.awardNominee:
+        return Icons.military_tech_rounded;
+    }
   }
 
   Widget _buildRatioPanel(ThemeData theme) {
@@ -331,7 +363,8 @@ class _PicsartToolDockState extends ConsumerState<PicsartToolDock> {
   }
 
   Widget _buildTextPanel(ThemeData theme) {
-    final vm = ref.read(cardGeneratorViewModelProvider.notifier);
+    final vm = ref.watch(cardGeneratorViewModelProvider);
+    final notifier = ref.read(cardGeneratorViewModelProvider.notifier);
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
@@ -340,7 +373,9 @@ class _PicsartToolDockState extends ConsumerState<PicsartToolDock> {
           label: 'Headline — max 60',
           maxLen: 60,
           maxLines: 2,
-          onChanged: (v) => vm.updateHeadline(v),
+          onChanged: (v) => notifier.updateHeadline(v),
+          isRewriting: vm.isRewriting('headline'),
+          onRewrite: () => _handleRewrite('headline'),
         ),
         const SizedBox(height: AppSpacing.md),
         _Field(
@@ -348,7 +383,9 @@ class _PicsartToolDockState extends ConsumerState<PicsartToolDock> {
           label: 'Hook — one sentence, max 90',
           maxLen: 90,
           maxLines: 2,
-          onChanged: (v) => vm.updateSubtext(v),
+          onChanged: (v) => notifier.updateSubtext(v),
+          isRewriting: vm.isRewriting('subtext'),
+          onRewrite: () => _handleRewrite('subtext'),
         ),
         const SizedBox(height: AppSpacing.md),
         _Field(
@@ -356,10 +393,52 @@ class _PicsartToolDockState extends ConsumerState<PicsartToolDock> {
           label: 'Badge (Optional) — max 24',
           maxLen: 24,
           maxLines: 1,
-          onChanged: (v) => vm.updateMicroStat(v),
+          onChanged: (v) => notifier.updateMicroStat(v),
+          isRewriting: vm.isRewriting('microStat'),
+          onRewrite: () => _handleRewrite('microStat'),
         ),
       ],
     );
+  }
+
+  Future<void> _handleRewrite(String field) async {
+    final vm = ref.read(cardGeneratorViewModelProvider.notifier);
+    final brief = vm.brief;
+    if (brief == null) return;
+    final prefs = getIt<PreferencesService>();
+    final apiKey = await prefs.getApiKey(brief.provider);
+    if (apiKey == null || apiKey.isEmpty) return;
+    switch (field) {
+      case 'headline':
+        await vm.rewriteHeadline(
+          provider: brief.provider,
+          modelId: brief.modelId,
+          apiKey: apiKey,
+        );
+        break;
+      case 'subtext':
+        await vm.rewriteSubtext(
+          provider: brief.provider,
+          modelId: brief.modelId,
+          apiKey: apiKey,
+        );
+        break;
+      case 'microStat':
+        await vm.rewriteMicroStat(
+          provider: brief.provider,
+          modelId: brief.modelId,
+          apiKey: apiKey,
+        );
+        break;
+    }
+    if (vm.rewriteError != null && mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(vm.rewriteError!),
+          backgroundColor: Colors.red[700],
+        ),
+      );
+    }
   }
 }
 
@@ -477,6 +556,8 @@ class _Field extends StatelessWidget {
   final int maxLen;
   final int maxLines;
   final ValueChanged<String> onChanged;
+  final VoidCallback? onRewrite;
+  final bool isRewriting;
 
   const _Field({
     required this.controller,
@@ -484,6 +565,8 @@ class _Field extends StatelessWidget {
     required this.maxLen,
     required this.maxLines,
     required this.onChanged,
+    this.onRewrite,
+    this.isRewriting = false,
   });
 
   @override
@@ -524,6 +607,22 @@ class _Field extends StatelessWidget {
         fillColor: theme.colorScheme.surfaceContainerHighest.withValues(
           alpha: 0.35,
         ),
+        suffixIcon: onRewrite == null
+            ? null
+            : isRewriting
+            ? const Padding(
+                padding: EdgeInsets.all(12),
+                child: SizedBox(
+                  width: 16,
+                  height: 16,
+                  child: CircularProgressIndicator(strokeWidth: 2),
+                ),
+              )
+            : IconButton(
+                icon: const Icon(Icons.auto_awesome_rounded, size: 18),
+                tooltip: 'AI Polish',
+                onPressed: onRewrite,
+              ),
       ),
       onChanged: onChanged,
     );

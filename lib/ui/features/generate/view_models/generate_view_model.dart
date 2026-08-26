@@ -127,18 +127,7 @@ class GenerateViewModel extends ChangeNotifier with WidgetsBindingObserver {
   String? _validationMessage;
   String? get validationMessage => _validationMessage;
 
-  AiProvider _getNextProvider(AiProvider current) {
-    switch (current) {
-      case AiProvider.gemini:
-        return AiProvider.groq;
-      case AiProvider.groq:
-        return AiProvider.openRouter;
-      case AiProvider.openRouter:
-        return AiProvider.cerebras;
-      case AiProvider.cerebras:
-        return AiProvider.gemini;
-    }
-  }
+  AiProvider _getNextProvider(AiProvider current) => current.nextFallback;
 
   Future<void> retryWithProvider(AiProvider provider) async {
     await _settingsViewModel.setSelectedProvider(provider);

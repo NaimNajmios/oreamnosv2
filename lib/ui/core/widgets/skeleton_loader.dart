@@ -78,6 +78,56 @@ class SkeletonLoader extends StatefulWidget {
     );
   }
 
+  static Widget cardStage({double width = 360, double height = 360}) {
+    return AspectRatio(
+      aspectRatio: width / height,
+      child: Container(
+        decoration: BoxDecoration(
+          color: Colors.black.withValues(alpha: 0.05),
+          borderRadius: AppSpacing.borderRadiusLg,
+        ),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: const [
+            SkeletonLoader(width: 200, height: 20),
+            SizedBox(height: AppSpacing.md),
+            SkeletonLoader(width: 160, height: 14),
+          ],
+        ),
+      ),
+    );
+  }
+
+  static Widget logTile(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: AppSpacing.sm),
+      child: Row(
+        children: [
+          const SkeletonLoader(
+            width: 28,
+            height: 28,
+            borderRadius: AppSpacing.borderRadiusXs,
+          ),
+          const SizedBox(width: AppSpacing.sm),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                SkeletonLoader.textLine(context, width: 140, height: 12),
+                const SizedBox(height: 6),
+                SkeletonLoader.textLine(context, width: 100, height: 10),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  static Widget sliverList(BuildContext context, {int count = 6}) {
+    return Column(children: List.generate(count, (_) => logTile(context)));
+  }
+
   @override
   State<SkeletonLoader> createState() => _SkeletonLoaderState();
 }

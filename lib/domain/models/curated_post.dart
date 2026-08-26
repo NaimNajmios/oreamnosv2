@@ -46,6 +46,7 @@ class ExtractedArticle extends Equatable {
   final String url;
   final String domain;
   final String? description;
+  final String? faviconUrl;
 
   const ExtractedArticle({
     required this.text,
@@ -53,10 +54,18 @@ class ExtractedArticle extends Equatable {
     required this.domain,
     this.pageTitle,
     this.description,
+    this.faviconUrl,
   });
 
   @override
-  List<Object?> get props => [text, pageTitle, url, domain, description];
+  List<Object?> get props => [
+    text,
+    pageTitle,
+    url,
+    domain,
+    description,
+    faviconUrl,
+  ];
 }
 
 class CuratedPost extends Equatable {

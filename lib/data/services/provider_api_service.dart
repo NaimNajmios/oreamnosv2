@@ -1,6 +1,9 @@
 import 'dart:convert';
 
-import 'package:http/http.dart' as http;
+import 'package:dio/dio.dart';
+import 'package:injectable/injectable.dart';
+import 'package:oreamnos/core/di/injection.dart';
+import 'package:oreamnos/core/network/api_client.dart';
 
 import '../models/ai_provider.dart';
 
@@ -11,7 +14,13 @@ class ProviderApiException implements Exception {
   String toString() => message;
 }
 
+@lazySingleton
 class ProviderApiService {
+  ProviderApiService([ApiClient? client])
+    : _client = client ?? getIt<ApiClient>();
+
+  final ApiClient _client;
+
   /// Fetches available models for a given provider and API key.
   /// Throws [ProviderApiException] if the request fails or key is invalid.
   Future<List<String>> fetchModels(AiProvider provider, String apiKey) async {
@@ -45,18 +54,22 @@ class ProviderApiService {
   }
 
   Future<List<String>> _fetchGeminiModels(String apiKey) async {
-    final url = Uri.parse(
-      'https://generativelanguage.googleapis.com/v1beta/models?key=$apiKey',
+    final response = await _client.get<dynamic>(
+      'https://generativelanguage.googleapis.com/v1beta/models',
+      queryParameters: {'key': apiKey},
+      options: Options(
+        extra: {'provider': 'gemini'},
+        responseType: ResponseType.json,
+      ),
     );
-    final response = await http.get(url);
-
     if (response.statusCode != 200) {
       throw ProviderApiException(
-        'Gemini API Error: ${response.statusCode} - ${response.body}',
+        'Gemini API Error: ${response.statusCode} - ${response.data}',
       );
     }
-
-    final data = jsonDecode(response.body);
+    final data = response.data is String
+        ? jsonDecode(response.data as String)
+        : response.data;
     final models = data['models'] as List<dynamic>? ?? [];
 
     return models
@@ -71,22 +84,22 @@ class ProviderApiService {
     String apiKey, {
     String prefixFilter = '',
   }) async {
-    final url = Uri.parse('$baseUrl/models');
-    final response = await http.get(
-      url,
-      headers: {
-        'Authorization': 'Bearer $apiKey',
-        'Content-Type': 'application/json',
-      },
+    final response = await _client.get<dynamic>(
+      '$baseUrl/models',
+      options: Options(
+        extra: {'apiKey': apiKey, 'provider': 'openai'},
+        responseType: ResponseType.json,
+        headers: {'Content-Type': 'application/json'},
+      ),
     );
-
     if (response.statusCode != 200) {
       throw ProviderApiException(
-        'API Error: ${response.statusCode} - ${response.body}',
+        'API Error: ${response.statusCode} - ${response.data}',
       );
     }
-
-    final data = jsonDecode(response.body);
+    final data = response.data is String
+        ? jsonDecode(response.data as String)
+        : response.data;
     final models = data['data'] as List<dynamic>? ?? [];
 
     return models

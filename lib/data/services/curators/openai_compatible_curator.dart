@@ -7,8 +7,9 @@ import 'package:oreamnos/domain/services/content_curator.dart';
 import 'package:oreamnos/domain/services/card_prompt_manager.dart';
 import 'package:oreamnos/domain/services/generation_prompt_manager.dart';
 import 'package:oreamnos/domain/services/json_cleaner.dart';
-import 'package:oreamnos/domain/models/curated_post.dart';
 import 'package:oreamnos/domain/models/card_brief.dart';
+import 'package:oreamnos/domain/models/card_template.dart';
+import 'package:oreamnos/domain/models/curated_post.dart';
 
 class OpenAICompatibleCurator implements IContentCurator {
   OpenAICompatibleCurator(this.baseUrl, {ApiClient? apiClient})
@@ -121,9 +122,15 @@ class OpenAICompatibleCurator implements IContentCurator {
     required CardBrief brief,
     required String modelId,
     required String apiKey,
+    CardTemplate? template,
+    bool isRefresh = false,
   }) async {
     final systemPrompt = CardPromptManager.buildSystemPrompt();
-    final userPrompt = CardPromptManager.buildUserPrompt(brief);
+    final userPrompt = CardPromptManager.buildPrompt(
+      template ?? CardTemplate.socialPost,
+      brief.promptContext,
+      isRefresh,
+    );
 
     final path = '$baseUrl/chat/completions';
 
@@ -170,7 +177,7 @@ class OpenAICompatibleCurator implements IContentCurator {
     try {
       final response = await _client.post(
         '$baseUrl/chat/completions',
-        options: Options(headers: {'Authorization': 'Bearer $apiKey'}),
+        options: Options(extra: {'apiKey': apiKey, 'provider': 'openai'}),
         data: {
           "model": modelId,
           "messages": [

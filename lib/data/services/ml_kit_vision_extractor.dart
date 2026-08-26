@@ -1,4 +1,5 @@
 import 'package:google_mlkit_text_recognition/google_mlkit_text_recognition.dart';
+import 'package:oreamnos/domain/services/football_ocr_parser.dart';
 import 'package:oreamnos/domain/services/vision_extractor.dart';
 
 class MLKitVisionExtractor implements IVisionExtractor {
@@ -11,7 +12,10 @@ class MLKitVisionExtractor implements IVisionExtractor {
       final RecognizedText recognizedText = await textRecognizer.processImage(
         inputImage,
       );
-      return recognizedText.text;
+      return FootballOcrParser.formatForPrompt(
+        recognizedText.text,
+        addHeader: true,
+      );
     } finally {
       textRecognizer.close();
     }

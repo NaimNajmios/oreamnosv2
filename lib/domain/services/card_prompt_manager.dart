@@ -1,5 +1,6 @@
 import '../../domain/models/card_brief.dart';
 import '../models/card_template.dart';
+import 'football_lexicon.dart';
 
 class CardPromptManager {
   // Updated per Phase B — CRITICAL RULE 3 now uses N/A (user preference), RULE 4 is template_intent
@@ -9,8 +10,7 @@ Your ONLY output must be a single valid JSON object.
 Do NOT include any explanation, preamble, markdown, code fences, or text outside the JSON.
 Start your response with { and end it with }.
 CRITICAL RULE 1: Translate ALL extracted text values into Malaysian Malay (Bahasa Malaysia) EXCEPT for proper nouns like player names, club names, or tournament acronyms.
-CRITICAL RULE 2: ALWAYS use these accepted English football terms instead of making up stiff direct translations in Bahasa Malaysia. Do NOT translate:
-'Clean Sheet', 'Offside', 'Hat-trick', 'Tackle', 'Assist', 'Playmaker', 'Derby', 'Comeback', 'Winger', 'Striker', 'Midfielder', 'Defender', 'Full-back', 'Center-back', 'Goalkeeper', 'Free-kick', 'Penalty', 'Corner Kicks', 'VAR', 'Counter-attack', 'Pressing', 'Cross', 'Header', 'Nutmeg', 'Dribble', 'Volley', 'Bicycle Kick', 'Man of the Match', 'Golden Boot', 'Pitch', 'Box-to-box', 'Sweeper', 'Target Man', 'False Nine', 'High Press', 'Through Ball', 'Overhead Kick'.
+CRITICAL RULE 2: ALWAYS use these accepted English football terms instead of making up stiff direct translations in Bahasa Malaysia. Do NOT translate: ${FootballLexicon.inlineList}.
 CRITICAL RULE 3: If a specific piece of information is NOT explicitly mentioned, return "N/A" for that field. Do NOT guess or use placeholders like "", "-", "—". Use "N/A" consistently.
 CRITICAL RULE 4: ALWAYS include "template_intent" field with one of: player_spotlight, headline_quote, top_stats, transfer_news, breaking_news, match_preview, detailed_scoreboard, on_this_day, starting_xi, match_stats_comparison, social_post, rivalry, table_standings, injury_report, contract_expiry, award_nominee. This helps auto-suggest the best template.''';
   }
@@ -26,7 +26,7 @@ CRITICAL RULE 4: ALWAYS include "template_intent" field with one of: player_spot
     bool isRefresh,
   ) {
     final refreshTag = isRefresh
-        ? '\n[Refresh ${DateTime.now().millisecondsSinceEpoch}]'
+        ? '\n\n[SYSTEM NOTE: This is a Refresh instruction (REFRESH). The user was unhappy with the previous extraction. Please generate slightly different wording, alter phrasing creatively, and ensure you catch any fields you missed previously. Timestamp: ${DateTime.now().millisecondsSinceEpoch}]'
         : '';
     final schema = _schemaFor(template);
     final context = articleText.trim().isEmpty ? '(empty)' : articleText.trim();

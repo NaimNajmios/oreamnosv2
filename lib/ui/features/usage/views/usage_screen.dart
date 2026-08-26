@@ -92,289 +92,296 @@ class _UsageScreenState extends ConsumerState<UsageScreen> {
                 constraints: const BoxConstraints(
                   maxWidth: AppSpacing.maxContentWidth,
                 ),
-                child: ListView(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: AppSpacing.screenHorizontal,
-                    vertical: AppSpacing.base,
-                  ),
-                  children: [
-                    // 3 Metric StatCards — responsive, no truncation
-                    LayoutBuilder(
-                      builder: (context, constraints) {
-                        final isNarrow = constraints.maxWidth < 380;
-                        final tokensCard = StatCard(
-                          title: 'Tokens',
-                          value: NumberFormat.compact().format(totalTokens),
-                          subtitle: '$totalTokens est.',
-                          icon: Icons.data_usage_rounded,
-                          iconColor: isDark
-                              ? AppColors.darkTeal
-                              : AppColors.lightTeal,
-                          iconBackground:
-                              (isDark
-                                      ? AppColors.darkTealSoft
-                                      : AppColors.lightTealSoft)
-                                  .withValues(alpha: 0.6),
-                          accentColor: isDark
-                              ? AppColors.darkTeal
-                              : AppColors.lightTeal,
-                        );
-                        final successCard = StatCard(
-                          title: 'Success',
-                          value: '${successRate.toStringAsFixed(0)}%',
-                          subtitle: '$successCount / ${logs.length}',
-                          icon: Icons.check_circle_outline_rounded,
-                          valueColor: successRate >= 90
-                              ? AppColors.success
-                              : theme.colorScheme.primary,
-                          iconColor: successRate >= 90
-                              ? AppColors.success
-                              : (isDark
-                                    ? AppColors.darkViolet
-                                    : AppColors.lightViolet),
-                          iconBackground: successRate >= 90
-                              ? AppColors.successSoft.withValues(alpha: 0.6)
-                              : (isDark
-                                        ? AppColors.darkVioletSoft
-                                        : AppColors.lightVioletSoft)
+                child: RefreshIndicator(
+                  onRefresh: () async {
+                    await usageService.reload();
+                    Haptics.mediumImpact();
+                  },
+                  color: theme.colorScheme.primary,
+                  child: ListView(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: AppSpacing.screenHorizontal,
+                      vertical: AppSpacing.base,
+                    ),
+                    children: [
+                      // 3 Metric StatCards — responsive, no truncation
+                      LayoutBuilder(
+                        builder: (context, constraints) {
+                          final isNarrow = constraints.maxWidth < 380;
+                          final tokensCard = StatCard(
+                            title: 'Tokens',
+                            value: NumberFormat.compact().format(totalTokens),
+                            subtitle: '$totalTokens est.',
+                            icon: Icons.data_usage_rounded,
+                            iconColor: isDark
+                                ? AppColors.darkTeal
+                                : AppColors.lightTeal,
+                            iconBackground:
+                                (isDark
+                                        ? AppColors.darkTealSoft
+                                        : AppColors.lightTealSoft)
                                     .withValues(alpha: 0.6),
-                          accentColor: successRate >= 90
-                              ? AppColors.success
-                              : (isDark
-                                    ? AppColors.darkViolet
-                                    : AppColors.lightViolet),
-                        );
-                        final latencyCard = StatCard(
-                          title: 'Avg Latency',
-                          value: '${avgLatency}ms',
-                          subtitle: 'Per prompt',
-                          icon: Icons.speed_rounded,
-                          iconColor: isDark
-                              ? AppColors.darkAmber
-                              : AppColors.lightAmber,
-                          iconBackground:
-                              (isDark
-                                      ? AppColors.darkAmberSoft
-                                      : AppColors.lightAmberSoft)
-                                  .withValues(alpha: 0.6),
-                          accentColor: isDark
-                              ? AppColors.darkAmber
-                              : AppColors.lightAmber,
-                        );
-                        if (isNarrow) {
-                          return Column(
-                            children: [
-                              SizedBox(
-                                width: double.infinity,
-                                child: successCard,
-                              ),
-                              const SizedBox(height: AppSpacing.sm),
-                              Row(
-                                children: [
-                                  Expanded(child: tokensCard),
-                                  const SizedBox(width: AppSpacing.sm),
-                                  Expanded(child: latencyCard),
-                                ],
-                              ),
-                            ],
+                            accentColor: isDark
+                                ? AppColors.darkTeal
+                                : AppColors.lightTeal,
                           );
-                        }
-                        return Row(
-                          children: [
-                            Expanded(child: tokensCard),
-                            const SizedBox(width: AppSpacing.sm),
-                            Expanded(child: successCard),
-                            const SizedBox(width: AppSpacing.sm),
-                            Expanded(child: latencyCard),
-                          ],
-                        );
-                      },
-                    ),
-                    const SizedBox(height: AppSpacing.base),
-
-                    // Usage Chart — grouped card with legend
-                    AppCard(
-                      padding: const EdgeInsets.all(AppSpacing.base),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Row(
-                            children: [
-                              Container(
-                                width: 28,
-                                height: 28,
-                                decoration: BoxDecoration(
-                                  color:
-                                      (isDark
-                                              ? AppColors.darkVioletSoft
-                                              : AppColors.lightVioletSoft)
-                                          .withValues(alpha: 0.35),
-                                  borderRadius: AppSpacing.borderRadiusXs,
-                                ),
-                                child: Icon(
-                                  Icons.show_chart_rounded,
-                                  size: 14,
-                                  color: isDark
+                          final successCard = StatCard(
+                            title: 'Success',
+                            value: '${successRate.toStringAsFixed(0)}%',
+                            subtitle: '$successCount / ${logs.length}',
+                            icon: Icons.check_circle_outline_rounded,
+                            valueColor: successRate >= 90
+                                ? AppColors.success
+                                : theme.colorScheme.primary,
+                            iconColor: successRate >= 90
+                                ? AppColors.success
+                                : (isDark
                                       ? AppColors.darkViolet
-                                      : AppColors.lightViolet,
+                                      : AppColors.lightViolet),
+                            iconBackground: successRate >= 90
+                                ? AppColors.successSoft.withValues(alpha: 0.6)
+                                : (isDark
+                                          ? AppColors.darkVioletSoft
+                                          : AppColors.lightVioletSoft)
+                                      .withValues(alpha: 0.6),
+                            accentColor: successRate >= 90
+                                ? AppColors.success
+                                : (isDark
+                                      ? AppColors.darkViolet
+                                      : AppColors.lightViolet),
+                          );
+                          final latencyCard = StatCard(
+                            title: 'Avg Latency',
+                            value: '${avgLatency}ms',
+                            subtitle: 'Per prompt',
+                            icon: Icons.speed_rounded,
+                            iconColor: isDark
+                                ? AppColors.darkAmber
+                                : AppColors.lightAmber,
+                            iconBackground:
+                                (isDark
+                                        ? AppColors.darkAmberSoft
+                                        : AppColors.lightAmberSoft)
+                                    .withValues(alpha: 0.6),
+                            accentColor: isDark
+                                ? AppColors.darkAmber
+                                : AppColors.lightAmber,
+                          );
+                          if (isNarrow) {
+                            return Column(
+                              children: [
+                                SizedBox(
+                                  width: double.infinity,
+                                  child: successCard,
                                 ),
-                              ),
-                              const SizedBox(width: AppSpacing.sm),
-                              Text(
-                                'Token Usage History',
-                                style: theme.textTheme.labelSmall?.copyWith(
-                                  letterSpacing: 0.8,
-                                  fontWeight: FontWeight.w700,
-                                  color: theme.colorScheme.onSurface.withValues(
-                                    alpha: 0.6,
-                                  ),
+                                const SizedBox(height: AppSpacing.sm),
+                                Row(
+                                  children: [
+                                    Expanded(child: tokensCard),
+                                    const SizedBox(width: AppSpacing.sm),
+                                    Expanded(child: latencyCard),
+                                  ],
                                 ),
-                              ),
-                              const Spacer(),
-                              // Legend
-                              Wrap(
-                                spacing: 10,
-                                children: [
-                                  _LegendDot(
-                                    color: isDark
-                                        ? AppColors.darkTeal
-                                        : AppColors.lightTeal,
-                                    label: 'Tokens',
-                                  ),
-                                  _LegendDot(
-                                    color: isDark
-                                        ? AppColors.darkViolet
-                                        : AppColors.lightViolet,
-                                    label: 'Trend',
-                                  ),
-                                  _LegendDot(
-                                    color: AppColors.error,
-                                    label: 'Fail',
-                                  ),
-                                ],
-                              ),
-                            ],
-                          ),
-                          const SizedBox(height: AppSpacing.md),
-                          UsageChart(logs: logs),
-                        ],
-                      ),
-                    ),
-                    const SizedBox(height: AppSpacing.xxl),
-                    Divider(
-                      thickness: 1,
-                      height: 1,
-                      color: theme.colorScheme.outlineVariant.withValues(
-                        alpha: 0.55,
-                      ),
-                    ),
-                    const SizedBox(height: AppSpacing.base),
-
-                    // Recent Requests — filter + date-grouped compact
-                    const SectionHeader(title: 'Recent Requests'),
-                    if (logsAll.isNotEmpty) ...[
-                      SingleChildScrollView(
-                        scrollDirection: Axis.horizontal,
-                        child: Row(
-                          children: [
-                            _FilterChip(
-                              label: 'All',
-                              selected: _filter == 'all',
-                              onTap: () => setState(() => _filter = 'all'),
-                            ),
-                            const SizedBox(width: AppSpacing.sm),
-                            for (final p in [
-                              'gemini',
-                              'groq',
-                              'openrouter',
-                              'cerebras',
-                            ])
-                              if (logsAll.any(
-                                (l) => l.providerId.toLowerCase() == p,
-                              )) ...[
-                                _FilterChip(
-                                  label: p[0].toUpperCase() + p.substring(1),
-                                  selected: _filter == p,
-                                  onTap: () => setState(() => _filter = p),
-                                ),
-                                const SizedBox(width: AppSpacing.sm),
                               ],
-                          ],
-                        ),
-                      ),
-                      const SizedBox(height: AppSpacing.md),
-                    ],
-                    if (logs.isEmpty && _filter != 'all')
-                      Padding(
-                        padding: const EdgeInsets.symmetric(
-                          vertical: AppSpacing.lg,
-                        ),
-                        child: Text(
-                          'No requests for this provider.',
-                          style: theme.textTheme.bodySmall?.copyWith(
-                            color: theme.colorScheme.onSurface.withValues(
-                              alpha: 0.5,
-                            ),
-                          ),
-                        ),
-                      )
-                    else
-                      Builder(
-                        builder: (context) {
-                          final now = DateTime.now();
-                          final grouped = <String, List<UsageLog>>{};
-                          final order = <String>[];
-                          for (final l in logs) {
-                            final d = l.timestamp;
-                            String key;
-                            if (d.year == now.year &&
-                                d.month == now.month &&
-                                d.day == now.day) {
-                              key = 'Today';
-                            } else if (d.year == now.year &&
-                                d.month == now.month &&
-                                d.day == now.day - 1) {
-                              key = 'Yesterday';
-                            } else {
-                              key = DateFormat('MMM d, yyyy').format(d);
-                            }
-                            if (!grouped.containsKey(key)) {
-                              grouped[key] = [];
-                              order.add(key);
-                            }
-                            grouped[key]!.add(l);
+                            );
                           }
-                          return Column(
-                            crossAxisAlignment: CrossAxisAlignment.stretch,
+                          return Row(
                             children: [
-                              for (final dateKey in order) ...[
-                                Padding(
-                                  padding: const EdgeInsets.only(
-                                    bottom: AppSpacing.xs,
-                                    top: AppSpacing.sm,
-                                  ),
-                                  child: Text(
-                                    dateKey.toUpperCase(),
-                                    style: theme.textTheme.labelSmall?.copyWith(
-                                      letterSpacing: 0.6,
-                                      color: theme.colorScheme.onSurface
-                                          .withValues(alpha: 0.45),
-                                      fontWeight: FontWeight.w700,
-                                      fontSize: 10,
-                                    ),
-                                  ),
-                                ),
-                                for (final log in grouped[dateKey]!) ...[
-                                  _buildLogCard(context, log),
-                                  const SizedBox(height: AppSpacing.sm),
-                                ],
-                              ],
+                              Expanded(child: tokensCard),
+                              const SizedBox(width: AppSpacing.sm),
+                              Expanded(child: successCard),
+                              const SizedBox(width: AppSpacing.sm),
+                              Expanded(child: latencyCard),
                             ],
                           );
                         },
                       ),
-                    const SizedBox(height: AppSpacing.xl),
-                  ],
+                      const SizedBox(height: AppSpacing.base),
+
+                      // Usage Chart — grouped card with legend
+                      AppCard(
+                        padding: const EdgeInsets.all(AppSpacing.base),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Row(
+                              children: [
+                                Container(
+                                  width: 28,
+                                  height: 28,
+                                  decoration: BoxDecoration(
+                                    color:
+                                        (isDark
+                                                ? AppColors.darkVioletSoft
+                                                : AppColors.lightVioletSoft)
+                                            .withValues(alpha: 0.35),
+                                    borderRadius: AppSpacing.borderRadiusXs,
+                                  ),
+                                  child: Icon(
+                                    Icons.show_chart_rounded,
+                                    size: 14,
+                                    color: isDark
+                                        ? AppColors.darkViolet
+                                        : AppColors.lightViolet,
+                                  ),
+                                ),
+                                const SizedBox(width: AppSpacing.sm),
+                                Text(
+                                  'Token Usage History',
+                                  style: theme.textTheme.labelSmall?.copyWith(
+                                    letterSpacing: 0.8,
+                                    fontWeight: FontWeight.w700,
+                                    color: theme.colorScheme.onSurface
+                                        .withValues(alpha: 0.6),
+                                  ),
+                                ),
+                                const Spacer(),
+                                // Legend
+                                Wrap(
+                                  spacing: 10,
+                                  children: [
+                                    _LegendDot(
+                                      color: isDark
+                                          ? AppColors.darkTeal
+                                          : AppColors.lightTeal,
+                                      label: 'Tokens',
+                                    ),
+                                    _LegendDot(
+                                      color: isDark
+                                          ? AppColors.darkViolet
+                                          : AppColors.lightViolet,
+                                      label: 'Trend',
+                                    ),
+                                    _LegendDot(
+                                      color: AppColors.error,
+                                      label: 'Fail',
+                                    ),
+                                  ],
+                                ),
+                              ],
+                            ),
+                            const SizedBox(height: AppSpacing.md),
+                            UsageChart(logs: logs),
+                          ],
+                        ),
+                      ),
+                      const SizedBox(height: AppSpacing.xxl),
+                      Divider(
+                        thickness: 1,
+                        height: 1,
+                        color: theme.colorScheme.outlineVariant.withValues(
+                          alpha: 0.55,
+                        ),
+                      ),
+                      const SizedBox(height: AppSpacing.base),
+
+                      // Recent Requests — filter + date-grouped compact
+                      const SectionHeader(title: 'Recent Requests'),
+                      if (logsAll.isNotEmpty) ...[
+                        SingleChildScrollView(
+                          scrollDirection: Axis.horizontal,
+                          child: Row(
+                            children: [
+                              _FilterChip(
+                                label: 'All',
+                                selected: _filter == 'all',
+                                onTap: () => setState(() => _filter = 'all'),
+                              ),
+                              const SizedBox(width: AppSpacing.sm),
+                              for (final p in [
+                                'gemini',
+                                'groq',
+                                'openrouter',
+                                'cerebras',
+                              ])
+                                if (logsAll.any(
+                                  (l) => l.providerId.toLowerCase() == p,
+                                )) ...[
+                                  _FilterChip(
+                                    label: p[0].toUpperCase() + p.substring(1),
+                                    selected: _filter == p,
+                                    onTap: () => setState(() => _filter = p),
+                                  ),
+                                  const SizedBox(width: AppSpacing.sm),
+                                ],
+                            ],
+                          ),
+                        ),
+                        const SizedBox(height: AppSpacing.md),
+                      ],
+                      if (logs.isEmpty && _filter != 'all')
+                        Padding(
+                          padding: const EdgeInsets.symmetric(
+                            vertical: AppSpacing.lg,
+                          ),
+                          child: Text(
+                            'No requests for this provider.',
+                            style: theme.textTheme.bodySmall?.copyWith(
+                              color: theme.colorScheme.onSurface.withValues(
+                                alpha: 0.5,
+                              ),
+                            ),
+                          ),
+                        )
+                      else
+                        Builder(
+                          builder: (context) {
+                            final now = DateTime.now();
+                            final grouped = <String, List<UsageLog>>{};
+                            final order = <String>[];
+                            for (final l in logs) {
+                              final d = l.timestamp;
+                              String key;
+                              if (d.year == now.year &&
+                                  d.month == now.month &&
+                                  d.day == now.day) {
+                                key = 'Today';
+                              } else if (d.year == now.year &&
+                                  d.month == now.month &&
+                                  d.day == now.day - 1) {
+                                key = 'Yesterday';
+                              } else {
+                                key = DateFormat('MMM d, yyyy').format(d);
+                              }
+                              if (!grouped.containsKey(key)) {
+                                grouped[key] = [];
+                                order.add(key);
+                              }
+                              grouped[key]!.add(l);
+                            }
+                            return Column(
+                              crossAxisAlignment: CrossAxisAlignment.stretch,
+                              children: [
+                                for (final dateKey in order) ...[
+                                  Padding(
+                                    padding: const EdgeInsets.only(
+                                      bottom: AppSpacing.xs,
+                                      top: AppSpacing.sm,
+                                    ),
+                                    child: Text(
+                                      dateKey.toUpperCase(),
+                                      style: theme.textTheme.labelSmall
+                                          ?.copyWith(
+                                            letterSpacing: 0.6,
+                                            color: theme.colorScheme.onSurface
+                                                .withValues(alpha: 0.45),
+                                            fontWeight: FontWeight.w700,
+                                            fontSize: 10,
+                                          ),
+                                    ),
+                                  ),
+                                  for (final log in grouped[dateKey]!) ...[
+                                    _buildLogCard(context, log),
+                                    const SizedBox(height: AppSpacing.sm),
+                                  ],
+                                ],
+                              ],
+                            );
+                          },
+                        ),
+                      const SizedBox(height: AppSpacing.xl),
+                    ],
+                  ),
                 ),
               ),
             ),

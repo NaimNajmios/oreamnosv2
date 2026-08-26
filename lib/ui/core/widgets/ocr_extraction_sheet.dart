@@ -20,7 +20,7 @@ class OcrExtractionSheet extends StatelessWidget {
       backgroundColor: Theme.of(context).colorScheme.surface,
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(
-          top: Radius.circular(AppSpacing.radiusLg),
+          top: Radius.circular(AppSpacing.radiusXl),
         ),
       ),
       builder: (context) =>

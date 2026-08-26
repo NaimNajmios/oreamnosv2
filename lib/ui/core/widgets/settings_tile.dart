@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:oreamnos/config/theme/app_spacing.dart';
 import 'package:oreamnos/ui/core/utils/haptics.dart';
 
-/// Reusable grouped list row with brutalist styling.
+/// Reusable grouped list row with Threads styling.
 class SettingsTile extends StatelessWidget {
   const SettingsTile({
     super.key,
@@ -32,7 +32,7 @@ class SettingsTile extends StatelessWidget {
                 Haptics.lightImpact();
                 onTap?.call();
               },
-        borderRadius: BorderRadius.zero,
+        borderRadius: AppSpacing.borderRadiusSm,
         child: Padding(
           padding: const EdgeInsets.symmetric(
             horizontal: AppSpacing.base,
@@ -69,9 +69,9 @@ class SettingsTile extends StatelessWidget {
               ] else if (onTap != null) ...[
                 const SizedBox(width: AppSpacing.sm),
                 Icon(
-                  Icons.arrow_forward, // Sharp arrow instead of soft chevron
+                  Icons.chevron_right_rounded,
                   size: 20,
-                  color: theme.colorScheme.onSurface,
+                  color: theme.colorScheme.onSurfaceVariant,
                 ),
               ],
             ],

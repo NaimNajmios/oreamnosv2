@@ -5,6 +5,7 @@ import 'package:go_router/go_router.dart';
 import 'package:oreamnos/config/routes/app_router.dart';
 import 'package:oreamnos/config/theme/app_spacing.dart';
 import 'package:oreamnos/ui/core/utils/haptics.dart';
+import 'package:oreamnos/ui/core/widgets/app_switch.dart';
 import 'package:oreamnos/ui/core/widgets/section_header.dart';
 import 'package:oreamnos/ui/core/widgets/settings_tile.dart';
 import 'package:oreamnos/domain/models/app_theme_mode.dart';
@@ -52,94 +53,103 @@ class SettingsScreen extends ConsumerWidget {
               // Theme Toggle
               const SectionHeader(title: 'Appearance'),
               const SizedBox(height: AppSpacing.md),
-              Wrap(
-                spacing: AppSpacing.md,
-                runSpacing: AppSpacing.md,
-                children: AppThemeMode.values.map((mode) {
-                  final isSelected = viewModel.themeMode == mode;
+              SingleChildScrollView(
+                scrollDirection: Axis.horizontal,
+                clipBehavior: Clip.none,
+                child: Row(
+                  children: [
+                    for (int i = 0; i < AppThemeMode.values.length; i++) ...[
+                      Builder(
+                        builder: (context) {
+                          final mode = AppThemeMode.values[i];
+                          final isSelected = viewModel.themeMode == mode;
 
-                  Color previewColor;
-                  switch (mode) {
-                    case AppThemeMode.light:
-                      previewColor = Colors.grey.shade300;
-                      break;
-                    case AppThemeMode.dark:
-                      previewColor = Colors.grey.shade900;
-                      break;
-                    case AppThemeMode.deepBlue:
-                      previewColor = const Color(0xFF1E3A8A);
-                      break;
-                    case AppThemeMode.midnightNoir:
-                      previewColor = const Color(0xFF171717);
-                      break;
-                    case AppThemeMode.solarizedLight:
-                      previewColor = const Color(0xFFFDF6E3);
-                      break;
-                    case AppThemeMode.cyberpunk:
-                      previewColor = const Color(0xFFFF003C);
-                      break;
-                    case AppThemeMode.matchday:
-                      previewColor = const Color(0xFFDC2626);
-                      break;
-                    case AppThemeMode.forest:
-                      previewColor = const Color(0xFF2E7D32);
-                      break;
-                    case AppThemeMode.system:
-                      previewColor = theme.colorScheme.primary;
-                      break;
-                  }
+                          Color previewColor;
+                          switch (mode) {
+                            case AppThemeMode.light:
+                              previewColor = Colors.grey.shade300;
+                              break;
+                            case AppThemeMode.dark:
+                              previewColor = Colors.grey.shade900;
+                              break;
+                            case AppThemeMode.deepBlue:
+                              previewColor = const Color(0xFF1E3A8A);
+                              break;
+                            case AppThemeMode.midnightNoir:
+                              previewColor = const Color(0xFF171717);
+                              break;
+                            case AppThemeMode.solarizedLight:
+                              previewColor = const Color(0xFFFDF6E3);
+                              break;
+                            case AppThemeMode.cyberpunk:
+                              previewColor = const Color(0xFFFF003C);
+                              break;
+                            case AppThemeMode.matchday:
+                              previewColor = const Color(0xFFDC2626);
+                              break;
+                            case AppThemeMode.forest:
+                              previewColor = const Color(0xFF2E7D32);
+                              break;
+                            case AppThemeMode.system:
+                              previewColor = theme.colorScheme.primary;
+                              break;
+                          }
 
-                  return Padding(
-                    padding: const EdgeInsets.only(right: AppSpacing.md),
-                    child: GestureDetector(
-                      onTap: () {
-                        Haptics.lightImpact();
-                        viewModel.setThemeMode(mode);
-                      },
-                      child: Column(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          Container(
-                            width: 48,
-                            height: 48,
-                            decoration: BoxDecoration(
-                              shape: BoxShape.circle,
-                              color: previewColor,
-                              border: Border.all(
-                                color: isSelected
-                                    ? theme.colorScheme.primary
-                                    : theme.colorScheme.outline.withValues(
-                                        alpha: 0.3,
-                                      ),
-                                width: isSelected ? 2 : 1,
-                              ),
+                          return GestureDetector(
+                            onTap: () {
+                              Haptics.lightImpact();
+                              viewModel.setThemeMode(mode);
+                            },
+                            child: Column(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Container(
+                                  width: 48,
+                                  height: 48,
+                                  decoration: BoxDecoration(
+                                    shape: BoxShape.circle,
+                                    color: previewColor,
+                                    border: Border.all(
+                                      color: isSelected
+                                          ? theme.colorScheme.primary
+                                          : theme.colorScheme.outline
+                                                .withValues(alpha: 0.3),
+                                      width: isSelected ? 2 : 1,
+                                    ),
+                                  ),
+                                  child: isSelected
+                                      ? Icon(
+                                          Icons.check_rounded,
+                                          color:
+                                              previewColor.computeLuminance() >
+                                                  0.5
+                                              ? Colors.black
+                                              : Colors.white,
+                                        )
+                                      : null,
+                                ),
+                                const SizedBox(height: AppSpacing.xs),
+                                Text(
+                                  mode.label,
+                                  style: theme.textTheme.labelSmall?.copyWith(
+                                    color: isSelected
+                                        ? theme.colorScheme.onSurface
+                                        : theme.colorScheme.onSurfaceVariant,
+                                    fontWeight: isSelected
+                                        ? FontWeight.w700
+                                        : FontWeight.w500,
+                                  ),
+                                ),
+                              ],
                             ),
-                            child: isSelected
-                                ? Icon(
-                                    Icons.check_rounded,
-                                    color: previewColor.computeLuminance() > 0.5
-                                        ? Colors.black
-                                        : Colors.white,
-                                  )
-                                : null,
-                          ),
-                          const SizedBox(height: AppSpacing.xs),
-                          Text(
-                            mode.label,
-                            style: theme.textTheme.labelSmall?.copyWith(
-                              color: isSelected
-                                  ? theme.colorScheme.onSurface
-                                  : theme.colorScheme.onSurfaceVariant,
-                              fontWeight: isSelected
-                                  ? FontWeight.w700
-                                  : FontWeight.w500,
-                            ),
-                          ),
-                        ],
+                          );
+                        },
                       ),
-                    ),
-                  );
-                }).toList(),
+                      if (i != AppThemeMode.values.length - 1)
+                        const SizedBox(width: AppSpacing.md),
+                    ],
+                  ],
+                ),
               ),
               const SizedBox(height: AppSpacing.xl),
 
@@ -227,7 +237,7 @@ class SettingsScreen extends ConsumerWidget {
                         ],
                       ),
                     ),
-                    Switch(
+                    AppSwitch(
                       value: viewModel.autoAppendHashtags,
                       onChanged: (value) =>
                           viewModel.setAutoAppendHashtags(value),

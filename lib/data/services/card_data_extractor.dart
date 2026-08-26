@@ -22,11 +22,12 @@ class CardDataExtractor {
   }) async {
     final effectiveTemplate = template ?? CardTemplate.socialPost;
     final curator = CuratorFactory.getCurator(provider);
-    // Curator still uses sparse path; we pass brief but will map result to template
     final res = await curator.extractCardData(
       brief: brief,
       modelId: modelId,
       apiKey: apiKey,
+      template: effectiveTemplate,
+      isRefresh: isRefresh,
     );
     final jsonString = res;
 

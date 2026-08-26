@@ -1,3 +1,7 @@
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:injectable/injectable.dart';
+
+import '../../core/di/injection.dart';
 import '../../data/services/usage_service.dart';
 import '../../domain/models/usage_log.dart';
 
@@ -7,6 +11,7 @@ abstract class IUsageRepository {
   void clear();
 }
 
+@LazySingleton(as: IUsageRepository)
 class UsageRepository implements IUsageRepository {
   final UsageService _service;
   UsageRepository(this._service);
@@ -18,3 +23,7 @@ class UsageRepository implements IUsageRepository {
   @override
   void clear() => _service.clearLogs();
 }
+
+final usageRepositoryProvider = Provider<IUsageRepository>(
+  (ref) => getIt<IUsageRepository>(),
+);

@@ -1,3 +1,4 @@
+import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:oreamnos/config/theme/app_colors.dart';
 import 'package:oreamnos/config/theme/app_spacing.dart';
@@ -12,6 +13,7 @@ class LinkPreviewCard extends StatelessWidget {
     required this.url,
     this.title,
     this.description,
+    this.faviconUrl,
     this.onExtract,
     this.isLoading = false,
   });
@@ -19,6 +21,7 @@ class LinkPreviewCard extends StatelessWidget {
   final String url;
   final String? title;
   final String? description;
+  final String? faviconUrl;
   final VoidCallback? onExtract;
   final bool isLoading;
 
@@ -46,23 +49,85 @@ class LinkPreviewCard extends StatelessWidget {
         children: [
           Row(
             children: [
-              Container(
-                width: 32,
-                height: 32,
-                decoration: BoxDecoration(
-                  color: (isDark ? AppColors.darkTeal : AppColors.lightTeal)
-                      .withValues(alpha: 0.16),
-                  shape: BoxShape.circle,
-                ),
-                alignment: Alignment.center,
-                child: Text(
-                  domainInitial,
-                  style: TextStyle(
-                    color: isDark ? AppColors.darkTeal : AppColors.lightTeal,
-                    fontWeight: FontWeight.w700,
-                    fontSize: 14,
-                  ),
-                ),
+              ClipOval(
+                child: faviconUrl != null && faviconUrl!.isNotEmpty
+                    ? CachedNetworkImage(
+                        imageUrl: faviconUrl!,
+                        width: 32,
+                        height: 32,
+                        fit: BoxFit.cover,
+                        placeholder: (context, url) => Container(
+                          width: 32,
+                          height: 32,
+                          decoration: BoxDecoration(
+                            color:
+                                (isDark
+                                        ? AppColors.darkTeal
+                                        : AppColors.lightTeal)
+                                    .withValues(alpha: 0.16),
+                            shape: BoxShape.circle,
+                          ),
+                          alignment: Alignment.center,
+                          child: Text(
+                            domainInitial,
+                            style: TextStyle(
+                              color: isDark
+                                  ? AppColors.darkTeal
+                                  : AppColors.lightTeal,
+                              fontWeight: FontWeight.w700,
+                              fontSize: 14,
+                            ),
+                          ),
+                        ),
+                        errorWidget: (context, url, error) => Container(
+                          width: 32,
+                          height: 32,
+                          decoration: BoxDecoration(
+                            color:
+                                (isDark
+                                        ? AppColors.darkTeal
+                                        : AppColors.lightTeal)
+                                    .withValues(alpha: 0.16),
+                            shape: BoxShape.circle,
+                          ),
+                          alignment: Alignment.center,
+                          child: Text(
+                            domainInitial,
+                            style: TextStyle(
+                              color: isDark
+                                  ? AppColors.darkTeal
+                                  : AppColors.lightTeal,
+                              fontWeight: FontWeight.w700,
+                              fontSize: 14,
+                            ),
+                          ),
+                        ),
+                        cacheKey: 'favicon:$domain',
+                        memCacheWidth: 64,
+                      )
+                    : Container(
+                        width: 32,
+                        height: 32,
+                        decoration: BoxDecoration(
+                          color:
+                              (isDark
+                                      ? AppColors.darkTeal
+                                      : AppColors.lightTeal)
+                                  .withValues(alpha: 0.16),
+                          shape: BoxShape.circle,
+                        ),
+                        alignment: Alignment.center,
+                        child: Text(
+                          domainInitial,
+                          style: TextStyle(
+                            color: isDark
+                                ? AppColors.darkTeal
+                                : AppColors.lightTeal,
+                            fontWeight: FontWeight.w700,
+                            fontSize: 14,
+                          ),
+                        ),
+                      ),
               ),
               const SizedBox(width: AppSpacing.sm),
               Expanded(

@@ -183,7 +183,7 @@ class HashtagManagerScreen extends ConsumerWidget {
         },
         backgroundColor: theme.colorScheme.primary,
         foregroundColor: theme.colorScheme.onPrimary,
-        elevation: 2,
+        elevation: 1,
         child: const Icon(Icons.add_rounded),
       ),
     );

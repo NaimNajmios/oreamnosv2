@@ -12,8 +12,11 @@ import 'package:oreamnos/ui/features/settings/view_models/settings_view_model.da
 
 import '../../generate/view_models/generate_view_model.dart';
 import '../view_models/card_generator_view_model.dart';
-import '../widgets/card_canvas.dart';
 import '../widgets/card_stage.dart';
+import '../widgets/renderers/card_canvas_dispatcher.dart';
+
+import 'package:oreamnos/domain/models/card_config.dart';
+
 import '../widgets/picsart_tool_dock.dart';
 import '../widgets/export_bottom_sheet.dart';
 
@@ -286,14 +289,27 @@ class _CardGeneratorScreenState extends ConsumerState<CardGeneratorScreen> {
             child: CardStage(
               boundaryKey: _boundaryKey,
               aspectRatio: vm.selectedRatio.ratio,
-              child: CardCanvas(
+              child: CardCanvasDispatcher(
                 cardData: vm.cardData!,
-                template: vm.selectedTemplate,
-                font: vm.selectedFont,
-                backgroundImage: vm.backgroundImage,
-                scrimOpacity: vm.scrimOpacity,
-                useVignette: vm.useVignette,
-                headlineScale: vm.headlineScale,
+                config: CardConfig(
+                  template: vm.selectedTemplate,
+                  fontSizeMultiplier: vm.headlineScale,
+                  overlayOpacity: vm.scrimOpacity,
+                  showScrim: true,
+                  scrimType: vm.useVignette
+                      ? ScrimType.dark
+                      : ScrimType.minimal,
+                  backgroundImagePath: vm.backgroundImage?.path,
+                  useAutoPalette: vm.useAutoPalette,
+                  colorPair: vm.extractedPalette != null
+                      ? [vm.extractedPalette!.first, vm.extractedPalette!.last]
+                      : const [Color(0xFF1A237E), Color(0xFF0D47A1)],
+                  primaryFontFamilyName: vm.selectedFont == AppFont.classicSerif
+                      ? 'Lora'
+                      : vm.selectedFont == AppFont.typewriter
+                      ? 'SpaceMono'
+                      : 'Inter',
+                ),
               ),
             ),
           ),

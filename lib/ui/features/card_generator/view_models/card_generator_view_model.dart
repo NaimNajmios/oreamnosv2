@@ -12,6 +12,8 @@ import 'package:oreamnos/domain/models/card_template.dart';
 import 'package:oreamnos/domain/models/card_config_snapshot.dart';
 
 import 'package:oreamnos/core/di/injection.dart';
+import 'package:oreamnos/core/repositories/content_repository.dart';
+import 'package:oreamnos/data/models/ai_provider.dart';
 
 enum CardRatio {
   square(1 / 1, '1:1', 'IG Post • FB'),
@@ -182,20 +184,20 @@ class CardGeneratorViewModel extends ChangeNotifier {
         provider: b.provider,
         modelId: b.modelId,
         apiKey: apiKey,
+        template: selectedTemplate,
       );
-      // Merge: LLM headline/subtext/microStat overwrite seeded values, but keep non-empty
-      final nextHeadline = polished.headline != 'Generated Card'
-          ? polished.headline
-          : b.headline;
-      final nextSubtext = polished.subtext.isNotEmpty
-          ? polished.subtext
-          : b.subtext;
-      final nextMicro = polished.microStat ?? b.microStat;
-      cardData = CardData.fromBrief(
-        headline: nextHeadline,
-        subtext: nextSubtext,
-        microStat: nextMicro,
-      );
+      // Retain full rich CardData (16 variants) — dispatcher handles rendering.
+      // Fallback to brief only if polished is effectively empty (sparse with defaults).
+      if (polished.headline == 'N/A' && b.headline.isNotEmpty) {
+        cardData = polished.copyWithHeadline(b.headline);
+      } else {
+        cardData = polished;
+      }
+      // Auto-switch to AI-suggested template (user preference: auto switch).
+      final suggested = polished.effectiveTemplate;
+      if (suggested != selectedTemplate) {
+        selectedTemplate = suggested;
+      }
     } catch (e) {
       extractionError = e.toString();
       // Keep seeded cardData so user can still edit/export
@@ -357,6 +359,82 @@ class CardGeneratorViewModel extends ChangeNotifier {
   void setAutoPalette(bool v) {
     useAutoPalette = v;
     notifyListeners();
+  }
+
+  // --- Magic rewrite (per-field AI polish) ---
+  final Set<String> _rewriting = {};
+  bool isRewriting(String field) => _rewriting.contains(field);
+  String? rewriteError;
+
+  Future<void> rewriteHeadline({
+    required AiProvider provider,
+    required String modelId,
+    required String apiKey,
+  }) => _rewriteField('headline', provider, modelId, apiKey);
+
+  Future<void> rewriteSubtext({
+    required AiProvider provider,
+    required String modelId,
+    required String apiKey,
+  }) => _rewriteField('subtext', provider, modelId, apiKey);
+
+  Future<void> rewriteMicroStat({
+    required AiProvider provider,
+    required String modelId,
+    required String apiKey,
+  }) => _rewriteField('microStat', provider, modelId, apiKey);
+
+  Future<void> _rewriteField(
+    String field,
+    AiProvider provider,
+    String modelId,
+    String apiKey,
+  ) async {
+    final current = switch (field) {
+      'headline' => cardData?.headline ?? '',
+      'subtext' => cardData?.subtext ?? '',
+      'microStat' => cardData?.microStat ?? '',
+      _ => '',
+    };
+    if (current.trim().isEmpty || current == 'N/A') return;
+    _rewriting.add(field);
+    rewriteError = null;
+    notifyListeners();
+    try {
+      final repo = getIt<IContentRepository>();
+      final res = await repo.rewriteField(
+        text: current,
+        fieldName: field,
+        modelId: modelId,
+        apiKey: apiKey,
+        provider: provider,
+      );
+      res.fold(
+        (rewritten) {
+          final trimmed = rewritten.trim();
+          if (trimmed.isEmpty) return;
+          // Remove surrounding quotes if LLM added them
+          final clean = trimmed
+              .replaceAll(RegExp(r'^["“”]+|["“”]+$'), '')
+              .trim();
+          if (field == 'headline') {
+            updateHeadline(clean);
+          } else if (field == 'subtext') {
+            updateSubtext(clean);
+          } else {
+            updateMicroStat(clean);
+          }
+        },
+        (failure) {
+          rewriteError = failure.message;
+        },
+      );
+    } catch (e) {
+      rewriteError = e.toString();
+    } finally {
+      _rewriting.remove(field);
+      notifyListeners();
+    }
   }
 
   // --- Image picking ---

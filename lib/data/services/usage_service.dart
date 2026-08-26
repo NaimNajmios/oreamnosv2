@@ -33,6 +33,13 @@ class UsageService extends ChangeNotifier {
     notifyListeners();
   }
 
+  Future<void> reload() async {
+    try {
+      await _prefs.reload();
+    } catch (_) {}
+    _loadLogs();
+  }
+
   Future<void> logUsage(UsageLog log) async {
     _logs = List.of(_logs)..insert(0, log);
     if (_logs.length > _maxLogs) {

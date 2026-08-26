@@ -1,3 +1,7 @@
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:injectable/injectable.dart';
+
+import '../../core/di/injection.dart';
 import '../../data/models/ai_provider.dart';
 import '../../data/services/preferences_service.dart';
 import '../../domain/models/app_theme_mode.dart';
@@ -22,6 +26,7 @@ abstract class ISettingsRepository {
   Future<void> setToneMode(String tone);
 }
 
+@LazySingleton(as: ISettingsRepository)
 class SettingsRepository implements ISettingsRepository {
   final PreferencesService _prefs;
   SettingsRepository(this._prefs);
@@ -60,3 +65,7 @@ class SettingsRepository implements ISettingsRepository {
   @override
   Future<void> setToneMode(String tone) => _prefs.setToneMode(tone);
 }
+
+final settingsRepositoryProvider = Provider<ISettingsRepository>(
+  (ref) => getIt<ISettingsRepository>(),
+);

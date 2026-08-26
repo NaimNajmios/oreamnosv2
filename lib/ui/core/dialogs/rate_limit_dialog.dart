@@ -1,18 +1,40 @@
 import 'package:flutter/material.dart';
+import 'package:oreamnos/data/models/ai_provider.dart';
 
 class RateLimitDialog extends StatelessWidget {
-  const RateLimitDialog({super.key});
+  const RateLimitDialog({
+    super.key,
+    this.suggestedFallbackProvider,
+    this.currentProviderName,
+    this.onRetryWithFallback,
+  });
 
-  static Future<void> show(BuildContext context) {
+  final AiProvider? suggestedFallbackProvider;
+  final String? currentProviderName;
+  final VoidCallback? onRetryWithFallback;
+
+  static Future<void> show(
+    BuildContext context, {
+    AiProvider? suggestedFallbackProvider,
+    String? currentProviderName,
+    VoidCallback? onRetryWithFallback,
+  }) {
     return showDialog(
       context: context,
-      builder: (context) => const RateLimitDialog(),
+      barrierDismissible: false,
+      builder: (context) => RateLimitDialog(
+        suggestedFallbackProvider: suggestedFallbackProvider,
+        currentProviderName: currentProviderName,
+        onRetryWithFallback: onRetryWithFallback,
+      ),
     );
   }
 
   @override
   Widget build(BuildContext context) {
     final colors = Theme.of(context).colorScheme;
+    final hasFallback = suggestedFallbackProvider != null;
+    final current = currentProviderName ?? 'Current provider';
 
     return AlertDialog(
       backgroundColor: colors.surface,
@@ -22,14 +44,24 @@ class RateLimitDialog extends StatelessWidget {
         style: TextStyle(fontWeight: FontWeight.w600),
       ),
       content: Text(
-        'The API provider is currently overloaded or you have hit your rate limit.\n\nPlease wait a moment and try again, or switch to a different API provider in Settings.',
+        hasFallback
+            ? '$current is currently overloaded (quota exhausted).\n\nRetry with ${suggestedFallbackProvider!.displayName} instead? Your input is preserved.'
+            : 'The API provider is currently overloaded or you have hit your rate limit.\n\nPlease wait a moment and try again, or switch to a different API provider in Settings.',
         style: TextStyle(color: colors.onSurfaceVariant, height: 1.4),
       ),
       actions: [
         TextButton(
           onPressed: () => Navigator.of(context).pop(),
-          child: const Text('Got it'),
+          child: Text(hasFallback ? 'Stay on $current' : 'Got it'),
         ),
+        if (hasFallback)
+          FilledButton(
+            onPressed: () {
+              Navigator.of(context).pop();
+              onRetryWithFallback?.call();
+            },
+            child: Text('Retry with ${suggestedFallbackProvider!.displayName}'),
+          ),
       ],
     );
   }

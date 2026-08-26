@@ -27,7 +27,7 @@ class BackgroundPicker extends StatelessWidget {
       context: context,
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(
-          top: Radius.circular(AppSpacing.radiusLg),
+          top: Radius.circular(AppSpacing.radiusXl),
         ),
       ),
       builder: (_) => SafeArea(

@@ -18,6 +18,7 @@ analyzer:
     - windows/**
     - macos/**
     - linux/**
+    - tool/**
 
 custom_lint:
   # Riverpod lint disabled in Phase 0 (riverpod_lint incompatible with current freezed/analyzer pin).
