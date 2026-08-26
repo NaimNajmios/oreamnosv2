@@ -127,9 +127,6 @@ class _UsageScreenState extends ConsumerState<UsageScreen> {
                                         ? AppColors.darkTealSoft
                                         : AppColors.lightTealSoft)
                                     .withValues(alpha: 0.6),
-                            accentColor: isDark
-                                ? AppColors.darkTeal
-                                : AppColors.lightTeal,
                           );
                           final successCard = StatCard(
                             title: 'Success',
@@ -150,11 +147,6 @@ class _UsageScreenState extends ConsumerState<UsageScreen> {
                                           ? AppColors.darkVioletSoft
                                           : AppColors.lightVioletSoft)
                                       .withValues(alpha: 0.6),
-                            accentColor: successRate >= 90
-                                ? AppColors.success
-                                : (isDark
-                                      ? AppColors.darkViolet
-                                      : AppColors.lightViolet),
                           );
                           final latencyCard = StatCard(
                             title: 'Avg Latency',
@@ -169,9 +161,6 @@ class _UsageScreenState extends ConsumerState<UsageScreen> {
                                         ? AppColors.darkAmberSoft
                                         : AppColors.lightAmberSoft)
                                     .withValues(alpha: 0.6),
-                            accentColor: isDark
-                                ? AppColors.darkAmber
-                                : AppColors.lightAmber,
                           );
                           if (isNarrow) {
                             return Column(
@@ -422,7 +411,6 @@ class _UsageScreenState extends ConsumerState<UsageScreen> {
     ).withValues(alpha: 0.35);
 
     return AppCard(
-      accentColor: providerTint,
       padding: const EdgeInsets.symmetric(
         horizontal: AppSpacing.base,
         vertical: 12,
@@ -567,51 +555,6 @@ class _LegendDot extends ConsumerWidget {
           ),
         ),
       ],
-    );
-  }
-}
-
-class _FilterChip extends ConsumerWidget {
-  const _FilterChip({
-    required this.label,
-    required this.selected,
-    required this.onTap,
-  });
-  final String label;
-  final bool selected;
-  final VoidCallback onTap;
-  @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final theme = Theme.of(context);
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-    final bg = selected
-        ? (isDark ? AppColors.darkVioletSoft : AppColors.lightVioletSoft)
-              .withValues(alpha: 0.45)
-        : theme.colorScheme.surface;
-    final fg = selected
-        ? (isDark ? AppColors.darkViolet : AppColors.lightViolet)
-        : theme.colorScheme.onSurface.withValues(alpha: 0.7);
-    final border = selected
-        ? (isDark ? AppColors.darkViolet : AppColors.lightViolet)
-        : theme.colorScheme.outline;
-    return InkWell(
-      onTap: onTap,
-      borderRadius: AppSpacing.borderRadiusPill,
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-        decoration: BoxDecoration(
-          color: bg,
-          borderRadius: AppSpacing.borderRadiusPill,
-          border: Border.all(color: border, width: selected ? 1.5 : 1),
-        ),
-        child: Text(
-          label,
-          style: theme.textTheme.labelSmall?.copyWith(
-            color: fg,
-            fontWeight: selected ? FontWeight.w700 : FontWeight.w600,
-          ),
-        ),
-      ),
     );
   }
 }

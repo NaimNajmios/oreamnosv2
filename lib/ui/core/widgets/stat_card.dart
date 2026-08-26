@@ -15,7 +15,6 @@ class StatCard extends StatelessWidget {
     this.valueColor,
     this.iconColor,
     this.iconBackground,
-    this.accentColor,
   });
 
   final String title;
@@ -25,7 +24,6 @@ class StatCard extends StatelessWidget {
   final Color? valueColor;
   final Color? iconColor;
   final Color? iconBackground;
-  final Color? accentColor;
 
   @override
   Widget build(BuildContext context) {
@@ -36,16 +34,6 @@ class StatCard extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          if (accentColor != null)
-            Container(
-              height: 3,
-              decoration: BoxDecoration(
-                color: accentColor,
-                borderRadius: const BorderRadius.vertical(
-                  top: Radius.circular(16),
-                ),
-              ),
-            ),
           Padding(
             padding: const EdgeInsets.all(AppSpacing.base),
             child: Column(

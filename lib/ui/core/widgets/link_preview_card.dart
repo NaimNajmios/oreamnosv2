@@ -43,7 +43,6 @@ class LinkPreviewCard extends StatelessWidget {
 
     return AppCard(
       padding: const EdgeInsets.all(AppSpacing.md),
-      accentColor: isDark ? AppColors.darkTeal : AppColors.lightTeal,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
