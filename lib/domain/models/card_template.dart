@@ -64,6 +64,10 @@ enum CardTemplate {
   awardNominee('Award Nominees', 'Award ceremony nominees', [
     Color(0xFFF57F17),
     Color(0xFFFF8F00),
+  ]),
+  freeform('Freeform', 'Draggable text elements', [
+    Color(0xFF263238),
+    Color(0xFF37474F),
   ]);
 
   const CardTemplate(this.displayName, this.description, this.previewGradient);
@@ -89,6 +93,7 @@ enum CardTemplate {
     injuryReport,
     contractExpiry,
     awardNominee,
+    freeform,
   ];
 
   static const String fallbackNA = 'N/A';
@@ -128,6 +133,8 @@ enum CardTemplate {
         return 'contract_expiry';
       case awardNominee:
         return 'award_nominee';
+      case freeform:
+        return 'freeform';
     }
   }
 

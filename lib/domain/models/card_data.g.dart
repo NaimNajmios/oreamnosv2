@@ -193,6 +193,7 @@ const _$CardTemplateEnumMap = {
   CardTemplate.injuryReport: 'injuryReport',
   CardTemplate.contractExpiry: 'contractExpiry',
   CardTemplate.awardNominee: 'awardNominee',
+  CardTemplate.freeform: 'freeform',
 };
 
 HeadlineQuote _$HeadlineQuoteFromJson(Map<String, dynamic> json) =>

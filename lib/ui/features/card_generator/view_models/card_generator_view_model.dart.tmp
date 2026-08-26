@@ -1,18 +1,20 @@
+import 'package:oreamnos/core/repositories/card_repository.dart';
 import 'dart:io';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:image_picker/image_picker.dart';
-import 'package:oreamnos/core/di/injection.dart';
-import 'package:oreamnos/core/repositories/card_repository.dart';
-import 'package:oreamnos/core/repositories/content_repository.dart';
-import 'package:oreamnos/data/models/ai_provider.dart';
+import 'package:oreamnos/data/services/card_data_extractor.dart';
 import 'package:oreamnos/data/services/color_extractor.dart';
 import 'package:oreamnos/data/services/export_service.dart';
 import 'package:oreamnos/domain/models/card_brief.dart';
 import 'package:oreamnos/domain/models/card_data.dart';
 import 'package:oreamnos/domain/models/card_template.dart';
 import 'package:oreamnos/domain/models/card_config_snapshot.dart';
-import 'card_generator_state.dart';
+
+import 'package:oreamnos/core/di/injection.dart';
+import 'package:oreamnos/core/repositories/content_repository.dart';
+import 'package:oreamnos/data/models/ai_provider.dart';
 
 enum CardRatio {
   square(1 / 1, '1:1', 'IG Post • FB'),
@@ -30,88 +32,152 @@ enum CardRatio {
 enum AppFont { defaultFont, classicSerif, typewriter }
 
 final cardGeneratorViewModelProvider =
-    NotifierProvider<CardGeneratorViewModel, CardGeneratorState>(
-  CardGeneratorViewModel.new,
-);
+    ChangeNotifierProvider<CardGeneratorViewModel>(
+      (ref) => CardGeneratorViewModel(ref),
+    );
 
 class CardGeneratorViewModel extends Notifier<CardGeneratorState> {
+  
+  
   static const int _maxSnapshots = 50;
 
-  late final ExportService _exportService;
-
-  @override
-  CardGeneratorState build() {
-    _exportService = getIt<ExportService>();
-    return const CardGeneratorState();
-  }
+  bool get canUndo => _undoStack.isNotEmpty;
+  bool get canRedo => _redoStack.isNotEmpty;
 
   void _saveSnapshot() {
-    final current = state.toSnapshot();
-    final newUndo = List<CardConfigSnapshot>.from(state.undoStack)..add(current);
-    if (newUndo.length > _maxSnapshots) {
-      newUndo.removeAt(0);
+    _undoStack.add(
+      CardConfigSnapshot(
+        cardData: cardData,
+        selectedTemplate: selectedTemplate,
+        selectedRatio: selectedRatio,
+        selectedFont: selectedFont,
+        scrimOpacity: scrimOpacity,
+        useVignette: useVignette,
+        headlineScale: headlineScale,
+        templateCompact: templateCompact,
+        backgroundImage: backgroundImage,
+        useAutoPalette: useAutoPalette,
+        extractedPalette: extractedPalette,
+      ),
+    );
+    if (_undoStack.length > _maxSnapshots) {
+      _undoStack.removeAt(0);
     }
-    state = state.copyWith(undoStack: newUndo, redoStack: []);
+    _redoStack.clear();
   }
 
   void undo() {
-    if (!state.canUndo) return;
-    final current = state.toSnapshot();
-    final newUndo = List<CardConfigSnapshot>.from(state.undoStack);
-    final snapshot = newUndo.removeLast();
-    final newRedo = List<CardConfigSnapshot>.from(state.redoStack)..add(current);
-    
-    _applySnapshot(snapshot, newUndo, newRedo);
+    if (!canUndo) return;
+    _redoStack.add(
+      CardConfigSnapshot(
+        cardData: cardData,
+        selectedTemplate: selectedTemplate,
+        selectedRatio: selectedRatio,
+        selectedFont: selectedFont,
+        scrimOpacity: scrimOpacity,
+        useVignette: useVignette,
+        headlineScale: headlineScale,
+        templateCompact: templateCompact,
+        backgroundImage: backgroundImage,
+        useAutoPalette: useAutoPalette,
+        extractedPalette: extractedPalette,
+      ),
+    );
+    final snapshot = _undoStack.removeLast();
+    _applySnapshot(snapshot);
   }
 
   void redo() {
-    if (!state.canRedo) return;
-    final current = state.toSnapshot();
-    final newRedo = List<CardConfigSnapshot>.from(state.redoStack);
-    final snapshot = newRedo.removeLast();
-    final newUndo = List<CardConfigSnapshot>.from(state.undoStack)..add(current);
-    
-    _applySnapshot(snapshot, newUndo, newRedo);
-  }
-
-  void _applySnapshot(
-      CardConfigSnapshot snapshot, List<CardConfigSnapshot> undo, List<CardConfigSnapshot> redo) {
-    state = state.copyWith(
-      cardData: snapshot.cardData,
-      selectedTemplate: snapshot.selectedTemplate,
-      selectedRatio: snapshot.selectedRatio,
-      selectedFont: snapshot.selectedFont,
-      scrimOpacity: snapshot.scrimOpacity,
-      useVignette: snapshot.useVignette,
-      headlineScale: snapshot.headlineScale,
-      templateCompact: snapshot.templateCompact,
-      backgroundImage: snapshot.backgroundImage,
-      useAutoPalette: snapshot.useAutoPalette,
-      extractedPalette: snapshot.extractedPalette,
-      watermarkText: snapshot.watermarkText,
-      showWatermark: snapshot.showWatermark,
-      undoStack: undo,
-      redoStack: redo,
+    if (!canRedo) return;
+    _undoStack.add(
+      CardConfigSnapshot(
+        cardData: cardData,
+        selectedTemplate: selectedTemplate,
+        selectedRatio: selectedRatio,
+        selectedFont: selectedFont,
+        scrimOpacity: scrimOpacity,
+        useVignette: useVignette,
+        headlineScale: headlineScale,
+        templateCompact: templateCompact,
+        backgroundImage: backgroundImage,
+        useAutoPalette: useAutoPalette,
+        extractedPalette: extractedPalette,
+      ),
     );
+    final snapshot = _redoStack.removeLast();
+    _applySnapshot(snapshot);
   }
 
+  void _applySnapshot(CardConfigSnapshot snapshot) {
+    cardData = snapshot.cardData;
+    selectedTemplate = snapshot.selectedTemplate;
+    selectedRatio = snapshot.selectedRatio;
+    selectedFont = snapshot.selectedFont;
+    scrimOpacity = snapshot.scrimOpacity;
+    useVignette = snapshot.useVignette;
+    headlineScale = snapshot.headlineScale;
+    templateCompact = snapshot.templateCompact;
+    backgroundImage = snapshot.backgroundImage;
+    useAutoPalette = snapshot.useAutoPalette;
+    extractedPalette = snapshot.extractedPalette;
+    notifyListeners();
+  }
+
+  late final CardDataExtractor extractor;
+  late final ExportService exportService;
+
+  final Ref ref;
+  CardGeneratorViewModel(this.ref) {
+    extractor = getIt<CardDataExtractor>();
+    exportService = getIt<ExportService>();
+  }
+
+  // === Brief (sparse companion input) ===
+  CardBrief? _brief;
+  CardBrief? get brief => _brief;
+
+  // === Extracted polished card data ===
+  CardData? cardData;
+  bool isExtracting = false;
+  String? extractionError;
+
+  // === Design state ===
+  CardTemplate selectedTemplate = CardTemplate.socialPost;
+  CardRatio selectedRatio = CardRatio.portrait45;
+  AppFont selectedFont = AppFont.defaultFont;
+  double headlineScale = 1.0; // 0.85 - 1.15 user-adjustable
+  bool templateCompact = true; // emoji-only default
+
+  // Image + scrim (overlay darkness 0.3 - 0.75)
+  File? backgroundImage;
+  double scrimOpacity = 0.55;
+  bool useVignette = false;
+
+  bool get hasBrief => _brief != null && !_brief!.isEmpty;
+  bool get hasImage => backgroundImage != null;
+
+  // --- Init from route brief ---
   Future<void> initialize(CardBrief brief, String apiKey) async {
-    final sparse = CardData.fromBrief(
+    _brief = brief;
+    // Seed CardData immediately from brief so canvas shows something even before LLM
+    cardData = CardData.fromBrief(
       headline: brief.headline,
       subtext: brief.subtext,
       microStat: brief.microStat,
     );
-    state = state.copyWith(brief: brief, cardData: sparse);
+    notifyListeners();
     if (brief.modelId.isEmpty || apiKey.isEmpty) return;
     await extractData(apiKey);
   }
 
   Future<void> extractData(String apiKey) async {
-    final b = state.brief;
+    final b = _brief;
     if (b == null || b.isEmpty) return;
     if (b.modelId.isEmpty || apiKey.isEmpty) return;
 
-    state = state.copyWith(isExtracting: true, extractionError: null);
+    isExtracting = true;
+    extractionError = null;
+    notifyListeners();
 
     try {
       final repo = ref.read(cardRepositoryProvider);
@@ -120,106 +186,90 @@ class CardGeneratorViewModel extends Notifier<CardGeneratorState> {
         provider: b.provider,
         modelId: b.modelId,
         apiKey: apiKey,
-        template: state.selectedTemplate,
+        template: selectedTemplate,
       );
       final polished = repoResult.fold(
         (data) => data,
         (failure) => throw failure,
       );
 
-      CardData newCardData;
+      // Retain full rich CardData (16 variants) — dispatcher handles rendering.
+      // Fallback to brief only if polished is effectively empty (sparse with defaults).
       if (polished.headline == 'N/A' && b.headline.isNotEmpty) {
-        newCardData = polished.copyWithHeadline(b.headline);
+        cardData = polished.copyWithHeadline(b.headline);
       } else {
-        newCardData = polished;
+        cardData = polished;
       }
-      
+      // Auto-switch to AI-suggested template (user preference: auto switch).
       final suggested = polished.effectiveTemplate;
-      state = state.copyWith(
-        cardData: newCardData,
-        selectedTemplate: suggested != state.selectedTemplate ? suggested : state.selectedTemplate,
-      );
+      if (suggested != selectedTemplate) {
+        selectedTemplate = suggested;
+      }
     } catch (e) {
-      state = state.copyWith(extractionError: e.toString());
+      extractionError = e.toString();
+      // Keep seeded cardData so user can still edit/export
     } finally {
-      state = state.copyWith(isExtracting: false);
+      isExtracting = false;
+      notifyListeners();
     }
   }
 
+  // --- Template / Ratio / Font / Scrim ---
   void setTemplate(CardTemplate template) {
     _saveSnapshot();
-    state = state.copyWith(selectedTemplate: template);
+    selectedTemplate = template;
+    notifyListeners();
+    // No re-extract: same sparse JSON serves all templates
   }
 
   void setRatio(CardRatio ratio) {
     _saveSnapshot();
-    state = state.copyWith(selectedRatio: ratio);
+    selectedRatio = ratio;
+    notifyListeners();
   }
 
   void setFont(AppFont font) {
     _saveSnapshot();
-    state = state.copyWith(selectedFont: font);
+    selectedFont = font;
+    notifyListeners();
   }
 
   void setScrim(double value) {
     _saveSnapshot();
-    state = state.copyWith(scrimOpacity: value.clamp(0.3, 0.75));
+    scrimOpacity = value.clamp(0.3, 0.75);
+    notifyListeners();
   }
 
   void setVignette(bool v) {
     _saveSnapshot();
-    state = state.copyWith(useVignette: v);
+    useVignette = v;
+    notifyListeners();
   }
 
   void setHeadlineScale(double v) {
     _saveSnapshot();
-    state = state.copyWith(headlineScale: v.clamp(0.85, 1.15));
+    headlineScale = v.clamp(0.85, 1.15);
+    notifyListeners();
   }
 
   void toggleTemplateCompact() {
     _saveSnapshot();
-    state = state.copyWith(templateCompact: !state.templateCompact);
+    templateCompact = !templateCompact;
+    notifyListeners();
   }
 
-  void setWatermarkText(String? text) {
-    _saveSnapshot();
-    state = state.copyWith(watermarkText: text);
-  }
-
-  void setShowWatermark(bool show) {
-    _saveSnapshot();
-    state = state.copyWith(showWatermark: show);
-  }
-  
-  void updateElementOffset(String field, Offset offset) {
-    if (field == 'headline') {
-      state = state.copyWith(headlineOffset: offset);
-    } else if (field == 'subtext') {
-      state = state.copyWith(subtextOffset: offset);
-    } else if (field == 'microStat') {
-      state = state.copyWith(microStatOffset: offset);
-    }
-  }
-
-  void setActivePanel(String? panel) {
-    state = state.copyWith(activePanel: panel);
-  }
-
-  void setFocusedField(String? field) {
-    state = state.copyWith(focusedField: field);
-  }
-
+  // --- Inline editing (local, no LLM) — now handles sealed 16 variants (maps to sparse fallback)
   void updateHeadline(String value) {
     _saveSnapshot();
     final v = value.trim();
-    if (state.cardData == null) {
-      state = state.copyWith(cardData: CardData.sparse(
+    if (cardData == null) {
+      cardData = CardData.sparse(
         headline: v.isEmpty ? 'Generated Card' : v,
         subtext: '',
-      ));
+      );
     } else {
-      final d = state.cardData!;
-      state = state.copyWith(cardData: d.map(
+      final d = cardData!;
+      cardData = d.map(
         playerSpotlight: (x) => x.copyWith(playerName: v.isEmpty ? 'N/A' : v),
         headlineQuote: (x) => x.copyWith(headline: v.isEmpty ? 'N/A' : v),
         topStats: (x) => x,
@@ -229,7 +279,8 @@ class CardGeneratorViewModel extends Notifier<CardGeneratorState> {
         detailedScoreboard: (x) => x.copyWith(homeTeam: v.isEmpty ? 'N/A' : v),
         onThisDay: (x) => x.copyWith(headline: v.isEmpty ? 'N/A' : v),
         startingXI: (x) => x.copyWith(teamName: v.isEmpty ? 'N/A' : v),
-        matchStatsComparison: (x) => x.copyWith(homeTeam: v.isEmpty ? 'N/A' : v),
+        matchStatsComparison: (x) =>
+            x.copyWith(homeTeam: v.isEmpty ? 'N/A' : v),
         socialPost: (x) => x.copyWith(content: v.isEmpty ? 'N/A' : v),
         rivalry: (x) => x.copyWith(player1Name: v.isEmpty ? 'N/A' : v),
         tableStandings: (x) => x.copyWith(leagueName: v.isEmpty ? 'N/A' : v),
@@ -237,25 +288,27 @@ class CardGeneratorViewModel extends Notifier<CardGeneratorState> {
         contractExpiry: (x) => x.copyWith(teamName: v.isEmpty ? 'N/A' : v),
         awardNominee: (x) => x.copyWith(awardName: v.isEmpty ? 'N/A' : v),
         sparse: (x) => x.copyWith(headline: v.isEmpty ? 'Generated Card' : v),
-      ));
+      );
     }
+    notifyListeners();
   }
 
   void updateSubtext(String value) {
     _saveSnapshot();
     final v = value.trim();
-    if (state.cardData == null) {
-      state = state.copyWith(cardData: CardData.sparse(headline: 'Generated Card', subtext: v));
+    if (cardData == null) {
+      cardData = CardData.sparse(headline: 'Generated Card', subtext: v);
     } else {
-      final d = state.cardData!;
-      state = state.copyWith(cardData: d.map(
+      final d = cardData!;
+      cardData = d.map(
         playerSpotlight: (x) => x.copyWith(keyQuote: v.isEmpty ? 'N/A' : v),
         headlineQuote: (x) => x.copyWith(subtext: v.isEmpty ? 'N/A' : v),
         topStats: (x) => x,
         transferNews: (x) => x.copyWith(quote: v.isEmpty ? 'N/A' : v),
         breakingNews: (x) => x.copyWith(subtext: v.isEmpty ? 'N/A' : v),
         matchPreview: (x) => x.copyWith(competition: v.isEmpty ? 'N/A' : v),
-        detailedScoreboard: (x) => x.copyWith(competition: v.isEmpty ? 'N/A' : v),
+        detailedScoreboard: (x) =>
+            x.copyWith(competition: v.isEmpty ? 'N/A' : v),
         onThisDay: (x) => x.copyWith(significance: v.isEmpty ? 'N/A' : v),
         startingXI: (x) => x.copyWith(manager: v.isEmpty ? 'N/A' : v),
         matchStatsComparison: (x) => x,
@@ -266,23 +319,24 @@ class CardGeneratorViewModel extends Notifier<CardGeneratorState> {
         contractExpiry: (x) => x.copyWith(seasonYear: v.isEmpty ? 'N/A' : v),
         awardNominee: (x) => x.copyWith(category: v.isEmpty ? 'N/A' : v),
         sparse: (x) => x.copyWith(subtext: v),
-      ));
+      );
     }
+    notifyListeners();
   }
 
   void updateMicroStat(String value) {
     _saveSnapshot();
     final v = value.trim();
     final isClear = v.isEmpty;
-    if (state.cardData == null) {
-      state = state.copyWith(cardData: CardData.sparse(
+    if (cardData == null) {
+      cardData = CardData.sparse(
         headline: 'Generated Card',
         subtext: '',
         microStat: isClear ? null : v,
-      ));
+      );
     } else {
-      final d = state.cardData!;
-      state = state.copyWith(cardData: d.map(
+      final d = cardData!;
+      cardData = d.map(
         playerSpotlight: (x) => x.copyWith(keyAction: isClear ? 'N/A' : v),
         headlineQuote: (x) => x.copyWith(category: isClear ? 'N/A' : v),
         topStats: (x) => x,
@@ -296,17 +350,28 @@ class CardGeneratorViewModel extends Notifier<CardGeneratorState> {
         socialPost: (x) => x.copyWith(handle: isClear ? 'N/A' : v),
         rivalry: (x) => x.copyWith(headToHead: isClear ? 'N/A' : v),
         tableStandings: (x) => x.copyWith(highlightedTeam: isClear ? 'N/A' : v),
-        injuryReport: (x) => x.copyWith(recoveryPercentage: isClear ? 'N/A' : v),
+        injuryReport: (x) =>
+            x.copyWith(recoveryPercentage: isClear ? 'N/A' : v),
         contractExpiry: (x) => x.copyWith(wage: isClear ? 'N/A' : v),
         awardNominee: (x) => x.copyWith(currentFavorite: isClear ? 'N/A' : v),
         sparse: (x) => x.copyWith(microStat: isClear ? null : v),
-      ));
+      );
     }
+    notifyListeners();
   }
 
+  bool useAutoPalette = false;
+  List<Color>? extractedPalette;
+
   void setAutoPalette(bool v) {
-    state = state.copyWith(useAutoPalette: v);
+    useAutoPalette = v;
+    notifyListeners();
   }
+
+  // --- Magic rewrite (per-field AI polish) ---
+  final Set<String> _rewriting = {};
+  bool isRewriting(String field) => _rewriting.contains(field);
+  String? rewriteError;
 
   Future<void> rewriteHeadline({
     required AiProvider provider,
@@ -333,16 +398,15 @@ class CardGeneratorViewModel extends Notifier<CardGeneratorState> {
     String apiKey,
   ) async {
     final current = switch (field) {
-      'headline' => state.cardData?.headline ?? '',
-      'subtext' => state.cardData?.subtext ?? '',
-      'microStat' => state.cardData?.microStat ?? '',
+      'headline' => cardData?.headline ?? '',
+      'subtext' => cardData?.subtext ?? '',
+      'microStat' => cardData?.microStat ?? '',
       _ => '',
     };
     if (current.trim().isEmpty || current == 'N/A') return;
-    
-    final newRewriting = Set<String>.from(state.rewritingFields)..add(field);
-    state = state.copyWith(rewritingFields: newRewriting, rewriteError: null);
-    
+    _rewriting.add(field);
+    rewriteError = null;
+    notifyListeners();
     try {
       final repo = getIt<IContentRepository>();
       final res = await repo.rewriteField(
@@ -356,6 +420,7 @@ class CardGeneratorViewModel extends Notifier<CardGeneratorState> {
         (rewritten) {
           final trimmed = rewritten.trim();
           if (trimmed.isEmpty) return;
+          // Remove surrounding quotes if LLM added them
           final clean = trimmed
               .replaceAll(RegExp(r'^["“”]+|["“”]+$'), '')
               .trim();
@@ -368,24 +433,26 @@ class CardGeneratorViewModel extends Notifier<CardGeneratorState> {
           }
         },
         (failure) {
-          state = state.copyWith(rewriteError: failure.message);
+          rewriteError = failure.message;
         },
       );
     } catch (e) {
-      state = state.copyWith(rewriteError: e.toString());
+      rewriteError = e.toString();
     } finally {
-      final doneRewriting = Set<String>.from(state.rewritingFields)..remove(field);
-      state = state.copyWith(rewritingFields: doneRewriting);
+      _rewriting.remove(field);
+      notifyListeners();
     }
   }
 
+  // --- Image picking ---
   Future<void> pickImage(ImageSource source) async {
     try {
       final picker = ImagePicker();
       final xfile = await picker.pickImage(source: source, imageQuality: 85);
       if (xfile != null) {
-        final palette = await ColorExtractor.extractPalette(xfile.path);
-        state = state.copyWith(backgroundImage: File(xfile.path), extractedPalette: palette);
+        backgroundImage = File(xfile.path);
+        extractedPalette = await ColorExtractor.extractPalette(xfile.path);
+        notifyListeners();
       }
     } catch (e) {
       debugPrint('pickImage error: $e');
@@ -393,13 +460,17 @@ class CardGeneratorViewModel extends Notifier<CardGeneratorState> {
   }
 
   void removeImage() {
-    state = state.copyWith(backgroundImage: null, extractedPalette: null, useAutoPalette: false);
+    backgroundImage = null;
+    extractedPalette = null;
+    useAutoPalette = false;
+    notifyListeners();
   }
 
+  // --- Export ---
   Future<bool> saveToGallery(GlobalKey boundaryKey) async {
     try {
-      final bytes = await _exportService.capturePng(boundaryKey);
-      return await _exportService.saveToGallery(bytes);
+      final bytes = await exportService.capturePng(boundaryKey);
+      return await exportService.saveToGallery(bytes);
     } catch (e) {
       return false;
     }
@@ -407,10 +478,14 @@ class CardGeneratorViewModel extends Notifier<CardGeneratorState> {
 
   Future<void> shareCard(GlobalKey boundaryKey) async {
     try {
-      final bytes = await _exportService.capturePng(boundaryKey);
-      await _exportService.shareImage(bytes, text: state.cardData?.headline ?? '');
+      final bytes = await exportService.capturePng(boundaryKey);
+      await exportService.shareImage(bytes, text: cardData?.headline ?? '');
     } catch (e) {
       debugPrint('Share error: $e');
     }
   }
+
+  // Legacy compat — some old screens check cardData.title
+  @Deprecated('Use cardData.headline')
+  String get legacyTitle => cardData?.headline ?? '';
 }

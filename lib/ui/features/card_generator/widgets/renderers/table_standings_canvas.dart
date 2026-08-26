@@ -21,7 +21,7 @@ class TableStandingsCanvas extends StatelessWidget {
     final rows = data.standings;
 
     return Container(
-      decoration: BoxDecoration(gradient: GradientBuilder.vertical(colors)),
+      decoration: BoxDecoration(gradient: config.backgroundImagePath != null ? null : GradientBuilder.vertical(colors)),
       child: Stack(
         children: [
           if (config.showScrim)

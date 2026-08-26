@@ -12,6 +12,7 @@ import 'package:oreamnos/ui/features/settings/view_models/settings_view_model.da
 
 import '../../generate/view_models/generate_view_model.dart';
 import '../view_models/card_generator_view_model.dart';
+import '../view_models/card_generator_state.dart';
 import '../widgets/card_stage.dart';
 import '../widgets/renderers/card_canvas_dispatcher.dart';
 
@@ -181,7 +182,7 @@ class _CardGeneratorScreenState extends ConsumerState<CardGeneratorScreen> {
                 onPressed: vm.canUndo
                     ? () {
                         Haptics.lightImpact();
-                        vm.undo();
+                        ref.read(cardGeneratorViewModelProvider.notifier).undo();
                       }
                     : null,
               ),
@@ -191,7 +192,7 @@ class _CardGeneratorScreenState extends ConsumerState<CardGeneratorScreen> {
                 onPressed: vm.canRedo
                     ? () {
                         Haptics.lightImpact();
-                        vm.redo();
+                        ref.read(cardGeneratorViewModelProvider.notifier).redo();
                       }
                     : null,
               ),
@@ -206,14 +207,14 @@ class _CardGeneratorScreenState extends ConsumerState<CardGeneratorScreen> {
                       ExportBottomSheet.show(
                         context,
                         onSaveToGallery: _handleSaveToGallery,
-                        onShare: () => vm.shareCard(_boundaryKey),
+                        onShare: () => ref.read(cardGeneratorViewModelProvider.notifier).shareCard(_boundaryKey),
                       );
                     },
                   ),
                 ),
             ],
           ),
-          body: _buildBody(context, vm, theme, hasData),
+          body: _buildBody(context, vm, ref, theme, hasData),
         );
       },
     );
@@ -221,12 +222,13 @@ class _CardGeneratorScreenState extends ConsumerState<CardGeneratorScreen> {
 
   Widget _buildBody(
     BuildContext context,
-    CardGeneratorViewModel vm,
+    CardGeneratorState state,
+    WidgetRef ref,
     ThemeData theme,
     bool hasData,
   ) {
     // Extracting skeleton — keep stage visible with seeded data if available
-    if (vm.isExtracting && !hasData) {
+    if (state.isExtracting && !hasData) {
       return Center(
         child: Padding(
           padding: const EdgeInsets.all(AppSpacing.xxl),
@@ -258,10 +260,10 @@ class _CardGeneratorScreenState extends ConsumerState<CardGeneratorScreen> {
       );
     }
 
-    if (vm.extractionError != null && !hasData) {
+    if (state.extractionError != null && !hasData) {
       return ErrorState(
         title: 'Polish Failed',
-        message: vm.extractionError!,
+        message: state.extractionError!,
         retryLabel: 'Retry',
         onRetry: () async {
           String apiKey = '';
@@ -272,7 +274,7 @@ class _CardGeneratorScreenState extends ConsumerState<CardGeneratorScreen> {
                     .getApiKeyForProvider(widget.brief.provider) ??
                 '';
           } catch (_) {}
-          vm.extractData(apiKey);
+          ref.read(cardGeneratorViewModelProvider.notifier).extractData(apiKey);
         },
       );
     }
@@ -288,28 +290,64 @@ class _CardGeneratorScreenState extends ConsumerState<CardGeneratorScreen> {
             color: theme.colorScheme.surface, // or black for Picsart feel? Let's stick to theme for now
             child: CardStage(
               boundaryKey: _boundaryKey,
-              aspectRatio: vm.selectedRatio.ratio,
-              child: CardCanvasDispatcher(
-                cardData: vm.cardData!,
-                config: CardConfig(
-                  template: vm.selectedTemplate,
-                  fontSizeMultiplier: vm.headlineScale,
-                  overlayOpacity: vm.scrimOpacity,
-                  showScrim: true,
-                  scrimType: vm.useVignette
-                      ? ScrimType.dark
-                      : ScrimType.minimal,
-                  backgroundImagePath: vm.backgroundImage?.path,
-                  useAutoPalette: vm.useAutoPalette,
-                  colorPair: vm.extractedPalette != null
-                      ? [vm.extractedPalette!.first, vm.extractedPalette!.last]
-                      : const [Color(0xFF1A237E), Color(0xFF0D47A1)],
-                  primaryFontFamilyName: vm.selectedFont == AppFont.classicSerif
-                      ? 'Lora'
-                      : vm.selectedFont == AppFont.typewriter
-                      ? 'SpaceMono'
-                      : 'Inter',
-                ),
+              aspectRatio: state.selectedRatio.ratio,
+              child: Stack(
+                fit: StackFit.expand,
+                children: [
+                  if (state.backgroundImage != null)
+                    InteractiveViewer(
+                      boundaryMargin: const EdgeInsets.all(double.infinity),
+                      minScale: 0.5,
+                      maxScale: 4.0,
+                      child: Image.file(
+                        state.backgroundImage!,
+                        fit: BoxFit.cover,
+                      ),
+                    ),
+                  CardCanvasDispatcher(
+                    cardData: state.cardData!,
+                    config: CardConfig(
+                      template: state.selectedTemplate,
+                      fontSizeMultiplier: state.headlineScale,
+                      overlayOpacity: state.scrimOpacity,
+                      showScrim: true,
+                      scrimType: state.useVignette
+                          ? ScrimType.dark
+                          : ScrimType.minimal,
+                      backgroundImagePath: state.backgroundImage?.path,
+                      useAutoPalette: state.useAutoPalette,
+                      colorPair: state.extractedPalette != null
+                          ? [state.extractedPalette!.first, state.extractedPalette!.last]
+                          : const [Color(0xFF1A237E), Color(0xFF0D47A1)],
+                      primaryFontFamilyName: state.selectedFont == AppFont.classicSerif
+                          ? 'Lora'
+                          : state.selectedFont == AppFont.typewriter
+                          ? 'SpaceMono'
+                          : 'Inter',
+                    ),
+                  ),
+                  if (state.showWatermark && state.watermarkText != null && state.watermarkText!.isNotEmpty)
+                    Positioned(
+                      bottom: 12,
+                      right: 12,
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                        decoration: BoxDecoration(
+                          color: Colors.black.withValues(alpha: 0.5),
+                          borderRadius: BorderRadius.circular(4),
+                        ),
+                        child: Text(
+                          state.watermarkText!,
+                          style: const TextStyle(
+                            color: Colors.white,
+                            fontSize: 10,
+                            fontWeight: FontWeight.w600,
+                            letterSpacing: 0.5,
+                          ),
+                        ),
+                      ),
+                    ),
+                ],
               ),
             ),
           ),

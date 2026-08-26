@@ -13,6 +13,8 @@ import 'on_this_day_canvas.dart';
 import 'starting_xi_canvas.dart';
 import 'match_stats_comparison_canvas.dart';
 import 'social_post_canvas.dart';
+import 'freeform_canvas.dart';
+import '../../../../../domain/models/card_template.dart';
 import 'rivalry_canvas.dart';
 import 'table_standings_canvas.dart';
 import 'injury_report_canvas.dart';
@@ -49,14 +51,19 @@ class CardCanvasDispatcher extends StatelessWidget {
       injuryReport: (d) => InjuryReportCanvas(data: d, config: config),
       contractExpiry: (d) => ContractExpiryCanvas(data: d, config: config),
       awardNominee: (d) => AwardNomineeCanvas(data: d, config: config),
-      sparse: (d) => SocialPostCanvas(
-        data: CardData.socialPost(
-          content: d.headline,
-          metrics: d.subtext,
-          handle: d.microStat ?? 'N/A',
-        ) as SocialPost,
-        config: config,
-      ),
+      sparse: (d) {
+        if (config.template == CardTemplate.freeform) {
+          return FreeformCanvas(data: d, config: config);
+        }
+        return SocialPostCanvas(
+          data: CardData.socialPost(
+            content: d.headline,
+            metrics: d.subtext,
+            handle: d.microStat ?? 'N/A',
+          ) as SocialPost,
+          config: config,
+        );
+      },
     );
   }
 }

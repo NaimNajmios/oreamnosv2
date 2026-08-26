@@ -18,6 +18,8 @@ class CardConfigSnapshot {
     this.backgroundImage,
     required this.useAutoPalette,
     this.extractedPalette,
+    this.watermarkText,
+    this.showWatermark = false,
   });
 
   final CardData? cardData;
@@ -31,4 +33,6 @@ class CardConfigSnapshot {
   final File? backgroundImage;
   final bool useAutoPalette;
   final List<Color>? extractedPalette;
+  final String? watermarkText;
+  final bool showWatermark;
 }

@@ -9,11 +9,12 @@ import 'package:oreamnos/ui/core/utils/haptics.dart';
 import 'package:oreamnos/ui/core/widgets/app_chip.dart';
 import 'package:oreamnos/ui/core/widgets/app_switch.dart';
 import 'package:oreamnos/ui/features/card_generator/view_models/card_generator_view_model.dart';
+import 'package:oreamnos/ui/features/card_generator/view_models/card_generator_state.dart';
 
 import 'background_picker.dart';
 import 'ratio_selector.dart';
 
-enum PicsartPanel { templates, ratio, background, typography, text }
+enum PicsartPanel { templates, ratio, background, typography, text, branding }
 
 class PicsartToolDock extends ConsumerStatefulWidget {
   const PicsartToolDock({super.key});
@@ -23,12 +24,12 @@ class PicsartToolDock extends ConsumerStatefulWidget {
 }
 
 class _PicsartToolDockState extends ConsumerState<PicsartToolDock> {
-  PicsartPanel? _activePanel;
-
-  // Text controllers for the text panel
   late TextEditingController _headlineCtrl;
   late TextEditingController _subtextCtrl;
   late TextEditingController _badgeCtrl;
+  late FocusNode _headlineFocus;
+  late FocusNode _subtextFocus;
+  late FocusNode _badgeFocus;
 
   @override
   void initState() {
@@ -36,10 +37,13 @@ class _PicsartToolDockState extends ConsumerState<PicsartToolDock> {
     _headlineCtrl = TextEditingController();
     _subtextCtrl = TextEditingController();
     _badgeCtrl = TextEditingController();
+    _headlineFocus = FocusNode();
+    _subtextFocus = FocusNode();
+    _badgeFocus = FocusNode();
   }
 
-  void _syncText(CardGeneratorViewModel vm) {
-    final d = vm.cardData;
+  void _syncText(CardGeneratorState state) {
+    final d = state.cardData;
     if (d == null) return;
     final hasFocus =
         FocusManager.instance.primaryFocus?.context?.widget is EditableText;
@@ -48,6 +52,17 @@ class _PicsartToolDockState extends ConsumerState<PicsartToolDock> {
       if (_subtextCtrl.text != d.subtext) _subtextCtrl.text = d.subtext;
       if (_badgeCtrl.text != d.microStat) _badgeCtrl.text = d.microStat ?? '';
     }
+    
+    if (state.focusedField == 'headline') {
+      _headlineFocus.requestFocus();
+      ref.read(cardGeneratorViewModelProvider.notifier).setFocusedField(null);
+    } else if (state.focusedField == 'subtext') {
+      _subtextFocus.requestFocus();
+      ref.read(cardGeneratorViewModelProvider.notifier).setFocusedField(null);
+    } else if (state.focusedField == 'microStat') {
+      _badgeFocus.requestFocus();
+      ref.read(cardGeneratorViewModelProvider.notifier).setFocusedField(null);
+    }
   }
 
   @override
@@ -55,21 +70,22 @@ class _PicsartToolDockState extends ConsumerState<PicsartToolDock> {
     _headlineCtrl.dispose();
     _subtextCtrl.dispose();
     _badgeCtrl.dispose();
+    _headlineFocus.dispose();
+    _subtextFocus.dispose();
+    _badgeFocus.dispose();
     super.dispose();
   }
 
-  void _setPanel(PicsartPanel? panel) {
+  void _setPanel(String? panel) {
     Haptics.selectionClick();
-    setState(() {
-      _activePanel = panel;
-    });
+    ref.read(cardGeneratorViewModelProvider.notifier).setActivePanel(panel);
   }
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    ref.listen(cardGeneratorViewModelProvider, (_, _) {
-      _syncText(ref.read(cardGeneratorViewModelProvider.notifier));
+    ref.listen(cardGeneratorViewModelProvider, (_, next) {
+      _syncText(next);
     });
 
     return Container(
@@ -90,7 +106,7 @@ class _PicsartToolDockState extends ConsumerState<PicsartToolDock> {
             ).animate(animation),
             child: FadeTransition(opacity: animation, child: child),
           ),
-          child: _activePanel == null
+          child: ref.watch(cardGeneratorViewModelProvider).activePanel == null
               ? _buildMainToolbar(theme)
               : _buildActivePanel(theme),
         ),
@@ -108,27 +124,32 @@ class _PicsartToolDockState extends ConsumerState<PicsartToolDock> {
           _ToolItem(
             icon: Icons.view_carousel_outlined,
             label: 'Templates',
-            onTap: () => _setPanel(PicsartPanel.templates),
+            onTap: () => _setPanel('templates'),
           ),
           _ToolItem(
             icon: Icons.crop_outlined,
             label: 'Ratio',
-            onTap: () => _setPanel(PicsartPanel.ratio),
+            onTap: () => _setPanel('ratio'),
           ),
           _ToolItem(
             icon: Icons.image_outlined,
             label: 'Background',
-            onTap: () => _setPanel(PicsartPanel.background),
+            onTap: () => _setPanel('background'),
           ),
           _ToolItem(
             icon: Icons.text_format_outlined,
             label: 'Typography',
-            onTap: () => _setPanel(PicsartPanel.typography),
+            onTap: () => _setPanel('typography'),
           ),
           _ToolItem(
             icon: Icons.edit_note_outlined,
             label: 'Text',
-            onTap: () => _setPanel(PicsartPanel.text),
+            onTap: () => _setPanel('text'),
+          ),
+          _ToolItem(
+            icon: Icons.branding_watermark_outlined,
+            label: 'Branding',
+            onTap: () => _setPanel('branding'),
           ),
         ],
       ),
@@ -139,27 +160,33 @@ class _PicsartToolDockState extends ConsumerState<PicsartToolDock> {
     Widget content;
     String title = '';
 
-    switch (_activePanel!) {
-      case PicsartPanel.templates:
+    switch (ref.watch(cardGeneratorViewModelProvider).activePanel) {
+      case 'templates':
         title = 'Templates';
         content = _buildTemplatesPanel(theme);
         break;
-      case PicsartPanel.ratio:
+      case 'ratio':
         title = 'Ratio';
         content = _buildRatioPanel(theme);
         break;
-      case PicsartPanel.background:
+      case 'background':
         title = 'Background';
         content = _buildBackgroundPanel(theme);
         break;
-      case PicsartPanel.typography:
+      case 'typography':
         title = 'Typography';
         content = _buildTypographyPanel(theme);
         break;
-      case PicsartPanel.text:
+      case 'text':
         title = 'Edit Text';
         content = _buildTextPanel(theme);
         break;
+      case 'branding':
+        title = 'Branding & Watermark';
+        content = _buildBrandingPanel(theme);
+        break;
+      default:
+        content = const SizedBox();
     }
 
     return Column(
@@ -204,7 +231,8 @@ class _PicsartToolDockState extends ConsumerState<PicsartToolDock> {
   }
 
   Widget _buildTemplatesPanel(ThemeData theme) {
-    final vm = ref.watch(cardGeneratorViewModelProvider);
+    final state = ref.watch(cardGeneratorViewModelProvider);
+    final notifier = ref.read(cardGeneratorViewModelProvider.notifier);
     return SizedBox(
       height: 48,
       child: SingleChildScrollView(
@@ -217,10 +245,8 @@ class _PicsartToolDockState extends ConsumerState<PicsartToolDock> {
               _TemplateChip(
                 label: t.displayName,
                 icon: _iconFor(t),
-                selected: vm.selectedTemplate == t,
-                onTap: () => ref
-                    .read(cardGeneratorViewModelProvider.notifier)
-                    .setTemplate(t),
+                selected: state.selectedTemplate == t,
+                onTap: () => notifier.setTemplate(t),
               ),
               const SizedBox(width: AppSpacing.sm),
             ],
@@ -264,6 +290,8 @@ class _PicsartToolDockState extends ConsumerState<PicsartToolDock> {
         return Icons.description_rounded;
       case CardTemplate.awardNominee:
         return Icons.military_tech_rounded;
+      case CardTemplate.freeform:
+        return Icons.format_shapes_rounded;
     }
   }
 
@@ -272,25 +300,25 @@ class _PicsartToolDockState extends ConsumerState<PicsartToolDock> {
       alignment: Alignment.center,
       child: RatioSelector(
         selected: ref
-            .read(cardGeneratorViewModelProvider.notifier)
-            .selectedRatio,
+            .watch(cardGeneratorViewModelProvider).selectedRatio,
         onSelect: ref.read(cardGeneratorViewModelProvider.notifier).setRatio,
       ),
     );
   }
 
   Widget _buildBackgroundPanel(ThemeData theme) {
-    final vm = ref.read(cardGeneratorViewModelProvider.notifier);
+    final state = ref.watch(cardGeneratorViewModelProvider);
+    final notifier = ref.read(cardGeneratorViewModelProvider.notifier);
     return Column(
       children: [
         BackgroundPicker(
-          image: vm.backgroundImage,
-          scrim: vm.scrimOpacity,
-          onScrimChanged: vm.setScrim,
-          onPick: vm.pickImage,
-          onRemove: vm.removeImage,
+          image: state.backgroundImage,
+          scrim: state.scrimOpacity,
+          onScrimChanged: notifier.setScrim,
+          onPick: notifier.pickImage,
+          onRemove: notifier.removeImage,
         ),
-        if (vm.hasImage && vm.extractedPalette != null) ...[
+        if (state.hasImage && state.extractedPalette != null) ...[
           const SizedBox(height: AppSpacing.md),
           Row(
             mainAxisAlignment: MainAxisAlignment.center,
@@ -300,8 +328,8 @@ class _PicsartToolDockState extends ConsumerState<PicsartToolDock> {
               Text('Auto-Extract Palette', style: theme.textTheme.labelMedium),
               const SizedBox(width: 16),
               AppSwitch(
-                value: vm.useAutoPalette,
-                onChanged: (v) => vm.setAutoPalette(v),
+                value: state.useAutoPalette,
+                onChanged: (v) => notifier.setAutoPalette(v),
               ),
             ],
           ),
@@ -311,7 +339,8 @@ class _PicsartToolDockState extends ConsumerState<PicsartToolDock> {
   }
 
   Widget _buildTypographyPanel(ThemeData theme) {
-    final vm = ref.read(cardGeneratorViewModelProvider.notifier);
+    final state = ref.watch(cardGeneratorViewModelProvider);
+    final notifier = ref.read(cardGeneratorViewModelProvider.notifier);
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -321,18 +350,18 @@ class _PicsartToolDockState extends ConsumerState<PicsartToolDock> {
           children: [
             AppChip(
               label: 'Inter',
-              selected: vm.selectedFont == AppFont.defaultFont,
-              onTap: () => vm.setFont(AppFont.defaultFont),
+              selected: state.selectedFont == AppFont.defaultFont,
+              onTap: () => notifier.setFont(AppFont.defaultFont),
             ),
             AppChip(
               label: 'Lora Serif',
-              selected: vm.selectedFont == AppFont.classicSerif,
-              onTap: () => vm.setFont(AppFont.classicSerif),
+              selected: state.selectedFont == AppFont.classicSerif,
+              onTap: () => notifier.setFont(AppFont.classicSerif),
             ),
             AppChip(
               label: 'Space Mono',
-              selected: vm.selectedFont == AppFont.typewriter,
-              onTap: () => vm.setFont(AppFont.typewriter),
+              selected: state.selectedFont == AppFont.typewriter,
+              onTap: () => notifier.setFont(AppFont.typewriter),
             ),
           ],
         ),
@@ -342,16 +371,16 @@ class _PicsartToolDockState extends ConsumerState<PicsartToolDock> {
             Text('Size', style: theme.textTheme.labelMedium),
             Expanded(
               child: Slider(
-                value: vm.headlineScale,
+                value: state.headlineScale,
                 min: 0.85,
                 max: 1.15,
                 divisions: 6,
-                label: '${(vm.headlineScale * 100).round()}%',
-                onChanged: vm.setHeadlineScale,
+                label: '${(state.headlineScale * 100).round()}%',
+                onChanged: notifier.setHeadlineScale,
               ),
             ),
             Text(
-              '${(vm.headlineScale * 100).round()}%',
+              '${(state.headlineScale * 100).round()}%',
               style: theme.textTheme.labelMedium,
             ),
           ],
@@ -361,78 +390,117 @@ class _PicsartToolDockState extends ConsumerState<PicsartToolDock> {
   }
 
   Widget _buildTextPanel(ThemeData theme) {
-    final vm = ref.watch(cardGeneratorViewModelProvider);
+    final state = ref.watch(cardGeneratorViewModelProvider);
     final notifier = ref.read(cardGeneratorViewModelProvider.notifier);
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         _Field(
           controller: _headlineCtrl,
+          focusNode: _headlineFocus,
           label: 'Headline — max 60',
           maxLen: 60,
           maxLines: 2,
           onChanged: (v) => notifier.updateHeadline(v),
-          isRewriting: vm.isRewriting('headline'),
+          isRewriting: state.isRewriting('headline'),
           onRewrite: () => _handleRewrite('headline'),
         ),
         const SizedBox(height: AppSpacing.md),
         _Field(
           controller: _subtextCtrl,
+          focusNode: _subtextFocus,
           label: 'Hook — one sentence, max 90',
           maxLen: 90,
           maxLines: 2,
           onChanged: (v) => notifier.updateSubtext(v),
-          isRewriting: vm.isRewriting('subtext'),
+          isRewriting: state.isRewriting('subtext'),
           onRewrite: () => _handleRewrite('subtext'),
         ),
         const SizedBox(height: AppSpacing.md),
         _Field(
           controller: _badgeCtrl,
+          focusNode: _badgeFocus,
           label: 'Badge (Optional) — max 24',
           maxLen: 24,
           maxLines: 1,
           onChanged: (v) => notifier.updateMicroStat(v),
-          isRewriting: vm.isRewriting('microStat'),
+          isRewriting: state.isRewriting('microStat'),
           onRewrite: () => _handleRewrite('microStat'),
         ),
       ],
     );
   }
 
+  Widget _buildBrandingPanel(ThemeData theme) {
+    final state = ref.watch(cardGeneratorViewModelProvider);
+    final notifier = ref.read(cardGeneratorViewModelProvider.notifier);
+    
+    return Column(
+      children: [
+        Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            Text('Show Watermark', style: theme.textTheme.titleSmall),
+            AppSwitch(
+              value: state.showWatermark,
+              onChanged: notifier.setShowWatermark,
+            ),
+          ],
+        ),
+        if (state.showWatermark) ...[
+          const SizedBox(height: AppSpacing.md),
+          TextField(
+            controller: TextEditingController(text: state.watermarkText ?? '')..selection = TextSelection.collapsed(offset: (state.watermarkText ?? '').length),
+            decoration: InputDecoration(
+              labelText: 'Watermark Text',
+              hintText: '@oreamnos',
+              border: OutlineInputBorder(borderRadius: AppSpacing.borderRadiusSm),
+              isDense: true,
+            ),
+            onChanged: notifier.setWatermarkText,
+          ),
+        ],
+      ],
+    );
+  }
+
   Future<void> _handleRewrite(String field) async {
-    final vm = ref.read(cardGeneratorViewModelProvider.notifier);
-    final brief = vm.brief;
+    final notifier = ref.read(cardGeneratorViewModelProvider.notifier);
+    final state = ref.read(cardGeneratorViewModelProvider);
+    final brief = state.brief;
     if (brief == null) return;
     final prefs = getIt<PreferencesService>();
     final apiKey = await prefs.getApiKey(brief.provider);
     if (apiKey == null || apiKey.isEmpty) return;
     switch (field) {
       case 'headline':
-        await vm.rewriteHeadline(
+        await notifier.rewriteHeadline(
           provider: brief.provider,
           modelId: brief.modelId,
           apiKey: apiKey,
         );
         break;
       case 'subtext':
-        await vm.rewriteSubtext(
+        await notifier.rewriteSubtext(
           provider: brief.provider,
           modelId: brief.modelId,
           apiKey: apiKey,
         );
         break;
       case 'microStat':
-        await vm.rewriteMicroStat(
+        await notifier.rewriteMicroStat(
           provider: brief.provider,
           modelId: brief.modelId,
           apiKey: apiKey,
         );
         break;
     }
-    if (vm.rewriteError != null && mounted) {
+    
+    final updatedState = ref.read(cardGeneratorViewModelProvider);
+    if (updatedState.rewriteError != null && mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text(vm.rewriteError!),
+          content: Text(updatedState.rewriteError!),
           backgroundColor: Colors.red[700],
         ),
       );
@@ -550,6 +618,7 @@ class _TemplateChip extends StatelessWidget {
 
 class _Field extends StatelessWidget {
   final TextEditingController controller;
+  final FocusNode? focusNode;
   final String label;
   final int maxLen;
   final int maxLines;
@@ -559,6 +628,7 @@ class _Field extends StatelessWidget {
 
   const _Field({
     required this.controller,
+    this.focusNode,
     required this.label,
     required this.maxLen,
     required this.maxLines,
@@ -572,6 +642,7 @@ class _Field extends StatelessWidget {
     final theme = Theme.of(context);
     return TextField(
       controller: controller,
+      focusNode: focusNode,
       maxLength: maxLen,
       maxLines: maxLines,
       minLines: 1,

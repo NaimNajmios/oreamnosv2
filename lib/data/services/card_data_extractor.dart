@@ -508,6 +508,7 @@ class CardDataExtractor {
           interestLevel: _s(json, 'interestLevel'),
           suggestedTemplate: effective,
         );
+
       case CardTemplate.awardNominee:
         return CardData.awardNominee(
           awardName: _s(json, 'awardName', sparseHeadline),
@@ -532,6 +533,13 @@ class CardDataExtractor {
           totalNominees: _i(json, 'totalNominees'),
           venue: _s(json, 'venue'),
           host: _s(json, 'host'),
+          suggestedTemplate: effective,
+        );
+      case CardTemplate.freeform:
+        return CardData.sparse(
+          headline: _s(json, 'headline'),
+          subtext: _s(json, 'subtext'),
+          microStat: _s(json, 'microStat'),
           suggestedTemplate: effective,
         );
     }

@@ -4,6 +4,7 @@ import 'package:google_fonts/google_fonts.dart';
 import '../../../../../domain/models/card_config.dart';
 import '../../../../../domain/models/card_data.dart';
 import '../../../../../data/services/gradient_builder.dart';
+import '../editable_canvas_text.dart';
 
 class SocialPostCanvas extends StatelessWidget {
   const SocialPostCanvas({super.key, required this.data, required this.config});
@@ -16,7 +17,7 @@ class SocialPostCanvas extends StatelessWidget {
     final fontMultiplier = config.fontSizeMultiplier;
 
     return Container(
-      decoration: BoxDecoration(gradient: GradientBuilder.vertical(colors)),
+      decoration: BoxDecoration(gradient: config.backgroundImagePath != null ? null : GradientBuilder.vertical(colors)),
       child: Stack(
         children: [
           if (config.showScrim)
@@ -88,14 +89,15 @@ class SocialPostCanvas extends StatelessWidget {
                               ],
                             ],
                           ),
-                          Text(
+                          EditableCanvasText(
                             data.handle != 'N/A' ? data.handle : '@oreamnos',
+                            fieldKey: 'microStat',
+                            autoSize: false,
                             style: GoogleFonts.inter(
                               color: Colors.white70,
                               fontSize: 11,
                             ),
                             maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
                           ),
                         ],
                       ),
@@ -123,8 +125,10 @@ class SocialPostCanvas extends StatelessWidget {
                 ),
                 const Spacer(),
                 // Post Content
-                Text(
+                EditableCanvasText(
                   data.content,
+                  fieldKey: 'headline',
+                  autoSize: false,
                   style: GoogleFonts.inter(
                     color: Colors.white,
                     fontSize: 18 * fontMultiplier,
@@ -140,7 +144,6 @@ class SocialPostCanvas extends StatelessWidget {
                         : null,
                   ),
                   maxLines: 6,
-                  overflow: TextOverflow.ellipsis,
                 ),
                 const Spacer(),
                 // Metrics
@@ -154,8 +157,10 @@ class SocialPostCanvas extends StatelessWidget {
                       color: Colors.black.withValues(alpha: 0.3),
                       borderRadius: BorderRadius.circular(12),
                     ),
-                    child: Text(
+                    child: EditableCanvasText(
                       data.metrics,
+                      fieldKey: 'subtext',
+                      autoSize: false,
                       style: GoogleFonts.jetBrainsMono(
                         color: Colors.white70,
                         fontSize: 10,

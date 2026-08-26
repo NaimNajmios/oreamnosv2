@@ -282,6 +282,14 @@ CRITICAL RULE 4: ALWAYS include "template_intent" field with one of: player_spot
   "host": "N/A",
   "template_intent": "award_nominee"
 }''';
+      case CardTemplate.freeform:
+        return '''Extract freeform minimal. Return ONLY JSON:
+        {
+          "headline": "Tajuk/Kandungan padat",
+          "subtext": "Sarikata atau statistik ringkas",
+          "microStat": "Label kecil / handle",
+          "template_intent": "freeform"
+        }''';
     }
   }
 
