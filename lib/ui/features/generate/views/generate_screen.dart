@@ -1004,10 +1004,9 @@ class _GenerateScreenState extends ConsumerState<GenerateScreen> {
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          Icon(
-            Icons.auto_awesome_rounded,
-            size: 22,
-            color: theme.colorScheme.onSurface.withValues(alpha: 0.45),
+          SvgPicture.asset(
+            'assets/illustrations/empty_kickoff.svg',
+            height: 72,
           ),
           const SizedBox(height: AppSpacing.sm),
           Text(

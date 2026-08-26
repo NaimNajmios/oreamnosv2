@@ -15,6 +15,7 @@ class EmptyState extends StatelessWidget {
     this.onAction,
     this.iconColor,
     this.iconBackground,
+    this.illustration,
   });
 
   final IconData icon;
@@ -24,6 +25,7 @@ class EmptyState extends StatelessWidget {
   final VoidCallback? onAction;
   final Color? iconColor;
   final Color? iconBackground;
+  final Widget? illustration;
 
   @override
   Widget build(BuildContext context) {
@@ -39,17 +41,20 @@ class EmptyState extends StatelessWidget {
           mainAxisAlignment: MainAxisAlignment.center,
           mainAxisSize: MainAxisSize.min,
           children: [
-            // Soft rounded container for icon
-            Container(
-              padding: const EdgeInsets.all(24),
-              decoration: BoxDecoration(
-                color:
-                    iconBackground ??
-                    colorScheme.primaryContainer.withValues(alpha: 0.5),
-                shape: BoxShape.circle,
+            // Illustration or icon
+            if (illustration != null)
+              SizedBox(width: 120, height: 120, child: illustration!)
+            else
+              Container(
+                padding: const EdgeInsets.all(24),
+                decoration: BoxDecoration(
+                  color:
+                      iconBackground ??
+                      colorScheme.primaryContainer.withValues(alpha: 0.5),
+                  shape: BoxShape.circle,
+                ),
+                child: Icon(icon, size: 48, color: primaryIconColor),
               ),
-              child: Icon(icon, size: 48, color: primaryIconColor),
-            ),
             const SizedBox(height: 32),
             Text(
               title,

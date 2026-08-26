@@ -1,3 +1,5 @@
+import 'package:oreamnos/core/repositories/content_repository.dart';
+import 'package:oreamnos/core/error/failures.dart';
 import 'dart:async';
 import 'dart:convert';
 
@@ -390,26 +392,16 @@ class GenerateViewModel extends ChangeNotifier with WidgetsBindingObserver {
 
       getIt<LogService>().error('Failed to generate post', e, st);
 
-      final errStr = e.toString().toLowerCase();
-      if (errStr.contains('429') ||
-          errStr.contains('rate limit') ||
-          errStr.contains('quota') ||
-          errStr.contains('resource_exhausted')) {
+      if (e is RateLimitFailure) {
         _errorMessage =
             'Rate limit exceeded for ${provider.displayName}. Try another provider.';
         _suggestedFallbackProvider = _getNextProvider(provider);
         _state = GenerateState.rateLimited;
-      } else if (errStr.contains('401') ||
-          errStr.contains('403') ||
-          errStr.contains('unauthorized') ||
-          errStr.contains('invalid api key') ||
-          errStr.contains('permission')) {
+      } else if (e is AuthFailure) {
         _errorMessage =
             'Authentication failed for ${provider.displayName}. Check your API key in Settings.';
         _state = GenerateState.error;
-      } else if (errStr.contains('timeout') ||
-          errStr.contains('socketexception') ||
-          errStr.contains('failed host lookup')) {
+      } else if (e is NetworkFailure) {
         _errorMessage =
             'Network error. Please check your connection and try again.';
         _state = GenerateState.error;
@@ -419,7 +411,7 @@ class GenerateViewModel extends ChangeNotifier with WidgetsBindingObserver {
             ? raw.substring(10).trim()
             : raw;
         _errorMessage = clean.length > 220
-            ? '${clean.substring(0, 220)}…'
+            ? '${clean.substring(0, 220)}...'
             : clean;
         _state = GenerateState.error;
       }

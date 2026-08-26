@@ -1,3 +1,4 @@
+import 'package:oreamnos/core/repositories/card_repository.dart';
 import 'dart:io';
 
 import 'package:flutter/material.dart';
@@ -179,13 +180,19 @@ class CardGeneratorViewModel extends ChangeNotifier {
     notifyListeners();
 
     try {
-      final polished = await extractor.extractCardData(
+      final repo = ref.read(cardRepositoryProvider);
+      final repoResult = await repo.extractCardData(
         brief: b,
         provider: b.provider,
         modelId: b.modelId,
         apiKey: apiKey,
         template: selectedTemplate,
       );
+      final polished = repoResult.fold(
+        (data) => data,
+        (failure) => throw failure,
+      );
+
       // Retain full rich CardData (16 variants) — dispatcher handles rendering.
       // Fallback to brief only if polished is effectively empty (sparse with defaults).
       if (polished.headline == 'N/A' && b.headline.isNotEmpty) {

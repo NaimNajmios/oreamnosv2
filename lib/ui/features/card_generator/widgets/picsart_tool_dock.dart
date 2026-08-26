@@ -7,6 +7,7 @@ import 'package:oreamnos/data/services/preferences_service.dart';
 import 'package:oreamnos/domain/models/card_template.dart';
 import 'package:oreamnos/ui/core/utils/haptics.dart';
 import 'package:oreamnos/ui/core/widgets/app_chip.dart';
+import 'package:oreamnos/ui/core/widgets/app_switch.dart';
 import 'package:oreamnos/ui/features/card_generator/view_models/card_generator_view_model.dart';
 
 import 'background_picker.dart';
@@ -298,12 +299,9 @@ class _PicsartToolDockState extends ConsumerState<PicsartToolDock> {
               const SizedBox(width: 6),
               Text('Auto-Extract Palette', style: theme.textTheme.labelMedium),
               const SizedBox(width: 16),
-              Switch.adaptive(
+              AppSwitch(
                 value: vm.useAutoPalette,
-                onChanged: (v) {
-                  Haptics.selectionClick();
-                  vm.setAutoPalette(v);
-                },
+                onChanged: (v) => vm.setAutoPalette(v),
               ),
             ],
           ),
