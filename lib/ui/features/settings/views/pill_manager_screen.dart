@@ -1,21 +1,22 @@
 import 'package:flutter/material.dart';
-import 'package:provider/provider.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import 'package:oreamnos/config/theme/app_colors.dart';
 import 'package:oreamnos/config/theme/app_spacing.dart';
 import 'package:oreamnos/ui/core/utils/haptics.dart';
 import 'package:oreamnos/ui/core/widgets/app_card.dart';
 import 'package:oreamnos/ui/core/widgets/empty_state.dart';
+
 import '../view_models/settings_view_model.dart';
 import 'widgets/add_pill_dialog.dart';
 
 /// Custom refinement pills manager screen with serene cards.
-class PillManagerScreen extends StatelessWidget {
+class PillManagerScreen extends ConsumerWidget {
   const PillManagerScreen({super.key});
 
   @override
-  Widget build(BuildContext context) {
-    final viewModel = context.watch<SettingsViewModel>();
+  Widget build(BuildContext context, WidgetRef ref) {
+    final viewModel = ref.watch(settingsViewModelProvider);
     final pills = viewModel.customPills;
     final theme = Theme.of(context);
 
@@ -39,19 +40,23 @@ class PillManagerScreen extends StatelessWidget {
             )
           : Center(
               child: ConstrainedBox(
-                constraints: const BoxConstraints(maxWidth: AppSpacing.maxContentWidth),
+                constraints: const BoxConstraints(
+                  maxWidth: AppSpacing.maxContentWidth,
+                ),
                 child: ListView.separated(
                   padding: const EdgeInsets.symmetric(
                     horizontal: AppSpacing.screenHorizontal,
                     vertical: AppSpacing.base,
                   ),
                   itemCount: pills.length,
-                  separatorBuilder: (context, index) => const SizedBox(height: AppSpacing.md),
+                  separatorBuilder: (context, index) =>
+                      const SizedBox(height: AppSpacing.md),
                   itemBuilder: (context, index) {
                     final pill = pills[index];
 
                     return AppCard(
-                      onTap: () => AddPillDialog.show(context, existingPill: pill),
+                      onTap: () =>
+                          AddPillDialog.show(context, existingPill: pill),
                       child: Row(
                         children: [
                           Container(
@@ -84,7 +89,8 @@ class PillManagerScreen extends StatelessWidget {
                                   maxLines: 2,
                                   overflow: TextOverflow.ellipsis,
                                   style: theme.textTheme.bodySmall?.copyWith(
-                                    color: theme.colorScheme.onSurface.withValues(alpha: 0.6),
+                                    color: theme.colorScheme.onSurface
+                                        .withValues(alpha: 0.6),
                                   ),
                                 ),
                               ],

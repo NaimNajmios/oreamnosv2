@@ -14,7 +14,9 @@ class LoggingInterceptor extends Interceptor {
   @override
   void onResponse(Response response, ResponseInterceptorHandler handler) {
     if (kDebugMode) {
-      debugPrint('[DIO] ← ${response.statusCode} ${response.requestOptions.uri}');
+      debugPrint(
+        '[DIO] ← ${response.statusCode} ${response.requestOptions.uri}',
+      );
     }
     handler.next(response);
   }
@@ -22,7 +24,9 @@ class LoggingInterceptor extends Interceptor {
   @override
   void onError(DioException err, ErrorInterceptorHandler handler) {
     if (kDebugMode) {
-      debugPrint('[DIO] ✗ ${err.response?.statusCode} ${err.requestOptions.uri} ${err.message}');
+      debugPrint(
+        '[DIO] ✗ ${err.response?.statusCode} ${err.requestOptions.uri} ${err.message}',
+      );
     }
     handler.next(err);
   }

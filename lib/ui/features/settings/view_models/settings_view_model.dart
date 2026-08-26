@@ -1,16 +1,25 @@
 import 'package:flutter/foundation.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:oreamnos/core/di/injection.dart';
+
 import '../../../../data/models/ai_provider.dart';
 import '../../../../data/services/preferences_service.dart';
 import '../../../../domain/models/app_theme_mode.dart';
 import '../../../../domain/models/custom_pill.dart';
 import '../../../../domain/models/hashtag_group.dart';
 
+final settingsViewModelProvider = ChangeNotifierProvider<SettingsViewModel>(
+  (ref) => SettingsViewModel(ref),
+);
+
 class SettingsViewModel extends ChangeNotifier {
-  SettingsViewModel(this._preferencesService) {
+  late final PreferencesService _preferencesService;
+
+  final Ref ref;
+  SettingsViewModel(this.ref) {
+    _preferencesService = getIt<PreferencesService>();
     _loadState();
   }
-
-  final PreferencesService _preferencesService;
 
   bool _isInitialized = false;
   bool get isInitialized => _isInitialized;
@@ -55,7 +64,7 @@ class SettingsViewModel extends ChangeNotifier {
     _autoAppendHashtags = _preferencesService.autoAppendHashtags;
     _customPills = _preferencesService.customPills;
     _readingTextSize = _preferencesService.readingTextSize;
-    
+
     await _loadApiKey(_selectedProvider);
 
     _isInitialized = true;
@@ -96,9 +105,9 @@ class SettingsViewModel extends ChangeNotifier {
       notifyListeners();
     }
   }
-  
+
   Future<String?> getApiKeyForProvider(AiProvider provider) async {
-      return await _preferencesService.getApiKey(provider);
+    return await _preferencesService.getApiKey(provider);
   }
 
   Future<void> setToneMode(String tone) async {
@@ -129,16 +138,18 @@ class SettingsViewModel extends ChangeNotifier {
   }
 
   Future<void> removeCustomPill(CustomPill pill) async {
-    _customPills = List.of(_customPills)..removeWhere((p) => p.label == pill.label && p.instruction == pill.instruction);
+    _customPills = List.of(_customPills)
+      ..removeWhere(
+        (p) => p.label == pill.label && p.instruction == pill.instruction,
+      );
     await _preferencesService.setCustomPills(_customPills);
     notifyListeners();
   }
 
   Future<void> addHashtagGroup(HashtagGroup group) async {
-    // If it's the first group, make it default
     final isFirst = _hashtagGroups.isEmpty;
     final newGroup = isFirst ? group.copyWith(isDefault: true) : group;
-    
+
     _hashtagGroups = List.of(_hashtagGroups)..add(newGroup);
     await _preferencesService.setHashtagGroups(_hashtagGroups);
     if (newGroup.isDefault) {
@@ -148,9 +159,9 @@ class SettingsViewModel extends ChangeNotifier {
   }
 
   Future<void> removeHashtagGroup(HashtagGroup group) async {
-    _hashtagGroups = List.of(_hashtagGroups)..removeWhere((g) => g.id == group.id);
-    
-    // If we removed the default, assign a new default if possible
+    _hashtagGroups = List.of(_hashtagGroups)
+      ..removeWhere((g) => g.id == group.id);
+
     if (group.isDefault && _hashtagGroups.isNotEmpty) {
       final newDefault = _hashtagGroups.first.copyWith(isDefault: true);
       _hashtagGroups[0] = newDefault;
@@ -158,7 +169,7 @@ class SettingsViewModel extends ChangeNotifier {
     } else if (group.isDefault) {
       _defaultHashtags = '';
     }
-    
+
     await _preferencesService.setHashtagGroups(_hashtagGroups);
     notifyListeners();
   }
@@ -183,4 +194,3 @@ class SettingsViewModel extends ChangeNotifier {
     notifyListeners();
   }
 }
-

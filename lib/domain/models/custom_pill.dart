@@ -2,15 +2,9 @@ class CustomPill {
   final String label;
   final String instruction;
 
-  const CustomPill({
-    required this.label,
-    required this.instruction,
-  });
+  const CustomPill({required this.label, required this.instruction});
 
-  Map<String, dynamic> toJson() => {
-        'label': label,
-        'instruction': instruction,
-      };
+  Map<String, dynamic> toJson() => {'label': label, 'instruction': instruction};
 
   @override
   bool operator ==(Object other) =>
@@ -30,4 +24,3 @@ class CustomPill {
     );
   }
 }
-

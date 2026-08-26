@@ -15,7 +15,11 @@ class SkeletonLoader extends StatefulWidget {
   final double height;
   final BorderRadius? borderRadius;
 
-  static Widget textLine(BuildContext context, {double width = double.infinity, double height = 14}) {
+  static Widget textLine(
+    BuildContext context, {
+    double width = double.infinity,
+    double height = 14,
+  }) {
     return SkeletonLoader(
       width: width,
       height: height,
@@ -30,18 +34,38 @@ class SkeletonLoader extends StatefulWidget {
         Row(
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
-            SkeletonLoader(width: 120, height: 18, borderRadius: AppSpacing.borderRadiusXs),
-            SkeletonLoader(width: 32, height: 32, borderRadius: AppSpacing.borderRadiusSm),
+            SkeletonLoader(
+              width: 120,
+              height: 18,
+              borderRadius: AppSpacing.borderRadiusXs,
+            ),
+            SkeletonLoader(
+              width: 32,
+              height: 32,
+              borderRadius: AppSpacing.borderRadiusSm,
+            ),
           ],
         ),
         const SizedBox(height: AppSpacing.base),
         Row(
           children: [
-            SkeletonLoader(width: 60, height: 28, borderRadius: AppSpacing.borderRadiusPill),
+            SkeletonLoader(
+              width: 60,
+              height: 28,
+              borderRadius: AppSpacing.borderRadiusPill,
+            ),
             const SizedBox(width: AppSpacing.sm),
-            SkeletonLoader(width: 80, height: 28, borderRadius: AppSpacing.borderRadiusPill),
+            SkeletonLoader(
+              width: 80,
+              height: 28,
+              borderRadius: AppSpacing.borderRadiusPill,
+            ),
             const SizedBox(width: AppSpacing.sm),
-            SkeletonLoader(width: 65, height: 28, borderRadius: AppSpacing.borderRadiusPill),
+            SkeletonLoader(
+              width: 65,
+              height: 28,
+              borderRadius: AppSpacing.borderRadiusPill,
+            ),
           ],
         ),
         const SizedBox(height: AppSpacing.lg),
@@ -58,7 +82,8 @@ class SkeletonLoader extends StatefulWidget {
   State<SkeletonLoader> createState() => _SkeletonLoaderState();
 }
 
-class _SkeletonLoaderState extends State<SkeletonLoader> with SingleTickerProviderStateMixin {
+class _SkeletonLoaderState extends State<SkeletonLoader>
+    with SingleTickerProviderStateMixin {
   late final AnimationController _controller;
   late final Animation<double> _animation;
 
@@ -70,9 +95,10 @@ class _SkeletonLoaderState extends State<SkeletonLoader> with SingleTickerProvid
       duration: const Duration(milliseconds: 1200),
     )..repeat(reverse: true);
 
-    _animation = Tween<double>(begin: 0.3, end: 0.7).animate(
-      CurvedAnimation(parent: _controller, curve: Curves.easeInOut),
-    );
+    _animation = Tween<double>(
+      begin: 0.3,
+      end: 0.7,
+    ).animate(CurvedAnimation(parent: _controller, curve: Curves.easeInOut));
   }
 
   @override
@@ -88,13 +114,17 @@ class _SkeletonLoaderState extends State<SkeletonLoader> with SingleTickerProvid
     return AnimatedBuilder(
       animation: _animation,
       builder: (context, child) {
-        final opacity = AppMotion.shouldReduceMotion(context) ? 0.5 : _animation.value;
+        final opacity = AppMotion.shouldReduceMotion(context)
+            ? 0.5
+            : _animation.value;
 
         return Container(
           width: widget.width,
           height: widget.height,
           decoration: BoxDecoration(
-            color: theme.colorScheme.surfaceContainerHighest.withValues(alpha: opacity),
+            color: theme.colorScheme.surfaceContainerHighest.withValues(
+              alpha: opacity,
+            ),
             borderRadius: widget.borderRadius ?? AppSpacing.borderRadiusSm,
           ),
         );

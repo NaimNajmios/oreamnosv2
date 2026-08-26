@@ -1,5 +1,11 @@
 import 'dart:async';
 import 'dart:convert';
+
+import 'package:flutter/widgets.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+
+import 'package:oreamnos/core/di/injection.dart';
+
 import 'package:uuid/uuid.dart';
 import 'package:oreamnos/data/services/curator_factory.dart';
 import 'package:oreamnos/ui/features/settings/view_models/settings_view_model.dart';
@@ -10,10 +16,9 @@ import 'package:oreamnos/domain/models/curated_post.dart';
 import 'package:oreamnos/data/models/ai_provider.dart';
 
 import 'package:image_picker/image_picker.dart';
-import 'package:oreamnos/domain/services/vision_extractor.dart';
-import 'package:oreamnos/data/services/notification_service.dart';
 import 'package:oreamnos/data/services/log_service.dart';
-import 'package:flutter/widgets.dart'; // for AppLifecycleState
+import 'package:oreamnos/data/services/notification_service.dart';
+import 'package:oreamnos/domain/services/vision_extractor.dart';
 
 enum GenerateState { idle, generating, success, error, rateLimited }
 
@@ -26,13 +31,49 @@ class ValidationResult {
   const ValidationResult.invalid(this.message) : isValid = false;
 }
 
+final generateViewModelProvider = ChangeNotifierProvider<GenerateViewModel>(
+  (ref) => GenerateViewModel(ref),
+);
+
+enum PromptLength { short, medium, long }
+
 class GenerateViewModel extends ChangeNotifier with WidgetsBindingObserver {
-  GenerateViewModel(
-    this._settingsViewModel, 
-    this._usageService,
-    [this._visionExtractor]
-  ) {
+  PromptLength _promptLength = PromptLength.medium;
+  PromptLength get promptLength => _promptLength;
+
+  void setPromptLength(PromptLength length) {
+    _promptLength = length;
+    notifyListeners();
+  }
+
+  String get _lengthInstruction {
+    switch (_promptLength) {
+      case PromptLength.short:
+        return "Keep the generated body text very concise and punchy (1-2 short sentences max).";
+      case PromptLength.medium:
+        return "Provide a standard length post (2-3 sentences).";
+      case PromptLength.long:
+        return "Write a detailed and comprehensive post with more context and information (3-5 sentences).";
+    }
+  }
+
+  final Ref ref;
+  GenerateViewModel(this.ref) {
     WidgetsBinding.instance.addObserver(this);
+
+    // We get dependencies from GetIt because we are using injectable for services,
+    // and riverpod for UI state
+    _settingsViewModel = ref.read(settingsViewModelProvider);
+    _usageService = getIt<UsageService>();
+    try {
+      _visionExtractor = getIt<IVisionExtractor>();
+    } catch (_) {
+      _visionExtractor = null;
+    }
+
+    ref.onDispose(() {
+      WidgetsBinding.instance.removeObserver(this);
+    });
   }
 
   @override
@@ -45,12 +86,14 @@ class GenerateViewModel extends ChangeNotifier with WidgetsBindingObserver {
 
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
-    _isBackgrounded = state == AppLifecycleState.paused || state == AppLifecycleState.inactive;
+    _isBackgrounded =
+        state == AppLifecycleState.paused ||
+        state == AppLifecycleState.inactive;
   }
 
-  final SettingsViewModel _settingsViewModel;
-  final UsageService _usageService;
-  final IVisionExtractor? _visionExtractor;
+  late final SettingsViewModel _settingsViewModel;
+  late final UsageService _usageService;
+  late final IVisionExtractor? _visionExtractor;
 
   GenerateState _state = GenerateState.idle;
   GenerateState get state => _state;
@@ -86,10 +129,14 @@ class GenerateViewModel extends ChangeNotifier with WidgetsBindingObserver {
 
   AiProvider _getNextProvider(AiProvider current) {
     switch (current) {
-      case AiProvider.gemini: return AiProvider.groq;
-      case AiProvider.groq: return AiProvider.openRouter;
-      case AiProvider.openRouter: return AiProvider.cerebras;
-      case AiProvider.cerebras: return AiProvider.gemini;
+      case AiProvider.gemini:
+        return AiProvider.groq;
+      case AiProvider.groq:
+        return AiProvider.openRouter;
+      case AiProvider.openRouter:
+        return AiProvider.cerebras;
+      case AiProvider.cerebras:
+        return AiProvider.gemini;
     }
   }
 
@@ -130,7 +177,11 @@ class GenerateViewModel extends ChangeNotifier with WidgetsBindingObserver {
 
   String? get formattedContent {
     if (_curatedPost == null) return null;
-    return _curatedPost!.toMarkdownFiltered(showTitle: _showTitle, showHashtags: _showHashtags, showSource: _showSource);
+    return _curatedPost!.toMarkdownFiltered(
+      showTitle: _showTitle,
+      showHashtags: _showHashtags,
+      showSource: _showSource,
+    );
   }
 
   // For reading mode / card generator that needs body only
@@ -143,22 +194,29 @@ class GenerateViewModel extends ChangeNotifier with WidgetsBindingObserver {
       return const ValidationResult.invalid('Please enter news text or a URL.');
     }
     if (trimmed.length > 8000) {
-      return const ValidationResult.invalid('Input too long (max 8000 characters). Please shorten or paste a URL.');
+      return const ValidationResult.invalid(
+        'Input too long (max 8000 characters). Please shorten or paste a URL.',
+      );
     }
     final modelId = _settingsViewModel.selectedModel;
     if (modelId == null || modelId.isEmpty) {
-      return ValidationResult.invalid('No model selected for $providerDisplayName. Go to Settings → Model.');
+      return ValidationResult.invalid(
+        'No model selected for $providerDisplayName. Go to Settings → Model.',
+      );
     }
     return const ValidationResult.valid();
   }
 
-  String get providerDisplayName => _settingsViewModel.selectedProvider.displayName;
+  String get providerDisplayName =>
+      _settingsViewModel.selectedProvider.displayName;
 
   Future<ValidationResult> validateApiKey() async {
     final provider = _settingsViewModel.selectedProvider;
     final apiKey = await _settingsViewModel.getApiKeyForProvider(provider);
     if (apiKey == null || apiKey.isEmpty) {
-      return ValidationResult.invalid('API key not configured for ${provider.displayName}. Go to Settings → API Key.');
+      return ValidationResult.invalid(
+        'API key not configured for ${provider.displayName}. Go to Settings → API Key.',
+      );
     }
     return const ValidationResult.valid();
   }
@@ -237,29 +295,37 @@ class GenerateViewModel extends ChangeNotifier with WidgetsBindingObserver {
     try {
       dynamic contentToCurate = _pendingInput!.trim();
       String? sourceUrl;
-      
+
       if (WebScraperService.isUrl(contentToCurate as String)) {
         _generatingStep = GeneratingStep.scraping;
         notifyListeners();
         try {
-          final article = await WebScraperService.extractArticleFromUrl(contentToCurate).timeout(const Duration(seconds: 10));
+          final article = await WebScraperService.extractArticleFromUrl(
+            contentToCurate,
+          ).timeout(const Duration(seconds: 10));
           contentToCurate = article;
           sourceUrl = article.url;
           if (article.text.trim().isEmpty) {
-            LogService().warning('Scrape returned empty, falling back to raw input');
+            getIt<LogService>().warning(
+              'Scrape returned empty, falling back to raw input',
+            );
             contentToCurate = _pendingInput!;
             sourceUrl = _pendingInput;
           }
         } on TimeoutException {
-          throw Exception('URL extraction timed out. Please paste the article text manually.');
+          throw Exception(
+            'URL extraction timed out. Please paste the article text manually.',
+          );
         }
         _generatingStep = GeneratingStep.prompting;
         notifyListeners();
       }
-      
+
       final modelId = _settingsViewModel.selectedModel;
       if (modelId == null || modelId.isEmpty) {
-        throw Exception('No model selected. Please go to Settings to select a model.');
+        throw Exception(
+          'No model selected. Please go to Settings to select a model.',
+        );
       }
 
       final apiKey = await _settingsViewModel.getApiKeyForProvider(provider);
@@ -267,14 +333,16 @@ class GenerateViewModel extends ChangeNotifier with WidgetsBindingObserver {
         throw Exception('API key not configured for ${provider.displayName}.');
       }
 
+      contentToCurate += '\n\nLENGTH REQUIREMENT: $_lengthInstruction';
       final curator = CuratorFactory.getCurator(provider);
 
-      _curatedPost = await curator.generateStructuredPost(
+      final result = await curator.generateStructuredPost(
         content: contentToCurate,
         modelId: modelId,
         apiKey: apiKey,
         sourceUrl: sourceUrl,
       );
+      _curatedPost = result;
 
       // Inject user configured hashtags
       if (_settingsViewModel.defaultHashtags.isNotEmpty) {
@@ -289,22 +357,28 @@ class GenerateViewModel extends ChangeNotifier with WidgetsBindingObserver {
       _legacyGeneratedContentForCompat = _curatedPost!.rawMarkdown;
 
       stopwatch.stop();
-      final estimatedTokens = ((input.length + (_curatedPost?.rawMarkdown.length ?? 0)) / 4).round();
-      _usageService.logUsage(UsageLog(
-        id: const Uuid().v4(),
-        timestamp: DateTime.now(),
-        providerId: provider.name,
-        modelName: modelId,
-        latencyMs: stopwatch.elapsedMilliseconds,
-        estimatedTokens: estimatedTokens,
-        isSuccess: true,
-      ));
-      
-      LogService().info('Generated post successfully in ${stopwatch.elapsedMilliseconds}ms');
+      final estimatedTokens =
+          ((input.length + (_curatedPost?.rawMarkdown.length ?? 0)) / 4)
+              .round();
+      _usageService.logUsage(
+        UsageLog(
+          id: const Uuid().v4(),
+          timestamp: DateTime.now(),
+          providerId: provider.name,
+          modelName: modelId,
+          latencyMs: stopwatch.elapsedMilliseconds,
+          estimatedTokens: estimatedTokens,
+          isSuccess: true,
+        ),
+      );
+
+      getIt<LogService>().info(
+        'Generated post successfully in ${stopwatch.elapsedMilliseconds}ms',
+      );
 
       _state = GenerateState.success;
       _generatingStep = GeneratingStep.idle;
-      
+
       if (_isBackgrounded) {
         NotificationService().showGenerationCompleteNotification(
           'Post Ready',
@@ -313,36 +387,54 @@ class GenerateViewModel extends ChangeNotifier with WidgetsBindingObserver {
       }
     } catch (e, st) {
       stopwatch.stop();
-      _usageService.logUsage(UsageLog(
-        id: const Uuid().v4(),
-        timestamp: DateTime.now(),
-        providerId: provider.name,
-        modelName: _settingsViewModel.selectedModel,
-        latencyMs: stopwatch.elapsedMilliseconds,
-        estimatedTokens: 0,
-        isSuccess: false,
-      ));
-      
-      LogService().error('Failed to generate post', e, st);
-      
+      _usageService.logUsage(
+        UsageLog(
+          id: const Uuid().v4(),
+          timestamp: DateTime.now(),
+          providerId: provider.name,
+          modelName: _settingsViewModel.selectedModel,
+          latencyMs: stopwatch.elapsedMilliseconds,
+          estimatedTokens: 0,
+          isSuccess: false,
+        ),
+      );
+
+      getIt<LogService>().error('Failed to generate post', e, st);
+
       final errStr = e.toString().toLowerCase();
-      if (errStr.contains('429') || errStr.contains('rate limit') || errStr.contains('quota') || errStr.contains('resource_exhausted')) {
-        _errorMessage = 'Rate limit exceeded for ${provider.displayName}. Try another provider.';
+      if (errStr.contains('429') ||
+          errStr.contains('rate limit') ||
+          errStr.contains('quota') ||
+          errStr.contains('resource_exhausted')) {
+        _errorMessage =
+            'Rate limit exceeded for ${provider.displayName}. Try another provider.';
         _suggestedFallbackProvider = _getNextProvider(provider);
         _state = GenerateState.rateLimited;
-      } else if (errStr.contains('401') || errStr.contains('403') || errStr.contains('unauthorized') || errStr.contains('invalid api key') || errStr.contains('permission')) {
-        _errorMessage = 'Authentication failed for ${provider.displayName}. Check your API key in Settings.';
+      } else if (errStr.contains('401') ||
+          errStr.contains('403') ||
+          errStr.contains('unauthorized') ||
+          errStr.contains('invalid api key') ||
+          errStr.contains('permission')) {
+        _errorMessage =
+            'Authentication failed for ${provider.displayName}. Check your API key in Settings.';
         _state = GenerateState.error;
-      } else if (errStr.contains('timeout') || errStr.contains('socketexception') || errStr.contains('failed host lookup')) {
-        _errorMessage = 'Network error. Please check your connection and try again.';
+      } else if (errStr.contains('timeout') ||
+          errStr.contains('socketexception') ||
+          errStr.contains('failed host lookup')) {
+        _errorMessage =
+            'Network error. Please check your connection and try again.';
         _state = GenerateState.error;
       } else {
         final raw = e.toString();
-        final clean = raw.startsWith('Exception:') ? raw.substring(10).trim() : raw;
-        _errorMessage = clean.length > 220 ? '${clean.substring(0, 220)}…' : clean;
+        final clean = raw.startsWith('Exception:')
+            ? raw.substring(10).trim()
+            : raw;
+        _errorMessage = clean.length > 220
+            ? '${clean.substring(0, 220)}…'
+            : clean;
         _state = GenerateState.error;
       }
-      
+
       if (_isBackgrounded) {
         NotificationService().showGenerationCompleteNotification(
           'Generation Failed',
@@ -373,7 +465,9 @@ class GenerateViewModel extends ChangeNotifier with WidgetsBindingObserver {
     try {
       final modelId = _settingsViewModel.selectedModel;
       if (modelId == null || modelId.isEmpty) {
-        throw Exception('No model selected. Please go to Settings to select a model.');
+        throw Exception(
+          'No model selected. Please go to Settings to select a model.',
+        );
       }
 
       final apiKey = await _settingsViewModel.getApiKeyForProvider(provider);
@@ -382,26 +476,32 @@ class GenerateViewModel extends ChangeNotifier with WidgetsBindingObserver {
       }
 
       final curator = CuratorFactory.getCurator(provider);
-      
+
       // Structured refinement: keep source, refine title/body
       final currentJson = jsonEncode(_curatedPost!.toJson());
-      final refinementContent = 'Arahan penambahbaikan: "$instruction".\n'
+      final refinementContent =
+          'Arahan penambahbaikan: "$instruction".\n'
           'Kekalkan sumber yang sama (${_curatedPost!.source.url ?? _curatedPost!.source.label}).\n'
           'JSON semasa:\n$currentJson\n\n'
           'Kembalikan JSON dengan struktur yang sama (title, body, source) — perbaiki title/body mengikut arahan, jangan ubah source.url.';
 
-      final refined = await curator.generateStructuredPost(
+      final refinedRes = await curator.generateStructuredPost(
         content: refinementContent,
         modelId: modelId,
         apiKey: apiKey,
         sourceUrl: _curatedPost!.source.url,
       );
+      final refined = refinedRes;
 
       // Merge: if refined title empty, keep old
       _curatedPost = CuratedPost(
         title: refined.title.isEmpty ? _curatedPost!.title : refined.title,
-        bodyMarkdown: refined.bodyMarkdown.isEmpty ? _curatedPost!.bodyMarkdown : refined.bodyMarkdown,
-        hashtags: refined.hashtags.isEmpty ? _curatedPost!.hashtags : refined.hashtags,
+        bodyMarkdown: refined.bodyMarkdown.isEmpty
+            ? _curatedPost!.bodyMarkdown
+            : refined.bodyMarkdown,
+        hashtags: refined.hashtags.isEmpty
+            ? _curatedPost!.hashtags
+            : refined.hashtags,
         source: _curatedPost!.source, // never change source on refinement
         rawMarkdown: '', // will be rebuilt
       );
@@ -415,22 +515,30 @@ class GenerateViewModel extends ChangeNotifier with WidgetsBindingObserver {
       _legacyGeneratedContentForCompat = _curatedPost!.rawMarkdown;
 
       stopwatch.stop();
-      final estimatedTokens = ((refinementContent.length + (_curatedPost?.rawMarkdown.length ?? 0)) / 4).round();
-      _usageService.logUsage(UsageLog(
-        id: const Uuid().v4(),
-        timestamp: DateTime.now(),
-        providerId: provider.name,
-        modelName: modelId,
-        latencyMs: stopwatch.elapsedMilliseconds,
-        estimatedTokens: estimatedTokens,
-        isSuccess: true,
-      ));
+      final estimatedTokens =
+          ((refinementContent.length +
+                      (_curatedPost?.rawMarkdown.length ?? 0)) /
+                  4)
+              .round();
+      _usageService.logUsage(
+        UsageLog(
+          id: const Uuid().v4(),
+          timestamp: DateTime.now(),
+          providerId: provider.name,
+          modelName: modelId,
+          latencyMs: stopwatch.elapsedMilliseconds,
+          estimatedTokens: estimatedTokens,
+          isSuccess: true,
+        ),
+      );
 
-      LogService().info('Refined post successfully in ${stopwatch.elapsedMilliseconds}ms');
+      getIt<LogService>().info(
+        'Refined post successfully in ${stopwatch.elapsedMilliseconds}ms',
+      );
 
       _state = GenerateState.success;
       _generatingStep = GeneratingStep.idle;
-      
+
       if (_isBackgrounded) {
         NotificationService().showGenerationCompleteNotification(
           'Refinement Ready',
@@ -439,33 +547,46 @@ class GenerateViewModel extends ChangeNotifier with WidgetsBindingObserver {
       }
     } catch (e, st) {
       stopwatch.stop();
-      _usageService.logUsage(UsageLog(
-        id: const Uuid().v4(),
-        timestamp: DateTime.now(),
-        providerId: provider.name,
-        modelName: _settingsViewModel.selectedModel,
-        latencyMs: stopwatch.elapsedMilliseconds,
-        estimatedTokens: 0,
-        isSuccess: false,
-      ));
-      
-      LogService().error('Failed to refine post', e, st);
+      _usageService.logUsage(
+        UsageLog(
+          id: const Uuid().v4(),
+          timestamp: DateTime.now(),
+          providerId: provider.name,
+          modelName: _settingsViewModel.selectedModel,
+          latencyMs: stopwatch.elapsedMilliseconds,
+          estimatedTokens: 0,
+          isSuccess: false,
+        ),
+      );
+
+      getIt<LogService>().error('Failed to refine post', e, st);
 
       final errStr = e.toString().toLowerCase();
-      if (errStr.contains('429') || errStr.contains('rate limit') || errStr.contains('quota') || errStr.contains('resource_exhausted')) {
+      if (errStr.contains('429') ||
+          errStr.contains('rate limit') ||
+          errStr.contains('quota') ||
+          errStr.contains('resource_exhausted')) {
         _errorMessage = 'Rate limit exceeded for ${provider.displayName}.';
         _suggestedFallbackProvider = _getNextProvider(provider);
         _state = GenerateState.rateLimited;
-      } else if (errStr.contains('401') || errStr.contains('403') || errStr.contains('unauthorized') || errStr.contains('invalid api key')) {
-        _errorMessage = 'Authentication failed for ${provider.displayName}. Check your API key in Settings.';
+      } else if (errStr.contains('401') ||
+          errStr.contains('403') ||
+          errStr.contains('unauthorized') ||
+          errStr.contains('invalid api key')) {
+        _errorMessage =
+            'Authentication failed for ${provider.displayName}. Check your API key in Settings.';
         _state = GenerateState.error;
       } else {
         final raw = e.toString();
-        final clean = raw.startsWith('Exception:') ? raw.substring(10).trim() : raw;
-        _errorMessage = clean.length > 220 ? '${clean.substring(0, 220)}…' : clean;
+        final clean = raw.startsWith('Exception:')
+            ? raw.substring(10).trim()
+            : raw;
+        _errorMessage = clean.length > 220
+            ? '${clean.substring(0, 220)}…'
+            : clean;
         _state = GenerateState.error;
       }
-      
+
       if (_isBackgrounded) {
         NotificationService().showGenerationCompleteNotification(
           'Refinement Failed',
@@ -496,17 +617,17 @@ class GenerateViewModel extends ChangeNotifier with WidgetsBindingObserver {
 
   Future<void> extractTextFromImage(ImageSource source) async {
     if (_visionExtractor == null) return;
-    
+
     try {
       final ImagePicker picker = ImagePicker();
       final XFile? image = await picker.pickImage(source: source);
-      
+
       if (image != null) {
         _isExtractingImage = true;
         notifyListeners();
-        
+
         final extractedText = await _visionExtractor.extractText(image.path);
-        
+
         if (extractedText.isNotEmpty) {
           setPendingInput(extractedText);
         } else {

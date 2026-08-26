@@ -26,11 +26,11 @@ class HashtagGroup {
   }
 
   Map<String, dynamic> toJson() => {
-        'id': id,
-        'name': name,
-        'hashtags': hashtags,
-        'isDefault': isDefault,
-      };
+    'id': id,
+    'name': name,
+    'hashtags': hashtags,
+    'isDefault': isDefault,
+  };
 
   factory HashtagGroup.fromJson(Map<String, dynamic> json) {
     return HashtagGroup(
@@ -41,4 +41,3 @@ class HashtagGroup {
     );
   }
 }
-

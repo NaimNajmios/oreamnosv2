@@ -8,7 +8,8 @@ class AdaptiveDialog {
     required WidgetBuilder builder,
     bool isDismissible = true,
   }) {
-    final isDesktop = MediaQuery.of(context).size.width >= AppSpacing.maxContentWidth;
+    final isDesktop =
+        MediaQuery.of(context).size.width >= AppSpacing.maxContentWidth;
 
     if (isDesktop) {
       return showDialog<T>(

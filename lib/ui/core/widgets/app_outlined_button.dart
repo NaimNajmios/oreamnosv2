@@ -29,20 +29,19 @@ class AppOutlinedButton extends StatefulWidget {
   State<AppOutlinedButton> createState() => _AppOutlinedButtonState();
 }
 
-class _AppOutlinedButtonState extends State<AppOutlinedButton> with SingleTickerProviderStateMixin {
+class _AppOutlinedButtonState extends State<AppOutlinedButton>
+    with SingleTickerProviderStateMixin {
   late final AnimationController _controller;
   late final Animation<double> _scaleAnimation;
 
   @override
   void initState() {
     super.initState();
-    _controller = AnimationController(
-      vsync: this,
-      duration: AppMotion.fast,
-    );
-    _scaleAnimation = Tween<double>(begin: 1.0, end: 0.98).animate(
-      CurvedAnimation(parent: _controller, curve: AppMotion.curveFast),
-    );
+    _controller = AnimationController(vsync: this, duration: AppMotion.fast);
+    _scaleAnimation = Tween<double>(
+      begin: 1.0,
+      end: 0.98,
+    ).animate(CurvedAnimation(parent: _controller, curve: AppMotion.curveFast));
   }
 
   @override
@@ -76,10 +75,16 @@ class _AppOutlinedButtonState extends State<AppOutlinedButton> with SingleTicker
     final theme = Theme.of(context);
     final enabled = widget.onPressed != null && !widget.isLoading;
 
-    final outlineColor = widget.borderColor ??
-        (enabled ? theme.colorScheme.outline : theme.colorScheme.outline.withValues(alpha: 0.4));
-    final fgColor = widget.foregroundColor ??
-        (enabled ? theme.colorScheme.onSurface : theme.colorScheme.onSurface.withValues(alpha: 0.4));
+    final outlineColor =
+        widget.borderColor ??
+        (enabled
+            ? theme.colorScheme.outline
+            : theme.colorScheme.outline.withValues(alpha: 0.4));
+    final fgColor =
+        widget.foregroundColor ??
+        (enabled
+            ? theme.colorScheme.onSurface
+            : theme.colorScheme.onSurface.withValues(alpha: 0.4));
 
     return GestureDetector(
       onTapDown: _handleTapDown,
@@ -89,10 +94,12 @@ class _AppOutlinedButtonState extends State<AppOutlinedButton> with SingleTicker
       child: AnimatedBuilder(
         animation: _scaleAnimation,
         builder: (context, child) => Transform.scale(
-          scale: AppMotion.shouldReduceMotion(context) ? 1.0 : _scaleAnimation.value,
+          scale: AppMotion.shouldReduceMotion(context)
+              ? 1.0
+              : _scaleAnimation.value,
           child: child,
         ),
-          child: Container(
+        child: Container(
           height: widget.height,
           decoration: BoxDecoration(
             color: Colors.transparent,
@@ -105,9 +112,7 @@ class _AppOutlinedButtonState extends State<AppOutlinedButton> with SingleTicker
                 ? SizedBox(
                     width: 20,
                     height: 20,
-                    child: KickoffLoadingIndicator(
-                      size: 20,
-                    ),
+                    child: KickoffLoadingIndicator(size: 20),
                   )
                 : Row(
                     mainAxisSize: MainAxisSize.min,

@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:provider/provider.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import 'package:oreamnos/config/theme/app_spacing.dart';
 import 'package:oreamnos/domain/models/custom_pill.dart';
@@ -8,7 +8,7 @@ import 'package:oreamnos/ui/core/widgets/app_button.dart';
 import 'package:oreamnos/ui/core/widgets/app_input.dart';
 import 'package:oreamnos/ui/features/settings/view_models/settings_view_model.dart';
 
-class AddPillDialog extends StatefulWidget {
+class AddPillDialog extends ConsumerStatefulWidget {
   final CustomPill? existingPill;
 
   const AddPillDialog({super.key, this.existingPill});
@@ -21,10 +21,10 @@ class AddPillDialog extends StatefulWidget {
   }
 
   @override
-  State<AddPillDialog> createState() => _AddPillDialogState();
+  ConsumerState<AddPillDialog> createState() => _AddPillDialogState();
 }
 
-class _AddPillDialogState extends State<AddPillDialog> {
+class _AddPillDialogState extends ConsumerState<AddPillDialog> {
   final _labelController = TextEditingController();
   final _instructionController = TextEditingController();
 
@@ -50,13 +50,15 @@ class _AddPillDialogState extends State<AddPillDialog> {
 
     if (label.isEmpty || instruction.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Both label and instruction are required')),
+        const SnackBar(
+          content: Text('Both label and instruction are required'),
+        ),
       );
       return;
     }
 
     final pill = CustomPill(label: label, instruction: instruction);
-    final viewModel = context.read<SettingsViewModel>();
+    final viewModel = ref.read(settingsViewModelProvider.notifier);
 
     if (widget.existingPill != null) {
       viewModel.removeCustomPill(widget.existingPill!);

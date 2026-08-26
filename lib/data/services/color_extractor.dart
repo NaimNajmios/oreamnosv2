@@ -57,7 +57,9 @@ class ColorExtractor {
     }
   }
 
-  static Future<List<Color>?> _extractViaPaletteGenerator(String imagePath) async {
+  static Future<List<Color>?> _extractViaPaletteGenerator(
+    String imagePath,
+  ) async {
     try {
       final file = File(imagePath);
       if (!await file.exists()) return null;
@@ -70,9 +72,15 @@ class ColorExtractor {
       final darkVibrant = palette.darkVibrantColor?.color;
       final dominant = palette.dominantColor?.color;
       if (vibrant != null && darkVibrant != null) return [vibrant, darkVibrant];
-      if (vibrant != null && dominant != null && vibrant != dominant) return [vibrant, dominant];
-      if (vibrant != null) return [vibrant, vibrant.withValues(alpha: 0.7)];
-      if (darkVibrant != null) return [darkVibrant, darkVibrant.withValues(alpha: 0.7)];
+      if (vibrant != null && dominant != null && vibrant != dominant) {
+        return [vibrant, dominant];
+      }
+      if (vibrant != null) {
+        return [vibrant, vibrant.withValues(alpha: 0.7)];
+      }
+      if (darkVibrant != null) {
+        return [darkVibrant, darkVibrant.withValues(alpha: 0.7)];
+      }
       if (dominant != null) return [dominant, dominant.withValues(alpha: 0.7)];
       return null;
     } catch (_) {

@@ -45,10 +45,7 @@ class RefinementPill extends StatelessWidget {
           decoration: BoxDecoration(
             color: theme.colorScheme.surface,
             borderRadius: AppSpacing.borderRadiusPill,
-            border: Border.all(
-              color: theme.colorScheme.outline,
-              width: 1,
-            ),
+            border: Border.all(color: theme.colorScheme.outline, width: 1),
           ),
           child: Row(
             mainAxisSize: MainAxisSize.min,
@@ -57,9 +54,7 @@ class RefinementPill extends StatelessWidget {
                 SizedBox(
                   width: 12,
                   height: 12,
-                  child: KickoffLoadingIndicator(
-                    size: 12,
-                  ),
+                  child: KickoffLoadingIndicator(size: 12),
                 ),
                 const SizedBox(width: 6),
               ] else if (icon != null) ...[

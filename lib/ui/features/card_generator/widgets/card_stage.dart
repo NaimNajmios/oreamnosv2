@@ -22,15 +22,14 @@ class CardStage extends StatelessWidget {
           constraints: const BoxConstraints(maxWidth: 380),
           decoration: BoxDecoration(
             borderRadius: AppSpacing.borderRadiusMd,
-            boxShadow: AppSpacing.elevatedShadow(Theme.of(context).brightness == Brightness.dark),
+            boxShadow: AppSpacing.elevatedShadow(
+              Theme.of(context).brightness == Brightness.dark,
+            ),
           ),
           clipBehavior: Clip.antiAlias,
           child: AspectRatio(
             aspectRatio: aspectRatio,
-            child: RepaintBoundary(
-              key: boundaryKey,
-              child: child,
-            ),
+            child: RepaintBoundary(key: boundaryKey, child: child),
           ),
         ),
       ),

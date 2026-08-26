@@ -40,7 +40,9 @@ class AppCard extends StatelessWidget {
         border: borderColor != null
             ? Border.all(color: borderColor!, width: 1)
             : null,
-        boxShadow: boxShadow ?? AppSpacing.subtleShadow(theme.brightness == Brightness.dark),
+        boxShadow:
+            boxShadow ??
+            AppSpacing.subtleShadow(theme.brightness == Brightness.dark),
       ),
       child: ClipRRect(
         borderRadius: radius,
@@ -54,10 +56,7 @@ class AppCard extends StatelessWidget {
                 width: 4,
                 child: Container(color: accentColor),
               ),
-            Padding(
-              padding: padding,
-              child: child,
-            ),
+            Padding(padding: padding, child: child),
           ],
         ),
       ),

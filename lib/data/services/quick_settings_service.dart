@@ -3,9 +3,11 @@ import 'package:quick_settings/quick_settings.dart';
 
 import 'log_service.dart';
 
+import 'package:oreamnos/core/di/injection.dart';
+
 @pragma('vm:entry-point')
 Tile? quickSettingsOnTileClicked(Tile tile) {
-  LogService().info('Quick Settings tile clicked');
+  getIt<LogService>().info('Quick Settings tile clicked');
   return Tile(
     label: "Oreamnos",
     subtitle: "Paste to AI",
@@ -15,16 +17,13 @@ Tile? quickSettingsOnTileClicked(Tile tile) {
 
 @pragma('vm:entry-point')
 Tile? quickSettingsOnTileAdded(Tile tile) {
-  LogService().info('Quick Settings tile added');
-  return Tile(
-    label: "Paste to AI",
-    tileStatus: TileStatus.inactive,
-  );
+  getIt<LogService>().info('Quick Settings tile added');
+  return Tile(label: "Paste to AI", tileStatus: TileStatus.inactive);
 }
 
 @pragma('vm:entry-point')
 void quickSettingsOnTileRemoved() {
-  LogService().info('Quick Settings tile removed');
+  getIt<LogService>().info('Quick Settings tile removed');
 }
 
 @pragma('vm:entry-point')
@@ -38,15 +37,14 @@ class QuickSettingsService {
         onTileAdded: quickSettingsOnTileAdded,
         onTileRemoved: quickSettingsOnTileRemoved,
       );
-      
+
       // Update the tile UI
       await QuickSettings.addTileToQuickSettings(
         label: "Paste to AI",
         drawableName: "ic_launcher",
       );
-      
     } on PlatformException catch (e) {
-      LogService().error('Quick Settings not supported or error', e);
+      getIt<LogService>().error('Quick Settings not supported or error', e);
     }
   }
 }

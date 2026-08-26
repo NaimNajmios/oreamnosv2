@@ -42,9 +42,8 @@ GoRouter createAppRouter() {
         routes: [
           GoRoute(
             path: RoutePaths.generate,
-            pageBuilder: (context, state) => const NoTransitionPage(
-              child: GenerateScreen(),
-            ),
+            pageBuilder: (context, state) =>
+                const NoTransitionPage(child: GenerateScreen()),
           ),
           GoRoute(
             path: RoutePaths.cardGenerator,
@@ -69,7 +68,12 @@ GoRouter createAppRouter() {
                     final m = extra['modelId'] as String?;
                     final headline = legacyText.split('\n').first.trim();
                     final subtext = legacyText.trim().length > headline.length
-                        ? legacyText.substring(headline.length).trim().split('\n').first.trim()
+                        ? legacyText
+                              .substring(headline.length)
+                              .trim()
+                              .split('\n')
+                              .first
+                              .trim()
                         : '';
                     AiProvider provider = AiProvider.gemini;
                     if (p is AiProvider) provider = p;
@@ -83,11 +87,18 @@ GoRouter createAppRouter() {
                 }
               }
               // If we navigated to the tab without a brief, we show an empty state instead of an error state.
-              // So hasError is only true if they tried to pass an invalid extra that we couldn't parse, 
+              // So hasError is only true if they tried to pass an invalid extra that we couldn't parse,
               // but actually let's just default to empty brief if there is no extra.
               return NoTransitionPage(
                 child: CardGeneratorScreen(
-                  brief: brief ?? const CardBrief(headline: '', subtext: '', provider: AiProvider.gemini, modelId: ''),
+                  brief:
+                      brief ??
+                      const CardBrief(
+                        headline: '',
+                        subtext: '',
+                        provider: AiProvider.gemini,
+                        modelId: '',
+                      ),
                   hasError: hasError,
                 ),
               );
@@ -95,15 +106,13 @@ GoRouter createAppRouter() {
           ),
           GoRoute(
             path: RoutePaths.usage,
-            pageBuilder: (context, state) => const NoTransitionPage(
-              child: UsageScreen(),
-            ),
+            pageBuilder: (context, state) =>
+                const NoTransitionPage(child: UsageScreen()),
           ),
           GoRoute(
             path: RoutePaths.settings,
-            pageBuilder: (context, state) => const NoTransitionPage(
-              child: SettingsScreen(),
-            ),
+            pageBuilder: (context, state) =>
+                const NoTransitionPage(child: SettingsScreen()),
           ),
         ],
       ),
@@ -116,10 +125,20 @@ GoRouter createAppRouter() {
           }
           if (extra is Map<String, dynamic> && extra['curatedPost'] != null) {
             final cp = extra['curatedPost'];
-            if (cp is CuratedPost) return ReadingModeScreen(content: cp.rawMarkdown, curatedPost: cp);
+            if (cp is CuratedPost) {
+              return ReadingModeScreen(
+                content: cp.rawMarkdown,
+                curatedPost: cp,
+              );
+            }
           }
           // Fallback for CuratedPost directly
-          if (extra is CuratedPost) return ReadingModeScreen(content: extra.rawMarkdown, curatedPost: extra);
+          if (extra is CuratedPost) {
+            return ReadingModeScreen(
+              content: extra.rawMarkdown,
+              curatedPost: extra,
+            );
+          }
           final content = extra as String? ?? '';
           return ReadingModeScreen(content: content);
         },

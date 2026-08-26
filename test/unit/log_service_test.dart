@@ -8,9 +8,9 @@ void main() {
   group('LogService', () {
     late LogService logService;
 
-    setUp(() {
+    setUp(() async {
       SharedPreferences.setMockInitialValues({});
-      logService = LogService.test();
+      logService = LogService(await SharedPreferences.getInstance());
       logService.clear();
     });
 

@@ -1,4 +1,5 @@
 import 'dart:io';
+
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:oreamnos/config/theme/app_spacing.dart';
@@ -25,20 +26,38 @@ class BackgroundPicker extends StatelessWidget {
     showModalBottomSheet(
       context: context,
       shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(AppSpacing.radiusLg)),
+        borderRadius: BorderRadius.vertical(
+          top: Radius.circular(AppSpacing.radiusLg),
+        ),
       ),
       builder: (_) => SafeArea(
         child: Padding(
-          padding: const EdgeInsets.fromLTRB(AppSpacing.base, AppSpacing.md, AppSpacing.base, AppSpacing.xl),
+          padding: const EdgeInsets.fromLTRB(
+            AppSpacing.base,
+            AppSpacing.md,
+            AppSpacing.base,
+            AppSpacing.xl,
+          ),
           child: Column(
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
               Center(
-                child: Container(width: 36, height: 4, decoration: BoxDecoration(color: Theme.of(context).colorScheme.outlineVariant, borderRadius: AppSpacing.borderRadiusPill)),
+                child: Container(
+                  width: 36,
+                  height: 4,
+                  decoration: BoxDecoration(
+                    color: Theme.of(context).colorScheme.outlineVariant,
+                    borderRadius: AppSpacing.borderRadiusPill,
+                  ),
+                ),
               ),
               const SizedBox(height: AppSpacing.base),
-              Text('Choose image source', style: Theme.of(context).textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w700)),
+              Text(
+                'Choose image source',
+                style: Theme.of(context).textTheme.titleSmall
+                    ?.copyWith(fontWeight: FontWeight.w700),
+              ),
               const SizedBox(height: AppSpacing.base),
               ListTile(
                 leading: const Icon(Icons.photo_library_outlined),
@@ -95,7 +114,12 @@ class BackgroundPicker extends StatelessWidget {
           const SizedBox(height: AppSpacing.sm),
           Row(
             children: [
-              Text('Overlay', style: theme.textTheme.labelSmall?.copyWith(fontWeight: FontWeight.w600)),
+              Text(
+                'Overlay',
+                style: theme.textTheme.labelSmall?.copyWith(
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
               Expanded(
                 child: Slider(
                   value: scrim,
@@ -106,7 +130,12 @@ class BackgroundPicker extends StatelessWidget {
                   onChanged: onScrimChanged,
                 ),
               ),
-              Text('${(scrim * 100).round()}%', style: theme.textTheme.labelSmall?.copyWith(color: theme.colorScheme.onSurface.withValues(alpha: 0.6))),
+              Text(
+                '${(scrim * 100).round()}%',
+                style: theme.textTheme.labelSmall?.copyWith(
+                  color: theme.colorScheme.onSurface.withValues(alpha: 0.6),
+                ),
+              ),
             ],
           ),
         ],

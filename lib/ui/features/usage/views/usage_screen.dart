@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
-import 'package:provider/provider.dart';
 import 'package:intl/intl.dart';
 
 import '../../../../config/routes/app_router.dart';
@@ -19,23 +19,25 @@ import '../../../core/widgets/stat_card.dart';
 import 'widgets/usage_chart.dart';
 
 /// Serene Editorial Usage & Analytics screen — grouped, filtered, responsive.
-class UsageScreen extends StatefulWidget {
+class UsageScreen extends ConsumerStatefulWidget {
   const UsageScreen({super.key});
 
   @override
-  State<UsageScreen> createState() => _UsageScreenState();
+  ConsumerState<UsageScreen> createState() => _UsageScreenState();
 }
 
-class _UsageScreenState extends State<UsageScreen> {
+class _UsageScreenState extends ConsumerState<UsageScreen> {
   String _filter = 'all';
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final isDark = Theme.of(context).brightness == Brightness.dark;
-    final usageService = context.watch<UsageService>();
+    final usageService = ref.watch(usageServiceProvider);
     final logsAll = usageService.logs;
-    final logs = _filter == 'all' ? logsAll : logsAll.where((l) => l.providerId.toLowerCase() == _filter).toList();
+    final logs = _filter == 'all'
+        ? logsAll
+        : logsAll.where((l) => l.providerId.toLowerCase() == _filter).toList();
 
     int totalTokens = 0;
     int successCount = 0;
@@ -79,11 +81,17 @@ class _UsageScreenState extends State<UsageScreen> {
               title: 'No Usage Data Yet',
               description: 'Generated posts and API latency statistics will appear here.',
               iconColor: isDark ? AppColors.darkViolet : AppColors.lightViolet,
-              iconBackground: (isDark ? AppColors.darkVioletSoft : AppColors.lightVioletSoft).withValues(alpha: 0.35),
+              iconBackground:
+                  (isDark
+                          ? AppColors.darkVioletSoft
+                          : AppColors.lightVioletSoft)
+                      .withValues(alpha: 0.35),
             )
           : Center(
               child: ConstrainedBox(
-                constraints: const BoxConstraints(maxWidth: AppSpacing.maxContentWidth),
+                constraints: const BoxConstraints(
+                  maxWidth: AppSpacing.maxContentWidth,
+                ),
                 child: ListView(
                   padding: const EdgeInsets.symmetric(
                     horizontal: AppSpacing.screenHorizontal,
@@ -99,39 +107,75 @@ class _UsageScreenState extends State<UsageScreen> {
                           value: NumberFormat.compact().format(totalTokens),
                           subtitle: '$totalTokens est.',
                           icon: Icons.data_usage_rounded,
-                          iconColor: isDark ? AppColors.darkTeal : AppColors.lightTeal,
-                          iconBackground: (isDark ? AppColors.darkTealSoft : AppColors.lightTealSoft).withValues(alpha: 0.6),
-                          accentColor: isDark ? AppColors.darkTeal : AppColors.lightTeal,
+                          iconColor: isDark
+                              ? AppColors.darkTeal
+                              : AppColors.lightTeal,
+                          iconBackground:
+                              (isDark
+                                      ? AppColors.darkTealSoft
+                                      : AppColors.lightTealSoft)
+                                  .withValues(alpha: 0.6),
+                          accentColor: isDark
+                              ? AppColors.darkTeal
+                              : AppColors.lightTeal,
                         );
                         final successCard = StatCard(
                           title: 'Success',
                           value: '${successRate.toStringAsFixed(0)}%',
                           subtitle: '$successCount / ${logs.length}',
                           icon: Icons.check_circle_outline_rounded,
-                          valueColor: successRate >= 90 ? AppColors.success : theme.colorScheme.primary,
+                          valueColor: successRate >= 90
+                              ? AppColors.success
+                              : theme.colorScheme.primary,
                           iconColor: successRate >= 90
                               ? AppColors.success
-                              : (isDark ? AppColors.darkViolet : AppColors.lightViolet),
+                              : (isDark
+                                    ? AppColors.darkViolet
+                                    : AppColors.lightViolet),
                           iconBackground: successRate >= 90
                               ? AppColors.successSoft.withValues(alpha: 0.6)
-                              : (isDark ? AppColors.darkVioletSoft : AppColors.lightVioletSoft).withValues(alpha: 0.6),
-                          accentColor: successRate >= 90 ? AppColors.success : (isDark ? AppColors.darkViolet : AppColors.lightViolet),
+                              : (isDark
+                                        ? AppColors.darkVioletSoft
+                                        : AppColors.lightVioletSoft)
+                                    .withValues(alpha: 0.6),
+                          accentColor: successRate >= 90
+                              ? AppColors.success
+                              : (isDark
+                                    ? AppColors.darkViolet
+                                    : AppColors.lightViolet),
                         );
                         final latencyCard = StatCard(
                           title: 'Avg Latency',
                           value: '${avgLatency}ms',
                           subtitle: 'Per prompt',
                           icon: Icons.speed_rounded,
-                          iconColor: isDark ? AppColors.darkAmber : AppColors.lightAmber,
-                          iconBackground: (isDark ? AppColors.darkAmberSoft : AppColors.lightAmberSoft).withValues(alpha: 0.6),
-                          accentColor: isDark ? AppColors.darkAmber : AppColors.lightAmber,
+                          iconColor: isDark
+                              ? AppColors.darkAmber
+                              : AppColors.lightAmber,
+                          iconBackground:
+                              (isDark
+                                      ? AppColors.darkAmberSoft
+                                      : AppColors.lightAmberSoft)
+                                  .withValues(alpha: 0.6),
+                          accentColor: isDark
+                              ? AppColors.darkAmber
+                              : AppColors.lightAmber,
                         );
                         if (isNarrow) {
                           return Column(
                             children: [
-                              SizedBox(width: double.infinity, child: successCard),
+                              SizedBox(
+                                width: double.infinity,
+                                child: successCard,
+                              ),
                               const SizedBox(height: AppSpacing.sm),
-                              Row(children: [Expanded(child: tokensCard), const SizedBox(width: AppSpacing.sm), Expanded(child: latencyCard)]),
+                              Row(
+                                children: [
+                                  Expanded(child: tokensCard),
+                                  const SizedBox(width: AppSpacing.sm),
+                                  Expanded(child: latencyCard),
+                                ],
+                              ),
                             ],
                           );
                         }
@@ -160,21 +204,53 @@ class _UsageScreenState extends State<UsageScreen> {
                                 width: 28,
                                 height: 28,
                                 decoration: BoxDecoration(
-                                  color: (isDark ? AppColors.darkVioletSoft : AppColors.lightVioletSoft).withValues(alpha: 0.35),
+                                  color:
+                                      (isDark
+                                              ? AppColors.darkVioletSoft
+                                              : AppColors.lightVioletSoft)
+                                          .withValues(alpha: 0.35),
                                   borderRadius: AppSpacing.borderRadiusXs,
                                 ),
-                                child: Icon(Icons.show_chart_rounded, size: 14, color: isDark ? AppColors.darkViolet : AppColors.lightViolet),
+                                child: Icon(
+                                  Icons.show_chart_rounded,
+                                  size: 14,
+                                  color: isDark
+                                      ? AppColors.darkViolet
+                                      : AppColors.lightViolet,
+                                ),
                               ),
                               const SizedBox(width: AppSpacing.sm),
-                              Text('Token Usage History', style: theme.textTheme.labelSmall?.copyWith(letterSpacing: 0.8, fontWeight: FontWeight.w700, color: theme.colorScheme.onSurface.withValues(alpha: 0.6))),
+                              Text(
+                                'Token Usage History',
+                                style: theme.textTheme.labelSmall?.copyWith(
+                                  letterSpacing: 0.8,
+                                  fontWeight: FontWeight.w700,
+                                  color: theme.colorScheme.onSurface.withValues(
+                                    alpha: 0.6,
+                                  ),
+                                ),
+                              ),
                               const Spacer(),
                               // Legend
                               Wrap(
                                 spacing: 10,
                                 children: [
-                                  _LegendDot(color: isDark ? AppColors.darkTeal : AppColors.lightTeal, label: 'Tokens'),
-                                  _LegendDot(color: isDark ? AppColors.darkViolet : AppColors.lightViolet, label: 'Trend'),
-                                  _LegendDot(color: AppColors.error, label: 'Fail'),
+                                  _LegendDot(
+                                    color: isDark
+                                        ? AppColors.darkTeal
+                                        : AppColors.lightTeal,
+                                    label: 'Tokens',
+                                  ),
+                                  _LegendDot(
+                                    color: isDark
+                                        ? AppColors.darkViolet
+                                        : AppColors.lightViolet,
+                                    label: 'Trend',
+                                  ),
+                                  _LegendDot(
+                                    color: AppColors.error,
+                                    label: 'Fail',
+                                  ),
                                 ],
                               ),
                             ],
@@ -185,7 +261,13 @@ class _UsageScreenState extends State<UsageScreen> {
                       ),
                     ),
                     const SizedBox(height: AppSpacing.xxl),
-                    Divider(thickness: 1, height: 1, color: theme.colorScheme.outlineVariant.withValues(alpha: 0.55)),
+                    Divider(
+                      thickness: 1,
+                      height: 1,
+                      color: theme.colorScheme.outlineVariant.withValues(
+                        alpha: 0.55,
+                      ),
+                    ),
                     const SizedBox(height: AppSpacing.base),
 
                     // Recent Requests — filter + date-grouped compact
@@ -195,10 +277,21 @@ class _UsageScreenState extends State<UsageScreen> {
                         scrollDirection: Axis.horizontal,
                         child: Row(
                           children: [
-                            _FilterChip(label: 'All', selected: _filter == 'all', onTap: () => setState(() => _filter = 'all')),
+                            _FilterChip(
+                              label: 'All',
+                              selected: _filter == 'all',
+                              onTap: () => setState(() => _filter = 'all'),
+                            ),
                             const SizedBox(width: AppSpacing.sm),
-                            for (final p in ['gemini', 'groq', 'openrouter', 'cerebras'])
-                              if (logsAll.any((l) => l.providerId.toLowerCase() == p)) ...[
+                            for (final p in [
+                              'gemini',
+                              'groq',
+                              'openrouter',
+                              'cerebras',
+                            ])
+                              if (logsAll.any(
+                                (l) => l.providerId.toLowerCase() == p,
+                              )) ...[
                                 _FilterChip(
                                   label: p[0].toUpperCase() + p.substring(1),
                                   selected: _filter == p,
@@ -213,8 +306,17 @@ class _UsageScreenState extends State<UsageScreen> {
                     ],
                     if (logs.isEmpty && _filter != 'all')
                       Padding(
-                        padding: const EdgeInsets.symmetric(vertical: AppSpacing.lg),
-                        child: Text('No requests for this provider.', style: theme.textTheme.bodySmall?.copyWith(color: theme.colorScheme.onSurface.withValues(alpha: 0.5))),
+                        padding: const EdgeInsets.symmetric(
+                          vertical: AppSpacing.lg,
+                        ),
+                        child: Text(
+                          'No requests for this provider.',
+                          style: theme.textTheme.bodySmall?.copyWith(
+                            color: theme.colorScheme.onSurface.withValues(
+                              alpha: 0.5,
+                            ),
+                          ),
+                        ),
                       )
                     else
                       Builder(
@@ -225,9 +327,13 @@ class _UsageScreenState extends State<UsageScreen> {
                           for (final l in logs) {
                             final d = l.timestamp;
                             String key;
-                            if (d.year == now.year && d.month == now.month && d.day == now.day) {
+                            if (d.year == now.year &&
+                                d.month == now.month &&
+                                d.day == now.day) {
                               key = 'Today';
-                            } else if (d.year == now.year && d.month == now.month && d.day == now.day - 1) {
+                            } else if (d.year == now.year &&
+                                d.month == now.month &&
+                                d.day == now.day - 1) {
                               key = 'Yesterday';
                             } else {
                               key = DateFormat('MMM d, yyyy').format(d);
@@ -243,8 +349,20 @@ class _UsageScreenState extends State<UsageScreen> {
                             children: [
                               for (final dateKey in order) ...[
                                 Padding(
-                                  padding: const EdgeInsets.only(bottom: AppSpacing.xs, top: AppSpacing.sm),
-                                  child: Text(dateKey.toUpperCase(), style: theme.textTheme.labelSmall?.copyWith(letterSpacing: 0.6, color: theme.colorScheme.onSurface.withValues(alpha: 0.45), fontWeight: FontWeight.w700, fontSize: 10)),
+                                  padding: const EdgeInsets.only(
+                                    bottom: AppSpacing.xs,
+                                    top: AppSpacing.sm,
+                                  ),
+                                  child: Text(
+                                    dateKey.toUpperCase(),
+                                    style: theme.textTheme.labelSmall?.copyWith(
+                                      letterSpacing: 0.6,
+                                      color: theme.colorScheme.onSurface
+                                          .withValues(alpha: 0.45),
+                                      fontWeight: FontWeight.w700,
+                                      fontSize: 10,
+                                    ),
+                                  ),
                                 ),
                                 for (final log in grouped[dateKey]!) ...[
                                   _buildLogCard(context, log),
@@ -268,11 +386,17 @@ class _UsageScreenState extends State<UsageScreen> {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final timeStr = DateFormat('MMM d, HH:mm').format(log.timestamp);
     final providerTint = AppColors.tintForProvider(log.providerId, isDark);
-    final providerSoft = AppColors.softForProvider(log.providerId, isDark).withValues(alpha: 0.35);
+    final providerSoft = AppColors.softForProvider(
+      log.providerId,
+      isDark,
+    ).withValues(alpha: 0.35);
 
     return AppCard(
       accentColor: providerTint,
-      padding: const EdgeInsets.symmetric(horizontal: AppSpacing.base, vertical: 12),
+      padding: const EdgeInsets.symmetric(
+        horizontal: AppSpacing.base,
+        vertical: 12,
+      ),
       child: Row(
         children: [
           Container(
@@ -323,7 +447,6 @@ class _UsageScreenState extends State<UsageScreen> {
         ],
       ),
     );
-
   }
 
   Future<void> _confirmClear(BuildContext context, UsageService service) async {
@@ -389,43 +512,75 @@ class _UsageScreenState extends State<UsageScreen> {
   }
 }
 
-class _LegendDot extends StatelessWidget {
+class _LegendDot extends ConsumerWidget {
   const _LegendDot({required this.color, required this.label});
   final Color color;
   final String label;
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     final theme = Theme.of(context);
     return Row(
       mainAxisSize: MainAxisSize.min,
       children: [
-        Container(width: 8, height: 8, decoration: BoxDecoration(color: color, shape: BoxShape.circle)),
+        Container(
+          width: 8,
+          height: 8,
+          decoration: BoxDecoration(color: color, shape: BoxShape.circle),
+        ),
         const SizedBox(width: 4),
-        Text(label, style: theme.textTheme.labelSmall?.copyWith(fontSize: 10, color: theme.colorScheme.onSurface.withValues(alpha: 0.6), fontWeight: FontWeight.w600)),
+        Text(
+          label,
+          style: theme.textTheme.labelSmall?.copyWith(
+            fontSize: 10,
+            color: theme.colorScheme.onSurface.withValues(alpha: 0.6),
+            fontWeight: FontWeight.w600,
+          ),
+        ),
       ],
     );
   }
 }
 
-class _FilterChip extends StatelessWidget {
-  const _FilterChip({required this.label, required this.selected, required this.onTap});
+class _FilterChip extends ConsumerWidget {
+  const _FilterChip({
+    required this.label,
+    required this.selected,
+    required this.onTap,
+  });
   final String label;
   final bool selected;
   final VoidCallback onTap;
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     final theme = Theme.of(context);
     final isDark = Theme.of(context).brightness == Brightness.dark;
-    final bg = selected ? (isDark ? AppColors.darkVioletSoft : AppColors.lightVioletSoft).withValues(alpha: 0.45) : theme.colorScheme.surface;
-    final fg = selected ? (isDark ? AppColors.darkViolet : AppColors.lightViolet) : theme.colorScheme.onSurface.withValues(alpha: 0.7);
-    final border = selected ? (isDark ? AppColors.darkViolet : AppColors.lightViolet) : theme.colorScheme.outline;
+    final bg = selected
+        ? (isDark ? AppColors.darkVioletSoft : AppColors.lightVioletSoft)
+              .withValues(alpha: 0.45)
+        : theme.colorScheme.surface;
+    final fg = selected
+        ? (isDark ? AppColors.darkViolet : AppColors.lightViolet)
+        : theme.colorScheme.onSurface.withValues(alpha: 0.7);
+    final border = selected
+        ? (isDark ? AppColors.darkViolet : AppColors.lightViolet)
+        : theme.colorScheme.outline;
     return InkWell(
       onTap: onTap,
       borderRadius: AppSpacing.borderRadiusPill,
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-        decoration: BoxDecoration(color: bg, borderRadius: AppSpacing.borderRadiusPill, border: Border.all(color: border, width: selected ? 1.5 : 1)),
-        child: Text(label, style: theme.textTheme.labelSmall?.copyWith(color: fg, fontWeight: selected ? FontWeight.w700 : FontWeight.w600)),
+        decoration: BoxDecoration(
+          color: bg,
+          borderRadius: AppSpacing.borderRadiusPill,
+          border: Border.all(color: border, width: selected ? 1.5 : 1),
+        ),
+        child: Text(
+          label,
+          style: theme.textTheme.labelSmall?.copyWith(
+            color: fg,
+            fontWeight: selected ? FontWeight.w700 : FontWeight.w600,
+          ),
+        ),
       ),
     );
   }

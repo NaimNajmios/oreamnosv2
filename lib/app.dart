@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:dynamic_color/dynamic_color.dart';
 import 'package:go_router/go_router.dart';
-import 'package:provider/provider.dart';
 
 import 'config/constants.dart';
 import 'config/routes/app_router.dart';
@@ -16,14 +16,14 @@ import 'ui/core/widgets/kickoff_loading_indicator.dart';
 import 'data/services/notification_service.dart';
 
 /// Root application widget.
-class OreamnosApp extends StatefulWidget {
+class OreamnosApp extends ConsumerStatefulWidget {
   const OreamnosApp({super.key});
 
   @override
-  State<OreamnosApp> createState() => _OreamnosAppState();
+  ConsumerState<OreamnosApp> createState() => _OreamnosAppState();
 }
 
-class _OreamnosAppState extends State<OreamnosApp> {
+class _OreamnosAppState extends ConsumerState<OreamnosApp> {
   late final GoRouter _router;
 
   @override
@@ -40,7 +40,7 @@ class _OreamnosAppState extends State<OreamnosApp> {
 
     ShareIntentService().onSharedTextReceived = (text) {
       if (!mounted) return;
-      
+
       final currentContext = rootNavigatorKey.currentContext;
       if (currentContext != null) {
         showModalBottomSheet(
@@ -51,7 +51,7 @@ class _OreamnosAppState extends State<OreamnosApp> {
         );
       } else {
         // Fallback
-        context.read<GenerateViewModel>().setPendingInput(text);
+        ref.read(generateViewModelProvider.notifier).setPendingInput(text);
         _router.go(RoutePaths.generate);
       }
     };
@@ -67,13 +67,11 @@ class _OreamnosAppState extends State<OreamnosApp> {
 
   @override
   Widget build(BuildContext context) {
-    final settingsViewModel = context.watch<SettingsViewModel>();
-    
+    final settingsViewModel = ref.watch(settingsViewModelProvider);
+
     if (!settingsViewModel.isInitialized) {
       return const MaterialApp(
-        home: Scaffold(
-          body: Center(child: KickoffLoadingIndicator(size: 48)),
-        ),
+        home: Scaffold(body: Center(child: KickoffLoadingIndicator(size: 48))),
       );
     }
 
@@ -103,7 +101,9 @@ class _OreamnosAppState extends State<OreamnosApp> {
             darkThemeData = null;
             materialThemeMode = ThemeMode.dark;
           case AppThemeMode.solarizedLight:
-            themeData = AppTheme.solarizedLight(dynamicColorScheme: lightDynamic);
+            themeData = AppTheme.solarizedLight(
+              dynamicColorScheme: lightDynamic,
+            );
             darkThemeData = null;
             materialThemeMode = ThemeMode.light;
           case AppThemeMode.cyberpunk:
@@ -118,13 +118,11 @@ class _OreamnosAppState extends State<OreamnosApp> {
             themeData = AppTheme.forest();
             darkThemeData = null;
             materialThemeMode = ThemeMode.dark;
-          case AppThemeMode.system:
+          default:
             themeData = AppTheme.light(dynamicColorScheme: lightDynamic);
             darkThemeData = AppTheme.dark(dynamicColorScheme: darkDynamic);
             materialThemeMode = ThemeMode.system;
         }
-
-
 
         return MaterialApp.router(
           title: AppConstants.appName,

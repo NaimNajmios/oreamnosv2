@@ -33,4 +33,3 @@ abstract final class Haptics {
   static Future<void> mediumImpact() => success();
   static Future<void> heavyImpact() => error();
 }
-

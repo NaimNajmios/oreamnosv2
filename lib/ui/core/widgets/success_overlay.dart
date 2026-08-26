@@ -1,7 +1,9 @@
 import 'dart:math' as math;
+
 import 'package:flutter/material.dart';
 import 'package:oreamnos/config/theme/app_colors.dart';
 import 'package:oreamnos/ui/core/utils/haptics.dart';
+
 import 'particles_painter.dart';
 
 /// Serene Editorial success overlay with 25-particle radial explosion and animated checkmark.
@@ -19,7 +21,8 @@ class SuccessOverlay extends StatefulWidget {
   State<SuccessOverlay> createState() => _SuccessOverlayState();
 }
 
-class _SuccessOverlayState extends State<SuccessOverlay> with SingleTickerProviderStateMixin {
+class _SuccessOverlayState extends State<SuccessOverlay>
+    with SingleTickerProviderStateMixin {
   late AnimationController _controller;
   late List<Particle> _particles;
 
@@ -49,16 +52,12 @@ class _SuccessOverlayState extends State<SuccessOverlay> with SingleTickerProvid
     ];
 
     _particles = List.generate(25, (index) {
-      final angle = (index / 25) * 2 * math.pi + (rand.nextDouble() * 0.2 - 0.1);
+      final angle =
+          (index / 25) * 2 * math.pi + (rand.nextDouble() * 0.2 - 0.1);
       final speed = 0.6 + rand.nextDouble() * 0.6;
       final size = 3.0 + rand.nextDouble() * 4.0;
       final color = colors[rand.nextInt(colors.length)];
-      return Particle(
-        angle: angle,
-        speed: speed,
-        size: size,
-        color: color,
-      );
+      return Particle(angle: angle, speed: speed, size: size, color: color);
     });
   }
 
@@ -90,7 +89,9 @@ class _SuccessOverlayState extends State<SuccessOverlay> with SingleTickerProvid
               // Checkmark draws from 0.2 -> 0.7
               final checkProgress = ((val - 0.2) / 0.5).clamp(0.0, 1.0);
               // Overall opacity
-              final opacity = val > 0.85 ? (1.0 - (val - 0.85) / 0.15).clamp(0.0, 1.0) : 1.0;
+              final opacity = val > 0.85
+                  ? (1.0 - (val - 0.85) / 0.15).clamp(0.0, 1.0)
+                  : 1.0;
 
               return Opacity(
                 opacity: opacity,

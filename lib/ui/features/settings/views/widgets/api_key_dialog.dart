@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:provider/provider.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:oreamnos/config/theme/app_spacing.dart';
 import 'package:oreamnos/data/models/ai_provider.dart';
 import 'package:oreamnos/ui/core/utils/haptics.dart';
@@ -7,7 +7,7 @@ import 'package:oreamnos/ui/core/widgets/app_button.dart';
 import 'package:oreamnos/ui/core/widgets/app_input.dart';
 import 'package:oreamnos/ui/features/settings/view_models/settings_view_model.dart';
 
-class ApiKeyDialog extends StatefulWidget {
+class ApiKeyDialog extends ConsumerStatefulWidget {
   const ApiKeyDialog({super.key, required this.provider});
 
   final AiProvider provider;
@@ -20,10 +20,10 @@ class ApiKeyDialog extends StatefulWidget {
   }
 
   @override
-  State<ApiKeyDialog> createState() => _ApiKeyDialogState();
+  ConsumerState<ApiKeyDialog> createState() => _ApiKeyDialogState();
 }
 
-class _ApiKeyDialogState extends State<ApiKeyDialog> {
+class _ApiKeyDialogState extends ConsumerState<ApiKeyDialog> {
   late TextEditingController _controller;
   bool _isLoading = false;
   bool _obscureText = true;
@@ -36,7 +36,7 @@ class _ApiKeyDialogState extends State<ApiKeyDialog> {
   }
 
   Future<void> _loadExistingKey() async {
-    final viewModel = context.read<SettingsViewModel>();
+    final viewModel = ref.read(settingsViewModelProvider.notifier);
     final existingKey = await viewModel.getApiKeyForProvider(widget.provider);
     if (mounted && existingKey != null) {
       _controller.text = existingKey;
@@ -52,21 +52,25 @@ class _ApiKeyDialogState extends State<ApiKeyDialog> {
   Future<void> _saveKey() async {
     final key = _controller.text.trim();
     if (key.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('API Key cannot be empty')),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('API Key cannot be empty')));
       return;
     }
 
     setState(() => _isLoading = true);
 
     try {
-      await context.read<SettingsViewModel>().setApiKey(widget.provider, key);
+      await ref
+          .read(settingsViewModelProvider.notifier)
+          .setApiKey(widget.provider, key);
       if (mounted) {
         Haptics.mediumImpact();
         Navigator.of(context).pop();
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('${widget.provider.displayName} API Key saved')),
+          SnackBar(
+            content: Text('${widget.provider.displayName} API Key saved'),
+          ),
         );
       }
     } finally {
@@ -116,7 +120,9 @@ class _ApiKeyDialogState extends State<ApiKeyDialog> {
                 obscureText: _obscureText,
                 suffixIcon: IconButton(
                   icon: Icon(
-                    _obscureText ? Icons.visibility_outlined : Icons.visibility_off_outlined,
+                    _obscureText
+                        ? Icons.visibility_outlined
+                        : Icons.visibility_off_outlined,
                     size: 20,
                   ),
                   onPressed: () {

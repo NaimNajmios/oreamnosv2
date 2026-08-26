@@ -14,7 +14,8 @@ abstract class ICardRepository {
 
 class CardRepository implements ICardRepository {
   final CardDataExtractor _extractor;
-  CardRepository([CardDataExtractor? extractor]) : _extractor = extractor ?? CardDataExtractor();
+  CardRepository([CardDataExtractor? extractor])
+    : _extractor = extractor ?? CardDataExtractor();
 
   @override
   Future<CardData> extractCardData({
@@ -23,6 +24,11 @@ class CardRepository implements ICardRepository {
     required String modelId,
     required String apiKey,
   }) {
-    return _extractor.extractCardData(brief: brief, provider: provider, modelId: modelId, apiKey: apiKey);
+    return _extractor.extractCardData(
+      brief: brief,
+      provider: provider,
+      modelId: modelId,
+      apiKey: apiKey,
+    );
   }
 }

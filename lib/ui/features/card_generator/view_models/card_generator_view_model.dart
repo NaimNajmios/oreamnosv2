@@ -1,36 +1,17 @@
 import 'dart:io';
+
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:oreamnos/data/services/card_data_extractor.dart';
 import 'package:oreamnos/data/services/color_extractor.dart';
 import 'package:oreamnos/data/services/export_service.dart';
 import 'package:oreamnos/domain/models/card_brief.dart';
 import 'package:oreamnos/domain/models/card_data.dart';
+import 'package:oreamnos/domain/models/card_template.dart';
+import 'package:oreamnos/domain/models/card_config_snapshot.dart';
 
-// Lightweight — 4 sparse templates only (no heavy stat grids)
-enum CardTemplate {
-  standard,    // headline uppercase + subtext + microStat pill
-  headlineQuote, // large quote-style subtext + headline byline
-  breakingNews, // red band + headline
-  statBadge,   // headline + prominent microStat
-}
-
-// Kept for back-compat fallback mapping — all 4 above map from old 16
-extension CardTemplateCompat on CardTemplate {
-  static CardTemplate fromLegacy(String name) {
-    switch (name) {
-      case 'headlineQuote':
-        return CardTemplate.headlineQuote;
-      case 'breakingNews':
-        return CardTemplate.breakingNews;
-      case 'topStats':
-      case 'transferNews':
-        return CardTemplate.statBadge;
-      default:
-        return CardTemplate.standard;
-    }
-  }
-}
+import 'package:oreamnos/core/di/injection.dart';
 
 enum CardRatio {
   square(1 / 1, '1:1', 'IG Post • FB'),
@@ -45,20 +26,108 @@ enum CardRatio {
   final String hint;
 }
 
-enum AppFont {
-  defaultFont,
-  classicSerif,
-  typewriter,
-}
+enum AppFont { defaultFont, classicSerif, typewriter }
+
+final cardGeneratorViewModelProvider =
+    ChangeNotifierProvider<CardGeneratorViewModel>(
+      (ref) => CardGeneratorViewModel(ref),
+    );
 
 class CardGeneratorViewModel extends ChangeNotifier {
-  final CardDataExtractor extractor;
-  final ExportService exportService;
+  final List<CardConfigSnapshot> _undoStack = [];
+  final List<CardConfigSnapshot> _redoStack = [];
+  static const int _maxSnapshots = 50;
 
-  CardGeneratorViewModel({
-    required this.extractor,
-    required this.exportService,
-  });
+  bool get canUndo => _undoStack.isNotEmpty;
+  bool get canRedo => _redoStack.isNotEmpty;
+
+  void _saveSnapshot() {
+    _undoStack.add(
+      CardConfigSnapshot(
+        cardData: cardData,
+        selectedTemplate: selectedTemplate,
+        selectedRatio: selectedRatio,
+        selectedFont: selectedFont,
+        scrimOpacity: scrimOpacity,
+        useVignette: useVignette,
+        headlineScale: headlineScale,
+        templateCompact: templateCompact,
+        backgroundImage: backgroundImage,
+        useAutoPalette: useAutoPalette,
+        extractedPalette: extractedPalette,
+      ),
+    );
+    if (_undoStack.length > _maxSnapshots) {
+      _undoStack.removeAt(0);
+    }
+    _redoStack.clear();
+  }
+
+  void undo() {
+    if (!canUndo) return;
+    _redoStack.add(
+      CardConfigSnapshot(
+        cardData: cardData,
+        selectedTemplate: selectedTemplate,
+        selectedRatio: selectedRatio,
+        selectedFont: selectedFont,
+        scrimOpacity: scrimOpacity,
+        useVignette: useVignette,
+        headlineScale: headlineScale,
+        templateCompact: templateCompact,
+        backgroundImage: backgroundImage,
+        useAutoPalette: useAutoPalette,
+        extractedPalette: extractedPalette,
+      ),
+    );
+    final snapshot = _undoStack.removeLast();
+    _applySnapshot(snapshot);
+  }
+
+  void redo() {
+    if (!canRedo) return;
+    _undoStack.add(
+      CardConfigSnapshot(
+        cardData: cardData,
+        selectedTemplate: selectedTemplate,
+        selectedRatio: selectedRatio,
+        selectedFont: selectedFont,
+        scrimOpacity: scrimOpacity,
+        useVignette: useVignette,
+        headlineScale: headlineScale,
+        templateCompact: templateCompact,
+        backgroundImage: backgroundImage,
+        useAutoPalette: useAutoPalette,
+        extractedPalette: extractedPalette,
+      ),
+    );
+    final snapshot = _redoStack.removeLast();
+    _applySnapshot(snapshot);
+  }
+
+  void _applySnapshot(CardConfigSnapshot snapshot) {
+    cardData = snapshot.cardData;
+    selectedTemplate = snapshot.selectedTemplate;
+    selectedRatio = snapshot.selectedRatio;
+    selectedFont = snapshot.selectedFont;
+    scrimOpacity = snapshot.scrimOpacity;
+    useVignette = snapshot.useVignette;
+    headlineScale = snapshot.headlineScale;
+    templateCompact = snapshot.templateCompact;
+    backgroundImage = snapshot.backgroundImage;
+    useAutoPalette = snapshot.useAutoPalette;
+    extractedPalette = snapshot.extractedPalette;
+    notifyListeners();
+  }
+
+  late final CardDataExtractor extractor;
+  late final ExportService exportService;
+
+  final Ref ref;
+  CardGeneratorViewModel(this.ref) {
+    extractor = getIt<CardDataExtractor>();
+    exportService = getIt<ExportService>();
+  }
 
   // === Brief (sparse companion input) ===
   CardBrief? _brief;
@@ -70,7 +139,7 @@ class CardGeneratorViewModel extends ChangeNotifier {
   String? extractionError;
 
   // === Design state ===
-  CardTemplate selectedTemplate = CardTemplate.standard;
+  CardTemplate selectedTemplate = CardTemplate.socialPost;
   CardRatio selectedRatio = CardRatio.portrait45;
   AppFont selectedFont = AppFont.defaultFont;
   double headlineScale = 1.0; // 0.85 - 1.15 user-adjustable
@@ -115,8 +184,12 @@ class CardGeneratorViewModel extends ChangeNotifier {
         apiKey: apiKey,
       );
       // Merge: LLM headline/subtext/microStat overwrite seeded values, but keep non-empty
-      final nextHeadline = polished.headline != 'Generated Card' ? polished.headline : b.headline;
-      final nextSubtext = polished.subtext.isNotEmpty ? polished.subtext : b.subtext;
+      final nextHeadline = polished.headline != 'Generated Card'
+          ? polished.headline
+          : b.headline;
+      final nextSubtext = polished.subtext.isNotEmpty
+          ? polished.subtext
+          : b.subtext;
       final nextMicro = polished.microStat ?? b.microStat;
       cardData = CardData.fromBrief(
         headline: nextHeadline,
@@ -134,46 +207,57 @@ class CardGeneratorViewModel extends ChangeNotifier {
 
   // --- Template / Ratio / Font / Scrim ---
   void setTemplate(CardTemplate template) {
+    _saveSnapshot();
     selectedTemplate = template;
     notifyListeners();
     // No re-extract: same sparse JSON serves all templates
   }
 
   void setRatio(CardRatio ratio) {
+    _saveSnapshot();
     selectedRatio = ratio;
     notifyListeners();
   }
 
   void setFont(AppFont font) {
+    _saveSnapshot();
     selectedFont = font;
     notifyListeners();
   }
 
   void setScrim(double value) {
+    _saveSnapshot();
     scrimOpacity = value.clamp(0.3, 0.75);
     notifyListeners();
   }
 
   void setVignette(bool v) {
+    _saveSnapshot();
     useVignette = v;
     notifyListeners();
   }
 
   void setHeadlineScale(double v) {
+    _saveSnapshot();
     headlineScale = v.clamp(0.85, 1.15);
     notifyListeners();
   }
 
   void toggleTemplateCompact() {
+    _saveSnapshot();
     templateCompact = !templateCompact;
     notifyListeners();
   }
 
   // --- Inline editing (local, no LLM) — now handles sealed 16 variants (maps to sparse fallback)
   void updateHeadline(String value) {
+    _saveSnapshot();
     final v = value.trim();
     if (cardData == null) {
-      cardData = CardData.sparse(headline: v.isEmpty ? 'Generated Card' : v, subtext: '');
+      cardData = CardData.sparse(
+        headline: v.isEmpty ? 'Generated Card' : v,
+        subtext: '',
+      );
     } else {
       final d = cardData!;
       cardData = d.map(
@@ -186,7 +270,8 @@ class CardGeneratorViewModel extends ChangeNotifier {
         detailedScoreboard: (x) => x.copyWith(homeTeam: v.isEmpty ? 'N/A' : v),
         onThisDay: (x) => x.copyWith(headline: v.isEmpty ? 'N/A' : v),
         startingXI: (x) => x.copyWith(teamName: v.isEmpty ? 'N/A' : v),
-        matchStatsComparison: (x) => x.copyWith(homeTeam: v.isEmpty ? 'N/A' : v),
+        matchStatsComparison: (x) =>
+            x.copyWith(homeTeam: v.isEmpty ? 'N/A' : v),
         socialPost: (x) => x.copyWith(content: v.isEmpty ? 'N/A' : v),
         rivalry: (x) => x.copyWith(player1Name: v.isEmpty ? 'N/A' : v),
         tableStandings: (x) => x.copyWith(leagueName: v.isEmpty ? 'N/A' : v),
@@ -200,6 +285,7 @@ class CardGeneratorViewModel extends ChangeNotifier {
   }
 
   void updateSubtext(String value) {
+    _saveSnapshot();
     final v = value.trim();
     if (cardData == null) {
       cardData = CardData.sparse(headline: 'Generated Card', subtext: v);
@@ -212,7 +298,8 @@ class CardGeneratorViewModel extends ChangeNotifier {
         transferNews: (x) => x.copyWith(quote: v.isEmpty ? 'N/A' : v),
         breakingNews: (x) => x.copyWith(subtext: v.isEmpty ? 'N/A' : v),
         matchPreview: (x) => x.copyWith(competition: v.isEmpty ? 'N/A' : v),
-        detailedScoreboard: (x) => x.copyWith(competition: v.isEmpty ? 'N/A' : v),
+        detailedScoreboard: (x) =>
+            x.copyWith(competition: v.isEmpty ? 'N/A' : v),
         onThisDay: (x) => x.copyWith(significance: v.isEmpty ? 'N/A' : v),
         startingXI: (x) => x.copyWith(manager: v.isEmpty ? 'N/A' : v),
         matchStatsComparison: (x) => x,
@@ -229,10 +316,15 @@ class CardGeneratorViewModel extends ChangeNotifier {
   }
 
   void updateMicroStat(String value) {
+    _saveSnapshot();
     final v = value.trim();
     final isClear = v.isEmpty;
     if (cardData == null) {
-      cardData = CardData.sparse(headline: 'Generated Card', subtext: '', microStat: isClear ? null : v);
+      cardData = CardData.sparse(
+        headline: 'Generated Card',
+        subtext: '',
+        microStat: isClear ? null : v,
+      );
     } else {
       final d = cardData!;
       cardData = d.map(
@@ -249,7 +341,8 @@ class CardGeneratorViewModel extends ChangeNotifier {
         socialPost: (x) => x.copyWith(handle: isClear ? 'N/A' : v),
         rivalry: (x) => x.copyWith(headToHead: isClear ? 'N/A' : v),
         tableStandings: (x) => x.copyWith(highlightedTeam: isClear ? 'N/A' : v),
-        injuryReport: (x) => x.copyWith(recoveryPercentage: isClear ? 'N/A' : v),
+        injuryReport: (x) =>
+            x.copyWith(recoveryPercentage: isClear ? 'N/A' : v),
         contractExpiry: (x) => x.copyWith(wage: isClear ? 'N/A' : v),
         awardNominee: (x) => x.copyWith(currentFavorite: isClear ? 'N/A' : v),
         sparse: (x) => x.copyWith(microStat: isClear ? null : v),

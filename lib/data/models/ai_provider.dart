@@ -5,18 +5,12 @@ enum AiProvider {
     displayName: 'Gemini',
     baseUrl: 'https://generativelanguage.googleapis.com/v1beta/models',
   ),
-  groq(
-    displayName: 'Groq',
-    baseUrl: 'https://api.groq.com/openai/v1',
-  ),
+  groq(displayName: 'Groq', baseUrl: 'https://api.groq.com/openai/v1'),
   openRouter(
     displayName: 'OpenRouter',
     baseUrl: 'https://openrouter.ai/api/v1',
   ),
-  cerebras(
-    displayName: 'Cerebras',
-    baseUrl: 'https://api.cerebras.ai/v1',
-  );
+  cerebras(displayName: 'Cerebras', baseUrl: 'https://api.cerebras.ai/v1');
 
   const AiProvider({required this.displayName, required this.baseUrl});
 

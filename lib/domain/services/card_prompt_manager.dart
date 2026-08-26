@@ -20,15 +20,26 @@ CRITICAL RULE 4: ALWAYS include "template_intent" field with one of: player_spot
     return buildPrompt(CardTemplate.socialPost, brief.promptContext, false);
   }
 
-  static String buildPrompt(CardTemplate template, String articleText, bool isRefresh) {
-    final refreshTag = isRefresh ? '\n[Refresh ${DateTime.now().millisecondsSinceEpoch}]' : '';
+  static String buildPrompt(
+    CardTemplate template,
+    String articleText,
+    bool isRefresh,
+  ) {
+    final refreshTag = isRefresh
+        ? '\n[Refresh ${DateTime.now().millisecondsSinceEpoch}]'
+        : '';
     final schema = _schemaFor(template);
     final context = articleText.trim().isEmpty ? '(empty)' : articleText.trim();
     return '$schema\n\nINPUT:\n$context$refreshTag\n\nRespond with ONLY the JSON object, starting with {';
   }
 
-  static String buildUserPromptForTemplate(dynamic template, String generatedText) {
-    final CardTemplate t = template is CardTemplate ? template : CardTemplate.socialPost;
+  static String buildUserPromptForTemplate(
+    dynamic template,
+    String generatedText,
+  ) {
+    final CardTemplate t = template is CardTemplate
+        ? template
+        : CardTemplate.socialPost;
     return buildPrompt(t, generatedText, false);
   }
 
@@ -286,4 +297,3 @@ Return ONLY a JSON object with this exact structure (write values in Bahasa Mala
 }''';
   }
 }
-

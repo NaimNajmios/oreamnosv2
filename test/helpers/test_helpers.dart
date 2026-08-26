@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:riverpod/misc.dart';
+
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -32,7 +32,8 @@ PreferencesService createTestPreferencesService(SharedPreferences prefs) {
 }
 
 /// Creates a test [UsageService] backed by mocked SharedPreferences.
-UsageService createTestUsageService(SharedPreferences prefs) => UsageService(prefs);
+UsageService createTestUsageService(SharedPreferences prefs) =>
+    UsageService(prefs);
 
 /// Creates mocked [SharedPreferences] with optional initial values.
 Future<SharedPreferences> createMockPrefs([

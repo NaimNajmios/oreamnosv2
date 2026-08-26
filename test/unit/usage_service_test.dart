@@ -133,7 +133,10 @@ void main() {
       );
 
       // Gemini: 2 success / 3 total = 66.666...%
-      expect(usageService.getSuccessRateByProvider('gemini'), closeTo(66.67, 0.1));
+      expect(
+        usageService.getSuccessRateByProvider('gemini'),
+        closeTo(66.67, 0.1),
+      );
       // Groq: 1 success / 1 total = 100%
       expect(usageService.getSuccessRateByProvider('groq'), 100.0);
       // Cerebras: 0 logs = 0%

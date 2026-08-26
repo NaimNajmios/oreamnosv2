@@ -1,4 +1,5 @@
 import 'dart:math' as math;
+
 import 'package:flutter/material.dart';
 
 class Particle {
@@ -16,10 +17,7 @@ class Particle {
 }
 
 class ParticlesPainter extends CustomPainter {
-  ParticlesPainter({
-    required this.progress,
-    required this.particles,
-  });
+  ParticlesPainter({required this.progress, required this.particles});
 
   final double progress;
   final List<Particle> particles;

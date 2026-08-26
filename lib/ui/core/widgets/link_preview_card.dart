@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:oreamnos/config/theme/app_colors.dart';
 import 'package:oreamnos/config/theme/app_spacing.dart';
 import 'package:oreamnos/config/theme/app_typography.dart';
+
 import 'app_button.dart';
 import 'app_card.dart';
 
@@ -49,7 +50,8 @@ class LinkPreviewCard extends StatelessWidget {
                 width: 32,
                 height: 32,
                 decoration: BoxDecoration(
-                  color: (isDark ? AppColors.darkTeal : AppColors.lightTeal).withValues(alpha: 0.16),
+                  color: (isDark ? AppColors.darkTeal : AppColors.lightTeal)
+                      .withValues(alpha: 0.16),
                   shape: BoxShape.circle,
                 ),
                 alignment: Alignment.center,
@@ -79,7 +81,9 @@ class LinkPreviewCard extends StatelessWidget {
                       url,
                       style: AppTypography.mono(
                         fontSize: 10,
-                        color: theme.colorScheme.onSurface.withValues(alpha: 0.5),
+                        color: theme.colorScheme.onSurface.withValues(
+                          alpha: 0.5,
+                        ),
                       ),
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,

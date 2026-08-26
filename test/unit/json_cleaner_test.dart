@@ -21,7 +21,8 @@ void main() {
       expect(m['headline'], 'Hello');
     });
     test('decode with fence and preamble', () {
-      const input = 'Sure:\n```json\n{"headline":"A","subtext":"B"}\n```\nThanks';
+      const input =
+          'Sure:\n```json\n{"headline":"A","subtext":"B"}\n```\nThanks';
       final m = JsonCleaner.decode(input);
       expect(m['subtext'], 'B');
     });

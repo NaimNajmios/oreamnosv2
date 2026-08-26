@@ -155,7 +155,9 @@ abstract final class AppTheme {
   }) {
     final isDark = brightness == Brightness.dark;
 
-    final onAccentColor = isDark ? const Color(0xFFFFFFFF) : const Color(0xFFFFFFFF);
+    final onAccentColor = isDark
+        ? const Color(0xFFFFFFFF)
+        : const Color(0xFFFFFFFF);
 
     final colorScheme = dynamicColorScheme != null
         ? dynamicColorScheme.copyWith(
@@ -222,7 +224,8 @@ abstract final class AppTheme {
           color: textPrimary,
           fontWeight: FontWeight.w500,
         ),
-        side: BorderSide.none, // Usually no border on Threads chips, or very subtle
+        side: BorderSide
+            .none, // Usually no border on Threads chips, or very subtle
         padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
       ),
       elevatedButtonTheme: ElevatedButtonThemeData(
@@ -234,7 +237,9 @@ abstract final class AppTheme {
           ),
           elevation: 0,
           padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
-          textStyle: textTheme.labelLarge?.copyWith(fontWeight: FontWeight.w600), // Sentence case handled in widget
+          textStyle: textTheme.labelLarge?.copyWith(
+            fontWeight: FontWeight.w600,
+          ), // Sentence case handled in widget
         ),
       ),
       outlinedButtonTheme: OutlinedButtonThemeData(
@@ -245,7 +250,9 @@ abstract final class AppTheme {
             borderRadius: AppSpacing.borderRadiusPill, // 24dp
           ),
           padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
-          textStyle: textTheme.labelLarge?.copyWith(fontWeight: FontWeight.w600),
+          textStyle: textTheme.labelLarge?.copyWith(
+            fontWeight: FontWeight.w600,
+          ),
         ),
       ),
       textButtonTheme: TextButtonThemeData(
@@ -254,7 +261,9 @@ abstract final class AppTheme {
           shape: const RoundedRectangleBorder(
             borderRadius: AppSpacing.borderRadiusPill,
           ),
-          textStyle: textTheme.labelLarge?.copyWith(fontWeight: FontWeight.w600),
+          textStyle: textTheme.labelLarge?.copyWith(
+            fontWeight: FontWeight.w600,
+          ),
         ),
       ),
       inputDecorationTheme: InputDecorationTheme(
@@ -276,12 +285,12 @@ abstract final class AppTheme {
         ),
         errorBorder: OutlineInputBorder(
           borderRadius: AppSpacing.borderRadiusMd,
-          borderSide: const BorderSide(
-            color: AppColors.error,
-            width: 1,
-          ),
+          borderSide: const BorderSide(color: AppColors.error, width: 1),
         ),
-        contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+        contentPadding: const EdgeInsets.symmetric(
+          horizontal: 16,
+          vertical: 14,
+        ),
       ),
       navigationBarTheme: NavigationBarThemeData(
         backgroundColor: bg,
@@ -291,23 +300,23 @@ abstract final class AppTheme {
         labelTextStyle: WidgetStateProperty.resolveWith((states) {
           final isSelected = states.contains(WidgetState.selected);
           return textTheme.labelSmall?.copyWith(
-            color: isSelected ? textPrimary : textTertiary, // Dark label on active
+            color: isSelected
+                ? textPrimary
+                : textTertiary, // Dark label on active
             fontWeight: isSelected ? FontWeight.w600 : FontWeight.w500,
           );
         }),
         iconTheme: WidgetStateProperty.resolveWith((states) {
           final isSelected = states.contains(WidgetState.selected);
           return IconThemeData(
-            color: isSelected ? textPrimary : textTertiary, // Dark icon on active
+            color: isSelected
+                ? textPrimary
+                : textTertiary, // Dark icon on active
             size: 26,
           );
         }),
       ),
-      dividerTheme: DividerThemeData(
-        color: border,
-        thickness: 1,
-        space: 1,
-      ),
+      dividerTheme: DividerThemeData(color: border, thickness: 1, space: 1),
       dialogTheme: DialogThemeData(
         backgroundColor: surface,
         elevation: 0,
@@ -325,9 +334,7 @@ abstract final class AppTheme {
         elevation: 0,
         modalBarrierColor: Colors.black.withValues(alpha: 0.5),
         shape: const RoundedRectangleBorder(
-          borderRadius: BorderRadius.vertical(
-            top: Radius.circular(24),
-          ),
+          borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
           side: BorderSide(color: Colors.transparent),
         ),
         showDragHandle: true,

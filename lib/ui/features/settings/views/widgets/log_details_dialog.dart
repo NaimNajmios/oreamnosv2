@@ -30,16 +30,36 @@ class LogDetailsDialog extends StatelessWidget {
     final color = _levelColor(context);
     return AlertDialog(
       backgroundColor: theme.colorScheme.surface,
-      shape: RoundedRectangleBorder(borderRadius: AppSpacing.borderRadiusLg, side: BorderSide(color: theme.colorScheme.outline)),
+      shape: RoundedRectangleBorder(
+        borderRadius: AppSpacing.borderRadiusLg,
+        side: BorderSide(color: theme.colorScheme.outline),
+      ),
       title: Row(
         children: [
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-            decoration: BoxDecoration(color: color.withValues(alpha: 0.12), borderRadius: AppSpacing.borderRadiusXs),
-            child: Text(entry.level, style: AppTypography.mono(fontSize: 10, fontWeight: FontWeight.w700, color: color)),
+            decoration: BoxDecoration(
+              color: color.withValues(alpha: 0.12),
+              borderRadius: AppSpacing.borderRadiusXs,
+            ),
+            child: Text(
+              entry.level,
+              style: AppTypography.mono(
+                fontSize: 10,
+                fontWeight: FontWeight.w700,
+                color: color,
+              ),
+            ),
           ),
           const SizedBox(width: 8),
-          Expanded(child: Text(entry.tag, style: theme.textTheme.labelMedium?.copyWith(fontWeight: FontWeight.w700))),
+          Expanded(
+            child: Text(
+              entry.tag,
+              style: theme.textTheme.labelMedium?.copyWith(
+                fontWeight: FontWeight.w700,
+              ),
+            ),
+          ),
         ],
       ),
       content: SingleChildScrollView(
@@ -47,32 +67,68 @@ class LogDetailsDialog extends StatelessWidget {
           crossAxisAlignment: CrossAxisAlignment.start,
           mainAxisSize: MainAxisSize.min,
           children: [
-            Text(entry.formattedDate, style: AppTypography.mono(fontSize: 11, color: theme.colorScheme.onSurface.withValues(alpha: 0.5))),
+            Text(
+              entry.formattedDate,
+              style: AppTypography.mono(
+                fontSize: 11,
+                color: theme.colorScheme.onSurface.withValues(alpha: 0.5),
+              ),
+            ),
             const SizedBox(height: 8),
-            SelectableText(entry.message, style: AppTypography.mono(fontSize: 12, color: theme.colorScheme.onSurface)),
+            SelectableText(
+              entry.message,
+              style: AppTypography.mono(
+                fontSize: 12,
+                color: theme.colorScheme.onSurface,
+              ),
+            ),
             if (entry.details != null) ...[
               const SizedBox(height: 8),
-              SelectableText(entry.details!, style: AppTypography.mono(fontSize: 11, color: theme.colorScheme.onSurface.withValues(alpha: 0.7))),
+              SelectableText(
+                entry.details!,
+                style: AppTypography.mono(
+                  fontSize: 11,
+                  color: theme.colorScheme.onSurface.withValues(alpha: 0.7),
+                ),
+              ),
             ],
             if (entry.error != null) ...[
               const SizedBox(height: 8),
               Container(
                 width: double.infinity,
                 padding: const EdgeInsets.all(AppSpacing.sm),
-                decoration: BoxDecoration(color: AppColors.error.withValues(alpha: 0.08), borderRadius: AppSpacing.borderRadiusXs),
-                child: SelectableText(entry.error!, style: AppTypography.mono(fontSize: 11, color: AppColors.error)),
+                decoration: BoxDecoration(
+                  color: AppColors.error.withValues(alpha: 0.08),
+                  borderRadius: AppSpacing.borderRadiusXs,
+                ),
+                child: SelectableText(
+                  entry.error!,
+                  style: AppTypography.mono(
+                    fontSize: 11,
+                    color: AppColors.error,
+                  ),
+                ),
               ),
             ],
             if (entry.error == null && entry.details == null)
               Padding(
                 padding: const EdgeInsets.only(top: 8),
-                child: Text('No additional details.', style: AppTypography.mono(fontSize: 11, color: theme.colorScheme.onSurface.withValues(alpha: 0.5)).copyWith(fontStyle: FontStyle.italic)),
+                child: Text(
+                  'No additional details.',
+                  style: AppTypography.mono(
+                    fontSize: 11,
+                    color: theme.colorScheme.onSurface.withValues(alpha: 0.5),
+                  ).copyWith(fontStyle: FontStyle.italic),
+                ),
               ),
           ],
         ),
       ),
       actions: [
-        TextButton(onPressed: () => Navigator.of(context).pop(), child: const Text('Close')),
+        TextButton(
+          onPressed: () => Navigator.of(context).pop(),
+          child: const Text('Close'),
+        ),
         FilledButton(
           onPressed: () async {
             final buf = StringBuffer();

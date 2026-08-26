@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+
 import 'modern_app_shell.dart';
 
 /// Legacy AppShell alias forwarding to ModernAppShell.

@@ -1,11 +1,11 @@
 import 'package:flutter/material.dart';
-import 'package:provider/provider.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:oreamnos/config/theme/app_spacing.dart';
 import 'package:oreamnos/data/models/ai_provider.dart';
 import 'package:oreamnos/ui/core/utils/haptics.dart';
 import 'package:oreamnos/ui/features/settings/view_models/settings_view_model.dart';
 
-class ProviderSelectionDialog extends StatelessWidget {
+class ProviderSelectionDialog extends ConsumerWidget {
   const ProviderSelectionDialog({super.key});
 
   static Future<void> show(BuildContext context) {
@@ -16,9 +16,9 @@ class ProviderSelectionDialog extends StatelessWidget {
   }
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     final theme = Theme.of(context);
-    final viewModel = context.watch<SettingsViewModel>();
+    final viewModel = ref.watch(settingsViewModelProvider);
     final currentProvider = viewModel.selectedProvider;
 
     return Dialog(
@@ -84,7 +84,9 @@ class ProviderSelectionDialog extends StatelessWidget {
                               size: 16,
                               color: isSelected
                                   ? theme.colorScheme.primary
-                                  : theme.colorScheme.onSurface.withValues(alpha: 0.7),
+                                  : theme.colorScheme.onSurface.withValues(
+                                      alpha: 0.7,
+                                    ),
                             ),
                           ),
                           const SizedBox(width: AppSpacing.md),
@@ -92,7 +94,9 @@ class ProviderSelectionDialog extends StatelessWidget {
                             child: Text(
                               provider.displayName,
                               style: theme.textTheme.titleSmall?.copyWith(
-                                fontWeight: isSelected ? FontWeight.w700 : FontWeight.w500,
+                                fontWeight: isSelected
+                                    ? FontWeight.w700
+                                    : FontWeight.w500,
                                 color: isSelected
                                     ? theme.colorScheme.primary
                                     : theme.colorScheme.onSurface,

@@ -17,18 +17,20 @@ class SourceAttribution extends Equatable {
   factory SourceAttribution.fromJson(Map<String, dynamic> json) {
     return SourceAttribution(
       label: (json['label'] as String?)?.trim() ?? '',
-      url: (json['url'] as String?)?.trim().isEmpty == true ? null : (json['url'] as String?)?.trim(),
+      url: (json['url'] as String?)?.trim().isEmpty == true
+          ? null
+          : (json['url'] as String?)?.trim(),
       domain: (json['domain'] as String?)?.trim(),
       isInferred: json['isInferred'] as bool? ?? false,
     );
   }
 
   Map<String, dynamic> toJson() => {
-        'label': label,
-        'url': url,
-        'domain': domain,
-        'isInferred': isInferred,
-      };
+    'label': label,
+    'url': url,
+    'domain': domain,
+    'isInferred': isInferred,
+  };
 
   bool get hasUrl => url != null && url!.isNotEmpty;
   bool get isEmpty => label.isEmpty && !hasUrl;
@@ -109,7 +111,8 @@ class CuratedPost extends Equatable {
     unicode: true,
   );
 
-  static String _stripEmoji(String s) => s.replaceAll(_emojiRegex, '').replaceAll(RegExp(r'\s{2,}'), ' ').trim();
+  static String _stripEmoji(String s) =>
+      s.replaceAll(_emojiRegex, '').replaceAll(RegExp(r'\s{2,}'), ' ').trim();
 
   static String _normalizeHashtag(String s) {
     var t = s.trim();
@@ -120,7 +123,8 @@ class CuratedPost extends Equatable {
 
   factory CuratedPost.fromJson(Map<String, dynamic> json) {
     final rawTitle = (json['title'] as String?) ?? '';
-    final rawBody = (json['body'] as String?) ?? (json['content'] as String?) ?? '';
+    final rawBody =
+        (json['body'] as String?) ?? (json['content'] as String?) ?? '';
     final rawHashtags = json['hashtags'];
     final rawSource = json['source'];
 
@@ -131,13 +135,24 @@ class CuratedPost extends Equatable {
 
     String body = _stripEmoji(rawBody.trim());
     // Remove any accidental source/hashtag block inside body
-    body = body.replaceAll(RegExp(r'\n+\s*(Sumber|Source)\s*[:\-—][^\n]*$', caseSensitive: false), '').trim();
+    body = body
+        .replaceAll(
+          RegExp(
+            r'\n+\s*(Sumber|Source)\s*[:\-—][^\n]*$',
+            caseSensitive: false,
+          ),
+          '',
+        )
+        .trim();
     body = body.replaceAll(RegExp(r'(\n\s*#[^\n]*)+$'), '').trim();
     body = _formatBody(body);
 
     List<String> hashtags = [];
     if (rawHashtags is List) {
-      hashtags = rawHashtags.map((e) => _normalizeHashtag(e.toString())).where((e) => e.isNotEmpty).toList();
+      hashtags = rawHashtags
+          .map((e) => _normalizeHashtag(e.toString()))
+          .where((e) => e.isNotEmpty)
+          .toList();
     } else if (rawHashtags is String) {
       hashtags = rawHashtags
           .split(RegExp(r'[,\s]+'))
@@ -151,7 +166,9 @@ class CuratedPost extends Equatable {
       source = SourceAttribution.fromJson(rawSource);
     } else if (rawSource is String) {
       final s = rawSource.trim();
-      source = s.isEmpty ? const SourceAttribution(label: '') : SourceAttribution(label: _stripEmoji(s));
+      source = s.isEmpty
+          ? const SourceAttribution(label: '')
+          : SourceAttribution(label: _stripEmoji(s));
     } else {
       source = const SourceAttribution(label: '');
     }
@@ -185,10 +202,15 @@ class CuratedPost extends Equatable {
     if (body.isEmpty) return body;
     // Preserve bullet lists as-is
     if (body.contains(RegExp(r'^\s*[-•]\s', multiLine: true))) return body;
-    final existingParas = body.split(RegExp(r'\n\s*\n')).where((p) => p.trim().isNotEmpty).toList();
+    final existingParas = body
+        .split(RegExp(r'\n\s*\n'))
+        .where((p) => p.trim().isNotEmpty)
+        .toList();
     if (existingParas.length >= 2) {
       // If no paragraph is too long, keep original structure (source-faithful).
-      final maxWords = existingParas.map((p) => p.trim().split(RegExp(r'\s+')).length).reduce((a, b) => a > b ? a : b);
+      final maxWords = existingParas
+          .map((p) => p.trim().split(RegExp(r'\s+')).length)
+          .reduce((a, b) => a > b ? a : b);
       if (maxWords <= 75) return body.trim();
       // Otherwise reflow: flatten and re-split below
     }
@@ -222,7 +244,9 @@ class CuratedPost extends Equatable {
     int currentWords = 0;
     for (final s in sentences) {
       final w = s.trim().split(RegExp(r'\s+')).length;
-      if (current.isNotEmpty && currentWords + w > wordsPerPara + 12 && paras.length < targetParas - 1) {
+      if (current.isNotEmpty &&
+          currentWords + w > wordsPerPara + 12 &&
+          paras.length < targetParas - 1) {
         paras.add(current.join(' ').trim());
         current.clear();
         currentWords = 0;
@@ -241,7 +265,10 @@ class CuratedPost extends Equatable {
   }
 
   /// Fallback when LLM returns plain markdown instead of JSON.
-  factory CuratedPost.fromMarkdownFallback(String markdown, {SourceAttribution? source}) {
+  factory CuratedPost.fromMarkdownFallback(
+    String markdown, {
+    SourceAttribution? source,
+  }) {
     var text = _stripEmoji(markdown.trim());
     if (text.isEmpty) {
       return CuratedPost(
@@ -256,13 +283,21 @@ class CuratedPost extends Equatable {
     // Extract trailing hashtags
     final hashtagRegex = RegExp(r'(\n\s*#[^\n]*)+$');
     final hashtagBlock = hashtagRegex.firstMatch(text)?.group(0) ?? '';
-    final hashtagList = RegExp(r'#([^\s#]+)').allMatches(hashtagBlock).map((m) => _normalizeHashtag(m.group(1)!)).where((e) => e.isNotEmpty).toList();
+    final hashtagList = RegExp(r'#([^\s#]+)')
+        .allMatches(hashtagBlock)
+        .map((m) => _normalizeHashtag(m.group(1)!))
+        .where((e) => e.isNotEmpty)
+        .toList();
     text = text.replaceAll(hashtagRegex, '').trim();
     text = text.replaceAll(RegExp(r'\n+(#[^\s#]+\s*)+$'), '').trim();
 
     // Extract source line if present (but keep separate)
-    SourceAttribution resolvedSource = source ?? const SourceAttribution(label: '');
-    final sourceRegex = RegExp(r'\n+\s*(Sumber|Source)\s*[:\-—][^\n]*$', caseSensitive: false);
+    SourceAttribution resolvedSource =
+        source ?? const SourceAttribution(label: '');
+    final sourceRegex = RegExp(
+      r'\n+\s*(Sumber|Source)\s*[:\-—][^\n]*$',
+      caseSensitive: false,
+    );
     final sourceMatch = sourceRegex.firstMatch(text);
     if (sourceMatch != null) {
       final sourceLine = sourceMatch.group(0)!.trim();
@@ -270,9 +305,19 @@ class CuratedPost extends Equatable {
       final urlRegex = RegExp(r'https?://[^\s]+');
       final urlMatch = urlRegex.firstMatch(sourceLine);
       resolvedSource = SourceAttribution(
-        label: _stripEmoji(sourceLine.replaceAll(urlRegex, '').replaceAll(RegExp(r'^(Sumber|Source)\s*[:\-—]\s*', caseSensitive: false), '').trim()),
+        label: _stripEmoji(
+          sourceLine
+              .replaceAll(urlRegex, '')
+              .replaceAll(
+                RegExp(r'^(Sumber|Source)\s*[:\-—]\s*', caseSensitive: false),
+                '',
+              )
+              .trim(),
+        ),
         url: urlMatch?.group(0),
-        domain: urlMatch != null ? Uri.tryParse(urlMatch.group(0)!)?.host : null,
+        domain: urlMatch != null
+            ? Uri.tryParse(urlMatch.group(0)!)?.host
+            : null,
       );
       text = text.replaceAll(sourceRegex, '').trim();
     }
@@ -282,8 +327,14 @@ class CuratedPost extends Equatable {
     String body = text;
     final lines = text.split('\n');
     if (lines.isNotEmpty) {
-      final first = lines.first.trim().replaceAll(RegExp(r'^#+\s*'), '').replaceAll(RegExp(r'^\*\*|\*\*$'), '').trim();
-      if (first.isNotEmpty && first.length <= 120 && text.length > first.length + 20) {
+      final first = lines.first
+          .trim()
+          .replaceAll(RegExp(r'^#+\s*'), '')
+          .replaceAll(RegExp(r'^\*\*|\*\*$'), '')
+          .trim();
+      if (first.isNotEmpty &&
+          first.length <= 120 &&
+          text.length > first.length + 20) {
         // Heuristic: treat first line as title if next lines exist
         title = _stripEmoji(first);
         if (title.length > 100) title = title.substring(0, 100).trim();
@@ -313,17 +364,22 @@ class CuratedPost extends Equatable {
   }
 
   Map<String, dynamic> toJson() => {
-        'title': title,
-        'body': bodyMarkdown,
-        'hashtags': hashtags,
-        'source': source.toJson(),
-        'rawMarkdown': rawMarkdown,
-      };
+    'title': title,
+    'body': bodyMarkdown,
+    'hashtags': hashtags,
+    'source': source.toJson(),
+    'rawMarkdown': rawMarkdown,
+  };
 
   /// Markdown filtered by toggles: title/hashtags/source.
   /// Source is NOT inside rawMarkdown; when showSource is true, caller should render source card separately.
   /// For copy, we optionally append source url if requested.
-  String toMarkdownFiltered({bool showTitle = true, bool showHashtags = true, bool showSource = false, bool appendSourceForCopy = false}) {
+  String toMarkdownFiltered({
+    bool showTitle = true,
+    bool showHashtags = true,
+    bool showSource = false,
+    bool appendSourceForCopy = false,
+  }) {
     final buf = StringBuffer();
     if (showTitle && title.isNotEmpty) {
       buf.writeln(title);
@@ -350,5 +406,11 @@ class CuratedPost extends Equatable {
   String get bodyForCard => bodyMarkdown;
 
   @override
-  List<Object?> get props => [title, bodyMarkdown, hashtags, source, rawMarkdown];
+  List<Object?> get props => [
+    title,
+    bodyMarkdown,
+    hashtags,
+    source,
+    rawMarkdown,
+  ];
 }

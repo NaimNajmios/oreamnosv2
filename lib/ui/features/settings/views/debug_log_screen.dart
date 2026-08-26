@@ -1,3 +1,4 @@
+import 'package:oreamnos/core/di/injection.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
@@ -19,7 +20,7 @@ class DebugLogScreen extends StatefulWidget {
 }
 
 class _DebugLogScreenState extends State<DebugLogScreen> {
-  final LogService _logService = LogService();
+  final LogService _logService = getIt<LogService>();
   String _selectedLevel = 'ALL';
   String _searchQuery = '';
   final TextEditingController _searchCtrl = TextEditingController();
@@ -47,7 +48,9 @@ class _DebugLogScreenState extends State<DebugLogScreen> {
 
     final buffer = StringBuffer();
     for (var log in logs) {
-      buffer.writeln('[${log.formattedTime}] [${log.level}] [${log.tag}] ${log.message}');
+      buffer.writeln(
+        '[${log.formattedTime}] [${log.level}] [${log.tag}] ${log.message}',
+      );
       if (log.details != null) buffer.writeln('Details: ${log.details}');
       if (log.error != null) {
         buffer.writeln(log.error);
@@ -67,7 +70,9 @@ class _DebugLogScreenState extends State<DebugLogScreen> {
           ),
           backgroundColor: AppColors.success,
           behavior: SnackBarBehavior.floating,
-          shape: RoundedRectangleBorder(borderRadius: AppSpacing.borderRadiusSm),
+          shape: RoundedRectangleBorder(
+            borderRadius: AppSpacing.borderRadiusSm,
+          ),
         ),
       );
     }
@@ -78,9 +83,14 @@ class _DebugLogScreenState extends State<DebugLogScreen> {
       context: context,
       builder: (ctx) => AlertDialog(
         title: const Text('Clear Logs'),
-        content: const Text('Are you sure you want to clear all logs? This cannot be undone.'),
+        content: const Text(
+          'Are you sure you want to clear all logs? This cannot be undone.',
+        ),
         actions: [
-          TextButton(onPressed: () => Navigator.of(ctx).pop(false), child: const Text('Cancel')),
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop(false),
+            child: const Text('Cancel'),
+          ),
           FilledButton(
             style: FilledButton.styleFrom(backgroundColor: AppColors.error),
             onPressed: () => Navigator.of(ctx).pop(true),
@@ -94,14 +104,24 @@ class _DebugLogScreenState extends State<DebugLogScreen> {
       _logService.clear();
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: const Text('Logs cleared'), backgroundColor: AppColors.warning, behavior: SnackBarBehavior.floating, shape: RoundedRectangleBorder(borderRadius: AppSpacing.borderRadiusSm)),
+          SnackBar(
+            content: const Text('Logs cleared'),
+            backgroundColor: AppColors.warning,
+            behavior: SnackBarBehavior.floating,
+            shape: RoundedRectangleBorder(
+              borderRadius: AppSpacing.borderRadiusSm,
+            ),
+          ),
         );
       }
     }
   }
 
   void _showDetails(LogEntry log) {
-    showDialog(context: context, builder: (_) => LogDetailsDialog(entry: log));
+    showDialog(
+      context: context,
+      builder: (_) => LogDetailsDialog(entry: log),
+    );
   }
 
   Color _getLevelColor(String level, ThemeData theme) {
@@ -154,7 +174,9 @@ class _DebugLogScreenState extends State<DebugLogScreen> {
             if (allLogs.isNotEmpty)
               Text(
                 '${filteredLogs.length} of ${allLogs.length} entries',
-                style: theme.textTheme.labelSmall?.copyWith(color: theme.colorScheme.onSurface.withValues(alpha: 0.6)),
+                style: theme.textTheme.labelSmall?.copyWith(
+                  color: theme.colorScheme.onSurface.withValues(alpha: 0.6),
+                ),
               ),
           ],
         ),
@@ -181,7 +203,9 @@ class _DebugLogScreenState extends State<DebugLogScreen> {
             )
           : Center(
               child: ConstrainedBox(
-                constraints: const BoxConstraints(maxWidth: AppSpacing.maxContentWidth),
+                constraints: const BoxConstraints(
+                  maxWidth: AppSpacing.maxContentWidth,
+                ),
                 child: Column(
                   children: [
                     // Search & Filter controls
@@ -200,12 +224,20 @@ class _DebugLogScreenState extends State<DebugLogScreen> {
                             decoration: InputDecoration(
                               hintText: 'Search logs, tags, or errors...',
                               hintStyle: theme.textTheme.bodySmall?.copyWith(
-                                color: theme.colorScheme.onSurface.withValues(alpha: 0.45),
+                                color: theme.colorScheme.onSurface.withValues(
+                                  alpha: 0.45,
+                                ),
                               ),
-                              prefixIcon: const Icon(Icons.search_rounded, size: 18),
+                              prefixIcon: const Icon(
+                                Icons.search_rounded,
+                                size: 18,
+                              ),
                               suffixIcon: _searchCtrl.text.isNotEmpty
                                   ? IconButton(
-                                      icon: const Icon(Icons.clear_rounded, size: 16),
+                                      icon: const Icon(
+                                        Icons.clear_rounded,
+                                        size: 16,
+                                      ),
                                       onPressed: () {
                                         _searchCtrl.clear();
                                         setState(() => _searchQuery = '');
@@ -213,12 +245,20 @@ class _DebugLogScreenState extends State<DebugLogScreen> {
                                     )
                                   : null,
                               isDense: true,
-                              contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                              contentPadding: const EdgeInsets.symmetric(
+                                horizontal: 12,
+                                vertical: 10,
+                              ),
                               filled: true,
-                              fillColor: theme.colorScheme.surfaceContainerHighest.withValues(alpha: 0.4),
+                              fillColor: theme
+                                  .colorScheme
+                                  .surfaceContainerHighest
+                                  .withValues(alpha: 0.4),
                               border: OutlineInputBorder(
                                 borderRadius: AppSpacing.borderRadiusSm,
-                                borderSide: BorderSide(color: theme.colorScheme.outline),
+                                borderSide: BorderSide(
+                                  color: theme.colorScheme.outline,
+                                ),
                               ),
                             ),
                             onChanged: (v) => setState(() => _searchQuery = v),
@@ -228,7 +268,13 @@ class _DebugLogScreenState extends State<DebugLogScreen> {
                             scrollDirection: Axis.horizontal,
                             child: Row(
                               children: [
-                                for (final level in ['ALL', 'INFO', 'WARN', 'ERROR', 'DEBUG']) ...[
+                                for (final level in [
+                                  'ALL',
+                                  'INFO',
+                                  'WARN',
+                                  'ERROR',
+                                  'DEBUG',
+                                ]) ...[
                                   Padding(
                                     padding: const EdgeInsets.only(right: 6),
                                     child: FilterChip(
@@ -237,20 +283,29 @@ class _DebugLogScreenState extends State<DebugLogScreen> {
                                       showCheckmark: false,
                                       labelStyle: AppTypography.mono(
                                         fontSize: 10,
-                                        fontWeight: _selectedLevel == level ? FontWeight.w700 : FontWeight.w500,
+                                        fontWeight: _selectedLevel == level
+                                            ? FontWeight.w700
+                                            : FontWeight.w500,
                                         color: _selectedLevel == level
                                             ? theme.colorScheme.onPrimary
-                                            : theme.colorScheme.onSurface.withValues(alpha: 0.8),
+                                            : theme.colorScheme.onSurface
+                                                  .withValues(alpha: 0.8),
                                       ),
                                       selectedColor: level == 'ERROR'
                                           ? AppColors.error
                                           : (level == 'WARN'
-                                              ? const Color(0xFFFBBC05)
-                                              : (level == 'DEBUG'
-                                                  ? const Color(0xFF9E9E9E)
-                                                  : theme.colorScheme.primary)),
-                                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-                                      materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                                                ? const Color(0xFFFBBC05)
+                                                : (level == 'DEBUG'
+                                                      ? const Color(0xFF9E9E9E)
+                                                      : theme
+                                                            .colorScheme
+                                                            .primary)),
+                                      padding: const EdgeInsets.symmetric(
+                                        horizontal: 8,
+                                        vertical: 2,
+                                      ),
+                                      materialTapTargetSize:
+                                          MaterialTapTargetSize.shrinkWrap,
                                       onSelected: (_) {
                                         Haptics.selectionClick();
                                         setState(() => _selectedLevel = level);
@@ -271,7 +326,9 @@ class _DebugLogScreenState extends State<DebugLogScreen> {
                               child: Text(
                                 'No matching logs found.',
                                 style: theme.textTheme.bodySmall?.copyWith(
-                                  color: theme.colorScheme.onSurface.withValues(alpha: 0.5),
+                                  color: theme.colorScheme.onSurface.withValues(
+                                    alpha: 0.5,
+                                  ),
                                 ),
                               ),
                             )
@@ -281,7 +338,8 @@ class _DebugLogScreenState extends State<DebugLogScreen> {
                                 vertical: AppSpacing.base,
                               ),
                               itemCount: filteredLogs.length,
-                              separatorBuilder: (context, index) => const SizedBox(height: AppSpacing.sm),
+                              separatorBuilder: (context, index) =>
+                                  const SizedBox(height: AppSpacing.sm),
                               itemBuilder: (context, index) {
                                 final log = filteredLogs[index];
                                 final color = _getLevelColor(log.level, theme);
@@ -290,20 +348,27 @@ class _DebugLogScreenState extends State<DebugLogScreen> {
                                   onTap: () => _showDetails(log),
                                   borderRadius: AppSpacing.borderRadiusMd,
                                   child: AppCard(
-                                    padding: const EdgeInsets.all(AppSpacing.md),
+                                    padding: const EdgeInsets.all(
+                                      AppSpacing.md,
+                                    ),
                                     child: Column(
-                                      crossAxisAlignment: CrossAxisAlignment.start,
+                                      crossAxisAlignment:
+                                          CrossAxisAlignment.start,
                                       children: [
                                         Row(
                                           children: [
                                             Container(
-                                              padding: const EdgeInsets.symmetric(
-                                                horizontal: 6,
-                                                vertical: 2,
-                                              ),
+                                              padding:
+                                                  const EdgeInsets.symmetric(
+                                                    horizontal: 6,
+                                                    vertical: 2,
+                                                  ),
                                               decoration: BoxDecoration(
-                                                color: color.withValues(alpha: 0.12),
-                                                borderRadius: AppSpacing.borderRadiusXs,
+                                                color: color.withValues(
+                                                  alpha: 0.12,
+                                                ),
+                                                borderRadius:
+                                                    AppSpacing.borderRadiusXs,
                                               ),
                                               child: Text(
                                                 log.level,
@@ -314,21 +379,29 @@ class _DebugLogScreenState extends State<DebugLogScreen> {
                                                 ),
                                               ),
                                             ),
-                                            const SizedBox(width: AppSpacing.sm),
+                                            const SizedBox(
+                                              width: AppSpacing.sm,
+                                            ),
                                             Text(
                                               log.tag,
                                               style: AppTypography.mono(
                                                 fontSize: 11,
                                                 fontWeight: FontWeight.w600,
-                                                color: theme.colorScheme.primary,
+                                                color:
+                                                    theme.colorScheme.primary,
                                               ),
                                             ),
-                                            const SizedBox(width: AppSpacing.sm),
+                                            const SizedBox(
+                                              width: AppSpacing.sm,
+                                            ),
                                             Text(
                                               log.formattedTime,
                                               style: AppTypography.mono(
                                                 fontSize: 11,
-                                                color: theme.colorScheme.onSurface.withValues(alpha: 0.5),
+                                                color: theme
+                                                    .colorScheme
+                                                    .onSurface
+                                                    .withValues(alpha: 0.5),
                                               ),
                                             ),
                                           ],
@@ -345,10 +418,15 @@ class _DebugLogScreenState extends State<DebugLogScreen> {
                                           const SizedBox(height: AppSpacing.xs),
                                           Container(
                                             width: double.infinity,
-                                            padding: const EdgeInsets.all(AppSpacing.sm),
+                                            padding: const EdgeInsets.all(
+                                              AppSpacing.sm,
+                                            ),
                                             decoration: BoxDecoration(
-                                              color: AppColors.error.withValues(alpha: 0.08),
-                                              borderRadius: AppSpacing.borderRadiusXs,
+                                              color: AppColors.error.withValues(
+                                                alpha: 0.08,
+                                              ),
+                                              borderRadius:
+                                                  AppSpacing.borderRadiusXs,
                                             ),
                                             child: SelectableText(
                                               log.error!,

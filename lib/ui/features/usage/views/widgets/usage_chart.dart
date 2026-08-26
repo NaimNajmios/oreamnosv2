@@ -96,7 +96,10 @@ class _UsageChartPainter extends CustomPainter {
           ? size.width / 2
           : (i / (reversedLogs.length - 1)) * size.width;
 
-      final y = size.height - (log.estimatedTokens / maxTokens * (size.height * 0.85)) - 4;
+      final y =
+          size.height -
+          (log.estimatedTokens / maxTokens * (size.height * 0.85)) -
+          4;
       final point = Offset(x, y);
       points.add(point);
 
@@ -118,7 +121,10 @@ class _UsageChartPainter extends CustomPainter {
 
       // Draw per-segment lines with provider hue, dots with success/fail
       for (int i = 0; i < points.length - 1; i++) {
-        final providerColor = AppColors.tintForProvider(reversedLogs[i].providerId, isDark);
+        final providerColor = AppColors.tintForProvider(
+          reversedLogs[i].providerId,
+          isDark,
+        );
         final segPaint = Paint()
           ..color = providerColor
           ..strokeWidth = 2.2
@@ -135,8 +141,12 @@ class _UsageChartPainter extends CustomPainter {
         final dotColor = log.isSuccess
             ? AppColors.tintForProvider(log.providerId, isDark)
             : AppColors.error;
-        final outer = Paint()..color = Colors.white.withValues(alpha: 0.9)..style = PaintingStyle.fill;
-        final inner = Paint()..color = dotColor..style = PaintingStyle.fill;
+        final outer = Paint()
+          ..color = Colors.white.withValues(alpha: 0.9)
+          ..style = PaintingStyle.fill;
+        final inner = Paint()
+          ..color = dotColor
+          ..style = PaintingStyle.fill;
         canvas.drawCircle(points[i], 5, outer);
         canvas.drawCircle(points[i], 3.5, inner);
       }

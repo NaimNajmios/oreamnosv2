@@ -26,10 +26,7 @@ class SegmentedPillToggle<T> extends StatelessWidget {
       decoration: BoxDecoration(
         color: Colors.transparent,
         borderRadius: BorderRadius.circular(AppSpacing.radiusPill),
-        border: Border.all(
-          color: theme.colorScheme.outline,
-          width: 1.0,
-        ),
+        border: Border.all(color: theme.colorScheme.outline, width: 1.0),
       ),
       child: Row(
         mainAxisSize: MainAxisSize.min,
@@ -50,9 +47,14 @@ class SegmentedPillToggle<T> extends StatelessWidget {
             child: AnimatedContainer(
               duration: AppMotion.micro,
               curve: AppMotion.curveMicro,
-              padding: const EdgeInsets.symmetric(horizontal: 24.0, vertical: 12.0),
+              padding: const EdgeInsets.symmetric(
+                horizontal: 24.0,
+                vertical: 12.0,
+              ),
               decoration: BoxDecoration(
-                color: isSelected ? theme.colorScheme.onSurface : Colors.transparent,
+                color: isSelected
+                    ? theme.colorScheme.onSurface
+                    : Colors.transparent,
                 borderRadius: BorderRadius.circular(AppSpacing.radiusPill),
               ),
               child: AnimatedDefaultTextStyle(
@@ -60,7 +62,9 @@ class SegmentedPillToggle<T> extends StatelessWidget {
                 curve: AppMotion.curveMicro,
                 style: theme.textTheme.labelLarge!.copyWith(
                   fontWeight: isSelected ? FontWeight.w600 : FontWeight.w500,
-                  color: isSelected ? theme.colorScheme.surface : theme.colorScheme.onSurface,
+                  color: isSelected
+                      ? theme.colorScheme.surface
+                      : theme.colorScheme.onSurface,
                 ),
                 child: Text(label),
               ),

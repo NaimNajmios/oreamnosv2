@@ -2,14 +2,12 @@ import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:oreamnos/config/theme/app_spacing.dart';
 import 'package:oreamnos/ui/core/utils/haptics.dart';
+
 import 'app_card.dart';
 
 /// Modal bottom sheet for choosing between Camera and Gallery OCR image extraction.
 class OcrExtractionSheet extends StatelessWidget {
-  const OcrExtractionSheet({
-    super.key,
-    required this.onSourceSelected,
-  });
+  const OcrExtractionSheet({super.key, required this.onSourceSelected});
 
   final ValueChanged<ImageSource> onSourceSelected;
 
@@ -25,7 +23,8 @@ class OcrExtractionSheet extends StatelessWidget {
           top: Radius.circular(AppSpacing.radiusLg),
         ),
       ),
-      builder: (context) => OcrExtractionSheet(onSourceSelected: onSourceSelected),
+      builder: (context) =>
+          OcrExtractionSheet(onSourceSelected: onSourceSelected),
     );
   }
 
@@ -88,7 +87,11 @@ class OcrExtractionSheet extends StatelessWidget {
                   padding: const EdgeInsets.all(AppSpacing.lg),
                   child: Column(
                     children: [
-                      Icon(Icons.camera_alt_outlined, size: 28, color: theme.colorScheme.primary),
+                      Icon(
+                        Icons.camera_alt_outlined,
+                        size: 28,
+                        color: theme.colorScheme.primary,
+                      ),
                       const SizedBox(height: AppSpacing.sm),
                       Text(
                         'Camera',
@@ -100,7 +103,9 @@ class OcrExtractionSheet extends StatelessWidget {
                       Text(
                         'Take a photo',
                         style: theme.textTheme.bodySmall?.copyWith(
-                          color: theme.colorScheme.onSurface.withValues(alpha: 0.5),
+                          color: theme.colorScheme.onSurface.withValues(
+                            alpha: 0.5,
+                          ),
                           fontSize: 11,
                         ),
                       ),
@@ -119,7 +124,11 @@ class OcrExtractionSheet extends StatelessWidget {
                   padding: const EdgeInsets.all(AppSpacing.lg),
                   child: Column(
                     children: [
-                      Icon(Icons.photo_library_outlined, size: 28, color: theme.colorScheme.primary),
+                      Icon(
+                        Icons.photo_library_outlined,
+                        size: 28,
+                        color: theme.colorScheme.primary,
+                      ),
                       const SizedBox(height: AppSpacing.sm),
                       Text(
                         'Gallery',
@@ -131,7 +140,9 @@ class OcrExtractionSheet extends StatelessWidget {
                       Text(
                         'Choose screenshot',
                         style: theme.textTheme.bodySmall?.copyWith(
-                          color: theme.colorScheme.onSurface.withValues(alpha: 0.5),
+                          color: theme.colorScheme.onSurface.withValues(
+                            alpha: 0.5,
+                          ),
                           fontSize: 11,
                         ),
                       ),

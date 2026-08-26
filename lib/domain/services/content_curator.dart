@@ -28,4 +28,11 @@ abstract class IContentCurator {
     required String modelId,
     required String apiKey,
   });
+
+  Future<String> rewriteField({
+    required String text,
+    required String fieldName,
+    required String modelId,
+    required String apiKey,
+  });
 }

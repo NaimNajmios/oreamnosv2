@@ -1,4 +1,5 @@
 import 'dart:convert';
+
 import 'package:dio/dio.dart';
 
 import 'package:oreamnos/core/network/api_client.dart';
@@ -11,7 +12,7 @@ import 'package:oreamnos/domain/models/card_brief.dart';
 
 class OpenAICompatibleCurator implements IContentCurator {
   OpenAICompatibleCurator(this.baseUrl, {ApiClient? apiClient})
-      : _client = apiClient ?? ApiClient();
+    : _client = apiClient ?? ApiClient();
 
   final String baseUrl;
   final ApiClient _client;
@@ -40,8 +41,11 @@ class OpenAICompatibleCurator implements IContentCurator {
     required String apiKey,
     String? sourceUrl,
   }) async {
-    final resolvedSourceUrl = sourceUrl ?? (content is ExtractedArticle ? content.url : null);
-    final systemPrompt = GenerationPromptManager.buildSystemPrompt(sourceUrl: resolvedSourceUrl);
+    final resolvedSourceUrl =
+        sourceUrl ?? (content is ExtractedArticle ? content.url : null);
+    final systemPrompt = GenerationPromptManager.buildSystemPrompt(
+      sourceUrl: resolvedSourceUrl,
+    );
     final userPrompt = GenerationPromptManager.buildUserPrompt(content);
 
     final path = '$baseUrl/chat/completions';
@@ -52,14 +56,12 @@ class OpenAICompatibleCurator implements IContentCurator {
         "model": modelId,
         "messages": [
           {"role": "system", "content": systemPrompt},
-          {"role": "user", "content": userPrompt}
+          {"role": "user", "content": userPrompt},
         ],
         "temperature": 0.7,
         "response_format": {"type": "json_object"},
       },
-      options: Options(
-        extra: {'apiKey': apiKey, 'provider': 'openai'},
-      ),
+      options: Options(extra: {'apiKey': apiKey, 'provider': 'openai'}),
     );
 
     if (response.statusCode != 200) {
@@ -69,8 +71,8 @@ class OpenAICompatibleCurator implements IContentCurator {
     final data = response.data is Map<String, dynamic>
         ? response.data as Map<String, dynamic>
         : (response.data is String
-            ? jsonDecode(response.data as String) as Map<String, dynamic>
-            : (response.data as Map).cast<String, dynamic>());
+              ? jsonDecode(response.data as String) as Map<String, dynamic>
+              : (response.data as Map).cast<String, dynamic>());
 
     final choices = data['choices'] as List<dynamic>? ?? [];
     if (choices.isEmpty) {
@@ -82,12 +84,17 @@ class OpenAICompatibleCurator implements IContentCurator {
     return _parseCuratedPost(rawText, resolvedSourceUrl);
   }
 
-  Future<CuratedPost> _parseCuratedPost(String rawText, String? sourceUrl) async {
+  Future<CuratedPost> _parseCuratedPost(
+    String rawText,
+    String? sourceUrl,
+  ) async {
     try {
       final jsonMap = await JsonCleaner.decodeIsolate(rawText);
       if (jsonMap['source'] is Map) {
         final sm = jsonMap['source'] as Map<String, dynamic>;
-        if ((sm['url'] == null || (sm['url'] as String).isEmpty) && sourceUrl != null && sourceUrl.isNotEmpty) {
+        if ((sm['url'] == null || (sm['url'] as String).isEmpty) &&
+            sourceUrl != null &&
+            sourceUrl.isNotEmpty) {
           sm['url'] = sourceUrl;
           sm['domain'] = Uri.tryParse(sourceUrl)?.host;
           if ((sm['label'] as String?)?.isEmpty ?? true) {
@@ -126,14 +133,12 @@ class OpenAICompatibleCurator implements IContentCurator {
         "model": modelId,
         "messages": [
           {"role": "system", "content": systemPrompt},
-          {"role": "user", "content": userPrompt}
+          {"role": "user", "content": userPrompt},
         ],
         "temperature": 0.3,
         "response_format": {"type": "json_object"},
       },
-      options: Options(
-        extra: {'apiKey': apiKey, 'provider': 'openai'},
-      ),
+      options: Options(extra: {'apiKey': apiKey, 'provider': 'openai'}),
     );
 
     if (response.statusCode != 200) {
@@ -143,8 +148,8 @@ class OpenAICompatibleCurator implements IContentCurator {
     final data = response.data is Map<String, dynamic>
         ? response.data as Map<String, dynamic>
         : (response.data is String
-            ? jsonDecode(response.data as String) as Map<String, dynamic>
-            : (response.data as Map).cast<String, dynamic>());
+              ? jsonDecode(response.data as String) as Map<String, dynamic>
+              : (response.data as Map).cast<String, dynamic>());
 
     final choices = data['choices'] as List<dynamic>? ?? [];
     if (choices.isEmpty) {
@@ -153,5 +158,38 @@ class OpenAICompatibleCurator implements IContentCurator {
 
     final message = choices[0]['message'];
     return message['content'] as String;
+  }
+
+  @override
+  Future<String> rewriteField({
+    required String text,
+    required String fieldName,
+    required String modelId,
+    required String apiKey,
+  }) async {
+    try {
+      final response = await _client.post(
+        '$baseUrl/chat/completions',
+        options: Options(headers: {'Authorization': 'Bearer $apiKey'}),
+        data: {
+          "model": modelId,
+          "messages": [
+            {
+              "role": "system",
+              "content":
+                  "You are a copy editor for a sports media brand. Rewrite the following $fieldName text to be concise, grammatically correct, and suitable for a social media graphic. Return ONLY the rewritten text, with no quotes or extra formatting.",
+            },
+            {"role": "user", "content": text},
+          ],
+          "temperature": 0.7,
+        },
+      );
+
+      final data = response.data;
+      final rewrittenText = data['choices'][0]['message']['content'] as String;
+      return rewrittenText.trim();
+    } catch (e) {
+      throw Exception('Failed to rewrite field: $e');
+    }
   }
 }

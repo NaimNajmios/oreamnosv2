@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:provider/provider.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:uuid/uuid.dart';
 
 import 'package:oreamnos/config/theme/app_spacing.dart';
@@ -9,7 +9,7 @@ import 'package:oreamnos/ui/core/widgets/app_button.dart';
 import 'package:oreamnos/ui/core/widgets/app_input.dart';
 import 'package:oreamnos/ui/features/settings/view_models/settings_view_model.dart';
 
-class AddHashtagGroupDialog extends StatefulWidget {
+class AddHashtagGroupDialog extends ConsumerStatefulWidget {
   const AddHashtagGroupDialog({super.key});
 
   static Future<void> show(BuildContext context) {
@@ -20,10 +20,11 @@ class AddHashtagGroupDialog extends StatefulWidget {
   }
 
   @override
-  State<AddHashtagGroupDialog> createState() => _AddHashtagGroupDialogState();
+  ConsumerState<AddHashtagGroupDialog> createState() =>
+      _AddHashtagGroupDialogState();
 }
 
-class _AddHashtagGroupDialogState extends State<AddHashtagGroupDialog> {
+class _AddHashtagGroupDialogState extends ConsumerState<AddHashtagGroupDialog> {
   final _nameController = TextEditingController();
   final _hashtagsController = TextEditingController();
 
@@ -40,7 +41,9 @@ class _AddHashtagGroupDialogState extends State<AddHashtagGroupDialog> {
 
     if (name.isEmpty || hashtags.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Both group name and hashtags are required')),
+        const SnackBar(
+          content: Text('Both group name and hashtags are required'),
+        ),
       );
       return;
     }
@@ -51,7 +54,7 @@ class _AddHashtagGroupDialogState extends State<AddHashtagGroupDialog> {
       hashtags: hashtags,
     );
     Haptics.mediumImpact();
-    context.read<SettingsViewModel>().addHashtagGroup(group);
+    ref.read(settingsViewModelProvider.notifier).addHashtagGroup(group);
     Navigator.of(context).pop();
   }
 
@@ -110,11 +113,7 @@ class _AddHashtagGroupDialogState extends State<AddHashtagGroupDialog> {
                     child: const Text('Cancel'),
                   ),
                   const SizedBox(width: AppSpacing.sm),
-                  AppButton(
-                    label: 'Save Group',
-                    height: 44,
-                    onPressed: _save,
-                  ),
+                  AppButton(label: 'Save Group', height: 44, onPressed: _save),
                 ],
               ),
             ],

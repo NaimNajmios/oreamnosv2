@@ -1,10 +1,14 @@
+import 'package:injectable/injectable.dart';
+
 import 'dart:convert';
+
 import 'package:oreamnos/domain/models/card_brief.dart';
 import 'package:oreamnos/domain/models/card_data.dart';
 import 'package:oreamnos/domain/models/card_template.dart';
 import 'package:oreamnos/data/services/curator_factory.dart';
 import 'package:oreamnos/data/models/ai_provider.dart';
 
+@lazySingleton
 class CardDataExtractor {
   static const String _na = 'N/A';
 
@@ -19,11 +23,12 @@ class CardDataExtractor {
     final effectiveTemplate = template ?? CardTemplate.socialPost;
     final curator = CuratorFactory.getCurator(provider);
     // Curator still uses sparse path; we pass brief but will map result to template
-    final jsonString = await curator.extractCardData(
+    final res = await curator.extractCardData(
       brief: brief,
       modelId: modelId,
       apiKey: apiKey,
     );
+    final jsonString = res;
 
     final cleanedJson = _stripFencesLenient(jsonString);
 
@@ -34,7 +39,9 @@ class CardDataExtractor {
       // Fallback: treat as sparse companion if rich parse fails
       try {
         final fallback = jsonDecode(cleanedJson) as Map<String, dynamic>;
-        if (fallback.containsKey('headline') || fallback.containsKey('content') || fallback.containsKey('playerName')) {
+        if (fallback.containsKey('headline') ||
+            fallback.containsKey('content') ||
+            fallback.containsKey('playerName')) {
           return _mapToCardData(fallback, effectiveTemplate, brief);
         }
       } catch (_) {}
@@ -83,7 +90,9 @@ class CardDataExtractor {
       return jsonDecode(cleaned) as Map<String, dynamic>;
     } catch (_) {
       // Try to fix trailing commas (lenient)
-      final fixed = cleaned.replaceAll(RegExp(r',\s*}'), '}').replaceAll(RegExp(r',\s*]'), ']');
+      final fixed = cleaned
+          .replaceAll(RegExp(r',\s*}'), '}')
+          .replaceAll(RegExp(r',\s*]'), ']');
       return jsonDecode(fixed) as Map<String, dynamic>;
     }
   }
@@ -112,7 +121,12 @@ class CardDataExtractor {
     return fallback;
   }
 
-  List<T> _list<T>(Map<String, dynamic> m, String key, T Function(Map<String, dynamic>) fromJson, {int? exact}) {
+  List<T> _list<T>(
+    Map<String, dynamic> m,
+    String key,
+    T Function(Map<String, dynamic>) fromJson, {
+    int? exact,
+  }) {
     final v = m[key];
     if (v is List) {
       final items = v.whereType<Map<String, dynamic>>().map(fromJson).toList();
@@ -128,28 +142,47 @@ class CardDataExtractor {
     return [];
   }
 
-  CardData _mapToCardData(Map<String, dynamic> json, CardTemplate requested, CardBrief brief) {
+  CardData _mapToCardData(
+    Map<String, dynamic> json,
+    CardTemplate requested,
+    CardBrief brief,
+  ) {
     // Intent routing
     final intent = json['template_intent'] as String?;
-    final CardTemplate effective = intent != null ? CardTemplate.fromIntent(intent) : requested;
+    final CardTemplate effective = intent != null
+        ? CardTemplate.fromIntent(intent)
+        : requested;
 
     // Helper to pad stats to exactly 3
     // ignore: no_leading_underscores_for_local_identifiers
     List<StatItem> stats3(Map<String, dynamic> m) {
-      final list = _list(m, 'stats', (j) => StatItem(
-            label: _s(j, 'label', 'N/A'),
-            value: _s(j, 'value', 'N/A'),
-            context: _s(j, 'context', 'N/A'),
-          ));
+      final list = _list(
+        m,
+        'stats',
+        (j) => StatItem(
+          label: _s(j, 'label', 'N/A'),
+          value: _s(j, 'value', 'N/A'),
+          context: _s(j, 'context', 'N/A'),
+        ),
+      );
       while (list.length < 3) {
         list.add(const StatItem(label: 'N/A', value: 'N/A', context: 'N/A'));
       }
       return list.take(3).toList();
     }
 
-    final sparseHeadline = _s(json, 'headline', brief.headline.isEmpty ? 'N/A' : brief.headline);
-    final sparseSubtext = _s(json, 'subtext', brief.subtext.isEmpty ? 'N/A' : brief.subtext);
-    final sparseMicro = json['microStat'] as String? ?? json['keyAction'] as String?;
+    final sparseHeadline = _s(
+      json,
+      'headline',
+      brief.headline.isEmpty ? 'N/A' : brief.headline,
+    );
+    final sparseSubtext = _s(
+      json,
+      'subtext',
+      brief.subtext.isEmpty ? 'N/A' : brief.subtext,
+    );
+    final sparseMicro =
+        json['microStat'] as String? ?? json['keyAction'] as String?;
 
     switch (effective) {
       case CardTemplate.playerSpotlight:
@@ -255,7 +288,15 @@ class CardDataExtractor {
           yearsAgo: _i(json, 'yearsAgo'),
           competition: _s(json, 'competition'),
           headline: _s(json, 'headline', sparseHeadline),
-          keyStats: _list(json, 'keyStats', (j) => StatItem(label: _s(j, 'label'), value: _s(j, 'value'), context: _s(j, 'context'))),
+          keyStats: _list(
+            json,
+            'keyStats',
+            (j) => StatItem(
+              label: _s(j, 'label'),
+              value: _s(j, 'value'),
+              context: _s(j, 'context'),
+            ),
+          ),
           venue: _s(json, 'venue'),
           attendance: _s(json, 'attendance'),
           result: _s(json, 'result'),
@@ -266,8 +307,22 @@ class CardDataExtractor {
         return CardData.startingXI(
           teamName: _s(json, 'teamName'),
           formation: _s(json, 'formation'),
-          starters: _list(json, 'starters', (j) => LineupPlayer(number: _s(j, 'number'), name: _s(j, 'name', 'N/A'))),
-          subs: _list(json, 'subs', (j) => LineupPlayer(number: _s(j, 'number'), name: _s(j, 'name', 'N/A'))),
+          starters: _list(
+            json,
+            'starters',
+            (j) => LineupPlayer(
+              number: _s(j, 'number'),
+              name: _s(j, 'name', 'N/A'),
+            ),
+          ),
+          subs: _list(
+            json,
+            'subs',
+            (j) => LineupPlayer(
+              number: _s(j, 'number'),
+              name: _s(j, 'name', 'N/A'),
+            ),
+          ),
           manager: _s(json, 'manager'),
           averageAge: _s(json, 'averageAge'),
           keyAbsences: _s(json, 'keyAbsences'),
@@ -282,7 +337,15 @@ class CardDataExtractor {
         return CardData.matchStatsComparison(
           homeTeam: _s(json, 'homeTeam'),
           awayTeam: _s(json, 'awayTeam'),
-          stats: _list(json, 'stats', (j) => ComparisonStat(label: _s(j, 'label'), homeValue: _s(j, 'homeValue'), awayValue: _s(j, 'awayValue'))),
+          stats: _list(
+            json,
+            'stats',
+            (j) => ComparisonStat(
+              label: _s(j, 'label'),
+              homeValue: _s(j, 'homeValue'),
+              awayValue: _s(j, 'awayValue'),
+            ),
+          ),
           suggestedTemplate: effective,
         );
       case CardTemplate.socialPost:
@@ -305,8 +368,20 @@ class CardDataExtractor {
           player1Name: _s(json, 'player1Name'),
           player2Name: _s(json, 'player2Name'),
           matchContext: _s(json, 'matchContext'),
-          player1Stats: stats3(json.containsKey('player1Stats') ? {'stats': json['player1Stats']} : json),
-          player2Stats: _list(json, 'player2Stats', (j) => StatItem(label: _s(j, 'label'), value: _s(j, 'value'), context: _s(j, 'context'))),
+          player1Stats: stats3(
+            json.containsKey('player1Stats')
+                ? {'stats': json['player1Stats']}
+                : json,
+          ),
+          player2Stats: _list(
+            json,
+            'player2Stats',
+            (j) => StatItem(
+              label: _s(j, 'label'),
+              value: _s(j, 'value'),
+              context: _s(j, 'context'),
+            ),
+          ),
           headToHead: _s(json, 'headToHead'),
           verdict: _s(json, 'verdict', sparseSubtext),
           compareType: _s(json, 'compareType'),
@@ -321,7 +396,20 @@ class CardDataExtractor {
         return CardData.tableStandings(
           leagueName: _s(json, 'leagueName', sparseHeadline),
           matchday: _s(json, 'matchday'),
-          standings: _list(json, 'standings', (j) => TableRow(position: _i(j, 'position'), teamName: _s(j, 'teamName'), played: _i(j, 'played'), won: _i(j, 'won'), drawn: _i(j, 'drawn'), lost: _i(j, 'lost'), points: _i(j, 'points'), form: _s(j, 'form'))),
+          standings: _list(
+            json,
+            'standings',
+            (j) => TableRow(
+              position: _i(j, 'position'),
+              teamName: _s(j, 'teamName'),
+              played: _i(j, 'played'),
+              won: _i(j, 'won'),
+              drawn: _i(j, 'drawn'),
+              lost: _i(j, 'lost'),
+              points: _i(j, 'points'),
+              form: _s(j, 'form'),
+            ),
+          ),
           highlightedTeam: _s(json, 'highlightedTeam'),
           promotionZone: _i(json, 'promotionZone', 4),
           relegationZone: _i(json, 'relegationZone', 18),
@@ -335,9 +423,45 @@ class CardDataExtractor {
         return CardData.injuryReport(
           teamName: _s(json, 'teamName'),
           reportDate: _s(json, 'reportDate'),
-          injuries: _list(json, 'injuries', (j) => InjuryItem(playerName: _s(j, 'playerName'), injury: _s(j, 'injury'), status: _s(j, 'status'), position: _s(j, 'position'), recoveryPercentage: _s(j, 'recoveryPercentage'), isLongTerm: j['isLongTerm'] == true, surgeryRequired: j['surgeryRequired'] == true)),
-          doubtfits: _list(json, 'doubtfits', (j) => InjuryItem(playerName: _s(j, 'playerName'), injury: _s(j, 'injury'), status: _s(j, 'status'), position: _s(j, 'position'), recoveryPercentage: _s(j, 'recoveryPercentage'), isLongTerm: j['isLongTerm'] == true, surgeryRequired: j['surgeryRequired'] == true)),
-          returns: _list(json, 'returns', (j) => InjuryItem(playerName: _s(j, 'playerName'), injury: _s(j, 'injury'), status: _s(j, 'status'), position: _s(j, 'position'), recoveryPercentage: _s(j, 'recoveryPercentage'), isLongTerm: j['isLongTerm'] == true, surgeryRequired: j['surgeryRequired'] == true)),
+          injuries: _list(
+            json,
+            'injuries',
+            (j) => InjuryItem(
+              playerName: _s(j, 'playerName'),
+              injury: _s(j, 'injury'),
+              status: _s(j, 'status'),
+              position: _s(j, 'position'),
+              recoveryPercentage: _s(j, 'recoveryPercentage'),
+              isLongTerm: j['isLongTerm'] == true,
+              surgeryRequired: j['surgeryRequired'] == true,
+            ),
+          ),
+          doubtfits: _list(
+            json,
+            'doubtfits',
+            (j) => InjuryItem(
+              playerName: _s(j, 'playerName'),
+              injury: _s(j, 'injury'),
+              status: _s(j, 'status'),
+              position: _s(j, 'position'),
+              recoveryPercentage: _s(j, 'recoveryPercentage'),
+              isLongTerm: j['isLongTerm'] == true,
+              surgeryRequired: j['surgeryRequired'] == true,
+            ),
+          ),
+          returns: _list(
+            json,
+            'returns',
+            (j) => InjuryItem(
+              playerName: _s(j, 'playerName'),
+              injury: _s(j, 'injury'),
+              status: _s(j, 'status'),
+              position: _s(j, 'position'),
+              recoveryPercentage: _s(j, 'recoveryPercentage'),
+              isLongTerm: j['isLongTerm'] == true,
+              surgeryRequired: j['surgeryRequired'] == true,
+            ),
+          ),
           nextMatch: _s(json, 'nextMatch'),
           recoveryPercentage: _s(json, 'recoveryPercentage'),
           suggestedTemplate: effective,
@@ -346,8 +470,38 @@ class CardDataExtractor {
         return CardData.contractExpiry(
           teamName: _s(json, 'teamName'),
           seasonYear: _s(json, 'seasonYear'),
-          expiringPlayers: _list(json, 'expiringPlayers', (j) => ContractPlayer(playerName: _s(j, 'playerName'), position: _s(j, 'position'), expiresIn: _s(j, 'expiresIn'), marketValue: _s(j, 'marketValue'), status: _s(j, 'status'), wage: _s(j, 'wage'), askingPrice: _s(j, 'askingPrice'), interestLevel: _s(j, 'interestLevel'), negotiationProgress: _s(j, 'negotiationProgress'), previousClub: _s(j, 'previousClub'))),
-          renewals: _list(json, 'renewals', (j) => ContractPlayer(playerName: _s(j, 'playerName'), position: _s(j, 'position'), expiresIn: _s(j, 'expiresIn'), marketValue: _s(j, 'marketValue'), status: _s(j, 'status'), wage: _s(j, 'wage'), askingPrice: _s(j, 'askingPrice'), interestLevel: _s(j, 'interestLevel'), negotiationProgress: _s(j, 'negotiationProgress'), previousClub: _s(j, 'previousClub'))),
+          expiringPlayers: _list(
+            json,
+            'expiringPlayers',
+            (j) => ContractPlayer(
+              playerName: _s(j, 'playerName'),
+              position: _s(j, 'position'),
+              expiresIn: _s(j, 'expiresIn'),
+              marketValue: _s(j, 'marketValue'),
+              status: _s(j, 'status'),
+              wage: _s(j, 'wage'),
+              askingPrice: _s(j, 'askingPrice'),
+              interestLevel: _s(j, 'interestLevel'),
+              negotiationProgress: _s(j, 'negotiationProgress'),
+              previousClub: _s(j, 'previousClub'),
+            ),
+          ),
+          renewals: _list(
+            json,
+            'renewals',
+            (j) => ContractPlayer(
+              playerName: _s(j, 'playerName'),
+              position: _s(j, 'position'),
+              expiresIn: _s(j, 'expiresIn'),
+              marketValue: _s(j, 'marketValue'),
+              status: _s(j, 'status'),
+              wage: _s(j, 'wage'),
+              askingPrice: _s(j, 'askingPrice'),
+              interestLevel: _s(j, 'interestLevel'),
+              negotiationProgress: _s(j, 'negotiationProgress'),
+              previousClub: _s(j, 'previousClub'),
+            ),
+          ),
           wage: _s(json, 'wage'),
           askingPrice: _s(json, 'askingPrice'),
           interestLevel: _s(json, 'interestLevel'),
@@ -357,7 +511,19 @@ class CardDataExtractor {
         return CardData.awardNominee(
           awardName: _s(json, 'awardName', sparseHeadline),
           category: _s(json, 'category'),
-          nominees: _list(json, 'nominees', (j) => NomineeItem(playerName: _s(j, 'playerName'), club: _s(j, 'club'), achievement: _s(j, 'achievement'), odds: _s(j, 'odds'), isFavorite: j['isFavorite'] == true, previousWinner: j['previousWinner'] == true, votes: _s(j, 'votes'))),
+          nominees: _list(
+            json,
+            'nominees',
+            (j) => NomineeItem(
+              playerName: _s(j, 'playerName'),
+              club: _s(j, 'club'),
+              achievement: _s(j, 'achievement'),
+              odds: _s(j, 'odds'),
+              isFavorite: j['isFavorite'] == true,
+              previousWinner: j['previousWinner'] == true,
+              votes: _s(j, 'votes'),
+            ),
+          ),
           ceremonyDate: _s(json, 'ceremonyDate'),
           currentFavorite: _s(json, 'currentFavorite'),
           votingDeadline: _s(json, 'votingDeadline'),

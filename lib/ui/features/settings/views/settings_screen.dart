@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:provider/provider.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import 'package:oreamnos/config/routes/app_router.dart';
@@ -8,6 +8,7 @@ import 'package:oreamnos/ui/core/utils/haptics.dart';
 import 'package:oreamnos/ui/core/widgets/section_header.dart';
 import 'package:oreamnos/ui/core/widgets/settings_tile.dart';
 import 'package:oreamnos/domain/models/app_theme_mode.dart';
+
 import '../view_models/settings_view_model.dart';
 import 'widgets/api_key_dialog.dart';
 import 'widgets/model_selection_dialog.dart';
@@ -15,12 +16,12 @@ import 'widgets/provider_selection_dialog.dart';
 import 'widgets/tone_selection_dialog.dart';
 
 /// Minimalist Settings hub.
-class SettingsScreen extends StatelessWidget {
+class SettingsScreen extends ConsumerWidget {
   const SettingsScreen({super.key});
 
   @override
-  Widget build(BuildContext context) {
-    final viewModel = context.watch<SettingsViewModel>();
+  Widget build(BuildContext context, WidgetRef ref) {
+    final viewModel = ref.watch(settingsViewModelProvider);
     final theme = Theme.of(context);
 
     return Scaffold(
@@ -39,7 +40,9 @@ class SettingsScreen extends StatelessWidget {
       ),
       body: Center(
         child: ConstrainedBox(
-          constraints: const BoxConstraints(maxWidth: AppSpacing.maxContentWidth),
+          constraints: const BoxConstraints(
+            maxWidth: AppSpacing.maxContentWidth,
+          ),
           child: ListView(
             padding: const EdgeInsets.symmetric(
               horizontal: AppSpacing.screenHorizontal,
@@ -49,67 +52,94 @@ class SettingsScreen extends StatelessWidget {
               // Theme Toggle
               const SectionHeader(title: 'Appearance'),
               const SizedBox(height: AppSpacing.md),
-              SizedBox(
-                height: 80,
-                child: ListView.builder(
-                  scrollDirection: Axis.horizontal,
-                  itemCount: AppThemeMode.values.length,
-                  itemBuilder: (context, index) {
-                    final mode = AppThemeMode.values[index];
-                    final isSelected = viewModel.themeMode == mode;
-                    
-                    Color previewColor;
-                    switch (mode) {
-                      case AppThemeMode.light: previewColor = Colors.grey.shade300; break;
-                      case AppThemeMode.dark: previewColor = Colors.grey.shade900; break;
-                      case AppThemeMode.deepBlue: previewColor = const Color(0xFF1E3A8A); break;
-                      case AppThemeMode.midnightNoir: previewColor = const Color(0xFF171717); break;
-                      case AppThemeMode.solarizedLight: previewColor = const Color(0xFFFDF6E3); break;
-                      case AppThemeMode.cyberpunk: previewColor = const Color(0xFFFF003C); break;
-                      case AppThemeMode.matchday: previewColor = const Color(0xFFDC2626); break;
-                      case AppThemeMode.forest: previewColor = const Color(0xFF2E7D32); break;
-                      case AppThemeMode.system: previewColor = theme.colorScheme.primary; break;
-                    }
+              Wrap(
+                spacing: AppSpacing.md,
+                runSpacing: AppSpacing.md,
+                children: AppThemeMode.values.map((mode) {
+                  final isSelected = viewModel.themeMode == mode;
 
-                    return Padding(
-                      padding: const EdgeInsets.only(right: AppSpacing.md),
-                      child: GestureDetector(
-                        onTap: () {
-                          Haptics.lightImpact();
-                          viewModel.setThemeMode(mode);
-                        },
-                        child: Column(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            Container(
-                              width: 48,
-                              height: 48,
-                              decoration: BoxDecoration(
-                                shape: BoxShape.circle,
-                                color: previewColor,
-                                border: Border.all(
-                                  color: isSelected ? theme.colorScheme.primary : theme.colorScheme.outline.withValues(alpha: 0.3),
-                                  width: isSelected ? 2 : 1,
-                                ),
+                  Color previewColor;
+                  switch (mode) {
+                    case AppThemeMode.light:
+                      previewColor = Colors.grey.shade300;
+                      break;
+                    case AppThemeMode.dark:
+                      previewColor = Colors.grey.shade900;
+                      break;
+                    case AppThemeMode.deepBlue:
+                      previewColor = const Color(0xFF1E3A8A);
+                      break;
+                    case AppThemeMode.midnightNoir:
+                      previewColor = const Color(0xFF171717);
+                      break;
+                    case AppThemeMode.solarizedLight:
+                      previewColor = const Color(0xFFFDF6E3);
+                      break;
+                    case AppThemeMode.cyberpunk:
+                      previewColor = const Color(0xFFFF003C);
+                      break;
+                    case AppThemeMode.matchday:
+                      previewColor = const Color(0xFFDC2626);
+                      break;
+                    case AppThemeMode.forest:
+                      previewColor = const Color(0xFF2E7D32);
+                      break;
+                    case AppThemeMode.system:
+                      previewColor = theme.colorScheme.primary;
+                      break;
+                  }
+
+                  return Padding(
+                    padding: const EdgeInsets.only(right: AppSpacing.md),
+                    child: GestureDetector(
+                      onTap: () {
+                        Haptics.lightImpact();
+                        viewModel.setThemeMode(mode);
+                      },
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Container(
+                            width: 48,
+                            height: 48,
+                            decoration: BoxDecoration(
+                              shape: BoxShape.circle,
+                              color: previewColor,
+                              border: Border.all(
+                                color: isSelected
+                                    ? theme.colorScheme.primary
+                                    : theme.colorScheme.outline.withValues(
+                                        alpha: 0.3,
+                                      ),
+                                width: isSelected ? 2 : 1,
                               ),
-                              child: isSelected 
-                                  ? Icon(Icons.check_rounded, color: previewColor.computeLuminance() > 0.5 ? Colors.black : Colors.white)
-                                  : null,
                             ),
-                            const SizedBox(height: AppSpacing.xs),
-                            Text(
-                              mode.label,
-                              style: theme.textTheme.labelSmall?.copyWith(
-                                color: isSelected ? theme.colorScheme.onSurface : theme.colorScheme.onSurfaceVariant,
-                                fontWeight: isSelected ? FontWeight.w700 : FontWeight.w500,
-                              ),
+                            child: isSelected
+                                ? Icon(
+                                    Icons.check_rounded,
+                                    color: previewColor.computeLuminance() > 0.5
+                                        ? Colors.black
+                                        : Colors.white,
+                                  )
+                                : null,
+                          ),
+                          const SizedBox(height: AppSpacing.xs),
+                          Text(
+                            mode.label,
+                            style: theme.textTheme.labelSmall?.copyWith(
+                              color: isSelected
+                                  ? theme.colorScheme.onSurface
+                                  : theme.colorScheme.onSurfaceVariant,
+                              fontWeight: isSelected
+                                  ? FontWeight.w700
+                                  : FontWeight.w500,
                             ),
-                          ],
-                        ),
+                          ),
+                        ],
                       ),
-                    );
-                  },
-                ),
+                    ),
+                  );
+                }).toList(),
               ),
               const SizedBox(height: AppSpacing.xl),
 
@@ -127,7 +157,10 @@ class SettingsScreen extends StatelessWidget {
                 leadingIcon: Icons.psychology_outlined,
                 title: 'Model',
                 subtitle: viewModel.selectedModel ?? 'Default (Auto-select)',
-                onTap: () => ModelSelectionDialog.show(context, viewModel.selectedProvider),
+                onTap: () => ModelSelectionDialog.show(
+                  context,
+                  viewModel.selectedProvider,
+                ),
               ),
               const Divider(),
               SettingsTile(
@@ -136,7 +169,8 @@ class SettingsScreen extends StatelessWidget {
                 subtitle: (viewModel.currentApiKey?.isNotEmpty ?? false)
                     ? '•••••••• (Configured)'
                     : 'Not configured',
-                onTap: () => ApiKeyDialog.show(context, viewModel.selectedProvider),
+                onTap: () =>
+                    ApiKeyDialog.show(context, viewModel.selectedProvider),
               ),
               const Divider(),
               const SizedBox(height: AppSpacing.xxl),
@@ -147,7 +181,9 @@ class SettingsScreen extends StatelessWidget {
               SettingsTile(
                 leadingIcon: Icons.tune_rounded,
                 title: 'Tone',
-                subtitle: viewModel.toneMode[0].toUpperCase() + viewModel.toneMode.substring(1),
+                subtitle:
+                    viewModel.toneMode[0].toUpperCase() +
+                    viewModel.toneMode.substring(1),
                 onTap: () => ToneSelectionDialog.show(context),
               ),
               const Divider(),
@@ -183,7 +219,9 @@ class SettingsScreen extends StatelessWidget {
                           Text(
                             'Automatically append default group',
                             style: theme.textTheme.bodyMedium?.copyWith(
-                              color: theme.colorScheme.onSurface.withValues(alpha: 0.6),
+                              color: theme.colorScheme.onSurface.withValues(
+                                alpha: 0.6,
+                              ),
                             ),
                           ),
                         ],
@@ -191,7 +229,8 @@ class SettingsScreen extends StatelessWidget {
                     ),
                     Switch(
                       value: viewModel.autoAppendHashtags,
-                      onChanged: (value) => viewModel.setAutoAppendHashtags(value),
+                      onChanged: (value) =>
+                          viewModel.setAutoAppendHashtags(value),
                     ),
                   ],
                 ),
@@ -236,5 +275,3 @@ class SettingsScreen extends StatelessWidget {
     );
   }
 }
-
-

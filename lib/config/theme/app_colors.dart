@@ -68,8 +68,12 @@ abstract final class AppColors {
     final id = providerId.toLowerCase();
     if (id.contains('gemini')) return isDark ? darkAccentSoft : lightAccentSoft;
     if (id.contains('groq')) return isDark ? darkEmeraldSoft : lightEmeraldSoft;
-    if (id.contains('openrouter')) return isDark ? darkAmberSoft : lightAmberSoft;
-    if (id.contains('cerebras')) return isDark ? darkVioletSoft : lightVioletSoft;
+    if (id.contains('openrouter')) {
+      return isDark ? darkAmberSoft : lightAmberSoft;
+    }
+    if (id.contains('cerebras')) {
+      return isDark ? darkVioletSoft : lightVioletSoft;
+    }
     return isDark ? darkTealSoft : lightTealSoft;
   }
 

@@ -1,4 +1,5 @@
 import 'package:freezed_annotation/freezed_annotation.dart';
+
 import 'card_template.dart';
 
 part 'card_data.freezed.dart';
@@ -12,7 +13,8 @@ abstract class StatItem with _$StatItem {
     required String value,
     @Default('N/A') String context,
   }) = _StatItem;
-  factory StatItem.fromJson(Map<String, dynamic> json) => _$StatItemFromJson(json);
+  factory StatItem.fromJson(Map<String, dynamic> json) =>
+      _$StatItemFromJson(json);
 }
 
 @freezed
@@ -22,16 +24,16 @@ abstract class ComparisonStat with _$ComparisonStat {
     required String homeValue,
     required String awayValue,
   }) = _ComparisonStat;
-  factory ComparisonStat.fromJson(Map<String, dynamic> json) => _$ComparisonStatFromJson(json);
+  factory ComparisonStat.fromJson(Map<String, dynamic> json) =>
+      _$ComparisonStatFromJson(json);
 }
 
 @freezed
 abstract class LineupPlayer with _$LineupPlayer {
-  const factory LineupPlayer({
-    required String number,
-    required String name,
-  }) = _LineupPlayer;
-  factory LineupPlayer.fromJson(Map<String, dynamic> json) => _$LineupPlayerFromJson(json);
+  const factory LineupPlayer({required String number, required String name}) =
+      _LineupPlayer;
+  factory LineupPlayer.fromJson(Map<String, dynamic> json) =>
+      _$LineupPlayerFromJson(json);
 }
 
 @freezed
@@ -46,7 +48,8 @@ abstract class TableRow with _$TableRow {
     required int points,
     @Default('N/A') String form,
   }) = _TableRow;
-  factory TableRow.fromJson(Map<String, dynamic> json) => _$TableRowFromJson(json);
+  factory TableRow.fromJson(Map<String, dynamic> json) =>
+      _$TableRowFromJson(json);
 }
 
 @freezed
@@ -60,7 +63,8 @@ abstract class InjuryItem with _$InjuryItem {
     @Default(false) bool isLongTerm,
     @Default(false) bool surgeryRequired,
   }) = _InjuryItem;
-  factory InjuryItem.fromJson(Map<String, dynamic> json) => _$InjuryItemFromJson(json);
+  factory InjuryItem.fromJson(Map<String, dynamic> json) =>
+      _$InjuryItemFromJson(json);
 }
 
 @freezed
@@ -77,7 +81,8 @@ abstract class ContractPlayer with _$ContractPlayer {
     @Default('N/A') String negotiationProgress,
     @Default('N/A') String previousClub,
   }) = _ContractPlayer;
-  factory ContractPlayer.fromJson(Map<String, dynamic> json) => _$ContractPlayerFromJson(json);
+  factory ContractPlayer.fromJson(Map<String, dynamic> json) =>
+      _$ContractPlayerFromJson(json);
 }
 
 @freezed
@@ -91,7 +96,8 @@ abstract class NomineeItem with _$NomineeItem {
     @Default(false) bool previousWinner,
     @Default('N/A') String votes,
   }) = _NomineeItem;
-  factory NomineeItem.fromJson(Map<String, dynamic> json) => _$NomineeItemFromJson(json);
+  factory NomineeItem.fromJson(Map<String, dynamic> json) =>
+      _$NomineeItemFromJson(json);
 }
 
 @freezed
@@ -321,11 +327,20 @@ sealed class CardData with _$CardData {
     CardTemplate? suggestedTemplate,
   }) = SparseCard;
 
-  factory CardData.fromJson(Map<String, dynamic> json) => _$CardDataFromJson(json);
+  factory CardData.fromJson(Map<String, dynamic> json) =>
+      _$CardDataFromJson(json);
 
   // Convenience for CardBrief → sparse
-  factory CardData.fromBrief({required String headline, required String subtext, String? microStat}) {
-    return CardData.sparse(headline: headline.isEmpty ? 'Generated Card' : headline, subtext: subtext, microStat: microStat);
+  factory CardData.fromBrief({
+    required String headline,
+    required String subtext,
+    String? microStat,
+  }) {
+    return CardData.sparse(
+      headline: headline.isEmpty ? 'Generated Card' : headline,
+      subtext: subtext,
+      microStat: microStat,
+    );
   }
 
   // Sparse canonical accessors — all variants expose headline/subtext/microStat via switch
@@ -333,20 +348,36 @@ sealed class CardData with _$CardData {
     return switch (this) {
       PlayerSpotlight(:final playerName) => playerName,
       HeadlineQuote(:final headline) => headline,
-      TopStats(:final matchContext) => matchContext == 'N/A' ? 'Top Stats' : matchContext,
+      TopStats(:final matchContext) =>
+        matchContext == 'N/A' ? 'Top Stats' : matchContext,
       TransferNews(:final playerName) => playerName,
       BreakingNews(:final headline) => headline,
-      MatchPreview(:final homeTeam, :final awayTeam) => '$homeTeam vs $awayTeam',
-      DetailedScoreboard(:final homeTeam, :final awayTeam, :final homeScore, :final awayScore) => '$homeTeam $homeScore - $awayScore $awayTeam',
-      OnThisDay(:final headline) => headline == 'N/A' ? 'On This Day' : headline,
+      MatchPreview(:final homeTeam, :final awayTeam) =>
+        '$homeTeam vs $awayTeam',
+      DetailedScoreboard(
+        :final homeTeam,
+        :final awayTeam,
+        :final homeScore,
+        :final awayScore,
+      ) =>
+        '$homeTeam $homeScore - $awayScore $awayTeam',
+      OnThisDay(:final headline) =>
+        headline == 'N/A' ? 'On This Day' : headline,
       StartingXI(:final teamName, :final formation) => '$teamName $formation',
-      MatchStatsComparison(:final homeTeam, :final awayTeam) => '$homeTeam vs $awayTeam',
-      SocialPost(:final content) => content == 'N/A' ? 'Social Post' : content.split('\n').first,
-      Rivalry(:final player1Name, :final player2Name) => '$player1Name vs $player2Name',
-      TableStandings(:final leagueName) => leagueName == 'N/A' ? 'League Standings' : leagueName,
-      InjuryReport(:final teamName) => teamName == 'N/A' ? 'Injury Report' : teamName,
-      ContractExpiry(:final teamName) => teamName == 'N/A' ? 'Expiring Contracts' : teamName,
-      AwardNominee(:final awardName) => awardName == 'N/A' ? 'Award Nominees' : awardName,
+      MatchStatsComparison(:final homeTeam, :final awayTeam) =>
+        '$homeTeam vs $awayTeam',
+      SocialPost(:final content) =>
+        content == 'N/A' ? 'Social Post' : content.split('\n').first,
+      Rivalry(:final player1Name, :final player2Name) =>
+        '$player1Name vs $player2Name',
+      TableStandings(:final leagueName) =>
+        leagueName == 'N/A' ? 'League Standings' : leagueName,
+      InjuryReport(:final teamName) =>
+        teamName == 'N/A' ? 'Injury Report' : teamName,
+      ContractExpiry(:final teamName) =>
+        teamName == 'N/A' ? 'Expiring Contracts' : teamName,
+      AwardNominee(:final awardName) =>
+        awardName == 'N/A' ? 'Award Nominees' : awardName,
       SparseCard(:final headline) => headline,
     };
   }
@@ -355,19 +386,27 @@ sealed class CardData with _$CardData {
     return switch (this) {
       PlayerSpotlight(:final keyQuote) => keyQuote == 'N/A' ? '' : keyQuote,
       HeadlineQuote(:final subtext) => subtext == 'N/A' ? '' : subtext,
-      TopStats(:final stats) => stats.isEmpty ? '' : stats.map((s) => '${s.label}: ${s.value}').join(' • '),
+      TopStats(:final stats) =>
+        stats.isEmpty
+            ? ''
+            : stats.map((s) => '${s.label}: ${s.value}').join(' • '),
       TransferNews(:final quote) => quote == 'N/A' ? '' : quote,
       BreakingNews(:final subtext) => subtext == 'N/A' ? '' : subtext,
-      MatchPreview(:final competition, :final matchTime, :final stadium) => '$competition • $matchTime • $stadium',
-      DetailedScoreboard(:final competition, :final matchStatus) => '$competition • $matchStatus',
-      OnThisDay(:final significance) => significance == 'N/A' ? '' : significance,
+      MatchPreview(:final competition, :final matchTime, :final stadium) =>
+        '$competition • $matchTime • $stadium',
+      DetailedScoreboard(:final competition, :final matchStatus) =>
+        '$competition • $matchStatus',
+      OnThisDay(:final significance) =>
+        significance == 'N/A' ? '' : significance,
       StartingXI(:final manager) => manager == 'N/A' ? '' : 'Manager: $manager',
-      MatchStatsComparison(:final stats) => stats.isEmpty ? '' : '${stats.length} stats',
+      MatchStatsComparison(:final stats) =>
+        stats.isEmpty ? '' : '${stats.length} stats',
       SocialPost(:final metrics) => metrics == 'N/A' ? '' : metrics,
       Rivalry(:final verdict) => verdict == 'N/A' ? '' : verdict,
       TableStandings(:final matchday) => matchday == 'N/A' ? '' : matchday,
       InjuryReport(:final nextMatch) => nextMatch == 'N/A' ? '' : nextMatch,
-      ContractExpiry(:final seasonYear) => seasonYear == 'N/A' ? '' : seasonYear,
+      ContractExpiry(:final seasonYear) =>
+        seasonYear == 'N/A' ? '' : seasonYear,
       AwardNominee(:final category) => category == 'N/A' ? '' : category,
       SparseCard(:final subtext) => subtext,
     };
@@ -375,22 +414,28 @@ sealed class CardData with _$CardData {
 
   String? get microStat {
     return switch (this) {
-      PlayerSpotlight(:final keyAction) => keyAction == 'N/A' ? null : keyAction,
+      PlayerSpotlight(:final keyAction) =>
+        keyAction == 'N/A' ? null : keyAction,
       HeadlineQuote(:final category) => category == 'N/A' ? null : category,
       TopStats() => null,
       TransferNews(:final fee) => fee == 'N/A' ? null : fee,
       BreakingNews(:final label) => label,
       MatchPreview(:final homeForm) => homeForm == 'N/A' ? null : homeForm,
-      DetailedScoreboard(:final possession) => possession == 'N/A' ? null : possession,
-      OnThisDay(:final yearsAgo) => yearsAgo == 0 ? null : '$yearsAgo years ago',
+      DetailedScoreboard(:final possession) =>
+        possession == 'N/A' ? null : possession,
+      OnThisDay(:final yearsAgo) =>
+        yearsAgo == 0 ? null : '$yearsAgo years ago',
       StartingXI(:final formation) => formation == 'N/A' ? null : formation,
       MatchStatsComparison() => null,
       SocialPost(:final handle) => handle == 'N/A' ? null : handle,
       Rivalry(:final headToHead) => headToHead == 'N/A' ? null : headToHead,
-      TableStandings(:final highlightedTeam) => highlightedTeam == 'N/A' ? null : highlightedTeam,
-      InjuryReport(:final recoveryPercentage) => recoveryPercentage == 'N/A' ? null : recoveryPercentage,
+      TableStandings(:final highlightedTeam) =>
+        highlightedTeam == 'N/A' ? null : highlightedTeam,
+      InjuryReport(:final recoveryPercentage) =>
+        recoveryPercentage == 'N/A' ? null : recoveryPercentage,
       ContractExpiry(:final wage) => wage == 'N/A' ? null : wage,
-      AwardNominee(:final currentFavorite) => currentFavorite == 'N/A' ? null : currentFavorite,
+      AwardNominee(:final currentFavorite) =>
+        currentFavorite == 'N/A' ? null : currentFavorite,
       SparseCard(:final microStat) => microStat,
     };
   }
@@ -398,7 +443,8 @@ sealed class CardData with _$CardData {
   String get title => headline;
   String get subtitle => subtext;
   bool get hasMicroStat => microStat != null && microStat!.isNotEmpty;
-  bool get isEmpty => headline == 'Generated Card' && subtext.isEmpty && !hasMicroStat;
+  bool get isEmpty =>
+      headline == 'Generated Card' && subtext.isEmpty && !hasMicroStat;
 
   CardTemplate get effectiveTemplate {
     final suggested = suggestedTemplate;
@@ -428,7 +474,9 @@ sealed class CardData with _$CardData {
 extension CardDataCopy on CardData {
   CardData copyWithHeadline(String headline) {
     return switch (this) {
-      PlayerSpotlight() => (this as PlayerSpotlight).copyWith(playerName: headline),
+      PlayerSpotlight() => (this as PlayerSpotlight).copyWith(
+        playerName: headline,
+      ),
       HeadlineQuote() => (this as HeadlineQuote).copyWith(headline: headline),
       BreakingNews() => (this as BreakingNews).copyWith(headline: headline),
       SparseCard() => (this as SparseCard).copyWith(headline: headline),

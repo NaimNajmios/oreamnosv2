@@ -30,20 +30,19 @@ class AppButton extends StatefulWidget {
   State<AppButton> createState() => _AppButtonState();
 }
 
-class _AppButtonState extends State<AppButton> with SingleTickerProviderStateMixin {
+class _AppButtonState extends State<AppButton>
+    with SingleTickerProviderStateMixin {
   late final AnimationController _controller;
   late final Animation<double> _scaleAnimation;
 
   @override
   void initState() {
     super.initState();
-    _controller = AnimationController(
-      vsync: this,
-      duration: AppMotion.fast,
-    );
-    _scaleAnimation = Tween<double>(begin: 1.0, end: 0.98).animate(
-      CurvedAnimation(parent: _controller, curve: AppMotion.curveFast),
-    );
+    _controller = AnimationController(vsync: this, duration: AppMotion.fast);
+    _scaleAnimation = Tween<double>(
+      begin: 1.0,
+      end: 0.98,
+    ).animate(CurvedAnimation(parent: _controller, curve: AppMotion.curveFast));
   }
 
   @override
@@ -77,10 +76,16 @@ class _AppButtonState extends State<AppButton> with SingleTickerProviderStateMix
     final theme = Theme.of(context);
     final enabled = widget.onPressed != null && !widget.isLoading;
 
-    final bgColor = widget.backgroundColor ??
-        (enabled ? theme.colorScheme.onSurface : theme.colorScheme.onSurface.withValues(alpha: 0.12));
-    final fgColor = widget.foregroundColor ??
-        (enabled ? theme.colorScheme.surface : theme.colorScheme.onSurface.withValues(alpha: 0.38));
+    final bgColor =
+        widget.backgroundColor ??
+        (enabled
+            ? theme.colorScheme.onSurface
+            : theme.colorScheme.onSurface.withValues(alpha: 0.12));
+    final fgColor =
+        widget.foregroundColor ??
+        (enabled
+            ? theme.colorScheme.surface
+            : theme.colorScheme.onSurface.withValues(alpha: 0.38));
 
     return Semantics(
       button: true,
@@ -94,7 +99,9 @@ class _AppButtonState extends State<AppButton> with SingleTickerProviderStateMix
         child: AnimatedBuilder(
           animation: _scaleAnimation,
           builder: (context, child) => Transform.scale(
-            scale: AppMotion.shouldReduceMotion(context) ? 1.0 : _scaleAnimation.value,
+            scale: AppMotion.shouldReduceMotion(context)
+                ? 1.0
+                : _scaleAnimation.value,
             child: child,
           ),
           child: Container(
@@ -111,7 +118,9 @@ class _AppButtonState extends State<AppButton> with SingleTickerProviderStateMix
                       height: 20,
                       child: KickoffLoadingIndicator(
                         size: 20,
-                        backgroundColor: fgColor.withValues(alpha: 0.2), // Dimmed fgColor for disc
+                        backgroundColor: fgColor.withValues(
+                          alpha: 0.2,
+                        ), // Dimmed fgColor for disc
                         foregroundColor: fgColor, // fgColor for dots
                       ),
                     )

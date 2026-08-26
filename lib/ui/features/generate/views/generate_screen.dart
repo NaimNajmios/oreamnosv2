@@ -2,10 +2,10 @@ import 'dart:async';
 import 'dart:io';
 
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:flutter_animate/flutter_animate.dart';
-import 'package:provider/provider.dart';
 import 'package:go_router/go_router.dart';
 
 import 'package:oreamnos/config/routes/app_router.dart';
@@ -36,16 +36,17 @@ import 'package:oreamnos/ui/core/widgets/skeleton_loader.dart';
 import 'package:oreamnos/ui/features/settings/view_models/settings_view_model.dart';
 import 'package:oreamnos/ui/features/settings/views/widgets/add_pill_dialog.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+
 import '../view_models/generate_view_model.dart';
 
-class GenerateScreen extends StatefulWidget {
+class GenerateScreen extends ConsumerStatefulWidget {
   const GenerateScreen({super.key});
 
   @override
-  State<GenerateScreen> createState() => _GenerateScreenState();
+  ConsumerState<GenerateScreen> createState() => _GenerateScreenState();
 }
 
-class _GenerateScreenState extends State<GenerateScreen> {
+class _GenerateScreenState extends ConsumerState<GenerateScreen> {
   final _controller = TextEditingController();
   bool _showSuccessOverlay = false;
   bool _lastSuccessState = false;
@@ -102,7 +103,9 @@ class _GenerateScreenState extends State<GenerateScreen> {
             },
           ),
           behavior: SnackBarBehavior.floating,
-          shape: RoundedRectangleBorder(borderRadius: AppSpacing.borderRadiusSm),
+          shape: RoundedRectangleBorder(
+            borderRadius: AppSpacing.borderRadiusSm,
+          ),
         ),
       );
     }
@@ -111,9 +114,10 @@ class _GenerateScreenState extends State<GenerateScreen> {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final viewModel = context.watch<GenerateViewModel>();
+    final viewModel = ref.watch(generateViewModelProvider);
 
-    if (viewModel.pendingInput != null && viewModel.pendingInput != _controller.text) {
+    if (viewModel.pendingInput != null &&
+        viewModel.pendingInput != _controller.text) {
       WidgetsBinding.instance.addPostFrameCallback((_) {
         _controller.text = viewModel.pendingInput!;
         viewModel.clearPendingInput();
@@ -123,7 +127,9 @@ class _GenerateScreenState extends State<GenerateScreen> {
     final isUrl = WebScraperService.isUrl(_controller.text.trim());
     final hasContent = _controller.text.trim().isNotEmpty;
     final isGenerating = viewModel.state == GenerateState.generating;
-    final isSuccess = viewModel.state == GenerateState.success && viewModel.curatedPost != null;
+    final isSuccess =
+        viewModel.state == GenerateState.success &&
+        viewModel.curatedPost != null;
 
     if (isSuccess && !_lastSuccessState) {
       _lastSuccessState = true;
@@ -135,7 +141,10 @@ class _GenerateScreenState extends State<GenerateScreen> {
     }
 
     final validationMsg = viewModel.validationMessage ?? viewModel.errorMessage;
-    final needsConfig = validationMsg != null && (validationMsg.toLowerCase().contains('api key') || validationMsg.toLowerCase().contains('model'));
+    final needsConfig =
+        validationMsg != null &&
+        (validationMsg.toLowerCase().contains('api key') ||
+            validationMsg.toLowerCase().contains('model'));
 
     return Scaffold(
       appBar: AppBar(
@@ -163,7 +172,9 @@ class _GenerateScreenState extends State<GenerateScreen> {
           SafeArea(
             child: Center(
               child: ConstrainedBox(
-                constraints: const BoxConstraints(maxWidth: AppSpacing.maxContentWidth),
+                constraints: const BoxConstraints(
+                  maxWidth: AppSpacing.maxContentWidth,
+                ),
                 child: SingleChildScrollView(
                   padding: const EdgeInsets.symmetric(
                     horizontal: AppSpacing.screenHorizontal,
@@ -175,21 +186,39 @@ class _GenerateScreenState extends State<GenerateScreen> {
                       // Validation banner (pre-flight)
                       if (needsConfig && viewModel.state == GenerateState.error)
                         Container(
-                          margin: const EdgeInsets.only(bottom: AppSpacing.base),
-                          padding: const EdgeInsets.symmetric(horizontal: AppSpacing.md, vertical: AppSpacing.sm),
+                          margin: const EdgeInsets.only(
+                            bottom: AppSpacing.base,
+                          ),
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: AppSpacing.md,
+                            vertical: AppSpacing.sm,
+                          ),
                           decoration: BoxDecoration(
-                            color: theme.colorScheme.errorContainer.withValues(alpha: 0.6),
+                            color: theme.colorScheme.errorContainer.withValues(
+                              alpha: 0.6,
+                            ),
                             borderRadius: AppSpacing.borderRadiusSm,
-                            border: Border.all(color: theme.colorScheme.error.withValues(alpha: 0.2)),
+                            border: Border.all(
+                              color: theme.colorScheme.error.withValues(
+                                alpha: 0.2,
+                              ),
+                            ),
                           ),
                           child: Row(
                             children: [
-                              Icon(Icons.warning_amber_rounded, size: 18, color: theme.colorScheme.error),
+                              Icon(
+                                Icons.warning_amber_rounded,
+                                size: 18,
+                                color: theme.colorScheme.error,
+                              ),
                               const SizedBox(width: AppSpacing.sm),
                               Expanded(
                                 child: Text(
                                   validationMsg,
-                                  style: theme.textTheme.bodySmall?.copyWith(color: theme.colorScheme.onErrorContainer, fontWeight: FontWeight.w500),
+                                  style: theme.textTheme.bodySmall?.copyWith(
+                                    color: theme.colorScheme.onErrorContainer,
+                                    fontWeight: FontWeight.w500,
+                                  ),
                                 ),
                               ),
                               TextButton(
@@ -202,65 +231,94 @@ class _GenerateScreenState extends State<GenerateScreen> {
                             ],
                           ),
                         ),
-                        // App Icon Decoration
-                        if (!isSuccess)
-                          Padding(
-                            padding: const EdgeInsets.only(bottom: AppSpacing.xl),
-                            child: Center(
-                              child: SvgPicture.asset(
-                                'icon/icon_kickoff_transparent.svg',
-                                width: 72,
-                                height: 72,
-                                colorFilter: ColorFilter.mode(theme.colorScheme.primary, BlendMode.srcIn),
-                              ).animate(onPlay: (controller) {
-                                bool isTest = false;
-                                try {
-                                  isTest = Platform.environment.containsKey('FLUTTER_TEST');
-                                } catch (_) {}
-                                if (!isTest) {
-                                  controller.repeat();
-                                }
-                              }).rotate(duration: const Duration(seconds: 4), curve: Curves.linear),
-                            ),
+                      // App Icon Decoration
+                      if (!isSuccess)
+                        Padding(
+                          padding: const EdgeInsets.only(bottom: AppSpacing.xl),
+                          child: Center(
+                            child:
+                                SvgPicture.asset(
+                                      'icon/icon_kickoff_transparent.svg',
+                                      width: 72,
+                                      height: 72,
+                                      colorFilter: ColorFilter.mode(
+                                        theme.colorScheme.primary,
+                                        BlendMode.srcIn,
+                                      ),
+                                    )
+                                    .animate(
+                                      onPlay: (controller) {
+                                        bool isTest = false;
+                                        try {
+                                          isTest = Platform.environment
+                                              .containsKey('FLUTTER_TEST');
+                                        } catch (_) {}
+                                        if (!isTest) {
+                                          controller.repeat();
+                                        }
+                                      },
+                                    )
+                                    .rotate(
+                                      duration: const Duration(seconds: 4),
+                                      curve: Curves.linear,
+                                    ),
                           ),
+                        ),
 
-                        // Capture Section (Hidden on Success)
-                        if (!isSuccess)
-                          _buildCaptureCard(context, viewModel, isUrl, hasContent, isGenerating),
-                        
-                        // Output Section (Hidden when Idle)
-                        if (viewModel.state != GenerateState.idle) ...[
-                          if (!isSuccess) ...[
-                            const SizedBox(height: AppSpacing.xxl),
-                            Divider(thickness: 1, height: 1, color: theme.colorScheme.outlineVariant.withValues(alpha: 0.55)),
-                            const SizedBox(height: AppSpacing.base),
-                            const SectionHeader(title: 'Output'),
-                            const SizedBox(height: AppSpacing.sm),
-                          ],
-                          AnimatedSwitcher(
-                            duration: const Duration(milliseconds: 220),
-                            switchInCurve: Curves.easeOutCubic,
-                            switchOutCurve: Curves.easeInCubic,
-                            child: Column(
-                              key: ValueKey(viewModel.state),
-                              children: [
-                                _buildResultArea(context, theme, viewModel, isSuccess),
-                                if (isSuccess) ...[
-                                  const SizedBox(height: AppSpacing.xl),
-                                  AppOutlinedButton(
-                                    label: 'New Entry',
-                                    icon: Icons.add_rounded,
-                                    onPressed: () {
-                                      _handleClear();
-                                      // Note: To clear curatedPost, we should clear pending inputs
-                                      viewModel.reset();
-                                    },
-                                  ),
-                                ],
-                              ],
+                      // Capture Section (Hidden on Success)
+                      if (!isSuccess)
+                        _buildCaptureCard(
+                          context,
+                          viewModel,
+                          isUrl,
+                          hasContent,
+                          isGenerating,
+                        ),
+
+                      // Output Section (Hidden when Idle)
+                      if (viewModel.state != GenerateState.idle) ...[
+                        if (!isSuccess) ...[
+                          const SizedBox(height: AppSpacing.xxl),
+                          Divider(
+                            thickness: 1,
+                            height: 1,
+                            color: theme.colorScheme.outlineVariant.withValues(
+                              alpha: 0.55,
                             ),
                           ),
+                          const SizedBox(height: AppSpacing.base),
+                          const SectionHeader(title: 'Output'),
+                          const SizedBox(height: AppSpacing.sm),
                         ],
+                        AnimatedSwitcher(
+                          duration: const Duration(milliseconds: 220),
+                          switchInCurve: Curves.easeOutCubic,
+                          switchOutCurve: Curves.easeInCubic,
+                          child: Column(
+                            key: ValueKey(viewModel.state),
+                            children: [
+                              _buildResultArea(
+                                context,
+                                theme,
+                                viewModel,
+                                isSuccess,
+                              ),
+                              if (isSuccess) ...[
+                                const SizedBox(height: AppSpacing.xl),
+                                AppOutlinedButton(
+                                  label: 'New Entry',
+                                  icon: Icons.add_rounded,
+                                  onPressed: () {
+                                    _handleClear();
+                                    // Note: To clear curatedPost, we should clear pending inputs
+                                    viewModel.reset();
+                                  },
+                                ),
+                              ],
+                            ],
+                          ),
+                        ),
+                      ],
                     ],
                   ),
                 ),
@@ -286,19 +344,46 @@ class _GenerateScreenState extends State<GenerateScreen> {
     bool isGenerating,
   ) {
     final theme = Theme.of(context);
-    final settings = context.watch<SettingsViewModel>();
+    final settings = ref.watch(settingsViewModelProvider);
     final providerLabel = settings.selectedProvider.displayName;
     final modelLabel = settings.selectedModel ?? 'Auto';
-    final toneLabel = settings.toneMode[0].toUpperCase() + settings.toneMode.substring(1);
+    final toneLabel =
+        settings.toneMode[0].toUpperCase() + settings.toneMode.substring(1);
     final charCount = _controller.text.length;
-    final wordCount = _controller.text.trim().isEmpty ? 0 : _controller.text.trim().split(RegExp(r'\s+')).length;
-    final isSuccess = viewModel.state == GenerateState.success && viewModel.curatedPost != null;
+    final wordCount = _controller.text.trim().isEmpty
+        ? 0
+        : _controller.text.trim().split(RegExp(r'\s+')).length;
+    final isSuccess =
+        viewModel.state == GenerateState.success &&
+        viewModel.curatedPost != null;
 
     return AppCard(
       padding: const EdgeInsets.all(AppSpacing.base),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
+          const SizedBox(height: AppSpacing.sm),
+          SegmentedButton<PromptLength>(
+            segments: const [
+              ButtonSegment(value: PromptLength.short, label: Text('Short')),
+              ButtonSegment(value: PromptLength.medium, label: Text('Medium')),
+              ButtonSegment(value: PromptLength.long, label: Text('Long')),
+            ],
+            selected: {viewModel.promptLength},
+            onSelectionChanged: isGenerating
+                ? null
+                : (set) {
+                    viewModel.setPromptLength(set.first);
+                  },
+            style: SegmentedButton.styleFrom(
+              visualDensity: VisualDensity.compact,
+              textStyle: theme.textTheme.labelSmall?.copyWith(
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+          ),
+
+          const SizedBox(height: AppSpacing.sm),
           AppInput(
             controller: _controller,
             hint: 'Paste football news or article URL...',
@@ -341,48 +426,81 @@ class _GenerateScreenState extends State<GenerateScreen> {
                             },
                       borderRadius: AppSpacing.borderRadiusPill,
                       child: Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 12,
+                          vertical: 7,
+                        ),
                         decoration: BoxDecoration(
-                          color: theme.colorScheme.surfaceContainerHighest.withValues(alpha: 0.8),
+                          color: theme.colorScheme.surfaceContainerHighest
+                              .withValues(alpha: 0.8),
                           borderRadius: AppSpacing.borderRadiusPill,
-                          border: Border.all(color: theme.colorScheme.outline, width: 1),
+                          border: Border.all(
+                            color: theme.colorScheme.outline,
+                            width: 1,
+                          ),
                         ),
                         child: Row(
                           mainAxisSize: MainAxisSize.min,
                           children: [
                             if (viewModel.isExtractingImage)
-                              SizedBox(
-                                child: KickoffLoadingIndicator(size: 14),
-                              )
+                              SizedBox(child: KickoffLoadingIndicator(size: 14))
                             else
-                              Icon(Icons.document_scanner_outlined, size: 14, color: theme.colorScheme.primary),
+                              Icon(
+                                Icons.document_scanner_outlined,
+                                size: 14,
+                                color: theme.colorScheme.primary,
+                              ),
                             const SizedBox(width: 6),
-                            Text('Scan Image', style: theme.textTheme.labelSmall?.copyWith(fontWeight: FontWeight.w600, color: theme.colorScheme.onSurface)),
+                            Text(
+                              'Scan Image',
+                              style: theme.textTheme.labelSmall?.copyWith(
+                                fontWeight: FontWeight.w600,
+                                color: theme.colorScheme.onSurface,
+                              ),
+                            ),
                           ],
                         ),
                       ),
                     ),
                     if (hasContent)
-                      InputClearButton(
-                        onClear: _handleClear,
-                      )
+                      InputClearButton(onClear: _handleClear)
                     else
                       InkWell(
                         onTap: isGenerating ? null : _pasteFromClipboard,
                         borderRadius: AppSpacing.borderRadiusPill,
                         child: Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 12,
+                            vertical: 7,
+                          ),
                           decoration: BoxDecoration(
-                            color: theme.colorScheme.primary.withValues(alpha: 0.08),
+                            color: theme.colorScheme.primary.withValues(
+                              alpha: 0.08,
+                            ),
                             borderRadius: AppSpacing.borderRadiusPill,
-                            border: Border.all(color: theme.colorScheme.primary.withValues(alpha: 0.2), width: 1),
+                            border: Border.all(
+                              color: theme.colorScheme.primary.withValues(
+                                alpha: 0.2,
+                              ),
+                              width: 1,
+                            ),
                           ),
                           child: Row(
                             mainAxisSize: MainAxisSize.min,
                             children: [
-                              Icon(Icons.content_paste_rounded, size: 14, color: theme.colorScheme.primary),
+                              Icon(
+                                Icons.content_paste_rounded,
+                                size: 14,
+                                color: theme.colorScheme.primary,
+                              ),
                               const SizedBox(width: 6),
-                              Text('Paste', style: theme.textTheme.labelSmall?.copyWith(fontWeight: FontWeight.w600, color: theme.colorScheme.primary)),
+                              Text(
+                                'Paste',
+                                style: theme.textTheme.labelSmall?.copyWith(
+                                  fontWeight: FontWeight.w600,
+                                  color: theme.colorScheme.primary,
+                                ),
+                              ),
                             ],
                           ),
                         ),
@@ -394,9 +512,14 @@ class _GenerateScreenState extends State<GenerateScreen> {
                 const SizedBox(width: AppSpacing.sm),
                 Flexible(
                   child: Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 8,
+                      vertical: 4,
+                    ),
                     decoration: BoxDecoration(
-                      color: charCount > 8000 ? theme.colorScheme.error.withValues(alpha: 0.08) : Colors.transparent,
+                      color: charCount > 8000
+                          ? theme.colorScheme.error.withValues(alpha: 0.08)
+                          : Colors.transparent,
                       borderRadius: AppSpacing.borderRadiusXs,
                     ),
                     child: Text(
@@ -405,18 +528,27 @@ class _GenerateScreenState extends State<GenerateScreen> {
                       overflow: TextOverflow.ellipsis,
                       style: AppTypography.mono(
                         fontSize: 11,
-                        fontWeight: charCount > 8000 ? FontWeight.w700 : FontWeight.w500,
-                        color: charCount > 8000 ? theme.colorScheme.error : theme.colorScheme.onSurface.withValues(alpha: 0.55),
+                        fontWeight: charCount > 8000
+                            ? FontWeight.w700
+                            : FontWeight.w500,
+                        color: charCount > 8000
+                            ? theme.colorScheme.error
+                            : theme.colorScheme.onSurface.withValues(
+                                alpha: 0.55,
+                              ),
                       ),
                     ),
-
                   ),
                 ),
               ],
             ],
           ),
           const SizedBox(height: AppSpacing.md),
-          Divider(thickness: 1, height: 1, color: theme.colorScheme.outlineVariant.withValues(alpha: 0.55)),
+          Divider(
+            thickness: 1,
+            height: 1,
+            color: theme.colorScheme.outlineVariant.withValues(alpha: 0.55),
+          ),
           const SizedBox(height: AppSpacing.sm),
           // Config footer — muted text, no scroll, no clipping
           InkWell(
@@ -429,7 +561,11 @@ class _GenerateScreenState extends State<GenerateScreen> {
               padding: const EdgeInsets.symmetric(vertical: 6, horizontal: 2),
               child: Row(
                 children: [
-                  Icon(Icons.tune_rounded, size: 13, color: theme.colorScheme.onSurface.withValues(alpha: 0.45)),
+                  Icon(
+                    Icons.tune_rounded,
+                    size: 13,
+                    color: theme.colorScheme.onSurface.withValues(alpha: 0.45),
+                  ),
                   const SizedBox(width: 6),
                   Expanded(
                     child: Text(
@@ -437,14 +573,20 @@ class _GenerateScreenState extends State<GenerateScreen> {
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                       style: theme.textTheme.labelSmall?.copyWith(
-                        color: theme.colorScheme.onSurface.withValues(alpha: 0.55),
+                        color: theme.colorScheme.onSurface.withValues(
+                          alpha: 0.55,
+                        ),
                         fontWeight: FontWeight.w500,
                         letterSpacing: 0.2,
                       ),
                     ),
                   ),
                   const SizedBox(width: 8),
-                  Icon(Icons.chevron_right_rounded, size: 16, color: theme.colorScheme.onSurface.withValues(alpha: 0.35)),
+                  Icon(
+                    Icons.chevron_right_rounded,
+                    size: 16,
+                    color: theme.colorScheme.onSurface.withValues(alpha: 0.35),
+                  ),
                 ],
               ),
             ),
@@ -452,7 +594,9 @@ class _GenerateScreenState extends State<GenerateScreen> {
           const SizedBox(height: AppSpacing.base),
           AppButton(
             label: isGenerating
-                ? (viewModel.generatingStep == GeneratingStep.scraping ? 'Extracting URL...' : 'Curating Post...')
+                ? (viewModel.generatingStep == GeneratingStep.scraping
+                      ? 'Extracting URL...'
+                      : 'Curating Post...')
                 : 'Generate Post',
             icon: Icons.auto_awesome_rounded,
             isLoading: isGenerating,
@@ -463,18 +607,39 @@ class _GenerateScreenState extends State<GenerateScreen> {
                     viewModel.generatePost(_controller.text);
                   },
           ),
-          if (viewModel.recentInputs.isNotEmpty && !isGenerating && !isSuccess) ...[
+          if (viewModel.recentInputs.isNotEmpty &&
+              !isGenerating &&
+              !isSuccess) ...[
             const SizedBox(height: AppSpacing.md),
-            Divider(thickness: 1, height: 1, color: theme.colorScheme.outlineVariant.withValues(alpha: 0.35)),
+            Divider(
+              thickness: 1,
+              height: 1,
+              color: theme.colorScheme.outlineVariant.withValues(alpha: 0.35),
+            ),
             Theme(
-              data: Theme.of(context).copyWith(dividerColor: Colors.transparent),
+              data: Theme.of(context)
+                  .copyWith(dividerColor: Colors.transparent),
               child: ExpansionTile(
                 tilePadding: EdgeInsets.zero,
-                childrenPadding: const EdgeInsets.only(top: AppSpacing.sm, bottom: AppSpacing.xs),
+                childrenPadding: const EdgeInsets.only(
+                  top: AppSpacing.sm,
+                  bottom: AppSpacing.xs,
+                ),
                 dense: true,
                 initiallyExpanded: false,
-                title: Text('Recent', style: theme.textTheme.labelSmall?.copyWith(color: theme.colorScheme.onSurface.withValues(alpha: 0.55), letterSpacing: 0.8, fontWeight: FontWeight.w700)),
-                trailing: Icon(Icons.expand_more_rounded, size: 18, color: theme.colorScheme.onSurface.withValues(alpha: 0.45)),
+                title: Text(
+                  'Recent',
+                  style: theme.textTheme.labelSmall?.copyWith(
+                    color: theme.colorScheme.onSurface.withValues(alpha: 0.55),
+                    letterSpacing: 0.8,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+                trailing: Icon(
+                  Icons.expand_more_rounded,
+                  size: 18,
+                  color: theme.colorScheme.onSurface.withValues(alpha: 0.45),
+                ),
                 children: [
                   Align(
                     alignment: Alignment.centerLeft,
@@ -482,7 +647,9 @@ class _GenerateScreenState extends State<GenerateScreen> {
                       spacing: AppSpacing.sm,
                       runSpacing: AppSpacing.sm,
                       children: viewModel.recentInputs.map((r) {
-                        final truncated = r.length > 32 ? '${r.substring(0, 32)}…' : r;
+                        final truncated = r.length > 32
+                            ? '${r.substring(0, 32)}…'
+                            : r;
                         return AppChip(
                           label: truncated,
                           onTap: () {
@@ -544,7 +711,11 @@ class _GenerateScreenState extends State<GenerateScreen> {
 
     if (isSuccess) {
       final post = viewModel.curatedPost!;
-      final copyText = post.toMarkdownFiltered(showTitle: viewModel.showTitle, showHashtags: viewModel.showHashtags, showSource: false);
+      final copyText = post.toMarkdownFiltered(
+        showTitle: viewModel.showTitle,
+        showHashtags: viewModel.showHashtags,
+        showSource: false,
+      );
       return Column(
         key: const ValueKey('success'),
         crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -570,7 +741,9 @@ class _GenerateScreenState extends State<GenerateScreen> {
                           icon: const Icon(Icons.image_outlined, size: 20),
                           tooltip: 'Card Studio',
                           onPressed: () {
-                            final settings = context.read<SettingsViewModel>();
+                            final settings = ref.read(
+                              settingsViewModelProvider.notifier,
+                            );
                             if (settings.selectedModel != null) {
                               final brief = CardBrief.fromPost(
                                 title: post.title,
@@ -578,7 +751,10 @@ class _GenerateScreenState extends State<GenerateScreen> {
                                 provider: settings.selectedProvider,
                                 modelId: settings.selectedModel!,
                               );
-                              context.push(RoutePaths.cardGenerator, extra: brief);
+                              context.push(
+                                RoutePaths.cardGenerator,
+                                extra: brief,
+                              );
                             }
                           },
                         ),
@@ -611,7 +787,9 @@ class _GenerateScreenState extends State<GenerateScreen> {
                       const SizedBox(width: AppSpacing.sm),
                       AppChip(
                         label: 'Hashtags',
-                        icon: viewModel.showHashtags ? Icons.check_rounded : null,
+                        icon: viewModel.showHashtags
+                            ? Icons.check_rounded
+                            : null,
                         selected: viewModel.showHashtags,
                         onTap: viewModel.toggleHashtags,
                       ),
@@ -649,17 +827,41 @@ class _GenerateScreenState extends State<GenerateScreen> {
                   onTap: () {
                     viewModel.undoLastRefinement();
                     Haptics.mediumImpact();
-                    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: const Text('Undid last refinement'), duration: const Duration(seconds: 2)));
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(
+                        content: const Text('Undid last refinement'),
+                        duration: const Duration(seconds: 2),
+                      ),
+                    );
                   },
                   borderRadius: AppSpacing.borderRadiusPill,
                   child: Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
-                    decoration: BoxDecoration(color: theme.colorScheme.surfaceContainerHighest, borderRadius: AppSpacing.borderRadiusPill, border: Border.all(color: theme.colorScheme.outline)),
-                    child: Row(mainAxisSize: MainAxisSize.min, children: [
-                      Icon(Icons.undo_rounded, size: 14, color: theme.colorScheme.primary),
-                      const SizedBox(width: 6),
-                      Text('Undo', style: theme.textTheme.labelSmall?.copyWith(fontWeight: FontWeight.w600)),
-                    ]),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 12,
+                      vertical: 7,
+                    ),
+                    decoration: BoxDecoration(
+                      color: theme.colorScheme.surfaceContainerHighest,
+                      borderRadius: AppSpacing.borderRadiusPill,
+                      border: Border.all(color: theme.colorScheme.outline),
+                    ),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Icon(
+                          Icons.undo_rounded,
+                          size: 14,
+                          color: theme.colorScheme.primary,
+                        ),
+                        const SizedBox(width: 6),
+                        Text(
+                          'Undo',
+                          style: theme.textTheme.labelSmall?.copyWith(
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                      ],
+                    ),
                   ),
                 ),
               ),
@@ -691,12 +893,16 @@ class _GenerateScreenState extends State<GenerateScreen> {
                     'Make the report shorter, 100-120 words, keeping a formal style.',
                   ),
                 ),
-                ...context.watch<SettingsViewModel>().customPills.map(
+                ...ref
+                    .watch(settingsViewModelProvider)
+                    .customPills
+                    .map(
                       (pill) => Padding(
                         padding: const EdgeInsets.only(left: AppSpacing.sm),
                         child: RefinementPill(
                           label: pill.label,
-                          onTap: () => viewModel.refineContent(pill.instruction),
+                          onTap: () =>
+                              viewModel.refineContent(pill.instruction),
                           onLongPress: () {
                             AddPillDialog.show(context, existingPill: pill);
                           },
@@ -721,25 +927,42 @@ class _GenerateScreenState extends State<GenerateScreen> {
     // Idle — flat typographic, no gradient card
     return Container(
       key: const ValueKey('idle'),
-      padding: const EdgeInsets.symmetric(vertical: AppSpacing.lg, horizontal: AppSpacing.base),
+      padding: const EdgeInsets.symmetric(
+        vertical: AppSpacing.lg,
+        horizontal: AppSpacing.base,
+      ),
       decoration: BoxDecoration(
-        color: theme.colorScheme.surfaceContainerHighest.withValues(alpha: 0.35),
+        color: theme.colorScheme.surfaceContainerHighest.withValues(
+          alpha: 0.35,
+        ),
         borderRadius: AppSpacing.borderRadiusMd,
-        border: Border.all(color: theme.colorScheme.outline.withValues(alpha: 0.5)),
+        border: Border.all(
+          color: theme.colorScheme.outline.withValues(alpha: 0.5),
+        ),
       ),
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          Icon(Icons.auto_awesome_rounded, size: 22, color: theme.colorScheme.onSurface.withValues(alpha: 0.45)),
+          Icon(
+            Icons.auto_awesome_rounded,
+            size: 22,
+            color: theme.colorScheme.onSurface.withValues(alpha: 0.45),
+          ),
           const SizedBox(height: AppSpacing.sm),
           Text(
             'Curate Football Posts',
-            style: theme.textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w700, color: theme.colorScheme.onSurface.withValues(alpha: 0.85), letterSpacing: -0.2),
+            style: theme.textTheme.titleSmall?.copyWith(
+              fontWeight: FontWeight.w700,
+              color: theme.colorScheme.onSurface.withValues(alpha: 0.85),
+              letterSpacing: -0.2,
+            ),
           ),
           const SizedBox(height: 4),
           Text(
             'Paste a URL, enter news, or scan an image to start.',
-            style: theme.textTheme.bodySmall?.copyWith(color: theme.colorScheme.onSurface.withValues(alpha: 0.55)),
+            style: theme.textTheme.bodySmall?.copyWith(
+              color: theme.colorScheme.onSurface.withValues(alpha: 0.55),
+            ),
             textAlign: TextAlign.center,
           ),
           const SizedBox(height: AppSpacing.base),
@@ -768,7 +991,10 @@ class _GenerateScreenState extends State<GenerateScreen> {
               ),
               TextButton(
                 onPressed: () {
-                  OcrExtractionSheet.show(context, onSourceSelected: (s) => viewModel.extractTextFromImage(s));
+                  OcrExtractionSheet.show(
+                    context,
+                    onSourceSelected: (s) => viewModel.extractTextFromImage(s),
+                  );
                 },
                 child: const Text('Scan Image'),
               ),
@@ -781,13 +1007,17 @@ class _GenerateScreenState extends State<GenerateScreen> {
 }
 
 // ignore: unused_element
-class _IdleExampleChip extends StatelessWidget {
-  const _IdleExampleChip({required this.label, required this.icon, required this.onTap});
+class _IdleExampleChip extends ConsumerWidget {
+  const _IdleExampleChip({
+    required this.label,
+    required this.icon,
+    required this.onTap,
+  });
   final String label;
   final IconData icon;
   final VoidCallback onTap;
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     final theme = Theme.of(context);
     return InkWell(
       onTap: () {
@@ -802,11 +1032,19 @@ class _IdleExampleChip extends StatelessWidget {
           borderRadius: AppSpacing.borderRadiusPill,
           border: Border.all(color: theme.colorScheme.outline, width: 1),
         ),
-        child: Row(mainAxisSize: MainAxisSize.min, children: [
-          Icon(icon, size: 14, color: theme.colorScheme.primary),
-          const SizedBox(width: 6),
-          Text(label, style: theme.textTheme.labelSmall?.copyWith(fontWeight: FontWeight.w600)),
-        ]),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(icon, size: 14, color: theme.colorScheme.primary),
+            const SizedBox(width: 6),
+            Text(
+              label,
+              style: theme.textTheme.labelSmall?.copyWith(
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }

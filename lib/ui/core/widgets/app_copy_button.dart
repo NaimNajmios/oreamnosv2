@@ -50,7 +50,8 @@ class _AppCopyButtonState extends State<AppCopyButton> {
     return IconButton(
       icon: AnimatedSwitcher(
         duration: AppMotion.fast,
-        transitionBuilder: (child, anim) => ScaleTransition(scale: anim, child: child),
+        transitionBuilder: (child, anim) =>
+            ScaleTransition(scale: anim, child: child),
         child: Icon(
           _copied ? Icons.check_circle_rounded : Icons.copy_rounded,
           key: ValueKey<bool>(_copied),

@@ -41,27 +41,22 @@ class SettingsTile extends StatelessWidget {
           child: Row(
             children: [
               if (leadingIcon != null) ...[
-                Icon(
-                  leadingIcon,
-                  size: 24,
-                  color: theme.colorScheme.onSurface,
-                ),
+                Icon(leadingIcon, size: 24, color: theme.colorScheme.onSurface),
                 const SizedBox(width: AppSpacing.md),
               ],
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(
-                      title,
-                      style: theme.textTheme.titleSmall,
-                    ),
+                    Text(title, style: theme.textTheme.titleSmall),
                     if (subtitle != null) ...[
                       const SizedBox(height: 4),
                       Text(
                         subtitle!,
                         style: theme.textTheme.bodyMedium?.copyWith(
-                          color: theme.colorScheme.onSurface.withValues(alpha: 0.6),
+                          color: theme.colorScheme.onSurface.withValues(
+                            alpha: 0.6,
+                          ),
                         ),
                       ),
                     ],

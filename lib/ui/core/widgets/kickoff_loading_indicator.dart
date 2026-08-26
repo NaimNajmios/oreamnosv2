@@ -1,4 +1,5 @@
 import 'dart:math' as math;
+
 import 'package:flutter/material.dart';
 
 class KickoffLoadingIndicator extends StatefulWidget {
@@ -16,7 +17,8 @@ class KickoffLoadingIndicator extends StatefulWidget {
   });
 
   @override
-  State<KickoffLoadingIndicator> createState() => _KickoffLoadingIndicatorState();
+  State<KickoffLoadingIndicator> createState() =>
+      _KickoffLoadingIndicatorState();
 }
 
 class _KickoffLoadingIndicatorState extends State<KickoffLoadingIndicator>
@@ -42,12 +44,14 @@ class _KickoffLoadingIndicatorState extends State<KickoffLoadingIndicator>
   @override
   Widget build(BuildContext context) {
     final colorScheme = Theme.of(context).colorScheme;
-    
+
     // Default Adaptive Theming:
     // In light mode: background disc is dark (onSurface), elements are light (surface)
     // In dark mode: background disc is light (onSurface), elements are dark (surface)
-    final resolvedBackgroundColor = widget.backgroundColor ?? colorScheme.onSurface;
-    final resolvedForegroundColor = widget.foregroundColor ?? colorScheme.surface;
+    final resolvedBackgroundColor =
+        widget.backgroundColor ?? colorScheme.onSurface;
+    final resolvedForegroundColor =
+        widget.foregroundColor ?? colorScheme.surface;
 
     return SizedBox(
       width: widget.size,
@@ -135,8 +139,8 @@ class KickoffLoadingPainter extends CustomPainter {
   @override
   bool shouldRepaint(covariant KickoffLoadingPainter oldDelegate) {
     return oldDelegate.animationValue != animationValue ||
-           oldDelegate.backgroundColor != backgroundColor ||
-           oldDelegate.foregroundColor != foregroundColor ||
-           oldDelegate.showCenterElements != showCenterElements;
+        oldDelegate.backgroundColor != backgroundColor ||
+        oldDelegate.foregroundColor != foregroundColor ||
+        oldDelegate.showCenterElements != showCenterElements;
   }
 }

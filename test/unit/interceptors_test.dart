@@ -21,14 +21,20 @@ void main() {
   group('AuthInterceptor', () {
     test('adds Bearer for non-gemini', () async {
       final interceptor = AuthInterceptor();
-      final options = RequestOptions(path: '/test', extra: {'apiKey': 'sk-123', 'provider': 'groq'});
+      final options = RequestOptions(
+        path: '/test',
+        extra: {'apiKey': 'sk-123', 'provider': 'groq'},
+      );
       final handler = _FakeRequestHandler();
       interceptor.onRequest(options, handler);
       expect(options.headers['Authorization'], 'Bearer sk-123');
     });
     test('adds ?key for gemini', () async {
       final interceptor = AuthInterceptor();
-      final options = RequestOptions(path: '/test', extra: {'apiKey': 'key123', 'provider': 'gemini'});
+      final options = RequestOptions(
+        path: '/test',
+        extra: {'apiKey': 'key123', 'provider': 'gemini'},
+      );
       interceptor.onRequest(options, _FakeRequestHandler());
       expect(options.queryParameters['key'], 'key123');
     });
@@ -39,7 +45,11 @@ void main() {
       final interceptor = ErrorMappingInterceptor();
       final dioEx = DioException(
         requestOptions: RequestOptions(path: '/'),
-        response: Response(requestOptions: RequestOptions(path: '/'), statusCode: 429, data: 'rate limit'),
+        response: Response(
+          requestOptions: RequestOptions(path: '/'),
+          statusCode: 429,
+          data: 'rate limit',
+        ),
         type: DioExceptionType.badResponse,
       );
       final handler = _FakeErrorHandler();
@@ -51,7 +61,11 @@ void main() {
       final interceptor = ErrorMappingInterceptor();
       final dioEx = DioException(
         requestOptions: RequestOptions(path: '/'),
-        response: Response(requestOptions: RequestOptions(path: '/'), statusCode: 401, data: 'unauth'),
+        response: Response(
+          requestOptions: RequestOptions(path: '/'),
+          statusCode: 401,
+          data: 'unauth',
+        ),
         type: DioExceptionType.badResponse,
       );
       interceptor.onError(dioEx, _FakeErrorHandler());
@@ -61,7 +75,11 @@ void main() {
 
   group('RetryInterceptor', () {
     test('config', () {
-      final r = RetryInterceptor(maxRetries: 4, baseDelayMs: 500, maxDelayMs: 60000);
+      final r = RetryInterceptor(
+        maxRetries: 4,
+        baseDelayMs: 500,
+        maxDelayMs: 60000,
+      );
       expect(r.maxRetries, 4);
       expect(r.baseDelayMs, 500);
     });

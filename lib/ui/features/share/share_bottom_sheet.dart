@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:provider/provider.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import 'package:oreamnos/config/routes/app_router.dart';
@@ -12,33 +12,38 @@ import 'package:oreamnos/ui/features/generate/view_models/generate_view_model.da
 import 'package:oreamnos/ui/features/settings/view_models/settings_view_model.dart';
 
 /// Modal bottom sheet presented when text or URL is shared to Oreamnos.
-class ShareBottomSheet extends StatefulWidget {
+class ShareBottomSheet extends ConsumerStatefulWidget {
   final String initialContent;
 
   const ShareBottomSheet({super.key, required this.initialContent});
 
   @override
-  State<ShareBottomSheet> createState() => _ShareBottomSheetState();
+  ConsumerState<ShareBottomSheet> createState() => _ShareBottomSheetState();
 }
 
-class _ShareBottomSheetState extends State<ShareBottomSheet> {
+class _ShareBottomSheetState extends ConsumerState<ShareBottomSheet> {
   late String _selectedTone;
 
   @override
   void initState() {
     super.initState();
-    _selectedTone = context.read<SettingsViewModel>().toneMode;
+    _selectedTone = ref.read(settingsViewModelProvider.notifier).toneMode;
   }
 
   void _generate() {
     Haptics.mediumImpact();
-    context.read<SettingsViewModel>().setToneMode(_selectedTone);
-    context.read<GenerateViewModel>().setPendingInput(widget.initialContent);
-    context.read<GenerateViewModel>().generatePost(widget.initialContent);
+    ref.read(settingsViewModelProvider.notifier).setToneMode(_selectedTone);
+    ref
+        .read(generateViewModelProvider.notifier)
+        .setPendingInput(widget.initialContent);
+    ref
+        .read(generateViewModelProvider.notifier)
+        .generatePost(widget.initialContent);
     Navigator.of(context).pop();
 
     final goRouter = GoRouter.of(context);
-    if (goRouter.routeInformationProvider.value.uri.path != RoutePaths.generate) {
+    if (goRouter.routeInformationProvider.value.uri.path !=
+        RoutePaths.generate) {
       goRouter.go(RoutePaths.generate);
     }
   }
@@ -63,7 +68,9 @@ class _ShareBottomSheetState extends State<ShareBottomSheet> {
               Container(
                 padding: const EdgeInsets.all(8),
                 decoration: BoxDecoration(
-                  color: theme.colorScheme.primaryContainer.withValues(alpha: 0.3),
+                  color: theme.colorScheme.primaryContainer.withValues(
+                    alpha: 0.3,
+                  ),
                   shape: BoxShape.circle,
                 ),
                 child: Icon(
@@ -91,9 +98,7 @@ class _ShareBottomSheetState extends State<ShareBottomSheet> {
               widget.initialContent,
               maxLines: 4,
               overflow: TextOverflow.ellipsis,
-              style: theme.textTheme.bodyMedium?.copyWith(
-                height: 1.4,
-              ),
+              style: theme.textTheme.bodyMedium?.copyWith(height: 1.4),
             ),
           ),
           const SizedBox(height: AppSpacing.lg),

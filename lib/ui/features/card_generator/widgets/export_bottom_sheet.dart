@@ -27,10 +27,8 @@ class ExportBottomSheet extends StatelessWidget {
           top: Radius.circular(AppSpacing.radiusLg),
         ),
       ),
-      builder: (context) => ExportBottomSheet(
-        onSaveToGallery: onSaveToGallery,
-        onShare: onShare,
-      ),
+      builder: (context) =>
+          ExportBottomSheet(onSaveToGallery: onSaveToGallery, onShare: onShare),
     );
   }
 
@@ -103,4 +101,3 @@ class ExportBottomSheet extends StatelessWidget {
     );
   }
 }
-

@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
+
 import '../../../../../domain/models/card_config.dart';
 import '../../../../../domain/models/card_data.dart';
 import '../../../../../data/services/gradient_builder.dart';
@@ -21,7 +22,14 @@ class TopStatsCanvas extends StatelessWidget {
         children: [
           if (config.showScrim)
             Positioned.fill(
-              child: Container(decoration: BoxDecoration(gradient: GradientBuilder.scrimFor(config.scrimType, config.overlayOpacity))),
+              child: Container(
+                decoration: BoxDecoration(
+                  gradient: GradientBuilder.scrimFor(
+                    config.scrimType,
+                    config.overlayOpacity,
+                  ),
+                ),
+              ),
             ),
           Padding(
             padding: const EdgeInsets.all(24),
@@ -31,13 +39,33 @@ class TopStatsCanvas extends StatelessWidget {
                 Row(
                   children: [
                     Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                      decoration: BoxDecoration(color: Colors.white.withValues(alpha: 0.16), borderRadius: BorderRadius.circular(16)),
-                      child: Text('MATCH METRICS', style: GoogleFonts.jetBrainsMono(color: Colors.white, fontSize: 10, fontWeight: FontWeight.w700, letterSpacing: 1)),
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 10,
+                        vertical: 4,
+                      ),
+                      decoration: BoxDecoration(
+                        color: Colors.white.withValues(alpha: 0.16),
+                        borderRadius: BorderRadius.circular(16),
+                      ),
+                      child: Text(
+                        'MATCH METRICS',
+                        style: GoogleFonts.jetBrainsMono(
+                          color: Colors.white,
+                          fontSize: 10,
+                          fontWeight: FontWeight.w700,
+                          letterSpacing: 1,
+                        ),
+                      ),
                     ),
                     const Spacer(),
                     if (data.matchContext != 'N/A')
-                      Text(data.matchContext, style: GoogleFonts.jetBrainsMono(color: Colors.white70, fontSize: 10)),
+                      Text(
+                        data.matchContext,
+                        style: GoogleFonts.jetBrainsMono(
+                          color: Colors.white70,
+                          fontSize: 10,
+                        ),
+                      ),
                   ],
                 ),
                 const SizedBox(height: 12),
@@ -45,12 +73,13 @@ class TopStatsCanvas extends StatelessWidget {
                   child: stats.isNotEmpty
                       ? GridView.builder(
                           physics: const NeverScrollableScrollPhysics(),
-                          gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                            crossAxisCount: 2,
-                            childAspectRatio: 1.3,
-                            crossAxisSpacing: 12,
-                            mainAxisSpacing: 12,
-                          ),
+                          gridDelegate:
+                              const SliverGridDelegateWithFixedCrossAxisCount(
+                                crossAxisCount: 2,
+                                childAspectRatio: 1.3,
+                                crossAxisSpacing: 12,
+                                mainAxisSpacing: 12,
+                              ),
                           itemCount: stats.length.clamp(0, 4),
                           itemBuilder: (context, index) {
                             final s = stats[index];
@@ -59,7 +88,9 @@ class TopStatsCanvas extends StatelessWidget {
                               decoration: BoxDecoration(
                                 color: Colors.black.withValues(alpha: 0.35),
                                 borderRadius: BorderRadius.circular(14),
-                                border: Border.all(color: Colors.white.withValues(alpha: 0.1)),
+                                border: Border.all(
+                                  color: Colors.white.withValues(alpha: 0.1),
+                                ),
                               ),
                               child: Column(
                                 mainAxisAlignment: MainAxisAlignment.center,
@@ -91,7 +122,10 @@ class TopStatsCanvas extends StatelessWidget {
                                     const SizedBox(height: 2),
                                     Text(
                                       s.context,
-                                      style: GoogleFonts.inter(color: Colors.white54, fontSize: 9),
+                                      style: GoogleFonts.inter(
+                                        color: Colors.white54,
+                                        fontSize: 9,
+                                      ),
                                       textAlign: TextAlign.center,
                                       maxLines: 1,
                                       overflow: TextOverflow.ellipsis,
@@ -104,14 +138,25 @@ class TopStatsCanvas extends StatelessWidget {
                         )
                       : Center(
                           child: Text(
-                            data.subtext.isNotEmpty ? data.subtext : 'Top Performance Stats',
-                            style: GoogleFonts.inter(color: Colors.white70, fontSize: 12),
+                            data.subtext.isNotEmpty
+                                ? data.subtext
+                                : 'Top Performance Stats',
+                            style: GoogleFonts.inter(
+                              color: Colors.white70,
+                              fontSize: 12,
+                            ),
                             textAlign: TextAlign.center,
                           ),
                         ),
                 ),
                 const SizedBox(height: 8),
-                Text('Oreamnos Key Stats', style: GoogleFonts.jetBrainsMono(color: Colors.white.withValues(alpha: 0.6), fontSize: 10)),
+                Text(
+                  'Oreamnos Key Stats',
+                  style: GoogleFonts.jetBrainsMono(
+                    color: Colors.white.withValues(alpha: 0.6),
+                    fontSize: 10,
+                  ),
+                ),
               ],
             ),
           ),

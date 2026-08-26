@@ -4,12 +4,10 @@ import 'package:oreamnos/config/theme/app_motion.dart';
 import 'package:oreamnos/config/theme/app_spacing.dart';
 import 'package:oreamnos/config/theme/app_typography.dart';
 import 'package:oreamnos/ui/core/widgets/kickoff_loading_indicator.dart';
+
 import 'app_card.dart';
 
-enum LoadingType {
-  extracting,
-  generating,
-}
+enum LoadingType { extracting, generating }
 
 class EnhancedLoadingCard extends StatefulWidget {
   const EnhancedLoadingCard({
@@ -25,7 +23,8 @@ class EnhancedLoadingCard extends StatefulWidget {
   State<EnhancedLoadingCard> createState() => _EnhancedLoadingCardState();
 }
 
-class _EnhancedLoadingCardState extends State<EnhancedLoadingCard> with TickerProviderStateMixin {
+class _EnhancedLoadingCardState extends State<EnhancedLoadingCard>
+    with TickerProviderStateMixin {
   late AnimationController _progressController;
   late AnimationController _pulseController;
   late Animation<double> _progressAnimation;
@@ -81,7 +80,10 @@ class _EnhancedLoadingCardState extends State<EnhancedLoadingCard> with TickerPr
     final reduceMotion = AppMotion.shouldReduceMotion(context);
 
     return AppCard(
-      padding: const EdgeInsets.symmetric(horizontal: AppSpacing.xl, vertical: AppSpacing.xxl),
+      padding: const EdgeInsets.symmetric(
+        horizontal: AppSpacing.xl,
+        vertical: AppSpacing.xxl,
+      ),
       child: AnimatedBuilder(
         animation: Listenable.merge([_progressAnimation, _pulseAnimation]),
         builder: (context, child) {
@@ -102,10 +104,14 @@ class _EnhancedLoadingCardState extends State<EnhancedLoadingCard> with TickerPr
                     children: [
                       KickoffLoadingIndicator(
                         size: 80,
-                        backgroundColor: theme.colorScheme.onSurface.withValues(alpha: 0.05),
+                        backgroundColor: theme.colorScheme.onSurface.withValues(
+                          alpha: 0.05,
+                        ),
                         foregroundColor: widget.type == LoadingType.extracting
-                              ? (isDark ? AppColors.darkTeal : AppColors.lightTeal)
-                              : theme.colorScheme.primary,
+                            ? (isDark
+                                  ? AppColors.darkTeal
+                                  : AppColors.lightTeal)
+                            : theme.colorScheme.primary,
                         showCenterElements: false,
                       ),
                       Text(
@@ -143,13 +149,17 @@ class _EnhancedLoadingCardState extends State<EnhancedLoadingCard> with TickerPr
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
                   _StageDot(
-                    isActive: widget.type == LoadingType.extracting || progressVal >= 0.1,
+                    isActive:
+                        widget.type == LoadingType.extracting ||
+                        progressVal >= 0.1,
                     isDone: widget.type == LoadingType.generating,
                     color: theme.colorScheme.primary,
                   ),
                   const SizedBox(width: 8),
                   _StageDot(
-                    isActive: widget.type == LoadingType.generating && progressVal >= 0.4,
+                    isActive:
+                        widget.type == LoadingType.generating &&
+                        progressVal >= 0.4,
                     isDone: progressVal >= 0.85,
                     color: theme.colorScheme.primary,
                   ),
@@ -188,7 +198,10 @@ class _StageDot extends StatelessWidget {
       decoration: BoxDecoration(
         color: isDone
             ? AppColors.success
-            : (isActive ? color : Theme.of(context).colorScheme.outline.withValues(alpha: 0.4)),
+            : (isActive
+                  ? color
+                  : Theme.of(context).colorScheme.outline
+                        .withValues(alpha: 0.4)),
         shape: BoxShape.circle,
       ),
     );

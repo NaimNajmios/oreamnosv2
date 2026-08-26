@@ -9,19 +9,32 @@ void main() {
     final extractor = CardDataExtractor();
 
     test('stripFencesLenient depth scan', () async {
-      const brief = CardBrief(headline: 'H', subtext: 'S', provider: AiProvider.gemini, modelId: 'm');
+      const brief = CardBrief(
+        headline: 'H',
+        subtext: 'S',
+        provider: AiProvider.gemini,
+        modelId: 'm',
+      );
       expect(brief.headline, 'H');
       expect(extractor, isNotNull);
     });
 
     test('template mapping N/A defaults', () {
       // Verify CardTemplate fromIntent
-      expect(CardTemplate.fromIntent('player_spotlight'), CardTemplate.playerSpotlight);
+      expect(
+        CardTemplate.fromIntent('player_spotlight'),
+        CardTemplate.playerSpotlight,
+      );
       expect(CardTemplate.fromIntent('unknown'), CardTemplate.socialPost);
     });
 
     test('sparse headline fallback via CardBrief', () {
-      const brief = CardBrief(headline: 'My Headline', subtext: 'My Subtext', provider: AiProvider.gemini, modelId: 'test');
+      const brief = CardBrief(
+        headline: 'My Headline',
+        subtext: 'My Subtext',
+        provider: AiProvider.gemini,
+        modelId: 'test',
+      );
       expect(brief.headline, 'My Headline');
       expect(brief.promptContext, contains('My Headline'));
     });

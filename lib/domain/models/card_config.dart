@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
+
 import 'card_template.dart';
 
 enum BackgroundType { gradient, gallery, preset }
+
 enum ImagePosition {
   background,
   splitLeft,
@@ -14,7 +16,9 @@ enum ImagePosition {
   brutalist,
   floatWindow,
 }
+
 enum PhotoFilter { none, blackWhite, vintage, vibrant, highContrast }
+
 enum ExportSize {
   square(1080, 1080),
   portrait(1080, 1350),
@@ -24,7 +28,9 @@ enum ExportSize {
   final int width;
   final int height;
 }
+
 enum PresetBackground { stadiumBlur, darkMesh, grassTexture }
+
 enum ScrimType { dark, light, minimal, none, horizontal, reverseHorizontal }
 
 class CardConfig {
@@ -129,7 +135,8 @@ class CardConfig {
       cutoutPath: cutoutPath ?? this.cutoutPath,
       fontSizeMultiplier: fontSizeMultiplier ?? this.fontSizeMultiplier,
       overlayOpacity: overlayOpacity ?? this.overlayOpacity,
-      primaryFontFamilyName: primaryFontFamilyName ?? this.primaryFontFamilyName,
+      primaryFontFamilyName:
+          primaryFontFamilyName ?? this.primaryFontFamilyName,
       accentColor: accentColor ?? this.accentColor,
       elementOffsets: elementOffsets ?? this.elementOffsets,
       backgroundBlurRadius: backgroundBlurRadius ?? this.backgroundBlurRadius,
@@ -147,6 +154,7 @@ class CardConfig {
   }
 
   // Helpers for clearing nullable fields
-  CardConfig clearBackgroundImage() => copyWith(backgroundImagePath: null, cutoutPath: null);
+  CardConfig clearBackgroundImage() =>
+      copyWith(backgroundImagePath: null, cutoutPath: null);
   CardConfig clearWatermark() => copyWith(watermarkPath: null);
 }

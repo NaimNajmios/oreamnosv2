@@ -67,14 +67,15 @@ class AppChip extends StatelessWidget {
               ],
               Text(
                 label,
-                style: theme.textTheme.labelMedium?.copyWith(
-                  color: textCol,
-                ),
+                style: theme.textTheme.labelMedium?.copyWith(color: textCol),
               ),
               if (count != null) ...[
                 const SizedBox(width: 6),
                 Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 6,
+                    vertical: 2,
+                  ),
                   decoration: BoxDecoration(
                     color: textCol.withValues(alpha: 0.12),
                     borderRadius: AppSpacing.borderRadiusPill,

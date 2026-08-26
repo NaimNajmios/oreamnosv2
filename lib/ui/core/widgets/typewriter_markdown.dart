@@ -1,4 +1,5 @@
 import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_markdown/flutter_markdown.dart';
 import 'package:oreamnos/config/theme/app_motion.dart';
@@ -115,15 +116,15 @@ class _TypewriterMarkdownState extends State<TypewriterMarkdown> {
           fontWeight: FontWeight.w700,
           letterSpacing: -0.3,
         ),
-        h3: theme.textTheme.titleMedium?.copyWith(
-          fontWeight: FontWeight.w600,
-        ),
+        h3: theme.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w600),
         code: AppTypography.mono(
           fontSize: 13,
           color: theme.colorScheme.primary,
         ),
         codeblockDecoration: BoxDecoration(
-          color: theme.colorScheme.surfaceContainerHighest.withValues(alpha: 0.5),
+          color: theme.colorScheme.surfaceContainerHighest.withValues(
+            alpha: 0.5,
+          ),
           borderRadius: BorderRadius.circular(8),
         ),
         blockquote: theme.textTheme.bodyMedium?.copyWith(
@@ -132,10 +133,7 @@ class _TypewriterMarkdownState extends State<TypewriterMarkdown> {
         ),
         blockquoteDecoration: BoxDecoration(
           border: Border(
-            left: BorderSide(
-              color: theme.colorScheme.primary,
-              width: 3,
-            ),
+            left: BorderSide(color: theme.colorScheme.primary, width: 3),
           ),
         ),
       ),

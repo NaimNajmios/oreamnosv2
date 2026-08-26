@@ -24,7 +24,11 @@ class TitleBlock extends StatelessWidget {
           ),
         ),
         const SizedBox(height: AppSpacing.sm),
-        Divider(thickness: 1, height: 1, color: theme.colorScheme.outlineVariant.withValues(alpha: 0.55)),
+        Divider(
+          thickness: 1,
+          height: 1,
+          color: theme.colorScheme.outlineVariant.withValues(alpha: 0.55),
+        ),
         const SizedBox(height: AppSpacing.base),
       ],
     );
@@ -60,7 +64,9 @@ class HashtagChips extends StatelessWidget {
           decoration: BoxDecoration(
             color: theme.colorScheme.primary.withValues(alpha: 0.08),
             borderRadius: AppSpacing.borderRadiusPill,
-            border: Border.all(color: theme.colorScheme.primary.withValues(alpha: 0.15)),
+            border: Border.all(
+              color: theme.colorScheme.primary.withValues(alpha: 0.15),
+            ),
           ),
           child: Text(
             '#$h',

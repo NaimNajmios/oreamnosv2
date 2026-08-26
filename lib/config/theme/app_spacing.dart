@@ -25,29 +25,45 @@ abstract final class AppSpacing {
   static const double radiusXl = 24.0;
   static const double radiusPill = 999.0;
 
-  static const BorderRadius borderRadiusXs = BorderRadius.all(Radius.circular(radiusXs));
-  static const BorderRadius borderRadiusSm = BorderRadius.all(Radius.circular(radiusSm));
-  static const BorderRadius borderRadiusMd = BorderRadius.all(Radius.circular(radiusMd));
-  static const BorderRadius borderRadiusLg = BorderRadius.all(Radius.circular(radiusLg));
-  static const BorderRadius borderRadiusXl = BorderRadius.all(Radius.circular(radiusXl));
-  static const BorderRadius borderRadiusPill = BorderRadius.all(Radius.circular(radiusPill));
+  static const BorderRadius borderRadiusXs = BorderRadius.all(
+    Radius.circular(radiusXs),
+  );
+  static const BorderRadius borderRadiusSm = BorderRadius.all(
+    Radius.circular(radiusSm),
+  );
+  static const BorderRadius borderRadiusMd = BorderRadius.all(
+    Radius.circular(radiusMd),
+  );
+  static const BorderRadius borderRadiusLg = BorderRadius.all(
+    Radius.circular(radiusLg),
+  );
+  static const BorderRadius borderRadiusXl = BorderRadius.all(
+    Radius.circular(radiusXl),
+  );
+  static const BorderRadius borderRadiusPill = BorderRadius.all(
+    Radius.circular(radiusPill),
+  );
 
   // === Subtle Flat Shadows ===
   static List<BoxShadow> subtleShadow(bool isDark) => [
-        BoxShadow(
-          color: isDark ? Colors.white.withValues(alpha: 0.05) : Colors.black.withValues(alpha: 0.05),
-          blurRadius: 10,
-          offset: const Offset(0, 4),
-        ),
-      ];
+    BoxShadow(
+      color: isDark
+          ? Colors.white.withValues(alpha: 0.05)
+          : Colors.black.withValues(alpha: 0.05),
+      blurRadius: 10,
+      offset: const Offset(0, 4),
+    ),
+  ];
 
   static List<BoxShadow> softShadow(bool isDark) => subtleShadow(isDark);
 
   static List<BoxShadow> elevatedShadow(bool isDark) => [
-        BoxShadow(
-          color: isDark ? Colors.white.withValues(alpha: 0.1) : Colors.black.withValues(alpha: 0.1),
-          blurRadius: 20,
-          offset: const Offset(0, 8),
-        ),
-      ];
+    BoxShadow(
+      color: isDark
+          ? Colors.white.withValues(alpha: 0.1)
+          : Colors.black.withValues(alpha: 0.1),
+      blurRadius: 20,
+      offset: const Offset(0, 8),
+    ),
+  ];
 }

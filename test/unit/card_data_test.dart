@@ -5,18 +5,30 @@ import 'package:oreamnos/domain/models/card_template.dart';
 void main() {
   group('CardData sealed 17 variants', () {
     test('sparse fromBrief', () {
-      final c = CardData.fromBrief(headline: 'Hello', subtext: 'World', microStat: 'M1');
+      final c = CardData.fromBrief(
+        headline: 'Hello',
+        subtext: 'World',
+        microStat: 'M1',
+      );
       expect(c.headline, 'Hello');
       expect(c.subtext, 'World');
       expect(c.microStat, 'M1');
     });
     test('playerSpotlight headline is playerName', () {
-      const c = CardData.playerSpotlight(playerName: 'Haaland', club: 'Man City', position: 'Striker');
+      const c = CardData.playerSpotlight(
+        playerName: 'Haaland',
+        club: 'Man City',
+        position: 'Striker',
+      );
       expect(c.headline, 'Haaland');
       expect(c.effectiveTemplate, CardTemplate.playerSpotlight);
     });
     test('headlineQuote', () {
-      const c = CardData.headlineQuote(headline: 'Title', subtext: 'Quote', quoteAuthor: 'Messi');
+      const c = CardData.headlineQuote(
+        headline: 'Title',
+        subtext: 'Quote',
+        quoteAuthor: 'Messi',
+      );
       expect(c.headline, 'Title');
       expect(c.subtext, 'Quote');
     });
@@ -38,7 +50,12 @@ void main() {
       expect(c.headline, 'Content line');
     });
     test('fromJson sparse fallback', () {
-      final m = {'headline': 'H', 'subtext': 'S', 'microStat': 'M', 'runtimeType': 'sparse'};
+      final m = {
+        'headline': 'H',
+        'subtext': 'S',
+        'microStat': 'M',
+        'runtimeType': 'sparse',
+      };
       final c = CardData.fromJson(m);
       expect(c is SparseCard, true);
       expect(c.headline, 'H');
@@ -49,9 +66,9 @@ void main() {
         'stats': [
           {'label': 'G', 'value': '2', 'context': 'N/A'},
           {'label': 'A', 'value': '1', 'context': 'N/A'},
-          {'label': 'CS', 'value': '1', 'context': 'N/A'}
+          {'label': 'CS', 'value': '1', 'context': 'N/A'},
         ],
-        'runtimeType': 'topStats'
+        'runtimeType': 'topStats',
       };
       final c = CardData.fromJson(m);
       expect(c is TopStats, true);
@@ -62,7 +79,10 @@ void main() {
       expect(c.isEmpty, true);
     });
     test('effectiveTemplate from suggested', () {
-      const c = CardData.playerSpotlight(playerName: 'P', suggestedTemplate: CardTemplate.breakingNews);
+      const c = CardData.playerSpotlight(
+        playerName: 'P',
+        suggestedTemplate: CardTemplate.breakingNews,
+      );
       expect(c.effectiveTemplate, CardTemplate.breakingNews);
     });
     test('all 17 variants have headline', () {

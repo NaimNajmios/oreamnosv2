@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
+
 import '../../../../../domain/models/card_config.dart';
 import '../../../../../domain/models/card_data.dart';
 import '../../../../../data/services/gradient_builder.dart';
@@ -22,7 +23,14 @@ class RivalryCanvas extends StatelessWidget {
         children: [
           if (config.showScrim)
             Positioned.fill(
-              child: Container(decoration: BoxDecoration(gradient: GradientBuilder.scrimFor(config.scrimType, config.overlayOpacity))),
+              child: Container(
+                decoration: BoxDecoration(
+                  gradient: GradientBuilder.scrimFor(
+                    config.scrimType,
+                    config.overlayOpacity,
+                  ),
+                ),
+              ),
             ),
           Padding(
             padding: const EdgeInsets.all(24),
@@ -30,9 +38,24 @@ class RivalryCanvas extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
                 Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                  decoration: BoxDecoration(color: Colors.white.withValues(alpha: 0.16), borderRadius: BorderRadius.circular(16)),
-                  child: Text('HEAD-TO-HEAD RIVALRY', style: GoogleFonts.jetBrainsMono(color: Colors.white, fontSize: 10, fontWeight: FontWeight.w700, letterSpacing: 1), textAlign: TextAlign.center),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 10,
+                    vertical: 4,
+                  ),
+                  decoration: BoxDecoration(
+                    color: Colors.white.withValues(alpha: 0.16),
+                    borderRadius: BorderRadius.circular(16),
+                  ),
+                  child: Text(
+                    'HEAD-TO-HEAD RIVALRY',
+                    style: GoogleFonts.jetBrainsMono(
+                      color: Colors.white,
+                      fontSize: 10,
+                      fontWeight: FontWeight.w700,
+                      letterSpacing: 1,
+                    ),
+                    textAlign: TextAlign.center,
+                  ),
                 ),
                 const SizedBox(height: 12),
                 Row(
@@ -40,10 +63,17 @@ class RivalryCanvas extends StatelessWidget {
                     Expanded(
                       child: Container(
                         padding: const EdgeInsets.all(12),
-                        decoration: BoxDecoration(color: Colors.black.withValues(alpha: 0.3), borderRadius: BorderRadius.circular(12)),
+                        decoration: BoxDecoration(
+                          color: Colors.black.withValues(alpha: 0.3),
+                          borderRadius: BorderRadius.circular(12),
+                        ),
                         child: Text(
                           data.player1Name,
-                          style: GoogleFonts.inter(color: Colors.white, fontSize: 15 * fontMultiplier, fontWeight: FontWeight.w800),
+                          style: GoogleFonts.inter(
+                            color: Colors.white,
+                            fontSize: 15 * fontMultiplier,
+                            fontWeight: FontWeight.w800,
+                          ),
                           textAlign: TextAlign.center,
                           maxLines: 2,
                         ),
@@ -51,15 +81,29 @@ class RivalryCanvas extends StatelessWidget {
                     ),
                     Padding(
                       padding: const EdgeInsets.symmetric(horizontal: 10),
-                      child: Text('VS', style: GoogleFonts.jetBrainsMono(color: Colors.amberAccent, fontSize: 16, fontWeight: FontWeight.w900)),
+                      child: Text(
+                        'VS',
+                        style: GoogleFonts.jetBrainsMono(
+                          color: Colors.amberAccent,
+                          fontSize: 16,
+                          fontWeight: FontWeight.w900,
+                        ),
+                      ),
                     ),
                     Expanded(
                       child: Container(
                         padding: const EdgeInsets.all(12),
-                        decoration: BoxDecoration(color: Colors.black.withValues(alpha: 0.3), borderRadius: BorderRadius.circular(12)),
+                        decoration: BoxDecoration(
+                          color: Colors.black.withValues(alpha: 0.3),
+                          borderRadius: BorderRadius.circular(12),
+                        ),
                         child: Text(
                           data.player2Name,
-                          style: GoogleFonts.inter(color: Colors.white, fontSize: 15 * fontMultiplier, fontWeight: FontWeight.w800),
+                          style: GoogleFonts.inter(
+                            color: Colors.white,
+                            fontSize: 15 * fontMultiplier,
+                            fontWeight: FontWeight.w800,
+                          ),
                           textAlign: TextAlign.center,
                           maxLines: 2,
                         ),
@@ -69,7 +113,14 @@ class RivalryCanvas extends StatelessWidget {
                 ),
                 if (data.headToHead != 'N/A') ...[
                   const SizedBox(height: 8),
-                  Text('Record: ${data.headToHead}', style: GoogleFonts.jetBrainsMono(color: Colors.white70, fontSize: 11), textAlign: TextAlign.center),
+                  Text(
+                    'Record: ${data.headToHead}',
+                    style: GoogleFonts.jetBrainsMono(
+                      color: Colors.white70,
+                      fontSize: 11,
+                    ),
+                    textAlign: TextAlign.center,
+                  ),
                 ],
                 const SizedBox(height: 12),
                 Expanded(
@@ -78,37 +129,75 @@ class RivalryCanvas extends StatelessWidget {
                     decoration: BoxDecoration(
                       color: Colors.black.withValues(alpha: 0.35),
                       borderRadius: BorderRadius.circular(14),
-                      border: Border.all(color: Colors.white.withValues(alpha: 0.1)),
+                      border: Border.all(
+                        color: Colors.white.withValues(alpha: 0.1),
+                      ),
                     ),
                     child: p1Stats.isNotEmpty
                         ? ListView.separated(
                             physics: const NeverScrollableScrollPhysics(),
                             itemCount: p1Stats.length.clamp(0, 4),
-                            separatorBuilder: (_, _) => const SizedBox(height: 8),
+                            separatorBuilder: (_, _) =>
+                                const SizedBox(height: 8),
                             itemBuilder: (context, index) {
                               final s1 = p1Stats[index];
-                              final s2Val = index < p2Stats.length ? p2Stats[index].value : '-';
+                              final s2Val = index < p2Stats.length
+                                  ? p2Stats[index].value
+                                  : '-';
                               return Row(
-                                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                mainAxisAlignment:
+                                    MainAxisAlignment.spaceBetween,
                                 children: [
-                                  Text(s1.value, style: GoogleFonts.jetBrainsMono(color: Colors.white, fontSize: 13, fontWeight: FontWeight.w800)),
-                                  Text(s1.label, style: GoogleFonts.inter(color: Colors.white70, fontSize: 11, fontWeight: FontWeight.w600)),
-                                  Text(s2Val, style: GoogleFonts.jetBrainsMono(color: Colors.white, fontSize: 13, fontWeight: FontWeight.w800)),
+                                  Text(
+                                    s1.value,
+                                    style: GoogleFonts.jetBrainsMono(
+                                      color: Colors.white,
+                                      fontSize: 13,
+                                      fontWeight: FontWeight.w800,
+                                    ),
+                                  ),
+                                  Text(
+                                    s1.label,
+                                    style: GoogleFonts.inter(
+                                      color: Colors.white70,
+                                      fontSize: 11,
+                                      fontWeight: FontWeight.w600,
+                                    ),
+                                  ),
+                                  Text(
+                                    s2Val,
+                                    style: GoogleFonts.jetBrainsMono(
+                                      color: Colors.white,
+                                      fontSize: 13,
+                                      fontWeight: FontWeight.w800,
+                                    ),
+                                  ),
                                 ],
                               );
                             },
                           )
                         : Center(
                             child: Text(
-                              data.subtext.isNotEmpty ? data.subtext : 'Rivalry Comparison',
-                              style: GoogleFonts.inter(color: Colors.white70, fontSize: 12),
+                              data.subtext.isNotEmpty
+                                  ? data.subtext
+                                  : 'Rivalry Comparison',
+                              style: GoogleFonts.inter(
+                                color: Colors.white70,
+                                fontSize: 12,
+                              ),
                               textAlign: TextAlign.center,
                             ),
                           ),
                   ),
                 ),
                 const SizedBox(height: 8),
-                Text('Oreamnos Head to Head', style: GoogleFonts.jetBrainsMono(color: Colors.white.withValues(alpha: 0.6), fontSize: 10)),
+                Text(
+                  'Oreamnos Head to Head',
+                  style: GoogleFonts.jetBrainsMono(
+                    color: Colors.white.withValues(alpha: 0.6),
+                    fontSize: 10,
+                  ),
+                ),
               ],
             ),
           ),

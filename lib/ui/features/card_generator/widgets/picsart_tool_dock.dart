@@ -1,23 +1,24 @@
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter/material.dart';
 import 'package:oreamnos/config/theme/app_spacing.dart';
 import 'package:oreamnos/ui/core/utils/haptics.dart';
 import 'package:oreamnos/ui/core/widgets/app_chip.dart';
 import 'package:oreamnos/ui/features/card_generator/view_models/card_generator_view_model.dart';
+import 'package:oreamnos/domain/models/card_template.dart';
+
 import 'background_picker.dart';
 import 'ratio_selector.dart';
 
 enum PicsartPanel { templates, ratio, background, typography, text }
 
-class PicsartToolDock extends StatefulWidget {
-  final CardGeneratorViewModel viewModel;
-
-  const PicsartToolDock({super.key, required this.viewModel});
+class PicsartToolDock extends ConsumerStatefulWidget {
+  const PicsartToolDock({super.key});
 
   @override
-  State<PicsartToolDock> createState() => _PicsartToolDockState();
+  ConsumerState<PicsartToolDock> createState() => _PicsartToolDockState();
 }
 
-class _PicsartToolDockState extends State<PicsartToolDock> {
+class _PicsartToolDockState extends ConsumerState<PicsartToolDock> {
   PicsartPanel? _activePanel;
 
   // Text controllers for the text panel
@@ -28,17 +29,16 @@ class _PicsartToolDockState extends State<PicsartToolDock> {
   @override
   void initState() {
     super.initState();
-    final d = widget.viewModel.cardData;
-    _headlineCtrl = TextEditingController(text: d?.headline ?? '');
-    _subtextCtrl = TextEditingController(text: d?.subtext ?? '');
-    _badgeCtrl = TextEditingController(text: d?.microStat ?? '');
-    widget.viewModel.addListener(_syncText);
+    _headlineCtrl = TextEditingController();
+    _subtextCtrl = TextEditingController();
+    _badgeCtrl = TextEditingController();
   }
 
-  void _syncText() {
-    final d = widget.viewModel.cardData;
+  void _syncText(CardGeneratorViewModel vm) {
+    final d = vm.cardData;
     if (d == null) return;
-    final hasFocus = FocusManager.instance.primaryFocus?.context?.widget is EditableText;
+    final hasFocus =
+        FocusManager.instance.primaryFocus?.context?.widget is EditableText;
     if (!hasFocus) {
       if (_headlineCtrl.text != d.headline) _headlineCtrl.text = d.headline;
       if (_subtextCtrl.text != d.subtext) _subtextCtrl.text = d.subtext;
@@ -47,17 +47,7 @@ class _PicsartToolDockState extends State<PicsartToolDock> {
   }
 
   @override
-  void didUpdateWidget(covariant PicsartToolDock oldWidget) {
-    super.didUpdateWidget(oldWidget);
-    if (oldWidget.viewModel != widget.viewModel) {
-      oldWidget.viewModel.removeListener(_syncText);
-      widget.viewModel.addListener(_syncText);
-    }
-  }
-
-  @override
   void dispose() {
-    widget.viewModel.removeListener(_syncText);
     _headlineCtrl.dispose();
     _subtextCtrl.dispose();
     _badgeCtrl.dispose();
@@ -74,11 +64,16 @@ class _PicsartToolDockState extends State<PicsartToolDock> {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    
+    ref.listen(cardGeneratorViewModelProvider, (_, _) {
+      _syncText(ref.read(cardGeneratorViewModelProvider.notifier));
+    });
+
     return Container(
       decoration: BoxDecoration(
         color: theme.colorScheme.surface,
-        border: Border(top: BorderSide(color: theme.colorScheme.outlineVariant, width: 1)),
+        border: Border(
+          top: BorderSide(color: theme.colorScheme.outlineVariant, width: 1),
+        ),
       ),
       child: SafeArea(
         top: false,
@@ -139,7 +134,7 @@ class _PicsartToolDockState extends State<PicsartToolDock> {
   Widget _buildActivePanel(ThemeData theme) {
     Widget content;
     String title = '';
-    
+
     switch (_activePanel!) {
       case PicsartPanel.templates:
         title = 'Templates';
@@ -180,7 +175,9 @@ class _PicsartToolDockState extends State<PicsartToolDock> {
                 child: Text(
                   title,
                   textAlign: TextAlign.center,
-                  style: theme.textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w600),
+                  style: theme.textTheme.titleSmall?.copyWith(
+                    fontWeight: FontWeight.w600,
+                  ),
                 ),
               ),
               IconButton(
@@ -203,7 +200,7 @@ class _PicsartToolDockState extends State<PicsartToolDock> {
   }
 
   Widget _buildTemplatesPanel(ThemeData theme) {
-    final vm = widget.viewModel;
+    final vm = ref.read(cardGeneratorViewModelProvider.notifier);
     return Wrap(
       spacing: AppSpacing.sm,
       runSpacing: AppSpacing.sm,
@@ -212,8 +209,8 @@ class _PicsartToolDockState extends State<PicsartToolDock> {
         _TemplateChip(
           label: 'Standard',
           icon: Icons.view_agenda_outlined,
-          selected: vm.selectedTemplate == CardTemplate.standard,
-          onTap: () => vm.setTemplate(CardTemplate.standard),
+          selected: vm.selectedTemplate == CardTemplate.socialPost,
+          onTap: () => vm.setTemplate(CardTemplate.socialPost),
         ),
         _TemplateChip(
           label: 'Quote',
@@ -230,8 +227,8 @@ class _PicsartToolDockState extends State<PicsartToolDock> {
         _TemplateChip(
           label: 'Stat',
           icon: Icons.military_tech_outlined,
-          selected: vm.selectedTemplate == CardTemplate.statBadge,
-          onTap: () => vm.setTemplate(CardTemplate.statBadge),
+          selected: vm.selectedTemplate == CardTemplate.topStats,
+          onTap: () => vm.setTemplate(CardTemplate.topStats),
         ),
       ],
     );
@@ -241,14 +238,16 @@ class _PicsartToolDockState extends State<PicsartToolDock> {
     return Align(
       alignment: Alignment.center,
       child: RatioSelector(
-        selected: widget.viewModel.selectedRatio,
-        onSelect: widget.viewModel.setRatio,
+        selected: ref
+            .read(cardGeneratorViewModelProvider.notifier)
+            .selectedRatio,
+        onSelect: ref.read(cardGeneratorViewModelProvider.notifier).setRatio,
       ),
     );
   }
 
   Widget _buildBackgroundPanel(ThemeData theme) {
-    final vm = widget.viewModel;
+    final vm = ref.read(cardGeneratorViewModelProvider.notifier);
     return Column(
       children: [
         BackgroundPicker(
@@ -282,7 +281,7 @@ class _PicsartToolDockState extends State<PicsartToolDock> {
   }
 
   Widget _buildTypographyPanel(ThemeData theme) {
-    final vm = widget.viewModel;
+    final vm = ref.read(cardGeneratorViewModelProvider.notifier);
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -290,9 +289,21 @@ class _PicsartToolDockState extends State<PicsartToolDock> {
           spacing: AppSpacing.sm,
           runSpacing: AppSpacing.sm,
           children: [
-            AppChip(label: 'Inter', selected: vm.selectedFont == AppFont.defaultFont, onTap: () => vm.setFont(AppFont.defaultFont)),
-            AppChip(label: 'Lora Serif', selected: vm.selectedFont == AppFont.classicSerif, onTap: () => vm.setFont(AppFont.classicSerif)),
-            AppChip(label: 'Space Mono', selected: vm.selectedFont == AppFont.typewriter, onTap: () => vm.setFont(AppFont.typewriter)),
+            AppChip(
+              label: 'Inter',
+              selected: vm.selectedFont == AppFont.defaultFont,
+              onTap: () => vm.setFont(AppFont.defaultFont),
+            ),
+            AppChip(
+              label: 'Lora Serif',
+              selected: vm.selectedFont == AppFont.classicSerif,
+              onTap: () => vm.setFont(AppFont.classicSerif),
+            ),
+            AppChip(
+              label: 'Space Mono',
+              selected: vm.selectedFont == AppFont.typewriter,
+              onTap: () => vm.setFont(AppFont.typewriter),
+            ),
           ],
         ),
         const SizedBox(height: AppSpacing.lg),
@@ -309,7 +320,10 @@ class _PicsartToolDockState extends State<PicsartToolDock> {
                 onChanged: vm.setHeadlineScale,
               ),
             ),
-            Text('${(vm.headlineScale * 100).round()}%', style: theme.textTheme.labelMedium),
+            Text(
+              '${(vm.headlineScale * 100).round()}%',
+              style: theme.textTheme.labelMedium,
+            ),
           ],
         ),
       ],
@@ -317,7 +331,7 @@ class _PicsartToolDockState extends State<PicsartToolDock> {
   }
 
   Widget _buildTextPanel(ThemeData theme) {
-    final vm = widget.viewModel;
+    final vm = ref.read(cardGeneratorViewModelProvider.notifier);
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
@@ -354,7 +368,11 @@ class _ToolItem extends StatelessWidget {
   final String label;
   final VoidCallback onTap;
 
-  const _ToolItem({required this.icon, required this.label, required this.onTap});
+  const _ToolItem({
+    required this.icon,
+    required this.label,
+    required this.onTap,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -393,7 +411,12 @@ class _TemplateChip extends StatelessWidget {
   final bool selected;
   final VoidCallback onTap;
 
-  const _TemplateChip({required this.label, required this.icon, required this.selected, required this.onTap});
+  const _TemplateChip({
+    required this.label,
+    required this.icon,
+    required this.selected,
+    required this.onTap,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -401,24 +424,42 @@ class _TemplateChip extends StatelessWidget {
     return Material(
       color: Colors.transparent,
       child: InkWell(
-        onTap: () { Haptics.selectionClick(); onTap(); },
+        onTap: () {
+          Haptics.selectionClick();
+          onTap();
+        },
         borderRadius: AppSpacing.borderRadiusPill,
         child: Container(
           padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
           decoration: BoxDecoration(
-            color: selected ? theme.colorScheme.primaryContainer : theme.colorScheme.surface,
+            color: selected
+                ? theme.colorScheme.primaryContainer
+                : theme.colorScheme.surface,
             borderRadius: AppSpacing.borderRadiusPill,
-            border: Border.all(color: selected ? theme.colorScheme.primary : theme.colorScheme.outline, width: selected ? 1.5 : 1),
+            border: Border.all(
+              color: selected
+                  ? theme.colorScheme.primary
+                  : theme.colorScheme.outline,
+              width: selected ? 1.5 : 1,
+            ),
           ),
           child: Row(
             mainAxisSize: MainAxisSize.min,
             children: [
-              Icon(icon, size: 18, color: selected ? theme.colorScheme.primary : theme.colorScheme.onSurface.withValues(alpha: 0.8)),
+              Icon(
+                icon,
+                size: 18,
+                color: selected
+                    ? theme.colorScheme.primary
+                    : theme.colorScheme.onSurface.withValues(alpha: 0.8),
+              ),
               const SizedBox(width: 8),
               Text(
                 label,
                 style: theme.textTheme.labelMedium?.copyWith(
-                  color: selected ? theme.colorScheme.primary : theme.colorScheme.onSurface,
+                  color: selected
+                      ? theme.colorScheme.primary
+                      : theme.colorScheme.onSurface,
                   fontWeight: selected ? FontWeight.w600 : FontWeight.w500,
                 ),
               ),
@@ -456,15 +497,33 @@ class _Field extends StatelessWidget {
       style: theme.textTheme.bodyMedium?.copyWith(fontWeight: FontWeight.w500),
       decoration: InputDecoration(
         labelText: label,
-        labelStyle: theme.textTheme.labelMedium?.copyWith(color: theme.colorScheme.onSurface.withValues(alpha: 0.6)),
+        labelStyle: theme.textTheme.labelMedium?.copyWith(
+          color: theme.colorScheme.onSurface.withValues(alpha: 0.6),
+        ),
         counterText: '',
         isDense: true,
-        contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-        border: OutlineInputBorder(borderRadius: AppSpacing.borderRadiusSm, borderSide: BorderSide(color: theme.colorScheme.outline)),
-        enabledBorder: OutlineInputBorder(borderRadius: AppSpacing.borderRadiusSm, borderSide: BorderSide(color: theme.colorScheme.outline.withValues(alpha: 0.7))),
-        focusedBorder: OutlineInputBorder(borderRadius: AppSpacing.borderRadiusSm, borderSide: BorderSide(color: theme.colorScheme.primary, width: 1.4)),
+        contentPadding: const EdgeInsets.symmetric(
+          horizontal: 14,
+          vertical: 12,
+        ),
+        border: OutlineInputBorder(
+          borderRadius: AppSpacing.borderRadiusSm,
+          borderSide: BorderSide(color: theme.colorScheme.outline),
+        ),
+        enabledBorder: OutlineInputBorder(
+          borderRadius: AppSpacing.borderRadiusSm,
+          borderSide: BorderSide(
+            color: theme.colorScheme.outline.withValues(alpha: 0.7),
+          ),
+        ),
+        focusedBorder: OutlineInputBorder(
+          borderRadius: AppSpacing.borderRadiusSm,
+          borderSide: BorderSide(color: theme.colorScheme.primary, width: 1.4),
+        ),
         filled: true,
-        fillColor: theme.colorScheme.surfaceContainerHighest.withValues(alpha: 0.35),
+        fillColor: theme.colorScheme.surfaceContainerHighest.withValues(
+          alpha: 0.35,
+        ),
       ),
       onChanged: onChanged,
     );

@@ -26,7 +26,10 @@ class RetryInterceptor extends QueuedInterceptor {
   final _random = Random();
 
   @override
-  Future<void> onError(DioException err, ErrorInterceptorHandler handler) async {
+  Future<void> onError(
+    DioException err,
+    ErrorInterceptorHandler handler,
+  ) async {
     final extra = err.requestOptions.extra;
     final retries = (extra['retryCount'] as int?) ?? 0;
 
@@ -37,8 +40,10 @@ class RetryInterceptor extends QueuedInterceptor {
       return;
     }
 
-    final isRetryableStatus = status == 429 || status == 503 || (status != null && status >= 500);
-    final isRetryableException = err.type == DioExceptionType.connectionTimeout ||
+    final isRetryableStatus =
+        status == 429 || status == 503 || (status != null && status >= 500);
+    final isRetryableException =
+        err.type == DioExceptionType.connectionTimeout ||
         err.type == DioExceptionType.receiveTimeout ||
         err.type == DioExceptionType.sendTimeout ||
         err.type == DioExceptionType.connectionError;
@@ -65,14 +70,17 @@ class RetryInterceptor extends QueuedInterceptor {
     await Future.delayed(Duration(milliseconds: backoff));
 
     final opts = err.requestOptions;
-    opts.extra = Map<String, dynamic>.from(opts.extra)..['retryCount'] = retries + 1;
+    opts.extra = Map<String, dynamic>.from(opts.extra)
+      ..['retryCount'] = retries + 1;
     try {
-      final client = dio ?? Dio(
-        BaseOptions(
-          connectTimeout: const Duration(seconds: 30),
-          receiveTimeout: const Duration(seconds: 60),
-        ),
-      );
+      final client =
+          dio ??
+          Dio(
+            BaseOptions(
+              connectTimeout: const Duration(seconds: 30),
+              receiveTimeout: const Duration(seconds: 60),
+            ),
+          );
       final response = await client.fetch(opts);
       handler.resolve(response);
     } catch (e) {

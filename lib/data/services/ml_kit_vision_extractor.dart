@@ -6,13 +6,14 @@ class MLKitVisionExtractor implements IVisionExtractor {
   Future<String> extractText(String imagePath) async {
     final inputImage = InputImage.fromFilePath(imagePath);
     final textRecognizer = TextRecognizer(script: TextRecognitionScript.latin);
-    
+
     try {
-      final RecognizedText recognizedText = await textRecognizer.processImage(inputImage);
+      final RecognizedText recognizedText = await textRecognizer.processImage(
+        inputImage,
+      );
       return recognizedText.text;
     } finally {
       textRecognizer.close();
     }
   }
 }
-

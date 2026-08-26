@@ -31,7 +31,8 @@ class SettingsRepository implements ISettingsRepository {
   @override
   AiProvider get selectedProvider => _prefs.selectedProvider;
   @override
-  String? getSelectedModel(AiProvider provider) => _prefs.getSelectedModel(provider);
+  String? getSelectedModel(AiProvider provider) =>
+      _prefs.getSelectedModel(provider);
   @override
   String get toneMode => _prefs.toneMode;
   @override
@@ -46,11 +47,14 @@ class SettingsRepository implements ISettingsRepository {
   @override
   Future<void> setThemeMode(AppThemeMode mode) => _prefs.setThemeMode(mode);
   @override
-  Future<void> setSelectedProvider(AiProvider provider) => _prefs.setSelectedProvider(provider);
+  Future<void> setSelectedProvider(AiProvider provider) =>
+      _prefs.setSelectedProvider(provider);
   @override
-  Future<void> setSelectedModel(AiProvider provider, String modelId) => _prefs.setSelectedModel(provider, modelId);
+  Future<void> setSelectedModel(AiProvider provider, String modelId) =>
+      _prefs.setSelectedModel(provider, modelId);
   @override
-  Future<void> setApiKey(AiProvider provider, String key) => _prefs.setApiKey(provider, key);
+  Future<void> setApiKey(AiProvider provider, String key) =>
+      _prefs.setApiKey(provider, key);
   @override
   Future<String?> getApiKey(AiProvider provider) => _prefs.getApiKey(provider);
   @override

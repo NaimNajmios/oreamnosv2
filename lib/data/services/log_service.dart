@@ -1,17 +1,22 @@
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:oreamnos/core/di/injection.dart';
+
 import 'dart:async';
 import 'dart:convert';
+
 import 'package:flutter/foundation.dart';
+import 'package:injectable/injectable.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 enum LogLevel { debug, info, warning, error }
 
 extension LogLevelX on LogLevel {
   String get label => switch (this) {
-        LogLevel.debug => 'DEBUG',
-        LogLevel.info => 'INFO',
-        LogLevel.warning => 'WARN',
-        LogLevel.error => 'ERROR',
-      };
+    LogLevel.debug => 'DEBUG',
+    LogLevel.info => 'INFO',
+    LogLevel.warning => 'WARN',
+    LogLevel.error => 'ERROR',
+  };
 }
 
 class LogEntry {
@@ -61,22 +66,22 @@ class LogEntry {
   }
 
   Map<String, dynamic> toJson() => {
-        'timestamp': timestamp.toIso8601String(),
-        'level': level,
-        'message': message,
-        if (error != null) 'error': error,
-        'tag': tag,
-        if (details != null) 'details': details,
-      };
+    'timestamp': timestamp.toIso8601String(),
+    'level': level,
+    'message': message,
+    if (error != null) 'error': error,
+    'tag': tag,
+    if (details != null) 'details': details,
+  };
 
   factory LogEntry.fromJson(Map<String, dynamic> json) => LogEntry(
-        timestamp: DateTime.parse(json['timestamp'] as String),
-        level: json['level'] as String? ?? 'INFO',
-        message: json['message'] as String? ?? '',
-        error: json['error'] as String?,
-        tag: json['tag'] as String? ?? 'App',
-        details: json['details'] as String?,
-      );
+    timestamp: DateTime.parse(json['timestamp'] as String),
+    level: json['level'] as String? ?? 'INFO',
+    message: json['message'] as String? ?? '',
+    error: json['error'] as String?,
+    tag: json['tag'] as String? ?? 'App',
+    details: json['details'] as String?,
+  );
 }
 
 /// Abstraction for logging — enables Riverpod injection + mocking.
@@ -90,18 +95,17 @@ abstract class ILogService implements Listenable {
 }
 
 /// A persistent in-memory ring buffer for debugging logs.
+final logServiceProvider = ChangeNotifierProvider<LogService>(
+  (ref) => getIt<LogService>(),
+);
+
+@lazySingleton
 class LogService extends ChangeNotifier implements ILogService {
-  static final LogService _instance = LogService._internal();
-  factory LogService() => _instance;
-  LogService._internal() {
+  LogService(this._prefs) {
     _initPersistence();
   }
 
-  /// Test-only constructor — creates a non-singleton instance for injection.
-  @visibleForTesting
-  LogService.test() {
-    _initPersistence();
-  }
+  final SharedPreferences _prefs;
 
   static const String _keyLogs = 'logs_v2';
   final List<LogEntry> _logs = [];
@@ -114,12 +118,13 @@ class LogService extends ChangeNotifier implements ILogService {
 
   Future<void> _initPersistence() async {
     try {
-      final prefs = await SharedPreferences.getInstance();
-      final saved = prefs.getStringList(_keyLogs);
+      final saved = _prefs.getStringList(_keyLogs);
       if (saved != null && saved.isNotEmpty && _logs.isEmpty) {
         for (final item in saved) {
           try {
-            _logs.add(LogEntry.fromJson(jsonDecode(item) as Map<String, dynamic>));
+            _logs.add(
+              LogEntry.fromJson(jsonDecode(item) as Map<String, dynamic>),
+            );
           } catch (_) {}
         }
         _scheduleThrottledNotify();
@@ -131,9 +136,11 @@ class LogService extends ChangeNotifier implements ILogService {
     _persistTimer?.cancel();
     _persistTimer = Timer(const Duration(milliseconds: 500), () async {
       try {
-        final prefs = await SharedPreferences.getInstance();
-        final list = _logs.take(100).map((e) => jsonEncode(e.toJson())).toList();
-        await prefs.setStringList(_keyLogs, list);
+        final list = _logs
+            .take(100)
+            .map((e) => jsonEncode(e.toJson()))
+            .toList();
+        await _prefs.setStringList(_keyLogs, list);
       } catch (_) {}
     });
   }
@@ -155,14 +162,19 @@ class LogService extends ChangeNotifier implements ILogService {
 
   @override
   void error(String message, [dynamic error, StackTrace? stackTrace]) {
-    _addLog(level: 'ERROR', message: message, error: '$error\n$stackTrace', tag: 'App');
+    _addLog(
+      level: 'ERROR',
+      message: message,
+      error: '$error\n$stackTrace',
+      tag: 'App',
+    );
   }
 
   @override
   void clear() {
     _logs.clear();
     _persistTimer?.cancel();
-    SharedPreferences.getInstance().then((p) => p.remove(_keyLogs)).ignore();
+    _prefs.remove(_keyLogs);
     notifyListeners();
   }
 
@@ -175,23 +187,32 @@ class LogService extends ChangeNotifier implements ILogService {
     });
   }
 
-  void _addLog({required String level, required String message, String? error, String tag = 'App', String? details}) {
+  void _addLog({
+    required String level,
+    required String message,
+    String? error,
+    String tag = 'App',
+    String? details,
+  }) {
     if (_logs.length >= _maxLogs) {
       _logs.removeAt(0);
     }
-    _logs.add(LogEntry(
-      timestamp: DateTime.now(),
-      level: level,
-      message: message,
-      error: error,
-      tag: tag,
-      details: details,
-    ));
+    _logs.add(
+      LogEntry(
+        timestamp: DateTime.now(),
+        level: level,
+        message: message,
+        error: error,
+        tag: tag,
+        details: details,
+      ),
+    );
     if (kDebugMode) {
-      print('[$level][$tag] $message ${error != null ? '\nError: $error' : ''}');
+      print(
+        '[$level][$tag] $message ${error != null ? '\nError: $error' : ''}',
+      );
     }
     _scheduleThrottledNotify();
     _scheduleSave();
   }
 }
-

@@ -16,11 +16,13 @@ class SourceAttributionCard extends StatelessWidget {
     try {
       final ok = await launchUrl(uri, mode: LaunchMode.externalApplication);
       if (!ok && context.mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Could not open link')));
+        ScaffoldMessenger.of(context)
+            .showSnackBar(const SnackBar(content: Text('Could not open link')));
       }
     } catch (_) {
       if (context.mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Could not open link')));
+        ScaffoldMessenger.of(context)
+            .showSnackBar(const SnackBar(content: Text('Could not open link')));
       }
     }
   }
@@ -29,7 +31,8 @@ class SourceAttributionCard extends StatelessWidget {
     await Clipboard.setData(ClipboardData(text: url));
     Haptics.mediumImpact();
     if (context.mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Source link copied')));
+      ScaffoldMessenger.of(context)
+          .showSnackBar(const SnackBar(content: Text('Source link copied')));
     }
   }
 
@@ -39,15 +42,22 @@ class SourceAttributionCard extends StatelessWidget {
     if (source.isEmpty) return const SizedBox.shrink();
 
     final hasUrl = source.hasUrl;
-    final domain = source.domain ?? (hasUrl ? Uri.tryParse(source.url!)?.host : null);
+    final domain =
+        source.domain ?? (hasUrl ? Uri.tryParse(source.url!)?.host : null);
     final label = source.label.isNotEmpty ? source.label : (domain ?? '');
 
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: AppSpacing.md, vertical: AppSpacing.sm),
+      padding: const EdgeInsets.symmetric(
+        horizontal: AppSpacing.md,
+        vertical: AppSpacing.sm,
+      ),
       decoration: BoxDecoration(
         color: theme.colorScheme.surfaceContainerHighest.withValues(alpha: 0.7),
         borderRadius: AppSpacing.borderRadiusSm,
-        border: Border.all(color: theme.colorScheme.outline.withValues(alpha: 0.6), width: 1),
+        border: Border.all(
+          color: theme.colorScheme.outline.withValues(alpha: 0.6),
+          width: 1,
+        ),
       ),
       child: Row(
         children: [
@@ -58,7 +68,11 @@ class SourceAttributionCard extends StatelessWidget {
               color: theme.colorScheme.primary.withValues(alpha: 0.12),
               borderRadius: AppSpacing.borderRadiusXs,
             ),
-            child: Icon(Icons.link_rounded, size: 16, color: theme.colorScheme.primary),
+            child: Icon(
+              Icons.link_rounded,
+              size: 16,
+              color: theme.colorScheme.primary,
+            ),
           ),
           const SizedBox(width: AppSpacing.sm),
           Expanded(
@@ -78,14 +92,20 @@ class SourceAttributionCard extends StatelessWidget {
                   label.isNotEmpty ? label : (domain ?? source.url ?? ''),
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
-                  style: theme.textTheme.bodySmall?.copyWith(fontWeight: FontWeight.w600),
+                  style: theme.textTheme.bodySmall?.copyWith(
+                    fontWeight: FontWeight.w600,
+                  ),
                 ),
                 if (domain != null && label != domain)
                   Text(
                     domain,
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
-                    style: theme.textTheme.labelSmall?.copyWith(color: theme.colorScheme.onSurface.withValues(alpha: 0.55)),
+                    style: theme.textTheme.labelSmall?.copyWith(
+                      color: theme.colorScheme.onSurface.withValues(
+                        alpha: 0.55,
+                      ),
+                    ),
                   ),
               ],
             ),
@@ -97,7 +117,11 @@ class SourceAttributionCard extends StatelessWidget {
               borderRadius: AppSpacing.borderRadiusPill,
               child: Padding(
                 padding: const EdgeInsets.all(6),
-                child: Icon(Icons.copy_rounded, size: 16, color: theme.colorScheme.onSurface.withValues(alpha: 0.6)),
+                child: Icon(
+                  Icons.copy_rounded,
+                  size: 16,
+                  color: theme.colorScheme.onSurface.withValues(alpha: 0.6),
+                ),
               ),
             ),
             const SizedBox(width: 4),
@@ -105,18 +129,33 @@ class SourceAttributionCard extends StatelessWidget {
               onTap: () => _openUrl(context, source.url!),
               borderRadius: AppSpacing.borderRadiusPill,
               child: Container(
-                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 12,
+                  vertical: 6,
+                ),
                 decoration: BoxDecoration(
                   color: theme.colorScheme.primary.withValues(alpha: 0.1),
                   borderRadius: AppSpacing.borderRadiusPill,
-                  border: Border.all(color: theme.colorScheme.primary.withValues(alpha: 0.2)),
+                  border: Border.all(
+                    color: theme.colorScheme.primary.withValues(alpha: 0.2),
+                  ),
                 ),
                 child: Row(
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    Text('Open', style: theme.textTheme.labelSmall?.copyWith(color: theme.colorScheme.primary, fontWeight: FontWeight.w700)),
+                    Text(
+                      'Open',
+                      style: theme.textTheme.labelSmall?.copyWith(
+                        color: theme.colorScheme.primary,
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
                     const SizedBox(width: 4),
-                    Icon(Icons.open_in_new_rounded, size: 12, color: theme.colorScheme.primary),
+                    Icon(
+                      Icons.open_in_new_rounded,
+                      size: 12,
+                      color: theme.colorScheme.primary,
+                    ),
                   ],
                 ),
               ),

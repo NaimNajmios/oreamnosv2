@@ -11,25 +11,28 @@ void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
 
   group('Delight & Interaction Widgets', () {
-    testWidgets('EnhancedLoadingCard renders extracting and generating stages', (tester) async {
-      await tester.pumpWidget(
-        const MaterialApp(
-          home: Scaffold(
-            body: EnhancedLoadingCard(
-              type: LoadingType.extracting,
+    testWidgets(
+      'EnhancedLoadingCard renders extracting and generating stages',
+      (tester) async {
+        await tester.pumpWidget(
+          const MaterialApp(
+            home: Scaffold(
+              body: EnhancedLoadingCard(type: LoadingType.extracting),
             ),
           ),
-        ),
-      );
+        );
 
-      expect(find.byType(EnhancedLoadingCard), findsOneWidget);
-      expect(find.byType(KickoffLoadingIndicator), findsOneWidget);
+        expect(find.byType(EnhancedLoadingCard), findsOneWidget);
+        expect(find.byType(KickoffLoadingIndicator), findsOneWidget);
 
-      await tester.pump(const Duration(milliseconds: 500));
-      expect(find.textContaining('Extracting'), findsWidgets);
-    });
+        await tester.pump(const Duration(milliseconds: 500));
+        expect(find.textContaining('Extracting'), findsWidgets);
+      },
+    );
 
-    testWidgets('InputClearButton requires 2-step confirmation', (tester) async {
+    testWidgets('InputClearButton requires 2-step confirmation', (
+      tester,
+    ) async {
       bool cleared = false;
       await tester.pumpWidget(
         MaterialApp(
@@ -60,7 +63,9 @@ void main() {
       expect(cleared, isTrue);
     });
 
-    testWidgets('LinkPreviewCard renders domain, url, and title', (tester) async {
+    testWidgets('LinkPreviewCard renders domain, url, and title', (
+      tester,
+    ) async {
       bool extractClicked = false;
       await tester.pumpWidget(
         MaterialApp(
@@ -85,14 +90,14 @@ void main() {
       expect(extractClicked, isTrue);
     });
 
-    testWidgets('SuccessOverlay renders and self-dismisses after animation', (tester) async {
+    testWidgets('SuccessOverlay renders and self-dismisses after animation', (
+      tester,
+    ) async {
       bool dismissed = false;
       await tester.pumpWidget(
         MaterialApp(
           home: Scaffold(
-            body: SuccessOverlay(
-              onDismiss: () => dismissed = true,
-            ),
+            body: SuccessOverlay(onDismiss: () => dismissed = true),
           ),
         ),
       );

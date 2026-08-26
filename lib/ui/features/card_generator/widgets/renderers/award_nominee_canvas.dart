@@ -1,11 +1,16 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
+
 import '../../../../../domain/models/card_config.dart';
 import '../../../../../domain/models/card_data.dart';
 import '../../../../../data/services/gradient_builder.dart';
 
 class AwardNomineeCanvas extends StatelessWidget {
-  const AwardNomineeCanvas({super.key, required this.data, required this.config});
+  const AwardNomineeCanvas({
+    super.key,
+    required this.data,
+    required this.config,
+  });
   final AwardNominee data;
   final CardConfig config;
 
@@ -21,7 +26,14 @@ class AwardNomineeCanvas extends StatelessWidget {
         children: [
           if (config.showScrim)
             Positioned.fill(
-              child: Container(decoration: BoxDecoration(gradient: GradientBuilder.scrimFor(config.scrimType, config.overlayOpacity))),
+              child: Container(
+                decoration: BoxDecoration(
+                  gradient: GradientBuilder.scrimFor(
+                    config.scrimType,
+                    config.overlayOpacity,
+                  ),
+                ),
+              ),
             ),
           Padding(
             padding: const EdgeInsets.all(24),
@@ -31,20 +43,44 @@ class AwardNomineeCanvas extends StatelessWidget {
                 Row(
                   children: [
                     Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                      decoration: BoxDecoration(color: Colors.amberAccent.withValues(alpha: 0.25), borderRadius: BorderRadius.circular(16)),
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 10,
+                        vertical: 4,
+                      ),
+                      decoration: BoxDecoration(
+                        color: Colors.amberAccent.withValues(alpha: 0.25),
+                        borderRadius: BorderRadius.circular(16),
+                      ),
                       child: Row(
                         mainAxisSize: MainAxisSize.min,
                         children: [
-                          const Icon(Icons.emoji_events_rounded, color: Colors.amberAccent, size: 13),
+                          const Icon(
+                            Icons.emoji_events_rounded,
+                            color: Colors.amberAccent,
+                            size: 13,
+                          ),
                           const SizedBox(width: 4),
-                          Text('AWARD NOMINEES', style: GoogleFonts.jetBrainsMono(color: Colors.amberAccent, fontSize: 10, fontWeight: FontWeight.w800, letterSpacing: 1)),
+                          Text(
+                            'AWARD NOMINEES',
+                            style: GoogleFonts.jetBrainsMono(
+                              color: Colors.amberAccent,
+                              fontSize: 10,
+                              fontWeight: FontWeight.w800,
+                              letterSpacing: 1,
+                            ),
+                          ),
                         ],
                       ),
                     ),
                     const Spacer(),
                     if (data.category != 'N/A')
-                      Text(data.category, style: GoogleFonts.jetBrainsMono(color: Colors.white70, fontSize: 10)),
+                      Text(
+                        data.category,
+                        style: GoogleFonts.jetBrainsMono(
+                          color: Colors.white70,
+                          fontSize: 10,
+                        ),
+                      ),
                   ],
                 ),
                 const SizedBox(height: 10),
@@ -64,42 +100,72 @@ class AwardNomineeCanvas extends StatelessWidget {
                     decoration: BoxDecoration(
                       color: Colors.black.withValues(alpha: 0.35),
                       borderRadius: BorderRadius.circular(14),
-                      border: Border.all(color: Colors.white.withValues(alpha: 0.1)),
+                      border: Border.all(
+                        color: Colors.white.withValues(alpha: 0.1),
+                      ),
                     ),
                     child: nominees.isNotEmpty
                         ? ListView.separated(
                             physics: const NeverScrollableScrollPhysics(),
                             itemCount: nominees.length.clamp(0, 4),
-                            separatorBuilder: (_, _) => const Divider(height: 10, color: Colors.white12),
+                            separatorBuilder: (_, _) => const Divider(
+                              height: 10,
+                              color: Colors.white12,
+                            ),
                             itemBuilder: (context, index) {
                               final nom = nominees[index];
                               return Row(
                                 children: [
                                   Expanded(
                                     child: Column(
-                                      crossAxisAlignment: CrossAxisAlignment.start,
+                                      crossAxisAlignment:
+                                          CrossAxisAlignment.start,
                                       children: [
                                         Row(
                                           children: [
                                             Text(
                                               nom.playerName,
-                                              style: GoogleFonts.inter(color: Colors.white, fontSize: 13, fontWeight: FontWeight.w700),
+                                              style: GoogleFonts.inter(
+                                                color: Colors.white,
+                                                fontSize: 13,
+                                                fontWeight: FontWeight.w700,
+                                              ),
                                               maxLines: 1,
                                               overflow: TextOverflow.ellipsis,
                                             ),
                                             if (nom.isFavorite) ...[
                                               const SizedBox(width: 6),
                                               Container(
-                                                padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 1),
-                                                decoration: BoxDecoration(color: Colors.amberAccent, borderRadius: BorderRadius.circular(4)),
-                                                child: Text('FAV', style: GoogleFonts.jetBrainsMono(color: Colors.black, fontSize: 9, fontWeight: FontWeight.w900)),
+                                                padding:
+                                                    const EdgeInsets.symmetric(
+                                                      horizontal: 6,
+                                                      vertical: 1,
+                                                    ),
+                                                decoration: BoxDecoration(
+                                                  color: Colors.amberAccent,
+                                                  borderRadius:
+                                                      BorderRadius.circular(4),
+                                                ),
+                                                child: Text(
+                                                  'FAV',
+                                                  style:
+                                                      GoogleFonts.jetBrainsMono(
+                                                        color: Colors.black,
+                                                        fontSize: 9,
+                                                        fontWeight:
+                                                            FontWeight.w900,
+                                                      ),
+                                                ),
                                               ),
                                             ],
                                           ],
                                         ),
                                         Text(
                                           '${nom.club} • ${nom.achievement}',
-                                          style: GoogleFonts.inter(color: Colors.white70, fontSize: 11),
+                                          style: GoogleFonts.inter(
+                                            color: Colors.white70,
+                                            fontSize: 11,
+                                          ),
                                           maxLines: 1,
                                           overflow: TextOverflow.ellipsis,
                                         ),
@@ -109,7 +175,11 @@ class AwardNomineeCanvas extends StatelessWidget {
                                   if (nom.odds != 'N/A')
                                     Text(
                                       nom.odds,
-                                      style: GoogleFonts.jetBrainsMono(color: Colors.amberAccent, fontSize: 11, fontWeight: FontWeight.w800),
+                                      style: GoogleFonts.jetBrainsMono(
+                                        color: Colors.amberAccent,
+                                        fontSize: 11,
+                                        fontWeight: FontWeight.w800,
+                                      ),
                                     ),
                                 ],
                               );
@@ -117,15 +187,26 @@ class AwardNomineeCanvas extends StatelessWidget {
                           )
                         : Center(
                             child: Text(
-                              data.subtext.isNotEmpty ? data.subtext : 'Official Nominees',
-                              style: GoogleFonts.inter(color: Colors.white70, fontSize: 12),
+                              data.subtext.isNotEmpty
+                                  ? data.subtext
+                                  : 'Official Nominees',
+                              style: GoogleFonts.inter(
+                                color: Colors.white70,
+                                fontSize: 12,
+                              ),
                               textAlign: TextAlign.center,
                             ),
                           ),
                   ),
                 ),
                 const SizedBox(height: 8),
-                Text('Oreamnos Awards', style: GoogleFonts.jetBrainsMono(color: Colors.white.withValues(alpha: 0.6), fontSize: 10)),
+                Text(
+                  'Oreamnos Awards',
+                  style: GoogleFonts.jetBrainsMono(
+                    color: Colors.white.withValues(alpha: 0.6),
+                    fontSize: 10,
+                  ),
+                ),
               ],
             ),
           ),

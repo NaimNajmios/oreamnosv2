@@ -1,5 +1,7 @@
 import 'dart:convert';
+
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
+import 'package:injectable/injectable.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import '../../config/constants.dart';
@@ -10,11 +12,9 @@ import '../models/ai_provider.dart';
 
 /// Manages user preferences and secure API key storage.
 /// Mirrors Android's PreferencesManager with EncryptedSharedPreferences.
+@lazySingleton
 class PreferencesService {
-  PreferencesService({
-    required this._prefs,
-    required this._secureStorage,
-  });
+  PreferencesService({required this._prefs, required this._secureStorage});
 
   final SharedPreferences _prefs;
   final FlutterSecureStorage _secureStorage;
@@ -130,7 +130,7 @@ class PreferencesService {
   }
 
   // === Custom Refinement Pills ===
-  
+
   List<CustomPill> get customPills {
     final list = _prefs.getStringList('custom_refinement_pills') ?? [];
     return list.map((e) => CustomPill.fromJson(jsonDecode(e))).toList();
@@ -142,9 +142,13 @@ class PreferencesService {
   }
 
   // === Reading Text Size (persistent) ===
-  double get readingTextSize => _prefs.getDouble(AppConstants.keyReadingTextSize) ?? 16.0;
+  double get readingTextSize =>
+      _prefs.getDouble(AppConstants.keyReadingTextSize) ?? 16.0;
 
   Future<bool> setReadingTextSize(double size) {
-    return _prefs.setDouble(AppConstants.keyReadingTextSize, size.clamp(12.0, 24.0));
+    return _prefs.setDouble(
+      AppConstants.keyReadingTextSize,
+      size.clamp(12.0, 24.0),
+    );
   }
 }

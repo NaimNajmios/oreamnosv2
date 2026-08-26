@@ -30,7 +30,9 @@ class SectionHeader extends StatelessWidget {
           Text(
             title,
             style: theme.textTheme.labelMedium?.copyWith(
-              color: theme.colorScheme.onSurfaceVariant, // Minimalist subtle section header
+              color: theme
+                  .colorScheme
+                  .onSurfaceVariant, // Minimalist subtle section header
               fontWeight: FontWeight.w600,
             ),
           ),
@@ -40,4 +42,3 @@ class SectionHeader extends StatelessWidget {
     );
   }
 }
-

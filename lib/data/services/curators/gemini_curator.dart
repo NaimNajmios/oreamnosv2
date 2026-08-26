@@ -1,4 +1,5 @@
 import 'dart:convert';
+
 import 'package:dio/dio.dart';
 
 import 'package:oreamnos/core/network/api_client.dart';
@@ -39,47 +40,53 @@ class GeminiCurator implements IContentCurator {
     required String apiKey,
     String? sourceUrl,
   }) async {
-    final resolvedSourceUrl = sourceUrl ?? (content is ExtractedArticle ? content.url : null);
-    final systemPrompt = GenerationPromptManager.buildSystemPrompt(sourceUrl: resolvedSourceUrl);
+    final resolvedSourceUrl =
+        sourceUrl ?? (content is ExtractedArticle ? content.url : null);
+    final systemPrompt = GenerationPromptManager.buildSystemPrompt(
+      sourceUrl: resolvedSourceUrl,
+    );
     final userPrompt = GenerationPromptManager.buildUserPrompt(content);
 
-    final actualModelId = modelId.startsWith('models/') ? modelId : 'models/$modelId';
-    final path = 'https://generativelanguage.googleapis.com/v1beta/$actualModelId:generateContent';
+    final actualModelId = modelId.startsWith('models/')
+        ? modelId
+        : 'models/$modelId';
+    final path =
+        'https://generativelanguage.googleapis.com/v1beta/$actualModelId:generateContent';
 
     final response = await _client.post(
       path,
       data: {
         "system_instruction": {
           "parts": [
-            {"text": systemPrompt}
-          ]
+            {"text": systemPrompt},
+          ],
         },
         "contents": [
           {
             "parts": [
-              {"text": userPrompt}
-            ]
-          }
+              {"text": userPrompt},
+            ],
+          },
         ],
         "generationConfig": {
           "temperature": 0.7,
           "responseMimeType": "application/json",
-        }
+        },
       },
-      options: Options(
-        extra: {'apiKey': apiKey, 'provider': 'gemini'},
-      ),
+      options: Options(extra: {'apiKey': apiKey, 'provider': 'gemini'}),
     );
 
     if (response.statusCode != 200) {
-      throw Exception('Gemini API Error: ${response.statusCode} - ${response.data}');
+      throw Exception(
+        'Gemini API Error: ${response.statusCode} - ${response.data}',
+      );
     }
 
     final data = response.data is Map<String, dynamic>
         ? response.data as Map<String, dynamic>
         : (response.data is String
-            ? jsonDecode(response.data as String) as Map<String, dynamic>
-            : (response.data as Map).cast<String, dynamic>());
+              ? jsonDecode(response.data as String) as Map<String, dynamic>
+              : (response.data as Map).cast<String, dynamic>());
 
     final candidates = data['candidates'] as List<dynamic>? ?? [];
     if (candidates.isEmpty) {
@@ -95,13 +102,18 @@ class GeminiCurator implements IContentCurator {
     return _parseCuratedPost(rawText, resolvedSourceUrl);
   }
 
-  Future<CuratedPost> _parseCuratedPost(String rawText, String? sourceUrl) async {
+  Future<CuratedPost> _parseCuratedPost(
+    String rawText,
+    String? sourceUrl,
+  ) async {
     try {
       final jsonMap = await JsonCleaner.decodeIsolate(rawText);
       // Ensure source url/domain
       if (jsonMap['source'] is Map) {
         final sm = jsonMap['source'] as Map<String, dynamic>;
-        if ((sm['url'] == null || (sm['url'] as String).isEmpty) && sourceUrl != null && sourceUrl.isNotEmpty) {
+        if ((sm['url'] == null || (sm['url'] as String).isEmpty) &&
+            sourceUrl != null &&
+            sourceUrl.isNotEmpty) {
           sm['url'] = sourceUrl;
           sm['domain'] = Uri.tryParse(sourceUrl)?.host;
           if ((sm['label'] as String?)?.isEmpty ?? true) {
@@ -133,43 +145,46 @@ class GeminiCurator implements IContentCurator {
     final systemPrompt = CardPromptManager.buildSystemPrompt();
     final userPrompt = CardPromptManager.buildUserPrompt(brief);
 
-    final actualModelId = modelId.startsWith('models/') ? modelId : 'models/$modelId';
-    final path = 'https://generativelanguage.googleapis.com/v1beta/$actualModelId:generateContent';
+    final actualModelId = modelId.startsWith('models/')
+        ? modelId
+        : 'models/$modelId';
+    final path =
+        'https://generativelanguage.googleapis.com/v1beta/$actualModelId:generateContent';
 
     final response = await _client.post(
       path,
       data: {
         "system_instruction": {
           "parts": [
-            {"text": systemPrompt}
-          ]
+            {"text": systemPrompt},
+          ],
         },
         "contents": [
           {
             "parts": [
-              {"text": userPrompt}
-            ]
-          }
+              {"text": userPrompt},
+            ],
+          },
         ],
         "generationConfig": {
           "temperature": 0.3,
           "responseMimeType": "application/json",
-        }
+        },
       },
-      options: Options(
-        extra: {'apiKey': apiKey, 'provider': 'gemini'},
-      ),
+      options: Options(extra: {'apiKey': apiKey, 'provider': 'gemini'}),
     );
 
     if (response.statusCode != 200) {
-      throw Exception('Gemini API Error: ${response.statusCode} - ${response.data}');
+      throw Exception(
+        'Gemini API Error: ${response.statusCode} - ${response.data}',
+      );
     }
 
     final data = response.data is Map<String, dynamic>
         ? response.data as Map<String, dynamic>
         : (response.data is String
-            ? jsonDecode(response.data as String) as Map<String, dynamic>
-            : (response.data as Map).cast<String, dynamic>());
+              ? jsonDecode(response.data as String) as Map<String, dynamic>
+              : (response.data as Map).cast<String, dynamic>());
 
     final candidates = data['candidates'] as List<dynamic>? ?? [];
     if (candidates.isEmpty) {
@@ -182,5 +197,38 @@ class GeminiCurator implements IContentCurator {
     }
 
     return parts[0]['text'] as String;
+  }
+
+  @override
+  Future<String> rewriteField({
+    required String text,
+    required String fieldName,
+    required String modelId,
+    required String apiKey,
+  }) async {
+    try {
+      final prompt =
+          'Rewrite the following $fieldName text to be concise, grammatically correct, and suitable for a social media graphic. Return ONLY the rewritten text, with no quotes or extra formatting.\n\nText: $text';
+
+      final response = await _client.post(
+        'https://generativelanguage.googleapis.com/v1beta/models/$modelId:generateContent?key=$apiKey',
+        data: {
+          "contents": [
+            {
+              "parts": [
+                {"text": prompt},
+              ],
+            },
+          ],
+        },
+      );
+
+      final data = response.data;
+      final rewrittenText =
+          data['candidates'][0]['content']['parts'][0]['text'] as String;
+      return rewrittenText.trim();
+    } catch (e) {
+      throw Exception('Failed to rewrite field: $e');
+    }
   }
 }

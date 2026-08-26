@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter/services.dart';
 import 'package:go_router/go_router.dart';
-import 'package:provider/provider.dart';
 import 'package:share_plus/share_plus.dart';
 
 import 'package:oreamnos/config/theme/app_colors.dart';
@@ -15,21 +15,17 @@ import 'package:oreamnos/ui/core/widgets/typewriter_markdown.dart';
 import 'package:oreamnos/ui/features/settings/view_models/settings_view_model.dart';
 
 /// Full-screen distraction-free reading mode — now with drag-dismiss + persistent textSize.
-class ReadingModeScreen extends StatefulWidget {
-  const ReadingModeScreen({
-    super.key,
-    required this.content,
-    this.curatedPost,
-  });
+class ReadingModeScreen extends ConsumerStatefulWidget {
+  const ReadingModeScreen({super.key, required this.content, this.curatedPost});
 
   final String content;
   final CuratedPost? curatedPost;
 
   @override
-  State<ReadingModeScreen> createState() => _ReadingModeScreenState();
+  ConsumerState<ReadingModeScreen> createState() => _ReadingModeScreenState();
 }
 
-class _ReadingModeScreenState extends State<ReadingModeScreen> {
+class _ReadingModeScreenState extends ConsumerState<ReadingModeScreen> {
   double _dragOffset = 0;
   double _opacity = 1.0;
 
@@ -56,7 +52,7 @@ class _ReadingModeScreenState extends State<ReadingModeScreen> {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final settings = context.watch<SettingsViewModel>();
+    final settings = ref.watch(settingsViewModelProvider);
     final textSize = settings.readingTextSize;
 
     return Scaffold(
@@ -74,9 +70,13 @@ class _ReadingModeScreenState extends State<ReadingModeScreen> {
                   // Centered Reading Column — scaled by persistent textSize (12-24, default 16)
                   Center(
                     child: MediaQuery(
-                      data: MediaQuery.of(context).copyWith(textScaler: TextScaler.linear(textSize / 16.0)),
+                      data: MediaQuery.of(context).copyWith(
+                        textScaler: TextScaler.linear(textSize / 16.0),
+                      ),
                       child: ConstrainedBox(
-                        constraints: const BoxConstraints(maxWidth: AppSpacing.maxContentWidth),
+                        constraints: const BoxConstraints(
+                          maxWidth: AppSpacing.maxContentWidth,
+                        ),
                         child: SingleChildScrollView(
                           padding: const EdgeInsets.fromLTRB(
                             AppSpacing.xl,
@@ -88,15 +88,30 @@ class _ReadingModeScreenState extends State<ReadingModeScreen> {
                               ? Column(
                                   crossAxisAlignment: CrossAxisAlignment.start,
                                   children: [
-                                    TitleBlock(title: widget.curatedPost!.title),
-                                    BodyBlock(bodyMarkdown: widget.curatedPost!.bodyMarkdown),
-                                    if (widget.curatedPost!.hashtags.isNotEmpty) ...[
+                                    TitleBlock(
+                                      title: widget.curatedPost!.title,
+                                    ),
+                                    BodyBlock(
+                                      bodyMarkdown:
+                                          widget.curatedPost!.bodyMarkdown,
+                                    ),
+                                    if (widget
+                                        .curatedPost!
+                                        .hashtags
+                                        .isNotEmpty) ...[
                                       const SizedBox(height: AppSpacing.base),
-                                      HashtagChips(hashtags: widget.curatedPost!.hashtags),
+                                      HashtagChips(
+                                        hashtags: widget.curatedPost!.hashtags,
+                                      ),
                                     ],
-                                    if (!widget.curatedPost!.source.isEmpty) ...[
+                                    if (!widget
+                                        .curatedPost!
+                                        .source
+                                        .isEmpty) ...[
                                       const SizedBox(height: AppSpacing.base),
-                                      SourceAttributionCard(source: widget.curatedPost!.source),
+                                      SourceAttributionCard(
+                                        source: widget.curatedPost!.source,
+                                      ),
                                     ],
                                   ],
                                 )
@@ -110,27 +125,45 @@ class _ReadingModeScreenState extends State<ReadingModeScreen> {
                     top: AppSpacing.base,
                     left: AppSpacing.base,
                     child: AppCard(
-                      padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 2),
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 4,
+                        vertical: 2,
+                      ),
                       borderRadius: AppSpacing.borderRadiusPill,
                       child: Row(
                         mainAxisSize: MainAxisSize.min,
                         children: [
                           IconButton(
-                            icon: const Icon(Icons.text_decrease_rounded, size: 18),
+                            icon: const Icon(
+                              Icons.text_decrease_rounded,
+                              size: 18,
+                            ),
                             onPressed: () {
                               Haptics.selectionClick();
                               final next = (textSize - 1).clamp(12.0, 24.0);
-                              context.read<SettingsViewModel>().setReadingTextSize(next);
+                              ref
+                                  .read(settingsViewModelProvider.notifier)
+                                  .setReadingTextSize(next);
                             },
                             visualDensity: VisualDensity.compact,
                           ),
-                          Text('${textSize.toInt()}', style: theme.textTheme.labelSmall?.copyWith(fontWeight: FontWeight.w700)),
+                          Text(
+                            '${textSize.toInt()}',
+                            style: theme.textTheme.labelSmall?.copyWith(
+                              fontWeight: FontWeight.w700,
+                            ),
+                          ),
                           IconButton(
-                            icon: const Icon(Icons.text_increase_rounded, size: 18),
+                            icon: const Icon(
+                              Icons.text_increase_rounded,
+                              size: 18,
+                            ),
                             onPressed: () {
                               Haptics.selectionClick();
                               final next = (textSize + 1).clamp(12.0, 24.0);
-                              context.read<SettingsViewModel>().setReadingTextSize(next);
+                              ref
+                                  .read(settingsViewModelProvider.notifier)
+                                  .setReadingTextSize(next);
                             },
                             visualDensity: VisualDensity.compact,
                           ),
@@ -156,8 +189,13 @@ class _ReadingModeScreenState extends State<ReadingModeScreen> {
                           decoration: BoxDecoration(
                             color: theme.colorScheme.surface,
                             shape: BoxShape.circle,
-                            border: Border.all(color: theme.colorScheme.outline, width: 1),
-                            boxShadow: AppSpacing.softShadow(theme.brightness == Brightness.dark),
+                            border: Border.all(
+                              color: theme.colorScheme.outline,
+                              width: 1,
+                            ),
+                            boxShadow: AppSpacing.softShadow(
+                              theme.brightness == Brightness.dark,
+                            ),
                           ),
                           child: Icon(
                             Icons.close_rounded,
@@ -185,27 +223,38 @@ class _ReadingModeScreenState extends State<ReadingModeScreen> {
                           children: [
                             TextButton.icon(
                               onPressed: () async {
-                                await Clipboard.setData(ClipboardData(text: widget.content));
+                                await Clipboard.setData(
+                                  ClipboardData(text: widget.content),
+                                );
                                 Haptics.mediumImpact();
                                 if (context.mounted) {
                                   ScaffoldMessenger.of(context).showSnackBar(
                                     SnackBar(
                                       content: const Row(
                                         children: [
-                                          Icon(Icons.check_circle_rounded, color: Colors.white, size: 18),
+                                          Icon(
+                                            Icons.check_circle_rounded,
+                                            color: Colors.white,
+                                            size: 18,
+                                          ),
                                           SizedBox(width: 8),
                                           Text('Copied to clipboard'),
                                         ],
                                       ),
                                       backgroundColor: AppColors.success,
                                       behavior: SnackBarBehavior.floating,
-                                      shape: RoundedRectangleBorder(borderRadius: AppSpacing.borderRadiusSm),
+                                      shape: RoundedRectangleBorder(
+                                        borderRadius: AppSpacing.borderRadiusSm,
+                                      ),
                                       duration: const Duration(seconds: 2),
                                     ),
                                   );
                                 }
                               },
-                              icon: const Icon(Icons.content_copy_rounded, size: 18),
+                              icon: const Icon(
+                                Icons.content_copy_rounded,
+                                size: 18,
+                              ),
                               label: const Text('Copy'),
                               style: TextButton.styleFrom(
                                 foregroundColor: theme.colorScheme.onSurface,

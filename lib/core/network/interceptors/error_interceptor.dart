@@ -22,7 +22,8 @@ class ErrorMappingInterceptor extends Interceptor {
       failure = NetworkFailure('Network: ${err.message}');
     } else if (status != null && status >= 500) {
       failure = NetworkFailure('Server: $status $body');
-    } else if (body.toLowerCase().contains('parse') || body.toLowerCase().contains('json')) {
+    } else if (body.toLowerCase().contains('parse') ||
+        body.toLowerCase().contains('json')) {
       failure = ParseFailure('Parse: $body');
     } else {
       failure = UnknownFailure(body.isEmpty ? err.message ?? 'Unknown' : body);

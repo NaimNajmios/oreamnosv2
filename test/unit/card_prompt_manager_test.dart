@@ -17,13 +17,24 @@ void main() {
       }
     });
     test('buildPrompt isRefresh adds timestamp', () {
-      final a = CardPromptManager.buildPrompt(CardTemplate.breakingNews, 'hello', false);
-      final b = CardPromptManager.buildPrompt(CardTemplate.breakingNews, 'hello', true);
+      final a = CardPromptManager.buildPrompt(
+        CardTemplate.breakingNews,
+        'hello',
+        false,
+      );
+      final b = CardPromptManager.buildPrompt(
+        CardTemplate.breakingNews,
+        'hello',
+        true,
+      );
       expect(b.length, greaterThan(a.length));
       expect(b, contains('Refresh'));
     });
     test('buildUserPrompt defaults to socialPost', () {
-      final p = CardPromptManager.buildUserPromptForTemplate(null, 'Hello world');
+      final p = CardPromptManager.buildUserPromptForTemplate(
+        null,
+        'Hello world',
+      );
       expect(p, contains('social_post'));
     });
   });

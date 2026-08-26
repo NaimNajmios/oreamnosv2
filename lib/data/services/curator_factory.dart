@@ -5,7 +5,10 @@ import 'package:oreamnos/data/services/curators/gemini_curator.dart';
 import 'package:oreamnos/data/services/curators/openai_compatible_curator.dart';
 
 class CuratorFactory {
-  static IContentCurator getCurator(AiProvider provider, {ApiClient? apiClient}) {
+  static IContentCurator getCurator(
+    AiProvider provider, {
+    ApiClient? apiClient,
+  }) {
     switch (provider) {
       case AiProvider.gemini:
         return GeminiCurator(apiClient: apiClient);

@@ -19,6 +19,14 @@ abstract class IContentRepository {
     required String tone,
     required String defaultHashtags,
   });
+
+  Future<String> rewriteField({
+    required String text,
+    required String fieldName,
+    required String modelId,
+    required String apiKey,
+    required AiProvider provider,
+  });
 }
 
 class ContentRepository implements IContentRepository {
@@ -31,7 +39,12 @@ class ContentRepository implements IContentRepository {
     required AiProvider provider,
   }) async {
     final curator = CuratorFactory.getCurator(provider);
-    return curator.generateStructuredPost(content: content, modelId: modelId, apiKey: apiKey, sourceUrl: sourceUrl);
+    return curator.generateStructuredPost(
+      content: content,
+      modelId: modelId,
+      apiKey: apiKey,
+      sourceUrl: sourceUrl,
+    );
   }
 
   @override
@@ -44,6 +57,29 @@ class ContentRepository implements IContentRepository {
     required String defaultHashtags,
   }) async {
     final curator = CuratorFactory.getCurator(provider);
-    return curator.generatePost(contentOrUrl: contentOrUrl, modelId: modelId, apiKey: apiKey, tone: tone, defaultHashtags: defaultHashtags);
+    return curator.generatePost(
+      contentOrUrl: contentOrUrl,
+      modelId: modelId,
+      apiKey: apiKey,
+      tone: tone,
+      defaultHashtags: defaultHashtags,
+    );
+  }
+
+  @override
+  Future<String> rewriteField({
+    required String text,
+    required String fieldName,
+    required String modelId,
+    required String apiKey,
+    required AiProvider provider,
+  }) async {
+    final curator = CuratorFactory.getCurator(provider);
+    return await curator.rewriteField(
+      text: text,
+      fieldName: fieldName,
+      modelId: modelId,
+      apiKey: apiKey,
+    );
   }
 }

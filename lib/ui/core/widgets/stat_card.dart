@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:oreamnos/config/theme/app_spacing.dart';
 import 'package:oreamnos/config/theme/app_typography.dart';
+
 import 'app_card.dart';
 
 /// Analytics stat card with prominent metric and metadata label.
@@ -40,7 +41,9 @@ class StatCard extends StatelessWidget {
               height: 3,
               decoration: BoxDecoration(
                 color: accentColor,
-                borderRadius: const BorderRadius.vertical(top: Radius.circular(16)),
+                borderRadius: const BorderRadius.vertical(
+                  top: Radius.circular(16),
+                ),
               ),
             ),
           Padding(
@@ -59,7 +62,9 @@ class StatCard extends StatelessWidget {
                         style: theme.textTheme.labelSmall?.copyWith(
                           fontWeight: FontWeight.w700,
                           letterSpacing: 0.4,
-                          color: theme.colorScheme.onSurface.withValues(alpha: 0.5),
+                          color: theme.colorScheme.onSurface.withValues(
+                            alpha: 0.5,
+                          ),
                           fontSize: 10,
                         ),
                       ),
@@ -70,7 +75,11 @@ class StatCard extends StatelessWidget {
                         width: 24,
                         height: 24,
                         decoration: BoxDecoration(
-                          color: iconBackground ?? theme.colorScheme.primaryContainer.withValues(alpha: 0.5),
+                          color:
+                              iconBackground ??
+                              theme.colorScheme.primaryContainer.withValues(
+                                alpha: 0.5,
+                              ),
                           borderRadius: AppSpacing.borderRadiusXs,
                         ),
                         child: Icon(
@@ -116,6 +125,5 @@ class StatCard extends StatelessWidget {
         ],
       ),
     );
-
   }
 }

@@ -31,14 +31,14 @@ class UsageLog {
   }
 
   Map<String, dynamic> toJson() => {
-        'id': id,
-        'timestamp': timestamp.toIso8601String(),
-        'providerId': providerId,
-        if (modelName != null) 'modelName': modelName,
-        'latencyMs': latencyMs,
-        'estimatedTokens': estimatedTokens,
-        'isSuccess': isSuccess,
-      };
+    'id': id,
+    'timestamp': timestamp.toIso8601String(),
+    'providerId': providerId,
+    if (modelName != null) 'modelName': modelName,
+    'latencyMs': latencyMs,
+    'estimatedTokens': estimatedTokens,
+    'isSuccess': isSuccess,
+  };
 
   factory UsageLog.fromJson(Map<String, dynamic> json) {
     return UsageLog(
@@ -52,4 +52,3 @@ class UsageLog {
     );
   }
 }
-

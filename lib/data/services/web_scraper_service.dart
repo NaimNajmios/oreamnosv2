@@ -20,21 +20,31 @@ class WebScraperService {
   static Future<ExtractedArticle> extractArticleFromUrl(String url) async {
     final trimmed = url.trim();
     try {
-      final response = await http.get(
-        Uri.parse(trimmed),
-        headers: {
-          'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
-          'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8',
-          'Accept-Language': 'en-US,en;q=0.5',
-        },
-      ).timeout(const Duration(seconds: 8));
+      final response = await http
+          .get(
+            Uri.parse(trimmed),
+            headers: {
+              'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+              'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8',
+              'Accept-Language': 'en-US,en;q=0.5',
+            },
+          )
+          .timeout(const Duration(seconds: 8));
 
       final uri = Uri.tryParse(trimmed);
       final domain = uri?.host ?? '';
 
       if (response.statusCode != 200) {
-        debugPrint('WebScraper warning: Failed to load page (Status ${response.statusCode}). Falling back to raw URL.');
-        return ExtractedArticle(text: trimmed, url: trimmed, domain: domain, pageTitle: null, description: null);
+        debugPrint(
+          'WebScraper warning: Failed to load page (Status ${response.statusCode}). Falling back to raw URL.',
+        );
+        return ExtractedArticle(
+          text: trimmed,
+          url: trimmed,
+          domain: domain,
+          pageTitle: null,
+          description: null,
+        );
       }
 
       final document = parse(response.body);
@@ -46,10 +56,19 @@ class WebScraperService {
         pageTitle = document.querySelector('title')?.text.trim();
         if (pageTitle != null && pageTitle.isEmpty) pageTitle = null;
         // og:title fallback
-        pageTitle ??= document.querySelector('meta[property="og:title"]')?.attributes['content']?.trim();
-        description = document.querySelector('meta[name="description"]')?.attributes['content']?.trim();
+        pageTitle ??= document
+            .querySelector('meta[property="og:title"]')
+            ?.attributes['content']
+            ?.trim();
+        description = document
+            .querySelector('meta[name="description"]')
+            ?.attributes['content']
+            ?.trim();
         if (description != null && description.isEmpty) description = null;
-        description ??= document.querySelector('meta[property="og:description"]')?.attributes['content']?.trim();
+        description ??= document
+            .querySelector('meta[property="og:description"]')
+            ?.attributes['content']
+            ?.trim();
       } catch (_) {}
 
       String text;
@@ -69,7 +88,9 @@ class WebScraperService {
           }
           text = _cleanTextPreserveParagraphs(buffer.toString());
         } else {
-          text = _cleanTextPreserveParagraphs(document.body?.text ?? 'No readable content found on this page.');
+          text = _cleanTextPreserveParagraphs(
+            document.body?.text ?? 'No readable content found on this page.',
+          );
         }
       }
 
@@ -77,7 +98,13 @@ class WebScraperService {
         text = trimmed;
       }
 
-      return ExtractedArticle(text: text, url: trimmed, domain: domain, pageTitle: pageTitle, description: description);
+      return ExtractedArticle(
+        text: text,
+        url: trimmed,
+        domain: domain,
+        pageTitle: pageTitle,
+        description: description,
+      );
     } catch (e) {
       throw Exception('Failed to extract content from URL: $e');
     }
@@ -93,11 +120,15 @@ class WebScraperService {
     final normalized = text.replaceAll('\r\n', '\n').replaceAll('\r', '\n');
     final paragraphs = normalized.split(RegExp(r'\n\s*\n'));
     final cleaned = paragraphs
-        .map((p) => p.replaceAll(RegExp(r'[ \t]+'), ' ').replaceAll(RegExp(r'\n\s*'), ' ').trim())
+        .map(
+          (p) => p
+              .replaceAll(RegExp(r'[ \t]+'), ' ')
+              .replaceAll(RegExp(r'\n\s*'), ' ')
+              .trim(),
+        )
         .where((p) => p.isNotEmpty)
         .toList();
     if (cleaned.isEmpty) return _cleanText(text);
     return cleaned.join('\n\n').trim();
   }
 }
-

@@ -1,11 +1,16 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
+
 import '../../../../../domain/models/card_config.dart';
 import '../../../../../domain/models/card_data.dart';
 import '../../../../../data/services/gradient_builder.dart';
 
 class PlayerSpotlightCanvas extends StatelessWidget {
-  const PlayerSpotlightCanvas({super.key, required this.data, required this.config});
+  const PlayerSpotlightCanvas({
+    super.key,
+    required this.data,
+    required this.config,
+  });
   final PlayerSpotlight data;
   final CardConfig config;
 
@@ -20,7 +25,14 @@ class PlayerSpotlightCanvas extends StatelessWidget {
         children: [
           if (config.showScrim)
             Positioned.fill(
-              child: Container(decoration: BoxDecoration(gradient: GradientBuilder.scrimFor(config.scrimType, config.overlayOpacity))),
+              child: Container(
+                decoration: BoxDecoration(
+                  gradient: GradientBuilder.scrimFor(
+                    config.scrimType,
+                    config.overlayOpacity,
+                  ),
+                ),
+              ),
             ),
           Padding(
             padding: const EdgeInsets.all(26),
@@ -30,16 +42,43 @@ class PlayerSpotlightCanvas extends StatelessWidget {
                 Row(
                   children: [
                     Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                      decoration: BoxDecoration(color: Colors.white.withValues(alpha: 0.16), borderRadius: BorderRadius.circular(16)),
-                      child: Text('PLAYER SPOTLIGHT', style: GoogleFonts.jetBrainsMono(color: Colors.white, fontSize: 10, fontWeight: FontWeight.w700, letterSpacing: 1)),
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 10,
+                        vertical: 4,
+                      ),
+                      decoration: BoxDecoration(
+                        color: Colors.white.withValues(alpha: 0.16),
+                        borderRadius: BorderRadius.circular(16),
+                      ),
+                      child: Text(
+                        'PLAYER SPOTLIGHT',
+                        style: GoogleFonts.jetBrainsMono(
+                          color: Colors.white,
+                          fontSize: 10,
+                          fontWeight: FontWeight.w700,
+                          letterSpacing: 1,
+                        ),
+                      ),
                     ),
                     const Spacer(),
                     if (data.rating > 0)
                       Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-                        decoration: BoxDecoration(color: Colors.amberAccent, borderRadius: BorderRadius.circular(8)),
-                        child: Text('⭐ ${data.rating.toStringAsFixed(1)}', style: GoogleFonts.jetBrainsMono(color: Colors.black, fontSize: 11, fontWeight: FontWeight.w900)),
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 8,
+                          vertical: 3,
+                        ),
+                        decoration: BoxDecoration(
+                          color: Colors.amberAccent,
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                        child: Text(
+                          '⭐ ${data.rating.toStringAsFixed(1)}',
+                          style: GoogleFonts.jetBrainsMono(
+                            color: Colors.black,
+                            fontSize: 11,
+                            fontWeight: FontWeight.w900,
+                          ),
+                        ),
                       ),
                   ],
                 ),
@@ -51,7 +90,14 @@ class PlayerSpotlightCanvas extends StatelessWidget {
                     fontSize: 26 * fontMultiplier,
                     fontWeight: FontWeight.w900,
                     height: 1.1,
-                    shadows: config.textShadowRadius > 0 ? [Shadow(color: config.textShadowColor, blurRadius: config.textShadowRadius)] : null,
+                    shadows: config.textShadowRadius > 0
+                        ? [
+                            Shadow(
+                              color: config.textShadowColor,
+                              blurRadius: config.textShadowRadius,
+                            ),
+                          ]
+                        : null,
                   ),
                   maxLines: 2,
                   overflow: TextOverflow.ellipsis,
@@ -60,16 +106,38 @@ class PlayerSpotlightCanvas extends StatelessWidget {
                 Row(
                   children: [
                     if (data.club != 'N/A') ...[
-                      Text(data.club, style: GoogleFonts.inter(color: Colors.white70, fontSize: 13, fontWeight: FontWeight.w600)),
-                      if (data.position != 'N/A') Text(' • ', style: GoogleFonts.inter(color: Colors.white54, fontSize: 13)),
+                      Text(
+                        data.club,
+                        style: GoogleFonts.inter(
+                          color: Colors.white70,
+                          fontSize: 13,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                      if (data.position != 'N/A')
+                        Text(
+                          ' • ',
+                          style: GoogleFonts.inter(
+                            color: Colors.white54,
+                            fontSize: 13,
+                          ),
+                        ),
                     ],
                     if (data.position != 'N/A')
-                      Text(data.position, style: GoogleFonts.inter(color: Colors.white70, fontSize: 13)),
+                      Text(
+                        data.position,
+                        style: GoogleFonts.inter(
+                          color: Colors.white70,
+                          fontSize: 13,
+                        ),
+                      ),
                   ],
                 ),
                 const SizedBox(height: 12),
                 // Stat Pills Row
-                if (data.goals > 0 || data.assists > 0 || data.appearances > 0) ...[
+                if (data.goals > 0 ||
+                    data.assists > 0 ||
+                    data.appearances > 0) ...[
                   Row(
                     children: [
                       if (data.goals > 0) ...[
@@ -90,13 +158,33 @@ class PlayerSpotlightCanvas extends StatelessWidget {
                 ],
                 if (data.keyAction != 'N/A' && data.keyAction.isNotEmpty) ...[
                   Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
-                    decoration: BoxDecoration(color: Colors.white.withValues(alpha: 0.12), borderRadius: BorderRadius.circular(8)),
-                    child: Text(data.keyAction, style: GoogleFonts.inter(color: Colors.white70, fontSize: 11), maxLines: 2, overflow: TextOverflow.ellipsis),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 10,
+                      vertical: 5,
+                    ),
+                    decoration: BoxDecoration(
+                      color: Colors.white.withValues(alpha: 0.12),
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    child: Text(
+                      data.keyAction,
+                      style: GoogleFonts.inter(
+                        color: Colors.white70,
+                        fontSize: 11,
+                      ),
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                    ),
                   ),
                 ],
                 const Spacer(),
-                Text('Oreamnos Spotlight', style: GoogleFonts.jetBrainsMono(color: Colors.white.withValues(alpha: 0.6), fontSize: 10)),
+                Text(
+                  'Oreamnos Spotlight',
+                  style: GoogleFonts.jetBrainsMono(
+                    color: Colors.white.withValues(alpha: 0.6),
+                    fontSize: 10,
+                  ),
+                ),
               ],
             ),
           ),
@@ -115,8 +203,22 @@ class PlayerSpotlightCanvas extends StatelessWidget {
       ),
       child: Column(
         children: [
-          Text(value, style: GoogleFonts.jetBrainsMono(color: Colors.amberAccent, fontSize: 16, fontWeight: FontWeight.w900)),
-          Text(label, style: GoogleFonts.jetBrainsMono(color: Colors.white54, fontSize: 8, fontWeight: FontWeight.w700)),
+          Text(
+            value,
+            style: GoogleFonts.jetBrainsMono(
+              color: Colors.amberAccent,
+              fontSize: 16,
+              fontWeight: FontWeight.w900,
+            ),
+          ),
+          Text(
+            label,
+            style: GoogleFonts.jetBrainsMono(
+              color: Colors.white54,
+              fontSize: 8,
+              fontWeight: FontWeight.w700,
+            ),
+          ),
         ],
       ),
     );

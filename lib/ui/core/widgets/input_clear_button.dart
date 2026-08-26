@@ -1,4 +1,5 @@
 import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:oreamnos/config/theme/app_colors.dart';
 import 'package:oreamnos/config/theme/app_spacing.dart';
@@ -22,7 +23,8 @@ class InputClearButton extends StatefulWidget {
   State<InputClearButton> createState() => _InputClearButtonState();
 }
 
-class _InputClearButtonState extends State<InputClearButton> with SingleTickerProviderStateMixin {
+class _InputClearButtonState extends State<InputClearButton>
+    with SingleTickerProviderStateMixin {
   bool _isConfirming = false;
   Timer? _timer;
 
@@ -67,22 +69,32 @@ class _InputClearButtonState extends State<InputClearButton> with SingleTickerPr
               style: TextButton.styleFrom(
                 foregroundColor: AppColors.error,
                 backgroundColor: AppColors.error.withValues(alpha: 0.12),
-                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 10,
+                  vertical: 4,
+                ),
                 minimumSize: const Size(0, 32),
                 tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                shape: RoundedRectangleBorder(borderRadius: AppSpacing.borderRadiusPill),
+                shape: RoundedRectangleBorder(
+                  borderRadius: AppSpacing.borderRadiusPill,
+                ),
               ),
               onPressed: _handleClick,
               icon: const Icon(Icons.warning_amber_rounded, size: 14),
               label: Text(
                 widget.confirmLabel,
-                style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w700),
+                style: const TextStyle(
+                  fontSize: 11,
+                  fontWeight: FontWeight.w700,
+                ),
               ),
             )
           : TextButton.icon(
               key: const ValueKey('idle'),
               style: TextButton.styleFrom(
-                foregroundColor: theme.colorScheme.onSurface.withValues(alpha: 0.6),
+                foregroundColor: theme.colorScheme.onSurface.withValues(
+                  alpha: 0.6,
+                ),
                 padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                 minimumSize: const Size(0, 32),
                 tapTargetSize: MaterialTapTargetSize.shrinkWrap,
@@ -91,7 +103,10 @@ class _InputClearButtonState extends State<InputClearButton> with SingleTickerPr
               icon: const Icon(Icons.clear_rounded, size: 14),
               label: Text(
                 widget.label,
-                style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w600),
+                style: const TextStyle(
+                  fontSize: 11,
+                  fontWeight: FontWeight.w600,
+                ),
               ),
             ),
     );

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+
 import 'app_button.dart';
 
 /// Pure Sciuro empty state widget:
@@ -28,7 +29,8 @@ class EmptyState extends StatelessWidget {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final colorScheme = theme.colorScheme;
-    final primaryIconColor = iconColor ?? colorScheme.onSurface; // Stark monochrome
+    final primaryIconColor =
+        iconColor ?? colorScheme.onSurface; // Stark monochrome
 
     return Center(
       child: Padding(
@@ -41,14 +43,12 @@ class EmptyState extends StatelessWidget {
             Container(
               padding: const EdgeInsets.all(24),
               decoration: BoxDecoration(
-                color: iconBackground ?? colorScheme.primaryContainer.withValues(alpha: 0.5),
+                color:
+                    iconBackground ??
+                    colorScheme.primaryContainer.withValues(alpha: 0.5),
                 shape: BoxShape.circle,
               ),
-              child: Icon(
-                icon,
-                size: 48,
-                color: primaryIconColor,
-              ),
+              child: Icon(icon, size: 48, color: primaryIconColor),
             ),
             const SizedBox(height: 32),
             Text(
@@ -68,11 +68,7 @@ class EmptyState extends StatelessWidget {
             ),
             if (actionLabel != null && onAction != null) ...[
               const SizedBox(height: 32),
-              AppButton(
-                label: actionLabel!,
-                height: 48,
-                onPressed: onAction,
-              ),
+              AppButton(label: actionLabel!, height: 48, onPressed: onAction),
             ],
           ],
         ),
@@ -80,4 +76,3 @@ class EmptyState extends StatelessWidget {
     );
   }
 }
-

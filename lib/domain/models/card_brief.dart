@@ -56,8 +56,10 @@ class CardBrief extends Equatable {
 
   factory CardBrief.fromJson(Map<String, dynamic> json) {
     return CardBrief(
-      headline: (json['headline'] as String?) ?? (json['title'] as String?) ?? '',
-      subtext: (json['subtext'] as String?) ?? (json['subtitle'] as String?) ?? '',
+      headline:
+          (json['headline'] as String?) ?? (json['title'] as String?) ?? '',
+      subtext:
+          (json['subtext'] as String?) ?? (json['subtitle'] as String?) ?? '',
       microStat: json['microStat'] as String?,
       provider: _providerFromString(json['provider'] as String?),
       modelId: (json['modelId'] as String?) ?? '',
@@ -65,12 +67,12 @@ class CardBrief extends Equatable {
   }
 
   Map<String, dynamic> toJson() => {
-        'headline': headline,
-        'subtext': subtext,
-        'microStat': microStat,
-        'provider': provider.name,
-        'modelId': modelId,
-      };
+    'headline': headline,
+    'subtext': subtext,
+    'microStat': microStat,
+    'provider': provider.name,
+    'modelId': modelId,
+  };
 
   static AiProvider _providerFromString(String? v) {
     if (v == null) return AiProvider.gemini;

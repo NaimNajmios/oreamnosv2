@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:provider/provider.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import 'package:oreamnos/config/theme/app_spacing.dart';
 import 'package:oreamnos/data/models/ai_provider.dart';
@@ -11,7 +11,7 @@ import 'package:oreamnos/ui/core/widgets/kickoff_loading_indicator.dart';
 import 'package:oreamnos/ui/features/settings/view_models/settings_view_model.dart';
 
 /// Dialog to dynamically fetch, filter, and select a model for the given provider.
-class ModelSelectionDialog extends StatefulWidget {
+class ModelSelectionDialog extends ConsumerStatefulWidget {
   const ModelSelectionDialog({super.key, required this.provider});
 
   final AiProvider provider;
@@ -24,10 +24,11 @@ class ModelSelectionDialog extends StatefulWidget {
   }
 
   @override
-  State<ModelSelectionDialog> createState() => _ModelSelectionDialogState();
+  ConsumerState<ModelSelectionDialog> createState() =>
+      _ModelSelectionDialogState();
 }
 
-class _ModelSelectionDialogState extends State<ModelSelectionDialog> {
+class _ModelSelectionDialogState extends ConsumerState<ModelSelectionDialog> {
   final _apiService = ProviderApiService();
   final _searchController = TextEditingController();
   List<String>? _models;
@@ -54,11 +55,13 @@ class _ModelSelectionDialogState extends State<ModelSelectionDialog> {
 
   Future<void> _fetchModels() async {
     try {
-      final viewModel = context.read<SettingsViewModel>();
+      final viewModel = ref.read(settingsViewModelProvider.notifier);
       final apiKey = await viewModel.getApiKeyForProvider(widget.provider);
 
       if (apiKey == null || apiKey.isEmpty) {
-        throw ProviderApiException('Please configure your API key first in Settings.');
+        throw ProviderApiException(
+          'Please configure your API key first in Settings.',
+        );
       }
 
       final models = await _apiService.fetchModels(widget.provider, apiKey);
@@ -81,7 +84,7 @@ class _ModelSelectionDialogState extends State<ModelSelectionDialog> {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final viewModel = context.watch<SettingsViewModel>();
+    final viewModel = ref.watch(settingsViewModelProvider);
 
     return Dialog(
       shape: RoundedRectangleBorder(
@@ -110,7 +113,10 @@ class _ModelSelectionDialogState extends State<ModelSelectionDialog> {
                 ),
               ),
               const SizedBox(height: AppSpacing.md),
-              if (!_isLoading && _error == null && _models != null && _models!.isNotEmpty) ...[
+              if (!_isLoading &&
+                  _error == null &&
+                  _models != null &&
+                  _models!.isNotEmpty) ...[
                 AppInput(
                   controller: _searchController,
                   hint: 'Search models...',
@@ -118,9 +124,7 @@ class _ModelSelectionDialogState extends State<ModelSelectionDialog> {
                 ),
                 const SizedBox(height: AppSpacing.md),
               ],
-              Expanded(
-                child: _buildContent(theme, viewModel),
-              ),
+              Expanded(child: _buildContent(theme, viewModel)),
               const SizedBox(height: AppSpacing.md),
               Align(
                 alignment: Alignment.centerRight,
@@ -142,9 +146,7 @@ class _ModelSelectionDialogState extends State<ModelSelectionDialog> {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            SizedBox(
-              child: KickoffLoadingIndicator(size: 24),
-            ),
+            SizedBox(child: KickoffLoadingIndicator(size: 24)),
             const SizedBox(height: AppSpacing.md),
             Text(
               'Fetching models from ${widget.provider.displayName}...',
@@ -225,7 +227,9 @@ class _ModelSelectionDialogState extends State<ModelSelectionDialog> {
                     child: Text(
                       model,
                       style: theme.textTheme.bodyMedium?.copyWith(
-                        fontWeight: isSelected ? FontWeight.w700 : FontWeight.w400,
+                        fontWeight: isSelected
+                            ? FontWeight.w700
+                            : FontWeight.w400,
                         color: isSelected
                             ? theme.colorScheme.primary
                             : theme.colorScheme.onSurface,

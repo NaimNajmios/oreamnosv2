@@ -1,8 +1,10 @@
 import 'dart:io';
+
 import 'package:auto_size_text/auto_size_text.dart';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:oreamnos/domain/models/card_data.dart';
+import 'package:oreamnos/domain/models/card_template.dart';
 import 'package:oreamnos/ui/features/card_generator/view_models/card_generator_view_model.dart';
 
 /// Sparse companion canvas — headline + hook + optional microStat badge
@@ -29,7 +31,9 @@ class CardCanvas extends StatelessWidget {
   });
 
   TextStyle _font(TextStyle base) {
-    final scaled = base.copyWith(fontSize: (base.fontSize ?? 14) * headlineScale);
+    final scaled = base.copyWith(
+      fontSize: (base.fontSize ?? 14) * headlineScale,
+    );
     switch (font) {
       case AppFont.classicSerif:
         return GoogleFonts.lora(textStyle: scaled);
@@ -45,42 +49,47 @@ class CardCanvas extends StatelessWidget {
     return RepaintBoundary(
       child: Container(
         decoration: _buildBackgroundDecoration(),
-      child: Stack(
-        children: [
-          if (backgroundImage != null)
-            Positioned.fill(
-              child: DecoratedBox(
-                decoration: BoxDecoration(
-                  gradient: LinearGradient(
-                    begin: Alignment.topCenter,
-                    end: Alignment.bottomCenter,
-                    colors: [
-                      Colors.black.withValues(alpha: scrimOpacity),
-                      Colors.black.withValues(alpha: (scrimOpacity * 0.62).clamp(0.2, 0.75)),
-                    ],
+        child: Stack(
+          children: [
+            if (backgroundImage != null)
+              Positioned.fill(
+                child: DecoratedBox(
+                  decoration: BoxDecoration(
+                    gradient: LinearGradient(
+                      begin: Alignment.topCenter,
+                      end: Alignment.bottomCenter,
+                      colors: [
+                        Colors.black.withValues(alpha: scrimOpacity),
+                        Colors.black.withValues(
+                          alpha: (scrimOpacity * 0.62).clamp(0.2, 0.75),
+                        ),
+                      ],
+                    ),
                   ),
                 ),
               ),
-            ),
-          if (useVignette)
-            Positioned.fill(
-              child: DecoratedBox(
-                decoration: BoxDecoration(
-                  gradient: RadialGradient(
-                    center: Alignment.center,
-                    radius: 1.15,
-                    colors: [Colors.transparent, Colors.black.withValues(alpha: 0.32)],
-                    stops: const [0.65, 1.0],
+            if (useVignette)
+              Positioned.fill(
+                child: DecoratedBox(
+                  decoration: BoxDecoration(
+                    gradient: RadialGradient(
+                      center: Alignment.center,
+                      radius: 1.15,
+                      colors: [
+                        Colors.transparent,
+                        Colors.black.withValues(alpha: 0.32),
+                      ],
+                      stops: const [0.65, 1.0],
+                    ),
                   ),
                 ),
               ),
+            Padding(
+              padding: const EdgeInsets.all(28),
+              child: _buildTemplateContent(),
             ),
-          Padding(
-            padding: const EdgeInsets.all(28),
-            child: _buildTemplateContent(),
-          ),
-        ],
-      ),
+          ],
+        ),
       ),
     );
   }
@@ -104,9 +113,11 @@ class CardCanvas extends StatelessWidget {
         return _buildQuoteTemplate();
       case CardTemplate.breakingNews:
         return _buildBreakingTemplate();
-      case CardTemplate.statBadge:
+      case CardTemplate.topStats:
         return _buildStatBadgeTemplate();
-      case CardTemplate.standard:
+      case CardTemplate.socialPost:
+        return _buildStandardTemplate();
+      default:
         return _buildStandardTemplate();
     }
   }
@@ -129,11 +140,16 @@ class CardCanvas extends StatelessWidget {
                       if (cardData.hasMicroStat)
                         Container(
                           margin: const EdgeInsets.only(bottom: 14),
-                          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 10,
+                            vertical: 5,
+                          ),
                           decoration: BoxDecoration(
                             color: Colors.white.withValues(alpha: 0.14),
                             borderRadius: BorderRadius.circular(999),
-                            border: Border.all(color: Colors.white.withValues(alpha: 0.22)),
+                            border: Border.all(
+                              color: Colors.white.withValues(alpha: 0.22),
+                            ),
                           ),
                           child: Text(
                             cardData.microStat!.toUpperCase(),
@@ -164,7 +180,11 @@ class CardCanvas extends StatelessWidget {
                         overflow: TextOverflow.ellipsis,
                       ),
                       const SizedBox(height: 14),
-                      Container(width: 36, height: 3, color: Colors.white.withValues(alpha: 0.9)),
+                      Container(
+                        width: 36,
+                        height: 3,
+                        color: Colors.white.withValues(alpha: 0.9),
+                      ),
                       const SizedBox(height: 14),
                       AutoSizeText(
                         cardData.subtext,
@@ -209,10 +229,16 @@ class CardCanvas extends StatelessWidget {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
-                      Icon(Icons.format_quote_rounded, size: 42, color: Colors.white.withValues(alpha: 0.9)),
+                      Icon(
+                        Icons.format_quote_rounded,
+                        size: 42,
+                        color: Colors.white.withValues(alpha: 0.9),
+                      ),
                       const SizedBox(height: 12),
                       AutoSizeText(
-                        cardData.subtext.isNotEmpty ? cardData.subtext : cardData.headline,
+                        cardData.subtext.isNotEmpty
+                            ? cardData.subtext
+                            : cardData.headline,
                         style: _font(
                           const TextStyle(
                             fontSize: 26,
@@ -282,7 +308,10 @@ class CardCanvas extends StatelessWidget {
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
                       Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 11, vertical: 6),
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 11,
+                          vertical: 6,
+                        ),
                         color: const Color(0xFFE11D48),
                         child: Text(
                           label.toUpperCase(),
@@ -376,7 +405,10 @@ class CardCanvas extends StatelessWidget {
                       const SizedBox(height: 16),
                       if (cardData.hasMicroStat)
                         Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 16,
+                            vertical: 12,
+                          ),
                           decoration: BoxDecoration(
                             color: Colors.white,
                             borderRadius: BorderRadius.circular(14),
@@ -451,7 +483,11 @@ class CardCanvas extends StatelessWidget {
             letterSpacing: 0.6,
           ),
         ),
-        Icon(Icons.sports_soccer, color: Colors.white.withValues(alpha: 0.62), size: 16),
+        Icon(
+          Icons.sports_soccer,
+          color: Colors.white.withValues(alpha: 0.62),
+          size: 16,
+        ),
       ],
     );
   }

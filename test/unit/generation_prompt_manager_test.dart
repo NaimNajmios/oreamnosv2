@@ -5,7 +5,9 @@ import 'package:oreamnos/domain/models/curated_post.dart';
 void main() {
   group('GenerationPromptManager', () {
     test('buildSystemPrompt includes source when provided', () {
-      final s = GenerationPromptManager.buildSystemPrompt(sourceUrl: 'https://example.com');
+      final s = GenerationPromptManager.buildSystemPrompt(
+        sourceUrl: 'https://example.com',
+      );
       expect(s, contains('example.com'));
     });
     test('buildSystemPrompt without source has no source line', () {
@@ -18,7 +20,11 @@ void main() {
       expect(p, contains('Hello news'));
     });
     test('buildUserPrompt handles ExtractedArticle', () {
-      const article = ExtractedArticle(text: 'Article text', url: 'https://ex.com', domain: 'ex.com');
+      const article = ExtractedArticle(
+        text: 'Article text',
+        url: 'https://ex.com',
+        domain: 'ex.com',
+      );
       final p = GenerationPromptManager.buildUserPrompt(article);
       expect(p, contains('Article text'));
     });

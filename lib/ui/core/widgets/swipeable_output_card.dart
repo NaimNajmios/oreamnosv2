@@ -1,10 +1,12 @@
 import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:share_plus/share_plus.dart';
 import 'package:oreamnos/config/theme/app_colors.dart';
 import 'package:oreamnos/config/theme/app_spacing.dart';
 import 'package:oreamnos/ui/core/utils/haptics.dart';
+
 import 'app_card.dart';
 
 /// Container with swipe-to-copy (right) and swipe-to-share (left).
@@ -22,7 +24,8 @@ class SwipeableOutputCard extends StatefulWidget {
   State<SwipeableOutputCard> createState() => _SwipeableOutputCardState();
 }
 
-class _SwipeableOutputCardState extends State<SwipeableOutputCard> with SingleTickerProviderStateMixin {
+class _SwipeableOutputCardState extends State<SwipeableOutputCard>
+    with SingleTickerProviderStateMixin {
   late AnimationController _shimmyController;
   late Animation<double> _shimmyOffset;
   Timer? _shimmyTimer;
@@ -36,9 +39,27 @@ class _SwipeableOutputCardState extends State<SwipeableOutputCard> with SingleTi
       duration: const Duration(milliseconds: 800),
     );
     _shimmyOffset = TweenSequence<double>([
-      TweenSequenceItem(tween: Tween(begin: 0.0, end: 12.0).chain(CurveTween(curve: Curves.easeOutCubic)), weight: 35),
-      TweenSequenceItem(tween: Tween(begin: 12.0, end: -8.0).chain(CurveTween(curve: Curves.easeInOutCubic)), weight: 35),
-      TweenSequenceItem(tween: Tween(begin: -8.0, end: 0.0).chain(CurveTween(curve: Curves.easeInCubic)), weight: 30),
+      TweenSequenceItem(
+        tween: Tween(
+          begin: 0.0,
+          end: 12.0,
+        ).chain(CurveTween(curve: Curves.easeOutCubic)),
+        weight: 35,
+      ),
+      TweenSequenceItem(
+        tween: Tween(
+          begin: 12.0,
+          end: -8.0,
+        ).chain(CurveTween(curve: Curves.easeInOutCubic)),
+        weight: 35,
+      ),
+      TweenSequenceItem(
+        tween: Tween(
+          begin: -8.0,
+          end: 0.0,
+        ).chain(CurveTween(curve: Curves.easeInCubic)),
+        weight: 30,
+      ),
     ]).animate(_shimmyController);
 
     _shimmyTimer = Timer(const Duration(milliseconds: 600), () {
@@ -146,7 +167,11 @@ class _SwipeableOutputCardState extends State<SwipeableOutputCard> with SingleTi
                 ),
               ),
               const SizedBox(width: 8),
-              Icon(Icons.share_rounded, color: theme.colorScheme.primary, size: 20),
+              Icon(
+                Icons.share_rounded,
+                color: theme.colorScheme.primary,
+                size: 20,
+              ),
             ],
           ),
         ),
