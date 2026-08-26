@@ -86,7 +86,7 @@ class AwardNomineeCanvas extends StatelessWidget {
                 const SizedBox(height: 10),
                 Text(
                   data.awardName,
-                  style: GoogleFonts.inter(
+                  style: config.font(
                     color: Colors.white,
                     fontSize: 22 * fontMultiplier,
                     fontWeight: FontWeight.w900,
@@ -125,7 +125,7 @@ class AwardNomineeCanvas extends StatelessWidget {
                                           children: [
                                             Text(
                                               nom.playerName,
-                                              style: GoogleFonts.inter(
+                                              style: config.font(
                                                 color: Colors.white,
                                                 fontSize: 13,
                                                 fontWeight: FontWeight.w700,
@@ -162,7 +162,7 @@ class AwardNomineeCanvas extends StatelessWidget {
                                         ),
                                         Text(
                                           '${nom.club} • ${nom.achievement}',
-                                          style: GoogleFonts.inter(
+                                          style: config.font(
                                             color: Colors.white70,
                                             fontSize: 11,
                                           ),
@@ -190,7 +190,7 @@ class AwardNomineeCanvas extends StatelessWidget {
                               data.subtext.isNotEmpty
                                   ? data.subtext
                                   : 'Official Nominees',
-                              style: GoogleFonts.inter(
+                              style: config.font(
                                 color: Colors.white70,
                                 fontSize: 12,
                               ),
@@ -201,7 +201,11 @@ class AwardNomineeCanvas extends StatelessWidget {
                 ),
                 const SizedBox(height: 8),
                 Text(
-                  'Oreamnos Awards',
+                  config.brandName?.isNotEmpty == true
+                        ? config.brandName!
+                        : (config.brandHandle?.isNotEmpty == true
+                            ? config.brandHandle!
+                            : 'Awards'),
                   style: GoogleFonts.jetBrainsMono(
                     color: Colors.white.withValues(alpha: 0.6),
                     fontSize: 10,

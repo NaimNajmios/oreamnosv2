@@ -82,7 +82,7 @@ class StartingXICanvas extends StatelessWidget {
                 const SizedBox(height: 12),
                 Text(
                   data.teamName,
-                  style: GoogleFonts.inter(
+                  style: config.font(
                     color: Colors.white,
                     fontSize: 22 * fontMultiplier,
                     fontWeight: FontWeight.w900,
@@ -93,7 +93,7 @@ class StartingXICanvas extends StatelessWidget {
                   const SizedBox(height: 4),
                   Text(
                     'Manager: ${data.manager}',
-                    style: GoogleFonts.inter(
+                    style: config.font(
                       color: Colors.white70,
                       fontSize: 12,
                     ),
@@ -148,7 +148,7 @@ class StartingXICanvas extends StatelessWidget {
                                   Expanded(
                                     child: Text(
                                       p.name,
-                                      style: GoogleFonts.inter(
+                                      style: config.font(
                                         color: Colors.white,
                                         fontSize: 11,
                                         fontWeight: FontWeight.w600,
@@ -166,7 +166,7 @@ class StartingXICanvas extends StatelessWidget {
                               data.subtext.isNotEmpty
                                   ? data.subtext
                                   : 'Lineup Announced',
-                              style: GoogleFonts.inter(
+                              style: config.font(
                                 color: Colors.white70,
                                 fontSize: 12,
                               ),
@@ -179,7 +179,11 @@ class StartingXICanvas extends StatelessWidget {
                 Row(
                   children: [
                     Text(
-                      'Oreamnos Lineup',
+                      config.brandName?.isNotEmpty == true
+                        ? config.brandName!
+                        : (config.brandHandle?.isNotEmpty == true
+                            ? config.brandHandle!
+                            : 'Lineup'),
                       style: GoogleFonts.jetBrainsMono(
                         color: Colors.white.withValues(alpha: 0.6),
                         fontSize: 10,

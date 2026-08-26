@@ -75,7 +75,7 @@ class TableStandingsCanvas extends StatelessWidget {
                 const SizedBox(height: 10),
                 Text(
                   data.leagueName,
-                  style: GoogleFonts.inter(
+                  style: config.font(
                     color: Colors.white,
                     fontSize: 20 * fontMultiplier,
                     fontWeight: FontWeight.w900,
@@ -212,7 +212,7 @@ class TableStandingsCanvas extends StatelessWidget {
                                           Expanded(
                                             child: Text(
                                               r.teamName,
-                                              style: GoogleFonts.inter(
+                                              style: config.font(
                                                 color: Colors.white,
                                                 fontSize: 12,
                                                 fontWeight: isHighlighted
@@ -267,7 +267,7 @@ class TableStandingsCanvas extends StatelessWidget {
                                     data.subtext.isNotEmpty
                                         ? data.subtext
                                         : 'League Table',
-                                    style: GoogleFonts.inter(
+                                    style: config.font(
                                       color: Colors.white70,
                                       fontSize: 12,
                                     ),
@@ -281,7 +281,11 @@ class TableStandingsCanvas extends StatelessWidget {
                 ),
                 const SizedBox(height: 8),
                 Text(
-                  'Oreamnos League Tracker',
+                  config.brandName?.isNotEmpty == true
+                        ? config.brandName!
+                        : (config.brandHandle?.isNotEmpty == true
+                            ? config.brandHandle!
+                            : 'League Table'),
                   style: GoogleFonts.jetBrainsMono(
                     color: Colors.white.withValues(alpha: 0.6),
                     fontSize: 10,

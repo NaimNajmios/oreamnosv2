@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:google_fonts/google_fonts.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:oreamnos/domain/models/card_config.dart';
 import 'package:oreamnos/domain/models/card_data.dart';
@@ -17,7 +16,6 @@ class FreeformCanvas extends ConsumerWidget {
     final state = ref.watch(cardGeneratorViewModelProvider);
     final notifier = ref.read(cardGeneratorViewModelProvider.notifier);
     final colors = config.colorPair;
-    final fontMultiplier = config.fontSizeMultiplier;
 
     final headline = data.headline;
     final subtext = data.subtext;
@@ -50,13 +48,9 @@ class FreeformCanvas extends ConsumerWidget {
                 headline,
                 fieldKey: 'headline',
                 autoSize: false,
-                style: GoogleFonts.inter(
-                  color: Colors.white,
-                  fontSize: 32 * fontMultiplier,
+                style: config.font(
+                  fontSize: 32,
                   fontWeight: FontWeight.w900,
-                  shadows: config.textShadowRadius > 0
-                      ? [Shadow(color: config.textShadowColor, blurRadius: config.textShadowRadius)]
-                      : null,
                 ),
               ),
             ),
@@ -70,13 +64,10 @@ class FreeformCanvas extends ConsumerWidget {
                 subtext,
                 fieldKey: 'subtext',
                 autoSize: false,
-                style: GoogleFonts.inter(
+                style: config.font(
                   color: Colors.white70,
-                  fontSize: 20 * fontMultiplier,
+                  fontSize: 20,
                   fontWeight: FontWeight.w600,
-                  shadows: config.textShadowRadius > 0
-                      ? [Shadow(color: config.textShadowColor, blurRadius: config.textShadowRadius)]
-                      : null,
                 ),
               ),
             ),
@@ -90,12 +81,9 @@ class FreeformCanvas extends ConsumerWidget {
                 microStat,
                 fieldKey: 'microStat',
                 autoSize: false,
-                style: GoogleFonts.jetBrainsMono(
+                style: config.font(
                   color: Colors.white54,
-                  fontSize: 14 * fontMultiplier,
-                  shadows: config.textShadowRadius > 0
-                      ? [Shadow(color: config.textShadowColor, blurRadius: config.textShadowRadius)]
-                      : null,
+                  fontSize: 14,
                 ),
               ),
             ),

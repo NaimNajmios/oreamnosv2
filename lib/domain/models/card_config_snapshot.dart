@@ -20,6 +20,9 @@ class CardConfigSnapshot {
     this.extractedPalette,
     this.watermarkText,
     this.showWatermark = false,
+    this.brandName,
+    this.brandHandle,
+    this.showBrandFooter = true,
   });
 
   final CardData? cardData;
@@ -35,4 +38,7 @@ class CardConfigSnapshot {
   final List<Color>? extractedPalette;
   final String? watermarkText;
   final bool showWatermark;
+  final String? brandName;
+  final String? brandHandle;
+  final bool showBrandFooter;
 }

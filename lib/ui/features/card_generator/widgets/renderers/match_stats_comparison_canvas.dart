@@ -66,7 +66,7 @@ class MatchStatsComparisonCanvas extends StatelessWidget {
                     Expanded(
                       child: Text(
                         data.homeTeam,
-                        style: GoogleFonts.inter(
+                        style: config.font(
                           color: Colors.white,
                           fontSize: 16 * fontMultiplier,
                           fontWeight: FontWeight.w800,
@@ -90,7 +90,7 @@ class MatchStatsComparisonCanvas extends StatelessWidget {
                     Expanded(
                       child: Text(
                         data.awayTeam,
-                        style: GoogleFonts.inter(
+                        style: config.font(
                           color: Colors.white,
                           fontSize: 16 * fontMultiplier,
                           fontWeight: FontWeight.w800,
@@ -161,7 +161,7 @@ class MatchStatsComparisonCanvas extends StatelessWidget {
                                       ),
                                       Text(
                                         s.label,
-                                        style: GoogleFonts.inter(
+                                        style: config.font(
                                           color: Colors.white70,
                                           fontSize: 11,
                                           fontWeight: FontWeight.w600,
@@ -210,7 +210,7 @@ class MatchStatsComparisonCanvas extends StatelessWidget {
                               data.subtext.isNotEmpty
                                   ? data.subtext
                                   : 'Match Statistics',
-                              style: GoogleFonts.inter(
+                              style: config.font(
                                 color: Colors.white70,
                                 fontSize: 12,
                               ),
@@ -221,7 +221,11 @@ class MatchStatsComparisonCanvas extends StatelessWidget {
                 ),
                 const SizedBox(height: 8),
                 Text(
-                  'Oreamnos Match Stats',
+                  config.brandName?.isNotEmpty == true
+                        ? config.brandName!
+                        : (config.brandHandle?.isNotEmpty == true
+                            ? config.brandHandle!
+                            : 'Match Stats'),
                   style: GoogleFonts.jetBrainsMono(
                     color: Colors.white.withValues(alpha: 0.6),
                     fontSize: 10,

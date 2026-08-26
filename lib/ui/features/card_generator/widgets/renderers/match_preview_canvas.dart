@@ -91,7 +91,7 @@ class MatchPreviewCanvas extends StatelessWidget {
                           children: [
                             Text(
                               data.homeTeam,
-                              style: GoogleFonts.inter(
+                              style: config.font(
                                 color: Colors.white,
                                 fontSize: 16 * fontMultiplier,
                                 fontWeight: FontWeight.w800,
@@ -138,7 +138,7 @@ class MatchPreviewCanvas extends StatelessWidget {
                           children: [
                             Text(
                               data.awayTeam,
-                              style: GoogleFonts.inter(
+                              style: config.font(
                                 color: Colors.white,
                                 fontSize: 16 * fontMultiplier,
                                 fontWeight: FontWeight.w800,
@@ -188,7 +188,7 @@ class MatchPreviewCanvas extends StatelessWidget {
                             const SizedBox(width: 4),
                             Text(
                               data.stadium,
-                              style: GoogleFonts.inter(
+                              style: config.font(
                                 color: Colors.white70,
                                 fontSize: 11,
                               ),
@@ -208,7 +208,7 @@ class MatchPreviewCanvas extends StatelessWidget {
                             const SizedBox(width: 4),
                             Text(
                               data.matchTime,
-                              style: GoogleFonts.inter(
+                              style: config.font(
                                 color: Colors.white70,
                                 fontSize: 11,
                               ),
@@ -220,7 +220,11 @@ class MatchPreviewCanvas extends StatelessWidget {
                 ],
                 const Spacer(),
                 Text(
-                  'Oreamnos Preview',
+                  config.brandName?.isNotEmpty == true
+                        ? config.brandName!
+                        : (config.brandHandle?.isNotEmpty == true
+                            ? config.brandHandle!
+                            : 'Match Preview'),
                   style: GoogleFonts.jetBrainsMono(
                     color: Colors.white.withValues(alpha: 0.6),
                     fontSize: 10,

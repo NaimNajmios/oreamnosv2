@@ -104,7 +104,7 @@ class DetailedScoreboardCanvas extends StatelessWidget {
                           children: [
                             Text(
                               data.homeTeam,
-                              style: GoogleFonts.inter(
+                              style: config.font(
                                 color: Colors.white,
                                 fontSize: 16 * fontMultiplier,
                                 fontWeight: FontWeight.w800,
@@ -117,7 +117,7 @@ class DetailedScoreboardCanvas extends StatelessWidget {
                               const SizedBox(height: 4),
                               Text(
                                 data.homeScorers,
-                                style: GoogleFonts.inter(
+                                style: config.font(
                                   color: Colors.white70,
                                   fontSize: 10,
                                 ),
@@ -145,7 +145,7 @@ class DetailedScoreboardCanvas extends StatelessWidget {
                           children: [
                             Text(
                               data.awayTeam,
-                              style: GoogleFonts.inter(
+                              style: config.font(
                                 color: Colors.white,
                                 fontSize: 16 * fontMultiplier,
                                 fontWeight: FontWeight.w800,
@@ -158,7 +158,7 @@ class DetailedScoreboardCanvas extends StatelessWidget {
                               const SizedBox(height: 4),
                               Text(
                                 data.awayScorers,
-                                style: GoogleFonts.inter(
+                                style: config.font(
                                   color: Colors.white70,
                                   fontSize: 10,
                                 ),
@@ -223,7 +223,11 @@ class DetailedScoreboardCanvas extends StatelessWidget {
                 Row(
                   children: [
                     Text(
-                      'Oreamnos Scoreboard',
+                      config.brandName?.isNotEmpty == true
+                        ? config.brandName!
+                        : (config.brandHandle?.isNotEmpty == true
+                            ? config.brandHandle!
+                            : 'Scoreboard'),
                       style: GoogleFonts.jetBrainsMono(
                         color: Colors.white.withValues(alpha: 0.6),
                         fontSize: 10,

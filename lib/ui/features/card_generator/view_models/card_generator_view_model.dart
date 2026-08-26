@@ -8,6 +8,7 @@ import 'package:oreamnos/core/repositories/content_repository.dart';
 import 'package:oreamnos/data/models/ai_provider.dart';
 import 'package:oreamnos/data/services/color_extractor.dart';
 import 'package:oreamnos/data/services/export_service.dart';
+import 'package:oreamnos/data/services/preferences_service.dart';
 import 'package:oreamnos/domain/models/card_brief.dart';
 import 'package:oreamnos/domain/models/card_data.dart';
 import 'package:oreamnos/domain/models/card_template.dart';
@@ -38,11 +39,23 @@ class CardGeneratorViewModel extends Notifier<CardGeneratorState> {
   static const int _maxSnapshots = 50;
 
   late final ExportService _exportService;
+  late final PreferencesService _prefsService;
 
   @override
   CardGeneratorState build() {
     _exportService = getIt<ExportService>();
-    return const CardGeneratorState();
+    _prefsService = getIt<PreferencesService>();
+    return CardGeneratorState(
+      brandName: _prefsService.brandName,
+      brandHandle: _prefsService.brandHandle,
+      watermarkText: _prefsService.watermarkText.isNotEmpty
+          ? _prefsService.watermarkText
+          : (_prefsService.brandHandle.isNotEmpty
+              ? _prefsService.brandHandle
+              : null),
+      showWatermark: _prefsService.showWatermark,
+      showBrandFooter: _prefsService.showBrandFooter,
+    );
   }
 
   void _saveSnapshot() {
@@ -90,6 +103,9 @@ class CardGeneratorViewModel extends Notifier<CardGeneratorState> {
       extractedPalette: snapshot.extractedPalette,
       watermarkText: snapshot.watermarkText,
       showWatermark: snapshot.showWatermark,
+      brandName: snapshot.brandName,
+      brandHandle: snapshot.brandHandle,
+      showBrandFooter: snapshot.showBrandFooter,
       undoStack: undo,
       redoStack: redo,
     );
@@ -148,7 +164,10 @@ class CardGeneratorViewModel extends Notifier<CardGeneratorState> {
 
   void setTemplate(CardTemplate template) {
     _saveSnapshot();
-    state = state.copyWith(selectedTemplate: template);
+    state = state.copyWith(
+      selectedTemplate: template,
+      cardData: state.cardData?.adaptToTemplate(template),
+    );
   }
 
   void setRatio(CardRatio ratio) {
@@ -181,14 +200,34 @@ class CardGeneratorViewModel extends Notifier<CardGeneratorState> {
     state = state.copyWith(templateCompact: !state.templateCompact);
   }
 
+  void setBrandName(String? name) {
+    _saveSnapshot();
+    state = state.copyWith(brandName: name);
+    _prefsService.setBrandName(name ?? '');
+  }
+
+  void setBrandHandle(String? handle) {
+    _saveSnapshot();
+    state = state.copyWith(brandHandle: handle);
+    _prefsService.setBrandHandle(handle ?? '');
+  }
+
   void setWatermarkText(String? text) {
     _saveSnapshot();
     state = state.copyWith(watermarkText: text);
+    _prefsService.setWatermarkText(text ?? '');
   }
 
   void setShowWatermark(bool show) {
     _saveSnapshot();
     state = state.copyWith(showWatermark: show);
+    _prefsService.setShowWatermark(show);
+  }
+
+  void setShowBrandFooter(bool show) {
+    _saveSnapshot();
+    state = state.copyWith(showBrandFooter: show);
+    _prefsService.setShowBrandFooter(show);
   }
   
   void updateElementOffset(String field, Offset offset) {

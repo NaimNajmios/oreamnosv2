@@ -74,7 +74,7 @@ class TransferNewsCanvas extends StatelessWidget {
                 const Spacer(),
                 Text(
                   data.playerName,
-                  style: GoogleFonts.inter(
+                  style: config.font(
                     color: Colors.white,
                     fontSize: 26 * fontMultiplier,
                     fontWeight: FontWeight.w900,
@@ -121,7 +121,7 @@ class TransferNewsCanvas extends StatelessWidget {
                               data.fromTeam != 'N/A'
                                   ? data.fromTeam
                                   : 'Current Club',
-                              style: GoogleFonts.inter(
+                              style: config.font(
                                 color: Colors.white,
                                 fontSize: 13,
                                 fontWeight: FontWeight.w700,
@@ -154,7 +154,7 @@ class TransferNewsCanvas extends StatelessWidget {
                             ),
                             Text(
                               data.toTeam != 'N/A' ? data.toTeam : 'New Club',
-                              style: GoogleFonts.inter(
+                              style: config.font(
                                 color: Colors.white,
                                 fontSize: 13,
                                 fontWeight: FontWeight.w700,
@@ -216,7 +216,11 @@ class TransferNewsCanvas extends StatelessWidget {
                 ),
                 const Spacer(),
                 Text(
-                  'Oreamnos Transfer Center',
+                  config.brandName?.isNotEmpty == true
+                        ? config.brandName!
+                        : (config.brandHandle?.isNotEmpty == true
+                            ? config.brandHandle!
+                            : 'Transfer Center'),
                   style: GoogleFonts.jetBrainsMono(
                     color: Colors.white.withValues(alpha: 0.6),
                     fontSize: 10,

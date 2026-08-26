@@ -40,6 +40,9 @@ abstract class CardGeneratorState with _$CardGeneratorState {
 
     String? watermarkText,
     @Default(false) bool showWatermark,
+    String? brandName,
+    String? brandHandle,
+    @Default(true) bool showBrandFooter,
     
     @Default(Offset(0.5, 0.2)) Offset headlineOffset,
     @Default(Offset(0.5, 0.5)) Offset subtextOffset,
@@ -70,6 +73,9 @@ abstract class CardGeneratorState with _$CardGeneratorState {
       extractedPalette: extractedPalette,
       watermarkText: watermarkText,
       showWatermark: showWatermark,
+      brandName: brandName,
+      brandHandle: brandHandle,
+      showBrandFooter: showBrandFooter,
     );
   }
 }

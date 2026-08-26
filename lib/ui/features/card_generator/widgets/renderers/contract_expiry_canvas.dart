@@ -86,7 +86,7 @@ class ContractExpiryCanvas extends StatelessWidget {
                 const SizedBox(height: 10),
                 Text(
                   data.teamName,
-                  style: GoogleFonts.inter(
+                  style: config.font(
                     color: Colors.white,
                     fontSize: 22 * fontMultiplier,
                     fontWeight: FontWeight.w900,
@@ -123,7 +123,7 @@ class ContractExpiryCanvas extends StatelessWidget {
                                       children: [
                                         Text(
                                           p.playerName,
-                                          style: GoogleFonts.inter(
+                                          style: config.font(
                                             color: Colors.white,
                                             fontSize: 13,
                                             fontWeight: FontWeight.w700,
@@ -133,7 +133,7 @@ class ContractExpiryCanvas extends StatelessWidget {
                                         ),
                                         Text(
                                           '${p.position} • Val: ${p.marketValue != 'N/A' ? p.marketValue : 'TBD'}',
-                                          style: GoogleFonts.inter(
+                                          style: config.font(
                                             color: Colors.white70,
                                             fontSize: 11,
                                           ),
@@ -172,7 +172,7 @@ class ContractExpiryCanvas extends StatelessWidget {
                               data.subtext.isNotEmpty
                                   ? data.subtext
                                   : 'Contract Expiry Tracker',
-                              style: GoogleFonts.inter(
+                              style: config.font(
                                 color: Colors.white70,
                                 fontSize: 12,
                               ),
@@ -183,7 +183,11 @@ class ContractExpiryCanvas extends StatelessWidget {
                 ),
                 const SizedBox(height: 8),
                 Text(
-                  'Oreamnos Contract Tracker',
+                  config.brandName?.isNotEmpty == true
+                        ? config.brandName!
+                        : (config.brandHandle?.isNotEmpty == true
+                            ? config.brandHandle!
+                            : 'Contract Tracker'),
                   style: GoogleFonts.jetBrainsMono(
                     color: Colors.white.withValues(alpha: 0.6),
                     fontSize: 10,

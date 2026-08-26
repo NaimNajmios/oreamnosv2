@@ -82,7 +82,7 @@ class BreakingNewsCanvas extends StatelessWidget {
                 const Spacer(),
                 Text(
                   data.headline,
-                  style: GoogleFonts.inter(
+                  style: config.font(
                     color: Colors.white,
                     fontSize: 26 * fontMultiplier,
                     fontWeight: FontWeight.w900,
@@ -104,7 +104,7 @@ class BreakingNewsCanvas extends StatelessWidget {
                   const SizedBox(height: 12),
                   Text(
                     data.subtext,
-                    style: GoogleFonts.inter(
+                    style: config.font(
                       color: Colors.white.withValues(alpha: 0.85),
                       fontSize: 13,
                       height: 1.3,
@@ -117,7 +117,11 @@ class BreakingNewsCanvas extends StatelessWidget {
                 Row(
                   children: [
                     Text(
-                      'Oreamnos News Alert',
+                      config.brandName?.isNotEmpty == true
+                        ? config.brandName!
+                        : (config.brandHandle?.isNotEmpty == true
+                            ? config.brandHandle!
+                            : 'News Alert'),
                       style: GoogleFonts.jetBrainsMono(
                         color: Colors.white.withValues(alpha: 0.6),
                         fontSize: 10,

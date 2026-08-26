@@ -324,6 +324,9 @@ class _CardGeneratorScreenState extends ConsumerState<CardGeneratorScreen> {
                           : state.selectedFont == AppFont.typewriter
                           ? 'SpaceMono'
                           : 'Inter',
+                      brandName: state.brandName,
+                      brandHandle: state.brandHandle,
+                      showBrandFooter: state.showBrandFooter,
                     ),
                   ),
                   if (state.showWatermark && state.watermarkText != null && state.watermarkText!.isNotEmpty)

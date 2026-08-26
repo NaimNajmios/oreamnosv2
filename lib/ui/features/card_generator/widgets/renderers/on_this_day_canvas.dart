@@ -104,7 +104,7 @@ class OnThisDayCanvas extends StatelessWidget {
                 ],
                 Text(
                   data.headline,
-                  style: GoogleFonts.inter(
+                  style: config.font(
                     color: Colors.white,
                     fontSize: 22 * fontMultiplier,
                     fontWeight: FontWeight.w900,
@@ -125,7 +125,7 @@ class OnThisDayCanvas extends StatelessWidget {
                   const SizedBox(height: 10),
                   Text(
                     data.subtext,
-                    style: GoogleFonts.inter(
+                    style: config.font(
                       color: Colors.white70,
                       fontSize: 13,
                       height: 1.3,
@@ -136,7 +136,11 @@ class OnThisDayCanvas extends StatelessWidget {
                 ],
                 const Spacer(),
                 Text(
-                  'Oreamnos Archives',
+                  config.brandName?.isNotEmpty == true
+                        ? config.brandName!
+                        : (config.brandHandle?.isNotEmpty == true
+                            ? config.brandHandle!
+                            : 'On This Day'),
                   style: GoogleFonts.jetBrainsMono(
                     color: Colors.white.withValues(alpha: 0.6),
                     fontSize: 10,

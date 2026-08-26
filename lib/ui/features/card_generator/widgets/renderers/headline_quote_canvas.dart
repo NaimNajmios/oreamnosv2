@@ -63,7 +63,7 @@ class HeadlineQuoteCanvas extends StatelessWidget {
                 // Large Quote Mark
                 Text(
                   '“',
-                  style: GoogleFonts.lora(
+                  style: config.font(
                     color: Colors.white.withValues(alpha: 0.35),
                     fontSize: 64,
                     height: 0.8,
@@ -74,7 +74,7 @@ class HeadlineQuoteCanvas extends StatelessWidget {
                   data.subtext.isNotEmpty && data.subtext != 'N/A'
                       ? data.subtext
                       : data.headline,
-                  style: GoogleFonts.lora(
+                  style: config.font(
                     color: Colors.white,
                     fontSize: 20 * fontMultiplier,
                     fontWeight: FontWeight.w600,
@@ -106,7 +106,7 @@ class HeadlineQuoteCanvas extends StatelessWidget {
                             data.quoteAuthor != 'N/A'
                                 ? data.quoteAuthor
                                 : data.headline,
-                            style: GoogleFonts.inter(
+                            style: config.font(
                               color: Colors.white,
                               fontSize: 14,
                               fontWeight: FontWeight.w800,
@@ -117,7 +117,7 @@ class HeadlineQuoteCanvas extends StatelessWidget {
                           if (data.authorTitle != 'N/A')
                             Text(
                               data.authorTitle,
-                              style: GoogleFonts.inter(
+                              style: config.font(
                                 color: Colors.white70,
                                 fontSize: 11,
                               ),
@@ -131,7 +131,11 @@ class HeadlineQuoteCanvas extends StatelessWidget {
                 ),
                 const Spacer(),
                 Text(
-                  'Oreamnos Quote',
+                  config.brandName?.isNotEmpty == true
+                        ? config.brandName!
+                        : (config.brandHandle?.isNotEmpty == true
+                            ? config.brandHandle!
+                            : 'Quote'),
                   style: GoogleFonts.jetBrainsMono(
                     color: Colors.white.withValues(alpha: 0.6),
                     fontSize: 10,

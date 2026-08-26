@@ -170,4 +170,36 @@ class PreferencesService {
       size.clamp(12.0, 24.0),
     );
   }
+
+  // === Custom Card Branding (persistent) ===
+
+  String get brandName => _prefs.getString('card_brand_name') ?? '';
+
+  Future<bool> setBrandName(String name) {
+    return _prefs.setString('card_brand_name', name);
+  }
+
+  String get brandHandle => _prefs.getString('card_brand_handle') ?? '';
+
+  Future<bool> setBrandHandle(String handle) {
+    return _prefs.setString('card_brand_handle', handle);
+  }
+
+  String get watermarkText => _prefs.getString('card_watermark_text') ?? '';
+
+  Future<bool> setWatermarkText(String text) {
+    return _prefs.setString('card_watermark_text', text);
+  }
+
+  bool get showWatermark => _prefs.getBool('card_show_watermark') ?? false;
+
+  Future<bool> setShowWatermark(bool show) {
+    return _prefs.setBool('card_show_watermark', show);
+  }
+
+  bool get showBrandFooter => _prefs.getBool('card_show_brand_footer') ?? true;
+
+  Future<bool> setShowBrandFooter(bool show) {
+    return _prefs.setBool('card_show_brand_footer', show);
+  }
 }

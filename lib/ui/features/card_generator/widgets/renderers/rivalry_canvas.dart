@@ -69,7 +69,7 @@ class RivalryCanvas extends StatelessWidget {
                         ),
                         child: Text(
                           data.player1Name,
-                          style: GoogleFonts.inter(
+                          style: config.font(
                             color: Colors.white,
                             fontSize: 15 * fontMultiplier,
                             fontWeight: FontWeight.w800,
@@ -99,7 +99,7 @@ class RivalryCanvas extends StatelessWidget {
                         ),
                         child: Text(
                           data.player2Name,
-                          style: GoogleFonts.inter(
+                          style: config.font(
                             color: Colors.white,
                             fontSize: 15 * fontMultiplier,
                             fontWeight: FontWeight.w800,
@@ -158,7 +158,7 @@ class RivalryCanvas extends StatelessWidget {
                                   ),
                                   Text(
                                     s1.label,
-                                    style: GoogleFonts.inter(
+                                    style: config.font(
                                       color: Colors.white70,
                                       fontSize: 11,
                                       fontWeight: FontWeight.w600,
@@ -181,7 +181,7 @@ class RivalryCanvas extends StatelessWidget {
                               data.subtext.isNotEmpty
                                   ? data.subtext
                                   : 'Rivalry Comparison',
-                              style: GoogleFonts.inter(
+                              style: config.font(
                                 color: Colors.white70,
                                 fontSize: 12,
                               ),
@@ -192,7 +192,11 @@ class RivalryCanvas extends StatelessWidget {
                 ),
                 const SizedBox(height: 8),
                 Text(
-                  'Oreamnos Head to Head',
+                  config.brandName?.isNotEmpty == true
+                        ? config.brandName!
+                        : (config.brandHandle?.isNotEmpty == true
+                            ? config.brandHandle!
+                            : 'Head to Head'),
                   style: GoogleFonts.jetBrainsMono(
                     color: Colors.white.withValues(alpha: 0.6),
                     fontSize: 10,

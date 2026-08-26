@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:google_fonts/google_fonts.dart';
 
 import 'card_template.dart';
 
@@ -61,6 +62,9 @@ class CardConfig {
   final bool isWatermarkEnabled;
   final String? badgeText;
   final bool useAutoPalette;
+  final String? brandName;
+  final String? brandHandle;
+  final bool showBrandFooter;
 
   const CardConfig({
     this.template = CardTemplate.detailedScoreboard,
@@ -90,7 +94,37 @@ class CardConfig {
     this.isWatermarkEnabled = true,
     this.badgeText,
     this.useAutoPalette = false,
+    this.brandName,
+    this.brandHandle,
+    this.showBrandFooter = true,
   });
+
+  TextStyle font({
+    required double fontSize,
+    FontWeight? fontWeight,
+    FontStyle? fontStyle,
+    Color? color,
+    double? height,
+    double? letterSpacing,
+    List<Shadow>? shadows,
+    bool applyMultiplier = true,
+  }) {
+    final family = primaryFontFamilyName ?? 'Inter';
+    final scaledSize = applyMultiplier ? fontSize * fontSizeMultiplier : fontSize;
+    return GoogleFonts.getFont(
+      family,
+      fontSize: scaledSize,
+      fontWeight: fontWeight,
+      fontStyle: fontStyle,
+      color: color ?? Colors.white,
+      height: height,
+      letterSpacing: letterSpacing,
+      shadows: shadows ??
+          (textShadowRadius > 0
+              ? [Shadow(color: textShadowColor, blurRadius: textShadowRadius)]
+              : null),
+    );
+  }
 
   CardConfig copyWith({
     CardTemplate? template,
@@ -120,6 +154,9 @@ class CardConfig {
     bool? isWatermarkEnabled,
     String? badgeText,
     bool? useAutoPalette,
+    String? brandName,
+    String? brandHandle,
+    bool? showBrandFooter,
   }) {
     return CardConfig(
       template: template ?? this.template,
@@ -150,6 +187,9 @@ class CardConfig {
       isWatermarkEnabled: isWatermarkEnabled ?? this.isWatermarkEnabled,
       badgeText: badgeText ?? this.badgeText,
       useAutoPalette: useAutoPalette ?? this.useAutoPalette,
+      brandName: brandName ?? this.brandName,
+      brandHandle: brandHandle ?? this.brandHandle,
+      showBrandFooter: showBrandFooter ?? this.showBrandFooter,
     );
   }
 

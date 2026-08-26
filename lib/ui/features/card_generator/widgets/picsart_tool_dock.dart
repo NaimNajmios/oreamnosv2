@@ -27,6 +27,10 @@ class _PicsartToolDockState extends ConsumerState<PicsartToolDock> {
   late TextEditingController _headlineCtrl;
   late TextEditingController _subtextCtrl;
   late TextEditingController _badgeCtrl;
+  late TextEditingController _brandNameCtrl;
+  late TextEditingController _brandHandleCtrl;
+  late TextEditingController _watermarkCtrl;
+
   late FocusNode _headlineFocus;
   late FocusNode _subtextFocus;
   late FocusNode _badgeFocus;
@@ -37,6 +41,10 @@ class _PicsartToolDockState extends ConsumerState<PicsartToolDock> {
     _headlineCtrl = TextEditingController();
     _subtextCtrl = TextEditingController();
     _badgeCtrl = TextEditingController();
+    _brandNameCtrl = TextEditingController();
+    _brandHandleCtrl = TextEditingController();
+    _watermarkCtrl = TextEditingController();
+
     _headlineFocus = FocusNode();
     _subtextFocus = FocusNode();
     _badgeFocus = FocusNode();
@@ -44,13 +52,23 @@ class _PicsartToolDockState extends ConsumerState<PicsartToolDock> {
 
   void _syncText(CardGeneratorState state) {
     final d = state.cardData;
-    if (d == null) return;
     final hasFocus =
         FocusManager.instance.primaryFocus?.context?.widget is EditableText;
     if (!hasFocus) {
-      if (_headlineCtrl.text != d.headline) _headlineCtrl.text = d.headline;
-      if (_subtextCtrl.text != d.subtext) _subtextCtrl.text = d.subtext;
-      if (_badgeCtrl.text != d.microStat) _badgeCtrl.text = d.microStat ?? '';
+      if (d != null) {
+        if (_headlineCtrl.text != d.headline) _headlineCtrl.text = d.headline;
+        if (_subtextCtrl.text != d.subtext) _subtextCtrl.text = d.subtext;
+        if (_badgeCtrl.text != d.microStat) _badgeCtrl.text = d.microStat ?? '';
+      }
+      if (_brandNameCtrl.text != (state.brandName ?? '')) {
+        _brandNameCtrl.text = state.brandName ?? '';
+      }
+      if (_brandHandleCtrl.text != (state.brandHandle ?? '')) {
+        _brandHandleCtrl.text = state.brandHandle ?? '';
+      }
+      if (_watermarkCtrl.text != (state.watermarkText ?? '')) {
+        _watermarkCtrl.text = state.watermarkText ?? '';
+      }
     }
     
     if (state.focusedField == 'headline') {
@@ -70,6 +88,9 @@ class _PicsartToolDockState extends ConsumerState<PicsartToolDock> {
     _headlineCtrl.dispose();
     _subtextCtrl.dispose();
     _badgeCtrl.dispose();
+    _brandNameCtrl.dispose();
+    _brandHandleCtrl.dispose();
+    _watermarkCtrl.dispose();
     _headlineFocus.dispose();
     _subtextFocus.dispose();
     _badgeFocus.dispose();
@@ -436,11 +457,47 @@ class _PicsartToolDockState extends ConsumerState<PicsartToolDock> {
     final notifier = ref.read(cardGeneratorViewModelProvider.notifier);
     
     return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
+        TextField(
+          controller: _brandNameCtrl,
+          decoration: InputDecoration(
+            labelText: 'Brand / Account Name',
+            hintText: 'e.g. Premier Central',
+            border: OutlineInputBorder(borderRadius: AppSpacing.borderRadiusSm),
+            isDense: true,
+            prefixIcon: const Icon(Icons.badge_outlined, size: 20),
+          ),
+          onChanged: notifier.setBrandName,
+        ),
+        const SizedBox(height: AppSpacing.md),
+        TextField(
+          controller: _brandHandleCtrl,
+          decoration: InputDecoration(
+            labelText: 'Brand Handle',
+            hintText: 'e.g. @premiercentral',
+            border: OutlineInputBorder(borderRadius: AppSpacing.borderRadiusSm),
+            isDense: true,
+            prefixIcon: const Icon(Icons.alternate_email_rounded, size: 20),
+          ),
+          onChanged: notifier.setBrandHandle,
+        ),
+        const SizedBox(height: AppSpacing.md),
         Row(
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
-            Text('Show Watermark', style: theme.textTheme.titleSmall),
+            Text('Show Card Brand Footer', style: theme.textTheme.titleSmall),
+            AppSwitch(
+              value: state.showBrandFooter,
+              onChanged: notifier.setShowBrandFooter,
+            ),
+          ],
+        ),
+        const Divider(height: AppSpacing.lg),
+        Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            Text('Show Corner Watermark', style: theme.textTheme.titleSmall),
             AppSwitch(
               value: state.showWatermark,
               onChanged: notifier.setShowWatermark,
@@ -450,12 +507,13 @@ class _PicsartToolDockState extends ConsumerState<PicsartToolDock> {
         if (state.showWatermark) ...[
           const SizedBox(height: AppSpacing.md),
           TextField(
-            controller: TextEditingController(text: state.watermarkText ?? '')..selection = TextSelection.collapsed(offset: (state.watermarkText ?? '').length),
+            controller: _watermarkCtrl,
             decoration: InputDecoration(
               labelText: 'Watermark Text',
-              hintText: '@oreamnos',
+              hintText: '@yourhandle',
               border: OutlineInputBorder(borderRadius: AppSpacing.borderRadiusSm),
               isDense: true,
+              prefixIcon: const Icon(Icons.branding_watermark_outlined, size: 20),
             ),
             onChanged: notifier.setWatermarkText,
           ),

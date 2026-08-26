@@ -51,7 +51,7 @@ class SocialPostCanvas extends StatelessWidget {
                         data.name.isNotEmpty && data.name != 'N/A'
                             ? data.name[0].toUpperCase()
                             : '⚽',
-                        style: GoogleFonts.inter(
+                        style: config.font(
                           color: Colors.white,
                           fontSize: 16,
                           fontWeight: FontWeight.w800,
@@ -69,11 +69,14 @@ class SocialPostCanvas extends StatelessWidget {
                                 child: Text(
                                   data.name != 'N/A' && data.name.isNotEmpty
                                       ? data.name
-                                      : 'Oreamnos Sport',
-                                  style: GoogleFonts.inter(
+                                      : (config.brandName?.isNotEmpty == true
+                                          ? config.brandName!
+                                          : 'Verified Account'),
+                                  style: config.font(
                                     color: Colors.white,
                                     fontSize: 13,
                                     fontWeight: FontWeight.w800,
+                                    applyMultiplier: false,
                                   ),
                                   maxLines: 1,
                                   overflow: TextOverflow.ellipsis,
@@ -90,12 +93,17 @@ class SocialPostCanvas extends StatelessWidget {
                             ],
                           ),
                           EditableCanvasText(
-                            data.handle != 'N/A' ? data.handle : '@oreamnos',
+                            data.handle != 'N/A'
+                                ? data.handle
+                                : (config.brandHandle?.isNotEmpty == true
+                                    ? config.brandHandle!
+                                    : '@creator'),
                             fieldKey: 'microStat',
                             autoSize: false,
-                            style: GoogleFonts.inter(
+                            style: config.font(
                               color: Colors.white70,
                               fontSize: 11,
+                              applyMultiplier: false,
                             ),
                             maxLines: 1,
                           ),
@@ -129,7 +137,7 @@ class SocialPostCanvas extends StatelessWidget {
                   data.content,
                   fieldKey: 'headline',
                   autoSize: false,
-                  style: GoogleFonts.inter(
+                  style: config.font(
                     color: Colors.white,
                     fontSize: 18 * fontMultiplier,
                     fontWeight: FontWeight.w600,
@@ -170,7 +178,11 @@ class SocialPostCanvas extends StatelessWidget {
                   const SizedBox(height: 8),
                 ],
                 Text(
-                  'Oreamnos Social Feed',
+                  config.brandName?.isNotEmpty == true
+                        ? config.brandName!
+                        : (config.brandHandle?.isNotEmpty == true
+                            ? config.brandHandle!
+                            : 'Social Feed'),
                   style: GoogleFonts.jetBrainsMono(
                     color: Colors.white.withValues(alpha: 0.6),
                     fontSize: 10,

@@ -108,7 +108,7 @@ class TopStatsCanvas extends StatelessWidget {
                                   const SizedBox(height: 4),
                                   Text(
                                     s.label.toUpperCase(),
-                                    style: GoogleFonts.inter(
+                                    style: config.font(
                                       color: Colors.white,
                                       fontSize: 10,
                                       fontWeight: FontWeight.w700,
@@ -122,7 +122,7 @@ class TopStatsCanvas extends StatelessWidget {
                                     const SizedBox(height: 2),
                                     Text(
                                       s.context,
-                                      style: GoogleFonts.inter(
+                                      style: config.font(
                                         color: Colors.white54,
                                         fontSize: 9,
                                       ),
@@ -141,7 +141,7 @@ class TopStatsCanvas extends StatelessWidget {
                             data.subtext.isNotEmpty
                                 ? data.subtext
                                 : 'Top Performance Stats',
-                            style: GoogleFonts.inter(
+                            style: config.font(
                               color: Colors.white70,
                               fontSize: 12,
                             ),
@@ -151,7 +151,11 @@ class TopStatsCanvas extends StatelessWidget {
                 ),
                 const SizedBox(height: 8),
                 Text(
-                  'Oreamnos Key Stats',
+                  config.brandName?.isNotEmpty == true
+                        ? config.brandName!
+                        : (config.brandHandle?.isNotEmpty == true
+                            ? config.brandHandle!
+                            : 'Top Stats'),
                   style: GoogleFonts.jetBrainsMono(
                     color: Colors.white.withValues(alpha: 0.6),
                     fontSize: 10,

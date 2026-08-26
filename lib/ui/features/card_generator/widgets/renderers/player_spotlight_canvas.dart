@@ -85,7 +85,7 @@ class PlayerSpotlightCanvas extends StatelessWidget {
                 const Spacer(),
                 Text(
                   data.playerName,
-                  style: GoogleFonts.inter(
+                  style: config.font(
                     color: Colors.white,
                     fontSize: 26 * fontMultiplier,
                     fontWeight: FontWeight.w900,
@@ -108,7 +108,7 @@ class PlayerSpotlightCanvas extends StatelessWidget {
                     if (data.club != 'N/A') ...[
                       Text(
                         data.club,
-                        style: GoogleFonts.inter(
+                        style: config.font(
                           color: Colors.white70,
                           fontSize: 13,
                           fontWeight: FontWeight.w600,
@@ -117,7 +117,7 @@ class PlayerSpotlightCanvas extends StatelessWidget {
                       if (data.position != 'N/A')
                         Text(
                           ' • ',
-                          style: GoogleFonts.inter(
+                          style: config.font(
                             color: Colors.white54,
                             fontSize: 13,
                           ),
@@ -126,7 +126,7 @@ class PlayerSpotlightCanvas extends StatelessWidget {
                     if (data.position != 'N/A')
                       Text(
                         data.position,
-                        style: GoogleFonts.inter(
+                        style: config.font(
                           color: Colors.white70,
                           fontSize: 13,
                         ),
@@ -168,7 +168,7 @@ class PlayerSpotlightCanvas extends StatelessWidget {
                     ),
                     child: Text(
                       data.keyAction,
-                      style: GoogleFonts.inter(
+                      style: config.font(
                         color: Colors.white70,
                         fontSize: 11,
                       ),
@@ -179,7 +179,11 @@ class PlayerSpotlightCanvas extends StatelessWidget {
                 ],
                 const Spacer(),
                 Text(
-                  'Oreamnos Spotlight',
+                  config.brandName?.isNotEmpty == true
+                        ? config.brandName!
+                        : (config.brandHandle?.isNotEmpty == true
+                            ? config.brandHandle!
+                            : 'Spotlight'),
                   style: GoogleFonts.jetBrainsMono(
                     color: Colors.white.withValues(alpha: 0.6),
                     fontSize: 10,
