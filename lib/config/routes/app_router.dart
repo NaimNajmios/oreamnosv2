@@ -94,16 +94,18 @@ GoRouter createAppRouter() {
             },
           ),
           GoRoute(
+            path: RoutePaths.usage,
+            pageBuilder: (context, state) => const NoTransitionPage(
+              child: UsageScreen(),
+            ),
+          ),
+          GoRoute(
             path: RoutePaths.settings,
             pageBuilder: (context, state) => const NoTransitionPage(
               child: SettingsScreen(),
             ),
           ),
         ],
-      ),
-      GoRoute(
-        path: RoutePaths.usage,
-        builder: (context, state) => const UsageScreen(),
       ),
       GoRoute(
         path: RoutePaths.readingMode,

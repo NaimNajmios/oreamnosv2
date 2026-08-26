@@ -8,7 +8,6 @@ import 'package:oreamnos/ui/core/utils/haptics.dart';
 import 'package:oreamnos/ui/core/widgets/section_header.dart';
 import 'package:oreamnos/ui/core/widgets/settings_tile.dart';
 import 'package:oreamnos/domain/models/app_theme_mode.dart';
-import 'package:oreamnos/ui/core/widgets/segmented_pill_toggle.dart';
 import '../view_models/settings_view_model.dart';
 import 'widgets/api_key_dialog.dart';
 import 'widgets/model_selection_dialog.dart';
@@ -89,7 +88,7 @@ class SettingsScreen extends StatelessWidget {
                                 shape: BoxShape.circle,
                                 color: previewColor,
                                 border: Border.all(
-                                  color: isSelected ? theme.colorScheme.primary : theme.colorScheme.outline.withOpacity(0.3),
+                                  color: isSelected ? theme.colorScheme.primary : theme.colorScheme.outline.withValues(alpha: 0.3),
                                   width: isSelected ? 2 : 1,
                                 ),
                               ),

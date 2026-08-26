@@ -101,7 +101,7 @@ class _AppButtonState extends State<AppButton> with SingleTickerProviderStateMix
             height: widget.height,
             decoration: BoxDecoration(
               color: bgColor,
-              borderRadius: AppSpacing.borderRadiusPill,
+              borderRadius: AppSpacing.borderRadiusXl,
             ),
             padding: const EdgeInsets.symmetric(horizontal: 24),
             child: Center(

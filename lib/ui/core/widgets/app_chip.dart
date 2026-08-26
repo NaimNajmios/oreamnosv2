@@ -49,13 +49,13 @@ class AppChip extends StatelessWidget {
                 Haptics.selectionClick();
                 onTap?.call();
               },
-        borderRadius: AppSpacing.borderRadiusPill,
+        borderRadius: AppSpacing.borderRadiusXl,
         child: AnimatedContainer(
           duration: AppMotion.fast,
           padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
           decoration: BoxDecoration(
             color: bg,
-            borderRadius: AppSpacing.borderRadiusPill,
+            borderRadius: AppSpacing.borderRadiusXl,
             border: Border.all(color: border, width: 1),
           ),
           child: Row(

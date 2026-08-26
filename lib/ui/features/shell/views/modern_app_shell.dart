@@ -12,7 +12,8 @@ class ModernAppShell extends StatelessWidget {
 
   int _currentIndex(BuildContext context) {
     final location = GoRouterState.of(context).uri.path;
-    if (location.startsWith(RoutePaths.settings)) return 2;
+    if (location.startsWith(RoutePaths.settings)) return 3;
+    if (location.startsWith(RoutePaths.usage)) return 2;
     if (location.startsWith(RoutePaths.cardGenerator)) return 1;
     return 0; // default to generate
   }
@@ -25,6 +26,8 @@ class ModernAppShell extends StatelessWidget {
       case 1:
         context.go(RoutePaths.cardGenerator);
       case 2:
+        context.go(RoutePaths.usage);
+      case 3:
         context.go(RoutePaths.settings);
     }
   }
@@ -55,7 +58,12 @@ class ModernAppShell extends StatelessWidget {
             NavigationDestination(
               icon: Icon(Icons.palette_outlined, color: onSurface),
               selectedIcon: Icon(Icons.palette_rounded, color: onSurface),
-              label: 'Studio',
+              label: 'Cards',
+            ),
+            NavigationDestination(
+              icon: Icon(Icons.bar_chart_outlined, color: onSurface),
+              selectedIcon: Icon(Icons.bar_chart_rounded, color: onSurface),
+              label: 'Usage',
             ),
             NavigationDestination(
               icon: Icon(Icons.tune_outlined, color: onSurface),

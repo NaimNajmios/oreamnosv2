@@ -60,7 +60,7 @@ Widget _buildTestApp(PreferencesService preferencesService, SharedPreferences pr
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
 
-  testWidgets('App renders with 3-tab navigation bar', (WidgetTester tester) async {
+  testWidgets('App renders with 4-tab navigation bar', (WidgetTester tester) async {
     SharedPreferences.setMockInitialValues({});
     final sharedPrefs = await SharedPreferences.getInstance();
     final preferencesService = _createTestPreferencesService(sharedPrefs);
@@ -71,9 +71,10 @@ void main() {
     // Verify the app title in AppBar
     expect(find.widgetWithText(AppBar, 'Oreamnos'), findsOneWidget);
 
-    // Verify 3 navigation destinations
+    // Verify 4 navigation destinations
     expect(find.text('Generate'), findsOneWidget);
-    expect(find.text('Studio'), findsOneWidget);
+    expect(find.text('Cards'), findsOneWidget);
+    expect(find.text('Usage'), findsOneWidget);
     expect(find.text('Settings'), findsOneWidget);
 
     // Verify the Generate CTA button
@@ -116,7 +117,7 @@ void main() {
     expect(find.text('Advanced'), findsOneWidget);
   });
 
-  testWidgets('Navigation bar switches to Studio tab', (WidgetTester tester) async {
+  testWidgets('Navigation bar switches to Cards tab', (WidgetTester tester) async {
     SharedPreferences.setMockInitialValues({});
     final sharedPrefs = await SharedPreferences.getInstance();
     final preferencesService = _createTestPreferencesService(sharedPrefs);
@@ -124,11 +125,11 @@ void main() {
     await tester.pumpWidget(_buildTestApp(preferencesService, sharedPrefs));
     await tester.pumpAndSettle();
 
-    // Tap on Studio tab in NavigationBar
-    await tester.tap(find.text('Studio'));
+    // Tap on Cards tab in NavigationBar
+    await tester.tap(find.text('Cards'));
     await tester.pumpAndSettle();
 
-    // Verify Card Studio title
+    // Verify Card Studio title (the screen title remains Card Studio)
     expect(find.text('Card Studio'), findsOneWidget);
   });
 }

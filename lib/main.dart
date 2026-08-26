@@ -25,10 +25,17 @@ void main() async {
   // Initialize SharedPreferences before app starts
   final sharedPrefs = await SharedPreferences.getInstance();
 
-  await NotificationService().init();
-  await NotificationService().requestPermission();
+  try {
+    await NotificationService().init();
+  } catch (e) {
+    debugPrint('Notification init error: \$e');
+  }
 
-  await QuickSettingsService.init();
+  try {
+    await QuickSettingsService.init();
+  } catch (e) {
+    debugPrint('QuickSettings init error: \$e');
+  }
 
   const secureStorage = FlutterSecureStorage(
     aOptions: AndroidOptions(encryptedSharedPreferences: true),

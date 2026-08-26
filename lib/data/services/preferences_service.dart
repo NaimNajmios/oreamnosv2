@@ -21,24 +21,38 @@ class PreferencesService {
 
   // === API Keys (secure) ===
 
-  Future<String?> getApiKey(AiProvider provider) {
+  Future<String?> getApiKey(AiProvider provider) async {
     final key = switch (provider) {
       AiProvider.gemini => AppConstants.keyGeminiApiKey,
       AiProvider.groq => AppConstants.keyGroqApiKey,
       AiProvider.openRouter => AppConstants.keyOpenRouterApiKey,
       AiProvider.cerebras => AppConstants.keyCerebrasApiKey,
     };
-    return _secureStorage.read(key: key);
+    try {
+      return await _secureStorage.read(key: key);
+    } catch (e) {
+      try {
+        await _secureStorage.deleteAll();
+      } catch (_) {}
+      return null;
+    }
   }
 
-  Future<void> setApiKey(AiProvider provider, String value) {
+  Future<void> setApiKey(AiProvider provider, String value) async {
     final key = switch (provider) {
       AiProvider.gemini => AppConstants.keyGeminiApiKey,
       AiProvider.groq => AppConstants.keyGroqApiKey,
       AiProvider.openRouter => AppConstants.keyOpenRouterApiKey,
       AiProvider.cerebras => AppConstants.keyCerebrasApiKey,
     };
-    return _secureStorage.write(key: key, value: value);
+    try {
+      await _secureStorage.write(key: key, value: value);
+    } catch (e) {
+      try {
+        await _secureStorage.deleteAll();
+        await _secureStorage.write(key: key, value: value);
+      } catch (_) {}
+    }
   }
 
   // === Theme ===

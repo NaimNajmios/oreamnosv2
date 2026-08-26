@@ -13,6 +13,7 @@ import 'ui/features/generate/view_models/generate_view_model.dart';
 import 'data/services/share_intent_service.dart';
 import 'ui/features/share/share_bottom_sheet.dart';
 import 'ui/core/widgets/kickoff_loading_indicator.dart';
+import 'data/services/notification_service.dart';
 
 /// Root application widget.
 class OreamnosApp extends StatefulWidget {
@@ -29,6 +30,13 @@ class _OreamnosAppState extends State<OreamnosApp> {
   void initState() {
     super.initState();
     _router = createAppRouter();
+
+    // Request notification permissions after app launch
+    Future.microtask(() {
+      try {
+        NotificationService().requestPermission();
+      } catch (_) {}
+    });
 
     ShareIntentService().onSharedTextReceived = (text) {
       if (!mounted) return;

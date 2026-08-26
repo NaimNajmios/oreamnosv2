@@ -42,8 +42,9 @@ class CardCanvas extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      decoration: _buildBackgroundDecoration(),
+    return RepaintBoundary(
+      child: Container(
+        decoration: _buildBackgroundDecoration(),
       child: Stack(
         children: [
           if (backgroundImage != null)
@@ -79,6 +80,7 @@ class CardCanvas extends StatelessWidget {
             child: _buildTemplateContent(),
           ),
         ],
+      ),
       ),
     );
   }

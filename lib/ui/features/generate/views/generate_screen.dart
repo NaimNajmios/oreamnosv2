@@ -22,7 +22,6 @@ import 'package:oreamnos/ui/core/widgets/app_chip.dart';
 import 'package:oreamnos/ui/core/widgets/app_copy_button.dart';
 import 'package:oreamnos/ui/core/widgets/app_input.dart';
 import 'package:oreamnos/ui/core/widgets/curated_post_sections.dart';
-import 'package:oreamnos/ui/core/widgets/enhanced_loading_card.dart';
 import 'package:oreamnos/ui/core/widgets/error_state.dart';
 import 'package:oreamnos/ui/core/widgets/input_clear_button.dart';
 import 'package:oreamnos/ui/core/widgets/link_preview_card.dart';
@@ -33,6 +32,7 @@ import 'package:oreamnos/ui/core/widgets/section_header.dart';
 import 'package:oreamnos/ui/core/widgets/source_attribution_card.dart';
 import 'package:oreamnos/ui/core/widgets/success_overlay.dart';
 import 'package:oreamnos/ui/core/widgets/swipeable_output_card.dart';
+import 'package:oreamnos/ui/core/widgets/skeleton_loader.dart';
 import 'package:oreamnos/ui/features/settings/view_models/settings_view_model.dart';
 import 'package:oreamnos/ui/features/settings/views/widgets/add_pill_dialog.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -509,10 +509,9 @@ class _GenerateScreenState extends State<GenerateScreen> {
     bool isSuccess,
   ) {
     if (viewModel.state == GenerateState.generating) {
-      final isScraping = viewModel.generatingStep == GeneratingStep.scraping;
-      return EnhancedLoadingCard(
+      return AppCard(
         key: const ValueKey('generating'),
-        type: isScraping ? LoadingType.extracting : LoadingType.generating,
+        child: SkeletonLoader.outputCard(context),
       );
     }
 
