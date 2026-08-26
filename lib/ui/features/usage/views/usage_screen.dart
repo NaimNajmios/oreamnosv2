@@ -16,6 +16,7 @@ import '../../../core/widgets/app_card.dart';
 import '../../../core/widgets/empty_state.dart';
 import '../../../core/widgets/section_header.dart';
 import '../../../core/widgets/stat_card.dart';
+import '../../../core/widgets/app_chip.dart';
 import 'widgets/usage_chart.dart';
 
 /// Serene Editorial Usage & Analytics screen — grouped, filtered, responsive.
@@ -28,6 +29,7 @@ class UsageScreen extends ConsumerStatefulWidget {
 
 class _UsageScreenState extends ConsumerState<UsageScreen> {
   String _filter = 'all';
+  int _displayLimit = 10;
 
   @override
   Widget build(BuildContext context) {
@@ -60,6 +62,10 @@ class _UsageScreenState extends ConsumerState<UsageScreen> {
             fontWeight: FontWeight.w700,
             letterSpacing: -0.3,
           ),
+        ),
+        bottom: PreferredSize(
+          preferredSize: const Size.fromHeight(1),
+          child: Container(color: theme.colorScheme.outline, height: 1),
         ),
         actions: [
           IconButton(
@@ -282,10 +288,13 @@ class _UsageScreenState extends ConsumerState<UsageScreen> {
                           scrollDirection: Axis.horizontal,
                           child: Row(
                             children: [
-                              _FilterChip(
+                              AppChip(
                                 label: 'All',
                                 selected: _filter == 'all',
-                                onTap: () => setState(() => _filter = 'all'),
+                                onTap: () => setState(() {
+                                  _filter = 'all';
+                                  _displayLimit = 10;
+                                }),
                               ),
                               const SizedBox(width: AppSpacing.sm),
                               for (final p in [
@@ -297,10 +306,13 @@ class _UsageScreenState extends ConsumerState<UsageScreen> {
                                 if (logsAll.any(
                                   (l) => l.providerId.toLowerCase() == p,
                                 )) ...[
-                                  _FilterChip(
+                                  AppChip(
                                     label: p[0].toUpperCase() + p.substring(1),
                                     selected: _filter == p,
-                                    onTap: () => setState(() => _filter = p),
+                                    onTap: () => setState(() {
+                                      _filter = p;
+                                      _displayLimit = 10;
+                                    }),
                                   ),
                                   const SizedBox(width: AppSpacing.sm),
                                 ],
@@ -329,7 +341,8 @@ class _UsageScreenState extends ConsumerState<UsageScreen> {
                             final now = DateTime.now();
                             final grouped = <String, List<UsageLog>>{};
                             final order = <String>[];
-                            for (final l in logs) {
+                            final displayLogs = logs.take(_displayLimit).toList();
+                            for (final l in displayLogs) {
                               final d = l.timestamp;
                               String key;
                               if (d.year == now.year &&
@@ -378,6 +391,16 @@ class _UsageScreenState extends ConsumerState<UsageScreen> {
                               ],
                             );
                           },
+                        ),
+                      if (logs.length > _displayLimit)
+                        Padding(
+                          padding: const EdgeInsets.only(top: AppSpacing.md),
+                          child: Center(
+                            child: TextButton(
+                              onPressed: () => setState(() => _displayLimit += 10),
+                              child: const Text('View More'),
+                            ),
+                          ),
                         ),
                       const SizedBox(height: AppSpacing.xl),
                     ],

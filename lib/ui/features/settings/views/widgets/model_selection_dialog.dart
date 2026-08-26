@@ -2,10 +2,12 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import 'package:oreamnos/config/theme/app_spacing.dart';
+import 'package:oreamnos/data/models/ai_model.dart';
 import 'package:oreamnos/data/models/ai_provider.dart';
 import 'package:oreamnos/data/services/provider_api_service.dart';
 import 'package:oreamnos/ui/core/utils/haptics.dart';
 import 'package:oreamnos/ui/core/widgets/app_input.dart';
+import 'package:oreamnos/ui/core/widgets/app_chip.dart';
 import 'package:oreamnos/ui/core/widgets/error_state.dart';
 import 'package:oreamnos/ui/core/widgets/kickoff_loading_indicator.dart';
 import 'package:oreamnos/ui/features/settings/view_models/settings_view_model.dart';
@@ -31,7 +33,7 @@ class ModelSelectionDialog extends ConsumerStatefulWidget {
 class _ModelSelectionDialogState extends ConsumerState<ModelSelectionDialog> {
   final _apiService = ProviderApiService();
   final _searchController = TextEditingController();
-  List<String>? _models;
+  List<AiModel>? _models;
   String? _error;
   bool _isLoading = true;
   String _filter = '';
@@ -187,7 +189,7 @@ class _ModelSelectionDialogState extends ConsumerState<ModelSelectionDialog> {
 
     final filtered = _filter.isEmpty
         ? _models!
-        : _models!.where((m) => m.toLowerCase().contains(_filter)).toList();
+        : _models!.where((m) => m.id.toLowerCase().contains(_filter)).toList();
 
     if (filtered.isEmpty) {
       return Center(
@@ -205,14 +207,14 @@ class _ModelSelectionDialogState extends ConsumerState<ModelSelectionDialog> {
       separatorBuilder: (context, index) => const Divider(height: 1),
       itemBuilder: (context, index) {
         final model = filtered[index];
-        final isSelected = viewModel.selectedModel == model;
+        final isSelected = viewModel.selectedModel == model.id;
 
         return Material(
           color: Colors.transparent,
           child: InkWell(
             onTap: () {
               Haptics.selectionClick();
-              viewModel.setSelectedModel(model);
+              viewModel.setSelectedModel(model.id);
               Navigator.of(context).pop();
             },
             borderRadius: AppSpacing.borderRadiusSm,
@@ -224,16 +226,45 @@ class _ModelSelectionDialogState extends ConsumerState<ModelSelectionDialog> {
               child: Row(
                 children: [
                   Expanded(
-                    child: Text(
-                      model,
-                      style: theme.textTheme.bodyMedium?.copyWith(
-                        fontWeight: isSelected
-                            ? FontWeight.w700
-                            : FontWeight.w400,
-                        color: isSelected
-                            ? theme.colorScheme.primary
-                            : theme.colorScheme.onSurface,
-                      ),
+                    child: Row(
+                      children: [
+                        Flexible(
+                          child: Text(
+                            model.id,
+                            style: theme.textTheme.bodyMedium?.copyWith(
+                              fontWeight: isSelected
+                                  ? FontWeight.w700
+                                  : FontWeight.w400,
+                              color: isSelected
+                                  ? theme.colorScheme.primary
+                                  : theme.colorScheme.onSurface,
+                            ),
+                          ),
+                        ),
+                        if (model.isFree) ...[
+                          const SizedBox(width: AppSpacing.sm),
+                          Container(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 6,
+                              vertical: 2,
+                            ),
+                            decoration: BoxDecoration(
+                              color: theme.colorScheme.tertiary.withValues(
+                                alpha: 0.15,
+                              ),
+                              borderRadius: AppSpacing.borderRadiusSm,
+                            ),
+                            child: Text(
+                              'FREE',
+                              style: theme.textTheme.labelSmall?.copyWith(
+                                color: theme.colorScheme.tertiary,
+                                fontWeight: FontWeight.w700,
+                                fontSize: 9,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ],
                     ),
                   ),
                   if (isSelected)

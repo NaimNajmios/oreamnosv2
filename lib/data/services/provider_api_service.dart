@@ -5,6 +5,7 @@ import 'package:injectable/injectable.dart';
 import 'package:oreamnos/core/di/injection.dart';
 import 'package:oreamnos/core/network/api_client.dart';
 
+import '../models/ai_model.dart';
 import '../models/ai_provider.dart';
 
 class ProviderApiException implements Exception {
@@ -23,7 +24,7 @@ class ProviderApiService {
 
   /// Fetches available models for a given provider and API key.
   /// Throws [ProviderApiException] if the request fails or key is invalid.
-  Future<List<String>> fetchModels(AiProvider provider, String apiKey) async {
+  Future<List<AiModel>> fetchModels(AiProvider provider, String apiKey) async {
     if (apiKey.isEmpty) throw ProviderApiException('API key is empty');
 
     try {
@@ -53,7 +54,7 @@ class ProviderApiService {
     }
   }
 
-  Future<List<String>> _fetchGeminiModels(String apiKey) async {
+  Future<List<AiModel>> _fetchGeminiModels(String apiKey) async {
     final response = await _client.get<dynamic>(
       'https://generativelanguage.googleapis.com/v1beta/models',
       queryParameters: {'key': apiKey},
@@ -75,11 +76,14 @@ class ProviderApiService {
     return models
         .map((m) => m['name'] as String)
         .where((name) => name.contains('gemini'))
-        .map((name) => name.replaceFirst('models/', '')) // Clean up name
+        .map((name) {
+          final id = name.replaceFirst('models/', '');
+          return AiModel(id: id, isFree: false); // No dynamic pricing from Gemini API yet
+        })
         .toList();
   }
 
-  Future<List<String>> _fetchOpenAICompatibleModels(
+  Future<List<AiModel>> _fetchOpenAICompatibleModels(
     String baseUrl,
     String apiKey, {
     String prefixFilter = '',
@@ -100,11 +104,21 @@ class ProviderApiService {
     final data = response.data is String
         ? jsonDecode(response.data as String)
         : response.data;
-    final models = data['data'] as List<dynamic>? ?? [];
+    final modelsData = data['data'] as List<dynamic>? ?? [];
 
-    return models
-        .map((m) => m['id'] as String)
-        .where((id) => id.startsWith(prefixFilter))
-        .toList();
+    return modelsData.map((m) {
+      final id = m['id'] as String;
+      bool isFree = false;
+      if (m['pricing'] != null) {
+        final pricing = m['pricing'];
+        final promptCost = pricing['prompt'];
+        final completionCost = pricing['completion'];
+        if ((promptCost == "0" || promptCost == 0 || promptCost == "0.0") &&
+            (completionCost == "0" || completionCost == 0 || completionCost == "0.0")) {
+          isFree = true;
+        }
+      }
+      return AiModel(id: id, isFree: isFree);
+    }).where((m) => m.id.startsWith(prefixFilter)).toList();
   }
 }

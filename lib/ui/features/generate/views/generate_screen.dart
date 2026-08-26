@@ -199,7 +199,7 @@ class _GenerateScreenState extends ConsumerState<GenerateScreen> {
             tooltip: 'Usage & Analytics',
             onPressed: () {
               Haptics.lightImpact();
-              context.push(RoutePaths.usage);
+              context.go(RoutePaths.usage);
             },
           ),
           const SizedBox(width: AppSpacing.xs),
