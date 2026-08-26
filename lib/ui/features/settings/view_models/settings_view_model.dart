@@ -54,6 +54,9 @@ class SettingsViewModel extends ChangeNotifier {
   String? _currentApiKey;
   String? get currentApiKey => _currentApiKey;
 
+  String? _tavilyApiKey;
+  String? get tavilyApiKey => _tavilyApiKey;
+
   Future<void> _loadState() async {
     _themeMode = _preferencesService.themeMode;
     _selectedProvider = _preferencesService.selectedProvider;
@@ -66,6 +69,7 @@ class SettingsViewModel extends ChangeNotifier {
     _readingTextSize = _preferencesService.readingTextSize;
 
     await _loadApiKey(_selectedProvider);
+    _tavilyApiKey = await _preferencesService.getTavilyApiKey();
 
     _isInitialized = true;
     notifyListeners();
@@ -108,6 +112,16 @@ class SettingsViewModel extends ChangeNotifier {
 
   Future<String?> getApiKeyForProvider(AiProvider provider) async {
     return await _preferencesService.getApiKey(provider);
+  }
+
+  Future<void> setTavilyApiKey(String key) async {
+    await _preferencesService.setTavilyApiKey(key);
+    _tavilyApiKey = key;
+    notifyListeners();
+  }
+
+  Future<String?> getTavilyApiKey() async {
+    return await _preferencesService.getTavilyApiKey();
   }
 
   Future<void> setToneMode(String tone) async {

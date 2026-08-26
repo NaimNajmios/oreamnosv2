@@ -1,4 +1,3 @@
-import 'package:oreamnos/core/repositories/content_repository.dart';
 import 'package:oreamnos/core/error/failures.dart';
 import 'dart:async';
 import 'dart:convert';
@@ -21,8 +20,10 @@ import 'package:image_picker/image_picker.dart';
 import 'package:oreamnos/data/services/log_service.dart';
 import 'package:oreamnos/data/services/notification_service.dart';
 import 'package:oreamnos/domain/services/vision_extractor.dart';
+import 'package:oreamnos/domain/services/enrich_context_usecase.dart';
+import 'package:oreamnos/domain/services/intent_classifier.dart';
 
-enum GenerateState { idle, generating, success, error, rateLimited }
+enum GenerateState { idle, researching, generating, success, error, rateLimited }
 
 enum GeneratingStep { idle, scraping, prompting }
 
@@ -140,6 +141,17 @@ class GenerateViewModel extends ChangeNotifier with WidgetsBindingObserver {
 
   String? _pendingInput;
   String? get pendingInput => _pendingInput;
+
+  bool _isResearchModeEnabled = false;
+  bool get isResearchModeEnabled => _isResearchModeEnabled;
+
+  void toggleResearchMode() {
+    _isResearchModeEnabled = !_isResearchModeEnabled;
+    notifyListeners();
+  }
+
+  List<String> _searchSources = [];
+  List<String> get searchSources => List.unmodifiable(_searchSources);
 
   // Dynamic Output Toggles
   bool _showTitle = true;
@@ -287,29 +299,48 @@ class GenerateViewModel extends ChangeNotifier with WidgetsBindingObserver {
       dynamic contentToCurate = _pendingInput!.trim();
       String? sourceUrl;
 
-      if (WebScraperService.isUrl(contentToCurate as String)) {
-        _generatingStep = GeneratingStep.scraping;
+      if (_isResearchModeEnabled) {
+        _state = GenerateState.researching;
         notifyListeners();
-        try {
-          final article = await WebScraperService.extractArticleFromUrl(
-            contentToCurate,
-          ).timeout(const Duration(seconds: 10));
-          contentToCurate = article;
-          sourceUrl = article.url;
-          if (article.text.trim().isEmpty) {
-            getIt<LogService>().warning(
-              'Scrape returned empty, falling back to raw input',
-            );
-            contentToCurate = _pendingInput!;
-            sourceUrl = _pendingInput;
-          }
-        } on TimeoutException {
-          throw Exception(
-            'URL extraction timed out. Please paste the article text manually.',
-          );
+        
+        final enrichUsecase = getIt<EnrichContextUseCase>();
+        final intent = IntentClassifier.classify(contentToCurate as String);
+        final enrichmentResult = await enrichUsecase.execute(contentToCurate, intent);
+        
+        contentToCurate = enrichmentResult.content;
+        _searchSources = enrichmentResult.sources;
+        if (intent == InputIntent.url && enrichmentResult.sources.isNotEmpty) {
+           sourceUrl = enrichmentResult.sources.first;
         }
+        _state = GenerateState.generating;
         _generatingStep = GeneratingStep.prompting;
         notifyListeners();
+      } else {
+        _searchSources = [];
+        if (WebScraperService.isUrl(contentToCurate as String)) {
+          _generatingStep = GeneratingStep.scraping;
+          notifyListeners();
+          try {
+            final article = await WebScraperService.extractArticleFromUrl(
+              contentToCurate,
+            ).timeout(const Duration(seconds: 10));
+            contentToCurate = article;
+            sourceUrl = article.url;
+            if (article.text.trim().isEmpty) {
+              getIt<LogService>().warning(
+                'Scrape returned empty, falling back to raw input',
+              );
+              contentToCurate = _pendingInput!;
+              sourceUrl = _pendingInput;
+            }
+          } on TimeoutException {
+            throw Exception(
+              'URL extraction timed out. Please paste the article text manually.',
+            );
+          }
+          _generatingStep = GeneratingStep.prompting;
+          notifyListeners();
+        }
       }
 
       final modelId = _settingsViewModel.selectedModel;
@@ -332,6 +363,7 @@ class GenerateViewModel extends ChangeNotifier with WidgetsBindingObserver {
         modelId: modelId,
         apiKey: apiKey,
         sourceUrl: sourceUrl,
+        searchSources: _searchSources,
       );
       _curatedPost = result;
 

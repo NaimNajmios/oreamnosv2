@@ -14,6 +14,7 @@ import 'package:get_it/get_it.dart' as _i174;
 import 'package:injectable/injectable.dart' as _i526;
 import 'package:shared_preferences/shared_preferences.dart' as _i460;
 
+import '../../data/repositories/tavily_search_repository.dart' as _i389;
 import '../../data/services/card_data_extractor.dart' as _i633;
 import '../../data/services/export_service.dart' as _i496;
 import '../../data/services/log_service.dart' as _i713;
@@ -21,6 +22,8 @@ import '../../data/services/preferences_service.dart' as _i867;
 import '../../data/services/provider_api_service.dart' as _i581;
 import '../../data/services/usage_service.dart' as _i1062;
 import '../../data/services/web_scraper_service.dart' as _i978;
+import '../../domain/repositories/search_repository.dart' as _i475;
+import '../../domain/services/enrich_context_usecase.dart' as _i253;
 import '../network/api_client.dart' as _i557;
 import '../repositories/card_repository.dart' as _i83;
 import '../repositories/content_repository.dart' as _i739;
@@ -71,8 +74,20 @@ extension GetItInjectableX on _i174.GetIt {
     gh.lazySingleton<_i978.WebScraperService>(
       () => _i978.WebScraperService(gh<_i557.ApiClient>()),
     );
+    gh.lazySingleton<_i475.ISearchRepository>(
+      () => _i389.TavilySearchRepository(
+        gh<_i557.ApiClient>(),
+        gh<_i867.PreferencesService>(),
+      ),
+    );
     gh.lazySingleton<_i671.IUsageRepository>(
       () => _i671.UsageRepository(gh<_i1062.UsageService>()),
+    );
+    gh.factory<_i253.EnrichContextUseCase>(
+      () => _i253.EnrichContextUseCase(
+        gh<_i475.ISearchRepository>(),
+        gh<_i978.WebScraperService>(),
+      ),
     );
     return this;
   }

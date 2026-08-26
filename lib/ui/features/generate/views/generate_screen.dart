@@ -23,6 +23,7 @@ import 'package:oreamnos/ui/core/widgets/app_card.dart';
 import 'package:oreamnos/ui/core/widgets/app_chip.dart';
 import 'package:oreamnos/ui/core/widgets/app_copy_button.dart';
 import 'package:oreamnos/ui/core/widgets/app_input.dart';
+import 'package:oreamnos/ui/core/widgets/app_switch.dart';
 import 'package:oreamnos/ui/core/widgets/curated_post_sections.dart';
 import 'package:oreamnos/ui/core/widgets/error_state.dart';
 import 'package:oreamnos/ui/core/widgets/input_clear_button.dart';
@@ -144,7 +145,7 @@ class _GenerateScreenState extends ConsumerState<GenerateScreen> {
 
     final isUrl = WebScraperService.isUrl(_controller.text.trim());
     final hasContent = _controller.text.trim().isNotEmpty;
-    final isGenerating = viewModel.state == GenerateState.generating;
+    final isGenerating = viewModel.state == GenerateState.generating || viewModel.state == GenerateState.researching;
     final isSuccess =
         viewModel.state == GenerateState.success &&
         viewModel.curatedPost != null;
@@ -609,12 +610,43 @@ class _GenerateScreenState extends ConsumerState<GenerateScreen> {
               ),
             ),
           ),
+          const SizedBox(height: AppSpacing.md),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Row(
+                children: [
+                  Icon(
+                    Icons.travel_explore_rounded,
+                    size: 18,
+                    color: theme.colorScheme.primary,
+                  ),
+                  const SizedBox(width: AppSpacing.sm),
+                  Text(
+                    'AI Research Mode',
+                    style: theme.textTheme.labelMedium?.copyWith(
+                      fontWeight: FontWeight.w600,
+                      color: theme.colorScheme.onSurface,
+                    ),
+                  ),
+                ],
+              ),
+              AppSwitch(
+                value: viewModel.isResearchModeEnabled,
+                onChanged: isGenerating
+                    ? null
+                    : (_) => viewModel.toggleResearchMode(),
+              ),
+            ],
+          ),
           const SizedBox(height: AppSpacing.base),
           AppButton(
             label: isGenerating
-                ? (viewModel.generatingStep == GeneratingStep.scraping
-                      ? 'Extracting URL...'
-                      : 'Curating Post...')
+                ? (viewModel.state == GenerateState.researching
+                      ? 'Searching for match stats...'
+                      : (viewModel.generatingStep == GeneratingStep.scraping
+                          ? 'Extracting URL...'
+                          : 'Curating Post...'))
                 : 'Generate Post',
             icon: Icons.auto_awesome_rounded,
             isLoading: isGenerating,
@@ -693,7 +725,7 @@ class _GenerateScreenState extends ConsumerState<GenerateScreen> {
     GenerateViewModel viewModel,
     bool isSuccess,
   ) {
-    if (viewModel.state == GenerateState.generating) {
+    if (viewModel.state == GenerateState.generating || viewModel.state == GenerateState.researching) {
       return AppCard(
         key: const ValueKey('generating'),
         child: SkeletonLoader.outputCard(context),
@@ -831,6 +863,46 @@ class _GenerateScreenState extends ConsumerState<GenerateScreen> {
                 if (viewModel.showSource && !post.source.isEmpty) ...[
                   const SizedBox(height: AppSpacing.base),
                   SourceAttributionCard(source: post.source),
+                ],
+                if (viewModel.isResearchModeEnabled && viewModel.searchSources.isNotEmpty) ...[
+                  const SizedBox(height: AppSpacing.md),
+                  Text(
+                    'AI Research Context',
+                    style: theme.textTheme.labelMedium?.copyWith(
+                      fontWeight: FontWeight.w700,
+                      color: theme.colorScheme.primary,
+                    ),
+                  ),
+                  const SizedBox(height: AppSpacing.xs),
+                  Wrap(
+                    spacing: AppSpacing.xs,
+                    runSpacing: AppSpacing.xs,
+                    children: viewModel.searchSources.map((url) {
+                      final domain = Uri.tryParse(url)?.host ?? url;
+                      return Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                        decoration: BoxDecoration(
+                          color: theme.colorScheme.primary.withValues(alpha: 0.1),
+                          borderRadius: AppSpacing.borderRadiusSm,
+                          border: Border.all(color: theme.colorScheme.primary.withValues(alpha: 0.2)),
+                        ),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Icon(Icons.link_rounded, size: 12, color: theme.colorScheme.primary),
+                            const SizedBox(width: 4),
+                            Text(
+                              domain,
+                              style: theme.textTheme.bodySmall?.copyWith(
+                                color: theme.colorScheme.primary,
+                                fontSize: 11,
+                              ),
+                            ),
+                          ],
+                        ),
+                      );
+                    }).toList(),
+                  ),
                 ],
               ],
             ),

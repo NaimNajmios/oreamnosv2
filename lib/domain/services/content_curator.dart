@@ -19,6 +19,7 @@ abstract class IContentCurator {
     required String modelId,
     required String apiKey,
     String? sourceUrl,
+    List<String> searchSources = const [],
   });
 
   /// Extracts structured JSON data from a generated post to be used for the Card Generator.

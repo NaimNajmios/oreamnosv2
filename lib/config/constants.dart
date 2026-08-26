@@ -39,6 +39,7 @@ abstract final class AppConstants {
   static const String keyGroqApiKey = 'groq_api_key';
   static const String keyOpenRouterApiKey = 'openrouter_api_key';
   static const String keyCerebrasApiKey = 'cerebras_api_key';
+  static const String keyTavilyApiKey = 'tavily_api_key';
   static const String keySelectedProvider = 'selected_provider';
   static const String keySelectedModel = 'selected_model';
   static const String keyToneMode = 'tone_mode';

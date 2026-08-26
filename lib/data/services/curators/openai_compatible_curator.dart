@@ -41,11 +41,13 @@ class OpenAICompatibleCurator implements IContentCurator {
     required String modelId,
     required String apiKey,
     String? sourceUrl,
+    List<String> searchSources = const [],
   }) async {
     final resolvedSourceUrl =
         sourceUrl ?? (content is ExtractedArticle ? content.url : null);
     final systemPrompt = GenerationPromptManager.buildSystemPrompt(
       sourceUrl: resolvedSourceUrl,
+      searchSources: searchSources,
     );
     final userPrompt = GenerationPromptManager.buildUserPrompt(content);
 

@@ -14,6 +14,7 @@ import '../view_models/settings_view_model.dart';
 import 'widgets/api_key_dialog.dart';
 import 'widgets/model_selection_dialog.dart';
 import 'widgets/provider_selection_dialog.dart';
+import 'widgets/tavily_api_key_dialog.dart';
 import 'widgets/tone_selection_dialog.dart';
 
 /// Minimalist Settings hub.
@@ -181,6 +182,20 @@ class SettingsScreen extends ConsumerWidget {
                     : 'Not configured',
                 onTap: () =>
                     ApiKeyDialog.show(context, viewModel.selectedProvider),
+              ),
+              const Divider(),
+              const SizedBox(height: AppSpacing.xxl),
+
+              // Tavily Section
+              const SectionHeader(title: 'Search & Context'),
+              const Divider(),
+              SettingsTile(
+                leadingIcon: Icons.travel_explore_rounded,
+                title: 'Tavily Search API',
+                subtitle: (viewModel.tavilyApiKey?.isNotEmpty ?? false)
+                    ? '•••••••• (Configured)'
+                    : 'Configure for AI Research Mode',
+                onTap: () => TavilyApiKeyDialog.show(context),
               ),
               const Divider(),
               const SizedBox(height: AppSpacing.xxl),

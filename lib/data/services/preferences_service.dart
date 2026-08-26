@@ -55,6 +55,25 @@ class PreferencesService {
     }
   }
 
+  Future<String?> getTavilyApiKey() async {
+    try {
+      return await _secureStorage.read(key: AppConstants.keyTavilyApiKey);
+    } catch (e) {
+      return null;
+    }
+  }
+
+  Future<void> setTavilyApiKey(String value) async {
+    try {
+      await _secureStorage.write(key: AppConstants.keyTavilyApiKey, value: value);
+    } catch (e) {
+      try {
+        await _secureStorage.delete(key: AppConstants.keyTavilyApiKey);
+        await _secureStorage.write(key: AppConstants.keyTavilyApiKey, value: value);
+      } catch (_) {}
+    }
+  }
+
   // === Theme ===
 
   AppThemeMode get themeMode {
