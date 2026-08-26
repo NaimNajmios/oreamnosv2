@@ -805,7 +805,8 @@ class _GenerateScreenState extends ConsumerState<GenerateScreen> {
       final copyText = post.toMarkdownFiltered(
         showTitle: viewModel.showTitle,
         showHashtags: viewModel.showHashtags,
-        showSource: false,
+        showSource: viewModel.showSource,
+        appendSourceForCopy: true,
       );
       return Column(
         key: const ValueKey('success'),
@@ -855,7 +856,7 @@ class _GenerateScreenState extends ConsumerState<GenerateScreen> {
                           onPressed: () {
                             context.push(
                               RoutePaths.readingMode,
-                              extra: {'curatedPost': post},
+                              extra: {'curatedPost': post, 'copyText': copyText},
                             );
                           },
                         ),

@@ -102,7 +102,7 @@ class CuratedPost extends Equatable {
     if (newBody.isNotEmpty) buf.writeln(newBody);
     if (newHashtags.isNotEmpty) {
       if (newBody.isNotEmpty) buf.writeln();
-      buf.write(newHashtags.map((h) => '#$h').join(' '));
+      buf.write(newHashtags.map((h) => '#$h').join('\n'));
     }
 
     return CuratedPost(
@@ -191,7 +191,7 @@ class CuratedPost extends Equatable {
     if (body.isNotEmpty) buf.writeln(body);
     if (hashtags.isNotEmpty) {
       if (body.isNotEmpty) buf.writeln();
-      buf.write(hashtags.map((h) => '#$h').join(' '));
+      buf.write(hashtags.map((h) => '#$h').join('\n'));
     }
     final rawMarkdown = buf.toString().trim();
 
@@ -395,19 +395,26 @@ class CuratedPost extends Equatable {
       buf.writeln();
     }
     if (bodyMarkdown.isNotEmpty) buf.writeln(bodyMarkdown);
+
+    if (appendSourceForCopy && showSource && !source.isEmpty) {
+      buf.writeln();
+      buf.writeln();
+      String sourceText = source.label;
+      if (sourceText.isEmpty && source.domain != null && source.domain!.isNotEmpty) {
+        sourceText = source.domain!;
+      }
+      if (sourceText.isEmpty && source.url != null && source.url!.isNotEmpty) {
+        sourceText = source.url!;
+      }
+      buf.write('Sumber: $sourceText');
+    }
+
     if (showHashtags && hashtags.isNotEmpty) {
-      if (bodyMarkdown.isNotEmpty) buf.writeln();
-      buf.write(hashtags.map((h) => '#$h').join(' '));
+      buf.writeln();
+      buf.writeln();
+      buf.write(hashtags.map((h) => '#$h').join('\n'));
     }
-    if (appendSourceForCopy && showSource && source.hasUrl) {
-      buf.writeln();
-      buf.writeln();
-      buf.write('Sumber: ${source.url}');
-    } else if (appendSourceForCopy && showSource && source.label.isNotEmpty) {
-      buf.writeln();
-      buf.writeln();
-      buf.write('Sumber: ${source.label}');
-    }
+
     return buf.toString().trim();
   }
 

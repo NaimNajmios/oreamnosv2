@@ -127,7 +127,7 @@ GoRouter createAppRouter() {
             final cp = extra['curatedPost'];
             if (cp is CuratedPost) {
               return ReadingModeScreen(
-                content: cp.rawMarkdown,
+                content: extra['copyText'] as String? ?? cp.rawMarkdown,
                 curatedPost: cp,
               );
             }

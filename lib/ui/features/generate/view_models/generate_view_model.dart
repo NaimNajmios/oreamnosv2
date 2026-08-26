@@ -355,7 +355,18 @@ class GenerateViewModel extends ChangeNotifier with WidgetsBindingObserver {
         throw Exception('API key not configured for ${provider.displayName}.');
       }
 
-      contentToCurate += '\n\nLENGTH REQUIREMENT: $_lengthInstruction';
+      if (contentToCurate is ExtractedArticle) {
+        contentToCurate = ExtractedArticle(
+          text: '${contentToCurate.text}\n\nLENGTH REQUIREMENT: $_lengthInstruction',
+          url: contentToCurate.url,
+          domain: contentToCurate.domain,
+          pageTitle: contentToCurate.pageTitle,
+          description: contentToCurate.description,
+          faviconUrl: contentToCurate.faviconUrl,
+        );
+      } else {
+        contentToCurate += '\n\nLENGTH REQUIREMENT: $_lengthInstruction';
+      }
       final curator = CuratorFactory.getCurator(provider);
 
       final result = await curator.generateStructuredPost(
