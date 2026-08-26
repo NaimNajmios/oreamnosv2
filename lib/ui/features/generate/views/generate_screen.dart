@@ -94,17 +94,34 @@ class _GenerateScreenState extends ConsumerState<GenerateScreen> {
     _controller.clear();
     setState(() {});
     if (mounted) {
+      ScaffoldMessenger.of(context).hideCurrentSnackBar();
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: const Text('Input text cleared'),
-          action: SnackBarAction(
-            label: 'Undo',
-            textColor: AppColors.success,
-            onPressed: () {
-              _controller.text = prevText;
-              setState(() {});
-            },
+          content: Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              const Text('Input text cleared'),
+              InkWell(
+                onTap: () {
+                  ScaffoldMessenger.of(context).hideCurrentSnackBar();
+                  _controller.text = prevText;
+                  setState(() {});
+                },
+                child: const Padding(
+                  padding: EdgeInsets.symmetric(horizontal: 8.0, vertical: 4.0),
+                  child: Text(
+                    'UNDO',
+                    style: TextStyle(
+                      color: AppColors.success,
+                      fontWeight: FontWeight.w600,
+                      letterSpacing: 0.5,
+                    ),
+                  ),
+                ),
+              ),
+            ],
           ),
+          duration: const Duration(seconds: 2),
           behavior: SnackBarBehavior.floating,
           shape: RoundedRectangleBorder(
             borderRadius: AppSpacing.borderRadiusSm,
@@ -145,7 +162,9 @@ class _GenerateScreenState extends ConsumerState<GenerateScreen> {
 
     final isUrl = WebScraperService.isUrl(_controller.text.trim());
     final hasContent = _controller.text.trim().isNotEmpty;
-    final isGenerating = viewModel.state == GenerateState.generating || viewModel.state == GenerateState.researching;
+    final isGenerating =
+        viewModel.state == GenerateState.generating ||
+        viewModel.state == GenerateState.researching;
     final isSuccess =
         viewModel.state == GenerateState.success &&
         viewModel.curatedPost != null;
@@ -266,13 +285,14 @@ class _GenerateScreenState extends ConsumerState<GenerateScreen> {
                                       ),
                                     )
                                     .animate(
+                                      key: ValueKey(isGenerating),
                                       onPlay: (controller) {
                                         bool isTest = false;
                                         try {
                                           isTest = Platform.environment
                                               .containsKey('FLUTTER_TEST');
                                         } catch (_) {}
-                                        if (!isTest) {
+                                        if (!isTest && isGenerating) {
                                           controller.repeat();
                                         }
                                       },
@@ -381,28 +401,7 @@ class _GenerateScreenState extends ConsumerState<GenerateScreen> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          const SizedBox(height: AppSpacing.sm),
-          SegmentedButton<PromptLength>(
-            segments: const [
-              ButtonSegment(value: PromptLength.short, label: Text('Short')),
-              ButtonSegment(value: PromptLength.medium, label: Text('Medium')),
-              ButtonSegment(value: PromptLength.long, label: Text('Long')),
-            ],
-            selected: {viewModel.promptLength},
-            onSelectionChanged: isGenerating
-                ? null
-                : (set) {
-                    viewModel.setPromptLength(set.first);
-                  },
-            style: SegmentedButton.styleFrom(
-              visualDensity: VisualDensity.compact,
-              textStyle: theme.textTheme.labelSmall?.copyWith(
-                fontWeight: FontWeight.w600,
-              ),
-            ),
-          ),
-
-          const SizedBox(height: AppSpacing.sm),
+          const SizedBox(height: AppSpacing.xs),
           AppInput(
             controller: _controller,
             hint: 'Paste football news or article URL...',
@@ -423,7 +422,7 @@ class _GenerateScreenState extends ConsumerState<GenerateScreen> {
                     },
             ),
           ],
-          const SizedBox(height: AppSpacing.md),
+          const SizedBox(height: AppSpacing.sm),
           Row(
             crossAxisAlignment: CrossAxisAlignment.center,
             children: [
@@ -568,85 +567,143 @@ class _GenerateScreenState extends ConsumerState<GenerateScreen> {
             height: 1,
             color: theme.colorScheme.outlineVariant.withValues(alpha: 0.55),
           ),
-          const SizedBox(height: AppSpacing.sm),
-          // Config footer — muted text, no scroll, no clipping
-          InkWell(
-            onTap: () {
-              Haptics.lightImpact();
-              context.push(RoutePaths.settings);
-            },
-            borderRadius: AppSpacing.borderRadiusSm,
-            child: Padding(
-              padding: const EdgeInsets.symmetric(vertical: 6, horizontal: 2),
-              child: Row(
-                children: [
-                  Icon(
-                    Icons.tune_rounded,
-                    size: 13,
-                    color: theme.colorScheme.onSurface.withValues(alpha: 0.45),
-                  ),
-                  const SizedBox(width: 6),
-                  Expanded(
-                    child: Text(
-                      '$providerLabel • $modelLabel • $toneLabel',
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: theme.textTheme.labelSmall?.copyWith(
-                        color: theme.colorScheme.onSurface.withValues(
-                          alpha: 0.55,
-                        ),
-                        fontWeight: FontWeight.w500,
-                        letterSpacing: 0.2,
-                      ),
-                    ),
-                  ),
-                  const SizedBox(width: 8),
-                  Icon(
-                    Icons.chevron_right_rounded,
-                    size: 16,
-                    color: theme.colorScheme.onSurface.withValues(alpha: 0.35),
-                  ),
-                ],
+          const SizedBox(height: AppSpacing.md),
+
+          // Settings Block
+          Container(
+            padding: const EdgeInsets.all(AppSpacing.sm),
+            decoration: BoxDecoration(
+              color: theme.colorScheme.surfaceContainerHighest.withValues(
+                alpha: 0.2,
+              ),
+              borderRadius: AppSpacing.borderRadiusSm,
+              border: Border.all(
+                color: theme.colorScheme.outlineVariant.withValues(alpha: 0.5),
               ),
             ),
-          ),
-          const SizedBox(height: AppSpacing.md),
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Row(
-                children: [
-                  Icon(
-                    Icons.travel_explore_rounded,
-                    size: 18,
-                    color: theme.colorScheme.primary,
-                  ),
-                  const SizedBox(width: AppSpacing.sm),
-                  Text(
-                    'AI Research Mode',
-                    style: theme.textTheme.labelMedium?.copyWith(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                SegmentedButton<PromptLength>(
+                  segments: const [
+                    ButtonSegment(
+                      value: PromptLength.short,
+                      label: Text('Short'),
+                    ),
+                    ButtonSegment(
+                      value: PromptLength.medium,
+                      label: Text('Medium'),
+                    ),
+                    ButtonSegment(
+                      value: PromptLength.long,
+                      label: Text('Long'),
+                    ),
+                  ],
+                  selected: {viewModel.promptLength},
+                  onSelectionChanged: isGenerating
+                      ? null
+                      : (set) {
+                          viewModel.setPromptLength(set.first);
+                        },
+                  style: SegmentedButton.styleFrom(
+                    visualDensity: VisualDensity.compact,
+                    textStyle: theme.textTheme.labelSmall?.copyWith(
                       fontWeight: FontWeight.w600,
-                      color: theme.colorScheme.onSurface,
                     ),
                   ),
-                ],
-              ),
-              AppSwitch(
-                value: viewModel.isResearchModeEnabled,
-                onChanged: isGenerating
-                    ? null
-                    : (_) => viewModel.toggleResearchMode(),
-              ),
-            ],
+                ),
+                const SizedBox(height: AppSpacing.sm),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Row(
+                      children: [
+                        Icon(
+                          Icons.travel_explore_rounded,
+                          size: 16,
+                          color: theme.colorScheme.primary,
+                        ),
+                        const SizedBox(width: AppSpacing.xs),
+                        Text(
+                          'AI Research Mode',
+                          style: theme.textTheme.labelSmall?.copyWith(
+                            fontWeight: FontWeight.w600,
+                            color: theme.colorScheme.onSurface,
+                          ),
+                        ),
+                      ],
+                    ),
+                    Transform.scale(
+                      scale: 0.85,
+                      child: AppSwitch(
+                        value: viewModel.isResearchModeEnabled,
+                        onChanged: isGenerating
+                            ? null
+                            : (_) => viewModel.toggleResearchMode(),
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 2),
+                InkWell(
+                  onTap: () {
+                    Haptics.lightImpact();
+                    context.push(RoutePaths.settings);
+                  },
+                  borderRadius: AppSpacing.borderRadiusSm,
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(
+                      vertical: 6,
+                      horizontal: 2,
+                    ),
+                    child: Row(
+                      children: [
+                        Icon(
+                          Icons.tune_rounded,
+                          size: 13,
+                          color: theme.colorScheme.onSurface.withValues(
+                            alpha: 0.45,
+                          ),
+                        ),
+                        const SizedBox(width: 6),
+                        Expanded(
+                          child: Text(
+                            '$providerLabel • $modelLabel • $toneLabel',
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: theme.textTheme.labelSmall?.copyWith(
+                              color: theme.colorScheme.onSurface.withValues(
+                                alpha: 0.55,
+                              ),
+                              fontWeight: FontWeight.w500,
+                              letterSpacing: 0.2,
+                            ),
+                          ),
+                        ),
+                        const SizedBox(width: 8),
+                        Icon(
+                          Icons.chevron_right_rounded,
+                          size: 16,
+                          color: theme.colorScheme.onSurface.withValues(
+                            alpha: 0.35,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ],
+            ),
           ),
+
           const SizedBox(height: AppSpacing.base),
           AppButton(
             label: isGenerating
                 ? (viewModel.state == GenerateState.researching
                       ? 'Searching for match stats...'
                       : (viewModel.generatingStep == GeneratingStep.scraping
-                          ? 'Extracting URL...'
-                          : 'Curating Post...'))
+                            ? 'Extracting URL...'
+                            : 'Curating Post...'))
                 : 'Generate Post',
             icon: Icons.auto_awesome_rounded,
             isLoading: isGenerating,
@@ -661,57 +718,40 @@ class _GenerateScreenState extends ConsumerState<GenerateScreen> {
               !isGenerating &&
               !isSuccess) ...[
             const SizedBox(height: AppSpacing.md),
-            Divider(
-              thickness: 1,
-              height: 1,
-              color: theme.colorScheme.outlineVariant.withValues(alpha: 0.35),
-            ),
-            Theme(
-              data: Theme.of(context)
-                  .copyWith(dividerColor: Colors.transparent),
-              child: ExpansionTile(
-                tilePadding: EdgeInsets.zero,
-                childrenPadding: const EdgeInsets.only(
-                  top: AppSpacing.sm,
-                  bottom: AppSpacing.xs,
-                ),
-                dense: true,
-                initiallyExpanded: false,
-                title: Text(
-                  'Recent',
+            Row(
+              children: [
+                Text(
+                  'Recent:',
                   style: theme.textTheme.labelSmall?.copyWith(
                     color: theme.colorScheme.onSurface.withValues(alpha: 0.55),
-                    letterSpacing: 0.8,
-                    fontWeight: FontWeight.w700,
+                    fontWeight: FontWeight.w600,
+                    letterSpacing: 0.5,
                   ),
                 ),
-                trailing: Icon(
-                  Icons.expand_more_rounded,
-                  size: 18,
-                  color: theme.colorScheme.onSurface.withValues(alpha: 0.45),
-                ),
-                children: [
-                  Align(
-                    alignment: Alignment.centerLeft,
-                    child: Wrap(
-                      spacing: AppSpacing.sm,
-                      runSpacing: AppSpacing.sm,
-                      children: viewModel.recentInputs.map((r) {
-                        final truncated = r.length > 32
-                            ? '${r.substring(0, 32)}…'
+                const SizedBox(width: AppSpacing.sm),
+                Expanded(
+                  child: SingleChildScrollView(
+                    scrollDirection: Axis.horizontal,
+                    child: Row(
+                      children: viewModel.recentInputs.take(5).map((r) {
+                        final truncated = r.length > 24
+                            ? '${r.substring(0, 24)}…'
                             : r;
-                        return AppChip(
-                          label: truncated,
-                          onTap: () {
-                            _controller.text = r;
-                            setState(() {});
-                          },
+                        return Padding(
+                          padding: const EdgeInsets.only(right: AppSpacing.sm),
+                          child: AppChip(
+                            label: truncated,
+                            onTap: () {
+                              _controller.text = r;
+                              setState(() {});
+                            },
+                          ),
                         );
                       }).toList(),
                     ),
                   ),
-                ],
-              ),
+                ),
+              ],
             ),
           ],
         ],
@@ -725,7 +765,8 @@ class _GenerateScreenState extends ConsumerState<GenerateScreen> {
     GenerateViewModel viewModel,
     bool isSuccess,
   ) {
-    if (viewModel.state == GenerateState.generating || viewModel.state == GenerateState.researching) {
+    if (viewModel.state == GenerateState.generating ||
+        viewModel.state == GenerateState.researching) {
       return AppCard(
         key: const ValueKey('generating'),
         child: SkeletonLoader.outputCard(context),
@@ -864,7 +905,8 @@ class _GenerateScreenState extends ConsumerState<GenerateScreen> {
                   const SizedBox(height: AppSpacing.base),
                   SourceAttributionCard(source: post.source),
                 ],
-                if (viewModel.isResearchModeEnabled && viewModel.searchSources.isNotEmpty) ...[
+                if (viewModel.isResearchModeEnabled &&
+                    viewModel.searchSources.isNotEmpty) ...[
                   const SizedBox(height: AppSpacing.md),
                   Text(
                     'AI Research Context',
@@ -880,16 +922,29 @@ class _GenerateScreenState extends ConsumerState<GenerateScreen> {
                     children: viewModel.searchSources.map((url) {
                       final domain = Uri.tryParse(url)?.host ?? url;
                       return Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 8,
+                          vertical: 4,
+                        ),
                         decoration: BoxDecoration(
-                          color: theme.colorScheme.primary.withValues(alpha: 0.1),
+                          color: theme.colorScheme.primary.withValues(
+                            alpha: 0.1,
+                          ),
                           borderRadius: AppSpacing.borderRadiusSm,
-                          border: Border.all(color: theme.colorScheme.primary.withValues(alpha: 0.2)),
+                          border: Border.all(
+                            color: theme.colorScheme.primary.withValues(
+                              alpha: 0.2,
+                            ),
+                          ),
                         ),
                         child: Row(
                           mainAxisSize: MainAxisSize.min,
                           children: [
-                            Icon(Icons.link_rounded, size: 12, color: theme.colorScheme.primary),
+                            Icon(
+                              Icons.link_rounded,
+                              size: 12,
+                              color: theme.colorScheme.primary,
+                            ),
                             const SizedBox(width: 4),
                             Text(
                               domain,
@@ -1103,32 +1158,26 @@ class _GenerateScreenState extends ConsumerState<GenerateScreen> {
             runSpacing: AppSpacing.sm,
             alignment: WrapAlignment.center,
             children: [
-              TextButton(
-                onPressed: () {
-                  Haptics.lightImpact();
-                  _controller.text = 'Harimau Malaya secure dramatic 2-1 victory over rivals in Bukit Jalil with late winner from Faisal Halim.';
-                  setState(() {});
-                },
-                child: const Text('Try sample news'),
-              ),
-              TextButton(
-                onPressed: () async {
+              _IdleExampleChip(
+                label: 'Paste URL',
+                icon: Icons.link_rounded,
+                onTap: () async {
                   final data = await Clipboard.getData(Clipboard.kTextPlain);
                   if (data?.text != null) {
                     _controller.text = data!.text!;
                     setState(() {});
                   }
                 },
-                child: const Text('Paste URL'),
               ),
-              TextButton(
-                onPressed: () {
+              _IdleExampleChip(
+                label: 'Scan Image',
+                icon: Icons.document_scanner_outlined,
+                onTap: () {
                   OcrExtractionSheet.show(
                     context,
                     onSourceSelected: (s) => viewModel.extractTextFromImage(s),
                   );
                 },
-                child: const Text('Scan Image'),
               ),
             ],
           ),
@@ -1138,7 +1187,6 @@ class _GenerateScreenState extends ConsumerState<GenerateScreen> {
   }
 }
 
-// ignore: unused_element
 class _IdleExampleChip extends ConsumerWidget {
   const _IdleExampleChip({
     required this.label,
