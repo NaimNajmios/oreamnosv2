@@ -51,4 +51,74 @@ class ReadabilityUtils {
     final matches = RegExp(r'[aeiouy]{1,2}').allMatches(word).length;
     return matches == 0 ? 1 : matches;
   }
+
+  /// Splits excessively long paragraphs into smaller ones to improve readability.
+  /// Paragraphs exceeding [maxWordsPerParagraph] are split at sentence boundaries.
+  static String splitLongParagraphs(String text, {int maxWordsPerParagraph = 40}) {
+    if (text.trim().isEmpty) return text;
+    
+    // Split by newlines while preserving them
+    final paragraphs = text.split('\n');
+    final result = <String>[];
+    
+    for (var paragraph in paragraphs) {
+      if (paragraph.trim().isEmpty) {
+        result.add(paragraph);
+        continue;
+      }
+      
+      final words = countWords(paragraph);
+      if (words <= maxWordsPerParagraph) {
+        result.add(paragraph);
+        continue;
+      }
+      
+      // Tokenize into sentences
+      final matches = RegExp(r'[^.!?]+[.!?]+').allMatches(paragraph);
+      if (matches.isEmpty) {
+         result.add(paragraph);
+         continue;
+      }
+      
+      List<String> sentences = [];
+      int lastEnd = 0;
+      for (var match in matches) {
+        sentences.add(paragraph.substring(lastEnd, match.end).trim());
+        lastEnd = match.end;
+      }
+      if (lastEnd < paragraph.length) {
+        final remaining = paragraph.substring(lastEnd).trim();
+        if (remaining.isNotEmpty) sentences.add(remaining);
+      }
+      
+      String currentPara = "";
+      int currentWordCount = 0;
+      List<String> subParagraphs = [];
+      
+      for (var sentence in sentences) {
+        final sentenceWords = countWords(sentence);
+        if (currentPara.isEmpty) {
+          currentPara = sentence;
+          currentWordCount = sentenceWords;
+        } else {
+          if (currentWordCount + sentenceWords > maxWordsPerParagraph) {
+             subParagraphs.add(currentPara);
+             currentPara = sentence;
+             currentWordCount = sentenceWords;
+          } else {
+             currentPara += " " + sentence;
+             currentWordCount += sentenceWords;
+          }
+        }
+      }
+      if (currentPara.isNotEmpty) {
+        subParagraphs.add(currentPara);
+      }
+      
+      // Join sub-paragraphs with double newline
+      result.add(subParagraphs.join('\n\n'));
+    }
+    
+    return result.join('\n');
+  }
 }

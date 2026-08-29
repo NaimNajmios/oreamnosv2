@@ -1,4 +1,5 @@
 import 'package:equatable/equatable.dart';
+import 'package:oreamnos/core/utils/readability_utils.dart';
 
 /// Attribution for the original source, kept separate from body.
 class SourceAttribution extends Equatable {
@@ -278,74 +279,15 @@ class CuratedPost extends Equatable {
     );
   }
 
-  /// Source-faithful paragraph formatter: never adds facts, only reflows existing sentences.
-  /// - Keeps existing \n\n structure if already 2+ paragraphs and no paragraph is overly long (>75 words).
-  /// - If single long paragraph (>70 words), splits by sentences into 2-4 balanced paragraphs (30-60 words each).
   static String _formatBody(String body) {
     if (body.isEmpty) return body;
     // Preserve bullet lists as-is
     if (body.contains(RegExp(r'^\s*[-•]\s', multiLine: true))) return body;
-    final existingParas = body
-        .split(RegExp(r'\n\s*\n'))
-        .where((p) => p.trim().isNotEmpty)
-        .toList();
-    if (existingParas.length >= 2) {
-      // If no paragraph is too long, keep original structure (source-faithful).
-      final maxWords = existingParas
-          .map((p) => p.trim().split(RegExp(r'\s+')).length)
-          .reduce((a, b) => a > b ? a : b);
-      if (maxWords <= 75) return body.trim();
-      // Otherwise reflow: flatten and re-split below
-    }
-    final totalWords = body.trim().split(RegExp(r'\s+')).length;
-    if (totalWords <= 70 && existingParas.length == 1) return body.trim();
-
-    // Single long paragraph -> split by sentences, preserve content exactly.
-    final sentences = body
-        .replaceAll(RegExp(r'\s+'), ' ')
-        .split(RegExp(r'(?<=[.!?])\s+'))
-        .where((s) => s.trim().isNotEmpty)
-        .toList();
-    if (sentences.length <= 2) return body.trim();
-
-    // Target 2-4 paragraphs, 30-60 words each, balanced.
-    int targetParas;
-    if (totalWords <= 90) {
-      targetParas = 2;
-    } else if (totalWords <= 150) {
-      targetParas = 3;
-    } else {
-      targetParas = 4;
-    }
-    targetParas = targetParas.clamp(2, 4);
-    // Avoid creating more paras than sentences
-    if (sentences.length < targetParas) targetParas = sentences.length;
-
-    final wordsPerPara = (totalWords / targetParas).ceil();
-    final List<String> paras = [];
-    final List<String> current = [];
-    int currentWords = 0;
-    for (final s in sentences) {
-      final w = s.trim().split(RegExp(r'\s+')).length;
-      if (current.isNotEmpty &&
-          currentWords + w > wordsPerPara + 12 &&
-          paras.length < targetParas - 1) {
-        paras.add(current.join(' ').trim());
-        current.clear();
-        currentWords = 0;
-      }
-      current.add(s.trim());
-      currentWords += w;
-    }
-    if (current.isNotEmpty) paras.add(current.join(' ').trim());
-    // If we ended with too many paras, merge smallest neighbours
-    while (paras.length > targetParas) {
-      // merge last two
-      final last = paras.removeLast();
-      paras[paras.length - 1] = '${paras.last} $last';
-    }
-    return paras.join('\n\n').trim();
+    
+    // Delegate to ReadabilityUtils to handle paragraph splitting (max 40 words per paragraph)
+    return ReadabilityUtils.splitLongParagraphs(body.trim(), maxWordsPerParagraph: 40);
   }
+
 
   /// Fallback when LLM returns plain markdown instead of JSON.
   factory CuratedPost.fromMarkdownFallback(
