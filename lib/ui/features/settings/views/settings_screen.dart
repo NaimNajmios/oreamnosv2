@@ -33,241 +33,234 @@ class SettingsScreen extends ConsumerWidget {
       const SectionHeader(title: 'Appearance'),
       const SizedBox(height: AppSpacing.md),
       SingleChildScrollView(
-                scrollDirection: Axis.horizontal,
-                clipBehavior: Clip.none,
-                child: Row(
-                  children: [
-                    for (int i = 0; i < AppThemeMode.values.length; i++) ...[
-                      Builder(
-                        builder: (context) {
-                          final mode = AppThemeMode.values[i];
-                          final isSelected = state.themeMode == mode;
+        scrollDirection: Axis.horizontal,
+        clipBehavior: Clip.none,
+        child: Row(
+          children: [
+            for (int i = 0; i < AppThemeMode.values.length; i++) ...[
+              Builder(
+                builder: (context) {
+                  final mode = AppThemeMode.values[i];
+                  final isSelected = state.themeMode == mode;
 
-                          Color previewColor;
-                          switch (mode) {
-                            case AppThemeMode.light:
-                              previewColor = Colors.grey.shade300;
-                              break;
-                            case AppThemeMode.dark:
-                              previewColor = Colors.grey.shade900;
-                              break;
-                            case AppThemeMode.deepBlue:
-                              previewColor = const Color(0xFF1E3A8A);
-                              break;
-                            case AppThemeMode.midnightNoir:
-                              previewColor = const Color(0xFF171717);
-                              break;
-                            case AppThemeMode.solarizedLight:
-                              previewColor = const Color(0xFFFDF6E3);
-                              break;
-                            case AppThemeMode.cyberpunk:
-                              previewColor = const Color(0xFFFF003C);
-                              break;
-                            case AppThemeMode.matchday:
-                              previewColor = const Color(0xFFDC2626);
-                              break;
-                            case AppThemeMode.forest:
-                              previewColor = const Color(0xFF2E7D32);
-                              break;
-                            case AppThemeMode.system:
-                              previewColor = theme.colorScheme.primary;
-                              break;
-                          }
+                  Color previewColor;
+                  switch (mode) {
+                    case AppThemeMode.light:
+                      previewColor = Colors.grey.shade300;
+                      break;
+                    case AppThemeMode.dark:
+                      previewColor = Colors.grey.shade900;
+                      break;
+                    case AppThemeMode.deepBlue:
+                      previewColor = const Color(0xFF1E3A8A);
+                      break;
+                    case AppThemeMode.midnightNoir:
+                      previewColor = const Color(0xFF171717);
+                      break;
+                    case AppThemeMode.solarizedLight:
+                      previewColor = const Color(0xFFFDF6E3);
+                      break;
+                    case AppThemeMode.cyberpunk:
+                      previewColor = const Color(0xFFFF003C);
+                      break;
+                    case AppThemeMode.matchday:
+                      previewColor = const Color(0xFFDC2626);
+                      break;
+                    case AppThemeMode.forest:
+                      previewColor = const Color(0xFF2E7D32);
+                      break;
+                    case AppThemeMode.system:
+                      previewColor = theme.colorScheme.primary;
+                      break;
+                  }
 
-                          return GestureDetector(
-                            onTap: () {
-                              Haptics.lightImpact();
-                              notifier.setThemeMode(mode);
-                            },
-                            child: Column(
-                              mainAxisSize: MainAxisSize.min,
-                              children: [
-                                Container(
-                                  width: 48,
-                                  height: 48,
-                                  decoration: BoxDecoration(
-                                    shape: BoxShape.circle,
-                                    color: previewColor,
-                                    border: Border.all(
-                                      color: isSelected
-                                          ? theme.colorScheme.primary
-                                          : theme.colorScheme.outline
-                                                .withValues(alpha: 0.3),
-                                      width: isSelected ? 2 : 1,
+                  return GestureDetector(
+                    onTap: () {
+                      Haptics.lightImpact();
+                      notifier.setThemeMode(mode);
+                    },
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Container(
+                          width: 48,
+                          height: 48,
+                          decoration: BoxDecoration(
+                            shape: BoxShape.circle,
+                            color: previewColor,
+                            border: Border.all(
+                              color: isSelected
+                                  ? theme.colorScheme.primary
+                                  : theme.colorScheme.outline.withValues(
+                                      alpha: 0.3,
                                     ),
-                                  ),
-                                  child: isSelected
-                                      ? Icon(
-                                          Icons.check_rounded,
-                                          color:
-                                              previewColor.computeLuminance() >
-                                                  0.5
-                                              ? Colors.black
-                                              : Colors.white,
-                                        )
-                                      : null,
-                                ),
-                                const SizedBox(height: AppSpacing.xs),
-                                Text(
-                                  mode.label,
-                                  style: theme.textTheme.labelSmall?.copyWith(
-                                    color: isSelected
-                                        ? theme.colorScheme.onSurface
-                                        : theme.colorScheme.onSurfaceVariant,
-                                    fontWeight: isSelected
-                                        ? FontWeight.w700
-                                        : FontWeight.w500,
-                                  ),
-                                ),
-                              ],
-                            ),
-                          );
-                        },
-                      ),
-                      if (i != AppThemeMode.values.length - 1)
-                        const SizedBox(width: AppSpacing.md),
-                    ],
-                  ],
-                ),
-              ),
-              const SizedBox(height: AppSpacing.xl),
-
-              // AI Provider Section
-              const SectionHeader(title: 'AI Provider'),
-              const Divider(),
-              SettingsTile(
-                leadingIcon: Icons.smart_toy_outlined,
-                title: 'Active Provider',
-                subtitle: state.selectedProvider.displayName,
-                onTap: () => ProviderSelectionDialog.show(context),
-              ),
-              const Divider(),
-              SettingsTile(
-                leadingIcon: Icons.psychology_outlined,
-                title: 'Model',
-                subtitle: state.selectedModel ?? 'Default (Auto-select)',
-                onTap: () =>
-                    ModelSelectionDialog.show(context, state.selectedProvider),
-              ),
-              const Divider(),
-              SettingsTile(
-                leadingIcon: Icons.key_outlined,
-                title: 'API Key',
-                subtitle: (state.currentApiKey?.isNotEmpty ?? false)
-                    ? '•••••••• (Configured)'
-                    : 'Not configured',
-                onTap: () => ApiKeyDialog.show(context, state.selectedProvider),
-              ),
-              const Divider(),
-              const SizedBox(height: AppSpacing.xxl),
-
-              // Tavily Section
-              const SectionHeader(title: 'Search & Context'),
-              const Divider(),
-              SettingsTile(
-                leadingIcon: Icons.travel_explore_rounded,
-                title: 'Tavily Search API',
-                subtitle: (state.tavilyApiKey?.isNotEmpty ?? false)
-                    ? '•••••••• (Configured)'
-                    : 'Configure for AI Research Mode',
-                onTap: () => TavilyApiKeyDialog.show(context),
-              ),
-              const Divider(),
-              const SizedBox(height: AppSpacing.xxl),
-
-              // Post Settings Section
-              const SectionHeader(title: 'Post Settings'),
-              const Divider(),
-              SettingsTile(
-                leadingIcon: Icons.tune_rounded,
-                title: 'Tone',
-                subtitle:
-                    state.toneMode[0].toUpperCase() +
-                    state.toneMode.substring(1),
-                onTap: () => ToneSelectionDialog.show(context),
-              ),
-              const Divider(),
-              SettingsTile(
-                leadingIcon: Icons.tag_rounded,
-                title: 'Hashtag Manager',
-                subtitle: '${state.hashtagGroups.length} groups',
-                onTap: () => context.push(RoutePaths.hashtagManager),
-              ),
-              const Divider(),
-              Padding(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: AppSpacing.base,
-                  vertical: 16,
-                ),
-                child: Row(
-                  children: [
-                    Icon(
-                      Icons.auto_awesome_outlined,
-                      size: 24,
-                      color: theme.colorScheme.onSurface,
-                    ),
-                    const SizedBox(width: AppSpacing.md),
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            'Auto-append Hashtags',
-                            style: theme.textTheme.titleSmall,
-                          ),
-                          const SizedBox(height: 4),
-                          Text(
-                            'Automatically append default group',
-                            style: theme.textTheme.bodyMedium?.copyWith(
-                              color: theme.colorScheme.onSurface.withValues(
-                                alpha: 0.6,
-                              ),
+                              width: isSelected ? 2 : 1,
                             ),
                           ),
-                        ],
-                      ),
+                          child: isSelected
+                              ? Icon(
+                                  Icons.check_rounded,
+                                  color: previewColor.computeLuminance() > 0.5
+                                      ? Colors.black
+                                      : Colors.white,
+                                )
+                              : null,
+                        ),
+                        const SizedBox(height: AppSpacing.xs),
+                        Text(
+                          mode.label,
+                          style: theme.textTheme.labelSmall?.copyWith(
+                            color: isSelected
+                                ? theme.colorScheme.onSurface
+                                : theme.colorScheme.onSurfaceVariant,
+                            fontWeight: isSelected
+                                ? FontWeight.w700
+                                : FontWeight.w500,
+                          ),
+                        ),
+                      ],
                     ),
-                    AppSwitch(
-                      value: state.autoAppendHashtags,
-                      onChanged: (value) =>
-                          notifier.setAutoAppendHashtags(value),
+                  );
+                },
+              ),
+              if (i != AppThemeMode.values.length - 1)
+                const SizedBox(width: AppSpacing.md),
+            ],
+          ],
+        ),
+      ),
+      const SizedBox(height: AppSpacing.xl),
+
+      // AI Provider Section
+      const SectionHeader(title: 'AI Provider'),
+      const Divider(),
+      SettingsTile(
+        leadingIcon: Icons.smart_toy_outlined,
+        title: 'Active Provider',
+        subtitle: state.selectedProvider.displayName,
+        onTap: () => ProviderSelectionDialog.show(context),
+      ),
+      const Divider(),
+      SettingsTile(
+        leadingIcon: Icons.psychology_outlined,
+        title: 'Model',
+        subtitle: state.selectedModel ?? 'Default (Auto-select)',
+        onTap: () => ModelSelectionDialog.show(context, state.selectedProvider),
+      ),
+      const Divider(),
+      SettingsTile(
+        leadingIcon: Icons.key_outlined,
+        title: 'API Key',
+        subtitle: (state.currentApiKey?.isNotEmpty ?? false)
+            ? '•••••••• (Configured)'
+            : 'Not configured',
+        onTap: () => ApiKeyDialog.show(context, state.selectedProvider),
+      ),
+      const Divider(),
+      const SizedBox(height: AppSpacing.xxl),
+
+      // Tavily Section
+      const SectionHeader(title: 'Search & Context'),
+      const Divider(),
+      SettingsTile(
+        leadingIcon: Icons.travel_explore_rounded,
+        title: 'Tavily Search API',
+        subtitle: (state.tavilyApiKey?.isNotEmpty ?? false)
+            ? '•••••••• (Configured)'
+            : 'Configure for AI Research Mode',
+        onTap: () => TavilyApiKeyDialog.show(context),
+      ),
+      const Divider(),
+      const SizedBox(height: AppSpacing.xxl),
+
+      // Post Settings Section
+      const SectionHeader(title: 'Post Settings'),
+      const Divider(),
+      SettingsTile(
+        leadingIcon: Icons.tune_rounded,
+        title: 'Tone',
+        subtitle: state.toneMode[0].toUpperCase() + state.toneMode.substring(1),
+        onTap: () => ToneSelectionDialog.show(context),
+      ),
+      const Divider(),
+      SettingsTile(
+        leadingIcon: Icons.tag_rounded,
+        title: 'Hashtag Manager',
+        subtitle: '${state.hashtagGroups.length} groups',
+        onTap: () => context.push(RoutePaths.hashtagManager),
+      ),
+      const Divider(),
+      Padding(
+        padding: const EdgeInsets.symmetric(
+          horizontal: AppSpacing.base,
+          vertical: 16,
+        ),
+        child: Row(
+          children: [
+            Icon(
+              Icons.auto_awesome_outlined,
+              size: 24,
+              color: theme.colorScheme.onSurface,
+            ),
+            const SizedBox(width: AppSpacing.md),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'Auto-append Hashtags',
+                    style: theme.textTheme.titleSmall,
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    'Automatically append default group',
+                    style: theme.textTheme.bodyMedium?.copyWith(
+                      color: theme.colorScheme.onSurface.withValues(alpha: 0.6),
                     ),
-                  ],
-                ),
+                  ),
+                ],
               ),
-              const Divider(),
-              SettingsTile(
-                leadingIcon: Icons.edit_note_rounded,
-                title: 'Manage Refinement Pills',
-                subtitle: '${state.customPills.length} custom pills',
-                onTap: () => context.push(RoutePaths.pillManager),
-              ),
-              const Divider(),
-              const SizedBox(height: AppSpacing.xxl),
+            ),
+            AppSwitch(
+              value: state.autoAppendHashtags,
+              onChanged: (value) => notifier.setAutoAppendHashtags(value),
+            ),
+          ],
+        ),
+      ),
+      const Divider(),
+      SettingsTile(
+        leadingIcon: Icons.edit_note_rounded,
+        title: 'Manage Refinement Pills',
+        subtitle: '${state.customPills.length} custom pills',
+        onTap: () => context.push(RoutePaths.pillManager),
+      ),
+      const Divider(),
+      const SizedBox(height: AppSpacing.xxl),
 
-              // Usage & Analytics Section
-              const SectionHeader(title: 'Usage & Analytics'),
-              const Divider(),
-              SettingsTile(
-                leadingIcon: Icons.analytics_outlined,
-                title: 'Usage Statistics',
-                subtitle: 'View token usage & latency',
-                onTap: () => context.push(RoutePaths.usage),
-              ),
-              const Divider(),
-              const SizedBox(height: AppSpacing.xxl),
+      // Usage & Analytics Section
+      const SectionHeader(title: 'Usage & Analytics'),
+      const Divider(),
+      SettingsTile(
+        leadingIcon: Icons.analytics_outlined,
+        title: 'Usage Statistics',
+        subtitle: 'View token usage & latency',
+        onTap: () => context.push(RoutePaths.usage),
+      ),
+      const Divider(),
+      const SizedBox(height: AppSpacing.xxl),
 
-              // Advanced Section
-              const SectionHeader(title: 'Advanced'),
-              const Divider(),
-              SettingsTile(
-                leadingIcon: Icons.bug_report_outlined,
-                title: 'Debug Logs',
-                subtitle: 'View and copy internal system logs',
-                onTap: () => context.push(RoutePaths.debugLogs),
-              ),
-              const Divider(),
-              const SizedBox(height: AppSpacing.xl),
+      // Advanced Section
+      const SectionHeader(title: 'Advanced'),
+      const Divider(),
+      SettingsTile(
+        leadingIcon: Icons.bug_report_outlined,
+        title: 'Debug Logs',
+        subtitle: 'View and copy internal system logs',
+        onTap: () => context.push(RoutePaths.debugLogs),
+      ),
+      const Divider(),
+      const SizedBox(height: AppSpacing.xl),
     ];
 
     return Scaffold(
@@ -296,10 +289,7 @@ class SettingsScreen extends ConsumerWidget {
             ),
             itemCount: items.length,
             itemBuilder: (context, index) {
-              return StaggeredEntranceItem(
-                index: index,
-                child: items[index],
-              );
+              return StaggeredEntranceItem(index: index, child: items[index]);
             },
           ),
         ),

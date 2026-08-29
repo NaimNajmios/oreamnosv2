@@ -84,7 +84,11 @@ class RetryInterceptor extends QueuedInterceptor {
       final response = await client.fetch(opts);
       handler.resolve(response);
     } catch (e) {
-      handler.next(err);
+      if (e is DioException) {
+        handler.next(e);
+      } else {
+        handler.next(err);
+      }
     }
   }
 

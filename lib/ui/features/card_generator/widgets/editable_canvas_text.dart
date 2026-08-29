@@ -20,7 +20,7 @@ class EditableCanvasText extends ConsumerWidget {
     this.style,
     this.textAlign,
     this.maxLines,
-    this.minFontSize = 12,
+    this.minFontSize = 8,
     this.stepGranularity = 1,
     this.autoSize = true,
   });
@@ -38,8 +38,15 @@ class EditableCanvasText extends ConsumerWidget {
             maxLines: maxLines,
             minFontSize: minFontSize,
             stepGranularity: stepGranularity,
+            overflow: TextOverflow.ellipsis,
           )
-        : Text(text, style: style, textAlign: textAlign, maxLines: maxLines);
+        : Text(
+            text,
+            style: style,
+            textAlign: textAlign,
+            maxLines: maxLines,
+            overflow: TextOverflow.ellipsis,
+          );
 
     return GestureDetector(
       behavior: HitTestBehavior.opaque,

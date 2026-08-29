@@ -130,6 +130,79 @@ class CuratedPost extends Equatable {
     return t;
   }
 
+  static const Set<String> _minorWords = {
+    'dan',
+    'di',
+    'ke',
+    'atau',
+    'yang',
+    'untuk',
+    'dari',
+    'daripada',
+    'dengan',
+    'dalam',
+    'pada',
+    'oleh',
+    'itu',
+    'ini',
+    'telah',
+    'akan',
+    'adalah',
+    'ialah',
+    'kepada',
+    'serta',
+    'atas',
+    'bawah',
+    'and',
+    'or',
+    'the',
+    'in',
+    'on',
+    'at',
+    'to',
+    'for',
+    'of',
+    'with',
+    'by',
+    'a',
+    'an',
+    'vs',
+  };
+
+  static String _toTitleCase(String input) {
+    if (input.trim().isEmpty) return input;
+    final words = input.trim().split(RegExp(r'\s+'));
+    final result = <String>[];
+
+    for (int i = 0; i < words.length; i++) {
+      final word = words[i];
+      if (word.isEmpty) continue;
+
+      // Preserve acronyms (e.g. EPL, UCL, VAR, JDT, FIFA) or words with digits/symbols
+      if (word.length > 1 &&
+          word == word.toUpperCase() &&
+          RegExp(r'^[A-Z0-9]+$').hasMatch(word)) {
+        result.add(word);
+        continue;
+      }
+
+      final lower = word.toLowerCase();
+      // First word is always capitalized; minor words in between stay lowercase
+      if (i > 0 && _minorWords.contains(lower)) {
+        result.add(lower);
+      } else {
+        if (word.length == 1) {
+          result.add(word.toUpperCase());
+        } else {
+          result.add(
+            '${word[0].toUpperCase()}${word.substring(1).toLowerCase()}',
+          );
+        }
+      }
+    }
+    return result.join(' ');
+  }
+
   factory CuratedPost.fromJson(Map<String, dynamic> json) {
     final rawTitle = (json['title'] as String?) ?? '';
     final rawBody =
@@ -138,9 +211,10 @@ class CuratedPost extends Equatable {
     final rawSource = json['source'];
 
     String title = _stripEmoji(rawTitle.trim());
-    // Title: single line, max 100 chars
+    // Title: single line, max 100 chars, converted to Title Case
     title = title.split('\n').first.trim();
     if (title.length > 100) title = title.substring(0, 100).trim();
+    title = _toTitleCase(title);
 
     String body = _stripEmoji(rawBody.trim());
     // Remove any accidental source/hashtag block inside body
@@ -347,6 +421,7 @@ class CuratedPost extends Equatable {
         // Heuristic: treat first line as title if next lines exist
         title = _stripEmoji(first);
         if (title.length > 100) title = title.substring(0, 100).trim();
+        title = _toTitleCase(title);
         body = lines.skip(1).join('\n').trim().replaceAll(RegExp(r'^\n+'), '');
       }
     }

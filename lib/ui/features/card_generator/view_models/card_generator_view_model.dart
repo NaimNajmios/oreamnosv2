@@ -131,7 +131,7 @@ class CardGeneratorViewModel extends Notifier<CardGeneratorState> {
     await extractData(apiKey);
   }
 
-  Future<void> extractData(String apiKey) async {
+  Future<void> extractData(String apiKey, {bool isRefresh = false}) async {
     final b = state.brief;
     if (b == null || b.isEmpty) return;
     if (b.modelId.isEmpty || apiKey.isEmpty) return;
@@ -146,6 +146,7 @@ class CardGeneratorViewModel extends Notifier<CardGeneratorState> {
         modelId: b.modelId,
         apiKey: apiKey,
         template: state.selectedTemplate,
+        isRefresh: isRefresh,
       );
       final polished = repoResult.fold(
         (data) => data,
@@ -159,13 +160,7 @@ class CardGeneratorViewModel extends Notifier<CardGeneratorState> {
         newCardData = polished;
       }
 
-      final suggested = polished.effectiveTemplate;
-      state = state.copyWith(
-        cardData: newCardData,
-        selectedTemplate: suggested != state.selectedTemplate
-            ? suggested
-            : state.selectedTemplate,
-      );
+      state = state.copyWith(cardData: newCardData);
     } catch (e) {
       state = state.copyWith(extractionError: e.toString());
     } finally {
@@ -173,11 +168,21 @@ class CardGeneratorViewModel extends Notifier<CardGeneratorState> {
     }
   }
 
+  Future<void> regenerateAllFields() async {
+    final provider = state.brief?.provider;
+    if (provider == null) return;
+    final apiKey = await _prefsService.getApiKey(provider);
+    if (apiKey == null || apiKey.isEmpty) return;
+
+    _saveSnapshot();
+    await extractData(apiKey, isRefresh: true);
+  }
+
   void setTemplate(CardTemplate template) {
     if (state.selectedTemplate == template) return;
 
     _saveSnapshot();
-    
+
     final currentTemplate = state.cardData?.effectiveTemplate;
 
     state = state.copyWith(
@@ -185,7 +190,9 @@ class CardGeneratorViewModel extends Notifier<CardGeneratorState> {
       cardData: state.cardData?.adaptToTemplate(template),
     );
 
-    if (currentTemplate != null && currentTemplate != template && state.brief != null) {
+    if (currentTemplate != null &&
+        currentTemplate != template &&
+        state.brief != null) {
       _reprocessForTemplate();
     }
   }
@@ -193,7 +200,7 @@ class CardGeneratorViewModel extends Notifier<CardGeneratorState> {
   Future<void> _reprocessForTemplate() async {
     final provider = state.brief?.provider;
     if (provider == null) return;
-    
+
     final apiKey = await _prefsService.getApiKey(provider);
     if (apiKey != null && apiKey.isNotEmpty) {
       await extractData(apiKey);
@@ -319,10 +326,10 @@ class CardGeneratorViewModel extends Notifier<CardGeneratorState> {
   void updateCardField(String key, String value) {
     if (state.cardData == null) return;
     _saveSnapshot();
-    
+
     final json = state.cardData!.toJson();
     json[key] = value.isEmpty ? 'N/A' : value;
-    
+
     try {
       final updatedData = CardData.fromJson(json);
       state = state.copyWith(cardData: updatedData);
@@ -473,7 +480,8 @@ class CardGeneratorViewModel extends Notifier<CardGeneratorState> {
     } catch (e) {
       state = state.copyWith(rewriteError: e.toString());
     } finally {
-      final endRewriting = Set<String>.from(state.rewritingFields)..remove(field);
+      final endRewriting = Set<String>.from(state.rewritingFields)
+        ..remove(field);
       state = state.copyWith(rewritingFields: endRewriting);
     }
   }

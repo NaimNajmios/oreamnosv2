@@ -4,6 +4,7 @@ import 'package:google_fonts/google_fonts.dart';
 import '../../../../../domain/models/card_config.dart';
 import '../../../../../domain/models/card_data.dart';
 import '../../../../../data/services/gradient_builder.dart';
+import '../editable_canvas_text.dart';
 
 class PlayerSpotlightCanvas extends StatelessWidget {
   const PlayerSpotlightCanvas({
@@ -87,8 +88,9 @@ class PlayerSpotlightCanvas extends StatelessWidget {
                   ],
                 ),
                 const Spacer(),
-                Text(
+                EditableCanvasText(
                   data.playerName,
+                  fieldKey: 'playerName',
                   style: config.font(
                     color: Colors.white,
                     fontSize: 26 * fontMultiplier,
@@ -103,8 +105,8 @@ class PlayerSpotlightCanvas extends StatelessWidget {
                           ]
                         : null,
                   ),
-                  maxLines: 2,
-                  overflow: TextOverflow.ellipsis,
+                  maxLines: 3,
+                  minFontSize: 12,
                 ),
                 const SizedBox(height: 6),
                 Row(

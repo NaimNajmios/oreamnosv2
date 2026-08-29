@@ -4,6 +4,7 @@ import 'package:google_fonts/google_fonts.dart';
 import '../../../../../domain/models/card_config.dart';
 import '../../../../../domain/models/card_data.dart';
 import '../../../../../data/services/gradient_builder.dart';
+import '../editable_canvas_text.dart';
 
 class MatchPreviewCanvas extends StatelessWidget {
   const MatchPreviewCanvas({
@@ -93,8 +94,9 @@ class MatchPreviewCanvas extends StatelessWidget {
                       Expanded(
                         child: Column(
                           children: [
-                            Text(
+                            EditableCanvasText(
                               data.homeTeam,
+                              fieldKey: 'homeTeam',
                               style: config.font(
                                 color: Colors.white,
                                 fontSize: 16 * fontMultiplier,
@@ -102,6 +104,7 @@ class MatchPreviewCanvas extends StatelessWidget {
                               ),
                               textAlign: TextAlign.center,
                               maxLines: 2,
+                              minFontSize: 10,
                             ),
                             if (data.homeForm != 'N/A') ...[
                               const SizedBox(height: 6),
@@ -140,8 +143,9 @@ class MatchPreviewCanvas extends StatelessWidget {
                       Expanded(
                         child: Column(
                           children: [
-                            Text(
+                            EditableCanvasText(
                               data.awayTeam,
+                              fieldKey: 'awayTeam',
                               style: config.font(
                                 color: Colors.white,
                                 fontSize: 16 * fontMultiplier,
@@ -149,6 +153,7 @@ class MatchPreviewCanvas extends StatelessWidget {
                               ),
                               textAlign: TextAlign.center,
                               maxLines: 2,
+                              minFontSize: 10,
                             ),
                             if (data.awayForm != 'N/A') ...[
                               const SizedBox(height: 6),

@@ -4,10 +4,11 @@ import 'package:oreamnos/domain/services/card_prompt_manager.dart';
 
 void main() {
   group('CardPromptManager', () {
-    test('systemPrompt contains N/A and template_intent', () {
+    test('systemPrompt contains empty string handling and template_intent', () {
       final s = CardPromptManager.buildSystemPrompt();
-      expect(s, contains('N/A'));
+      expect(s, contains('empty string'));
       expect(s, contains('template_intent'));
+      expect(s, contains('sentence case'));
     });
     test('buildPrompt for each template contains intent', () {
       for (final t in CardTemplate.all) {

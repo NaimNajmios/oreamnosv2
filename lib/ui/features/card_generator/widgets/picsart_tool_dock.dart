@@ -219,43 +219,43 @@ class _PicsartToolDockState extends ConsumerState<PicsartToolDock> {
         mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-        // Panel Header
-        Padding(
-          padding: const EdgeInsets.only(left: 8, right: 8, top: 4),
-          child: Row(
-            children: [
-              IconButton(
-                icon: const Icon(Icons.close_rounded),
-                onPressed: () => _setPanel(null),
-              ),
-              Expanded(
-                child: Text(
-                  title,
-                  textAlign: TextAlign.center,
-                  style: theme.textTheme.titleSmall?.copyWith(
-                    fontWeight: FontWeight.w600,
+          // Panel Header
+          Padding(
+            padding: const EdgeInsets.only(left: 8, right: 8, top: 4),
+            child: Row(
+              children: [
+                IconButton(
+                  icon: const Icon(Icons.close_rounded),
+                  onPressed: () => _setPanel(null),
+                ),
+                Expanded(
+                  child: Text(
+                    title,
+                    textAlign: TextAlign.center,
+                    style: theme.textTheme.titleSmall?.copyWith(
+                      fontWeight: FontWeight.w600,
+                    ),
                   ),
                 ),
-              ),
-              IconButton(
-                icon: const Icon(Icons.check_rounded),
-                onPressed: () => _setPanel(null),
-              ),
-            ],
+                IconButton(
+                  icon: const Icon(Icons.check_rounded),
+                  onPressed: () => _setPanel(null),
+                ),
+              ],
+            ),
           ),
-        ),
-        const Divider(height: 1),
-        // Panel Content
-        Flexible(
-          child: SingleChildScrollView(
-            padding: const EdgeInsets.all(AppSpacing.md),
-            child: content,
+          const Divider(height: 1),
+          // Panel Content
+          Flexible(
+            child: SingleChildScrollView(
+              padding: const EdgeInsets.all(AppSpacing.md),
+              child: content,
+            ),
           ),
-        ),
-      ],
-    ),
-  );
-}
+        ],
+      ),
+    );
+  }
 
   Widget _buildTemplatesPanel(ThemeData theme) {
     final state = ref.watch(cardGeneratorViewModelProvider);
@@ -391,33 +391,36 @@ class _PicsartToolDockState extends ConsumerState<PicsartToolDock> {
             spacing: 8,
             runSpacing: 8,
             alignment: WrapAlignment.center,
-            children: [
-              Colors.black,
-              Colors.white,
-              Colors.blue[900]!,
-              Colors.red[900]!,
-              Colors.green[900]!,
-              Colors.purple[900]!,
-              Colors.orange[900]!,
-              Colors.grey[900]!,
-            ].map((color) {
-              final isSelected = state.extractedPalette?.first == color;
-              return GestureDetector(
-                onTap: () => notifier.setSolidBackgroundColor(color),
-                child: Container(
-                  width: 32,
-                  height: 32,
-                  decoration: BoxDecoration(
-                    color: color,
-                    shape: BoxShape.circle,
-                    border: Border.all(
-                      color: isSelected ? Colors.amberAccent : Colors.white24,
-                      width: isSelected ? 2 : 1,
+            children:
+                [
+                  Colors.black,
+                  Colors.white,
+                  Colors.blue[900]!,
+                  Colors.red[900]!,
+                  Colors.green[900]!,
+                  Colors.purple[900]!,
+                  Colors.orange[900]!,
+                  Colors.grey[900]!,
+                ].map((color) {
+                  final isSelected = state.extractedPalette?.first == color;
+                  return GestureDetector(
+                    onTap: () => notifier.setSolidBackgroundColor(color),
+                    child: Container(
+                      width: 32,
+                      height: 32,
+                      decoration: BoxDecoration(
+                        color: color,
+                        shape: BoxShape.circle,
+                        border: Border.all(
+                          color: isSelected
+                              ? Colors.amberAccent
+                              : Colors.white24,
+                          width: isSelected ? 2 : 1,
+                        ),
+                      ),
                     ),
-                  ),
-                ),
-              );
-            }).toList(),
+                  );
+                }).toList(),
           ),
         ],
       ],
@@ -478,9 +481,9 @@ class _PicsartToolDockState extends ConsumerState<PicsartToolDock> {
   Widget _buildTextPanel(ThemeData theme) {
     final state = ref.watch(cardGeneratorViewModelProvider);
     final notifier = ref.read(cardGeneratorViewModelProvider.notifier);
-    
+
     if (state.cardData == null) return const SizedBox();
-    
+
     final json = state.cardData!.toJson();
     final stringFields = json.entries
         .where((e) => e.value is String && e.key != 'runtimeType')
@@ -488,28 +491,57 @@ class _PicsartToolDockState extends ConsumerState<PicsartToolDock> {
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
-      children: stringFields.map((entry) {
-        return _DynamicField(
-          key: ValueKey('${state.cardData!.runtimeType}_${entry.key}'),
-          fieldKey: entry.key,
-          initialValue: entry.value as String,
-          onChanged: (v) => notifier.updateCardField(entry.key, v),
-          isRewriting: state.isRewriting(entry.key),
-          onRewrite: () async {
-            final brief = state.brief;
-            if (brief == null) return;
-            final prefs = getIt<PreferencesService>();
-            final apiKey = await prefs.getApiKey(brief.provider);
-            if (apiKey == null || apiKey.isEmpty) return;
-            notifier.rewriteDynamicField(
-              fieldKey: entry.key,
-              provider: brief.provider,
-              modelId: brief.modelId,
-              apiKey: apiKey,
-            );
-          },
-        );
-      }).toList(),
+      children: [
+        Padding(
+          padding: const EdgeInsets.only(bottom: AppSpacing.md),
+          child: FilledButton.tonalIcon(
+            onPressed: state.isExtracting
+                ? null
+                : () async {
+                    await notifier.regenerateAllFields();
+                  },
+            icon: state.isExtracting
+                ? const SizedBox(
+                    width: 16,
+                    height: 16,
+                    child: CircularProgressIndicator(strokeWidth: 2),
+                  )
+                : const Icon(Icons.auto_awesome_rounded, size: 18),
+            label: Text(
+              state.isExtracting ? 'Regenerating...' : 'Regenerate All Fields',
+              style: const TextStyle(fontWeight: FontWeight.w600),
+            ),
+            style: FilledButton.styleFrom(
+              padding: const EdgeInsets.symmetric(vertical: 12),
+              shape: RoundedRectangleBorder(
+                borderRadius: AppSpacing.borderRadiusSm,
+              ),
+            ),
+          ),
+        ),
+        ...stringFields.map((entry) {
+          return _DynamicField(
+            key: ValueKey('${state.cardData!.runtimeType}_${entry.key}'),
+            fieldKey: entry.key,
+            initialValue: entry.value as String,
+            onChanged: (v) => notifier.updateCardField(entry.key, v),
+            isRewriting: state.isRewriting(entry.key),
+            onRewrite: () async {
+              final brief = state.brief;
+              if (brief == null) return;
+              final prefs = getIt<PreferencesService>();
+              final apiKey = await prefs.getApiKey(brief.provider);
+              if (apiKey == null || apiKey.isEmpty) return;
+              notifier.rewriteDynamicField(
+                fieldKey: entry.key,
+                provider: brief.provider,
+                modelId: brief.modelId,
+                apiKey: apiKey,
+              );
+            },
+          );
+        }),
+      ],
     );
   }
 
@@ -798,11 +830,13 @@ class _DynamicField extends StatefulWidget {
 
 class _DynamicFieldState extends State<_DynamicField> {
   late TextEditingController _ctrl;
-  
+
   @override
   void initState() {
     super.initState();
-    _ctrl = TextEditingController(text: widget.initialValue == 'N/A' ? '' : widget.initialValue);
+    _ctrl = TextEditingController(
+      text: widget.initialValue == 'N/A' ? '' : widget.initialValue,
+    );
   }
 
   @override
@@ -810,10 +844,10 @@ class _DynamicFieldState extends State<_DynamicField> {
     super.didUpdateWidget(old);
     final newVal = widget.initialValue == 'N/A' ? '' : widget.initialValue;
     if (_ctrl.text != newVal && !FocusScope.of(context).hasFocus) {
-       _ctrl.text = newVal;
+      _ctrl.text = newVal;
     }
   }
-  
+
   @override
   void dispose() {
     _ctrl.dispose();
@@ -823,7 +857,11 @@ class _DynamicFieldState extends State<_DynamicField> {
   @override
   Widget build(BuildContext context) {
     // Capitalize fieldKey for label
-    final label = widget.fieldKey.substring(0, 1).toUpperCase() + widget.fieldKey.substring(1).replaceAllMapped(RegExp(r'[A-Z]'), (m) => ' ${m[0]}');
+    final label =
+        widget.fieldKey.substring(0, 1).toUpperCase() +
+        widget.fieldKey
+            .substring(1)
+            .replaceAllMapped(RegExp(r'[A-Z]'), (m) => ' ${m[0]}');
     return Padding(
       padding: const EdgeInsets.only(bottom: AppSpacing.md),
       child: _Field(

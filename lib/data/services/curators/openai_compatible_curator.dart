@@ -194,6 +194,7 @@ class OpenAICompatibleCurator implements IContentCurator {
     required String apiKey,
   }) async {
     try {
+      final safeText = text.replaceAll('<<<FIELD>>>', '[FIELD]').replaceAll('<<<END>>>', '[END]');
       final response = await _client.post(
         '$baseUrl/chat/completions',
         options: Options(extra: {'apiKey': apiKey, 'provider': 'openai'}),
@@ -203,17 +204,25 @@ class OpenAICompatibleCurator implements IContentCurator {
             {
               "role": "system",
               "content":
-                  "You are a copy editor for a sports media brand. Rewrite the following $fieldName text to be concise, grammatically correct, and suitable for a social media graphic. Return ONLY the rewritten text, with no quotes or extra formatting.",
+                  "You are a concise Bahasa Malaysia copy editor for sports. Keep football terms in English in sentence case (e.g. \"clean sheet\", not \"CLEAN SHEET\"). Return ONLY the rewritten text, no quotes or extra formatting.",
             },
-            {"role": "user", "content": text},
+            {
+              "role": "user",
+              "content": 'Rewrite the $fieldName below into concise, grammatically correct Bahasa Malaysia for a social graphic. No emoji, no quotes.\n\n<<<FIELD>>>\n$safeText\n<<<END>>>',
+            },
           ],
-          "temperature": 0.7,
+          "temperature": 0.5,
         },
       );
 
       final data = response.data;
       final rewrittenText = data['choices'][0]['message']['content'] as String;
       return rewrittenText.trim();
+    } on DioException catch (e) {
+      if (e.requestOptions.extra.containsKey('failure')) {
+        throw e.requestOptions.extra['failure'] as Failure;
+      }
+      rethrow;
     } catch (e) {
       throw Exception('Failed to rewrite field: $e');
     }

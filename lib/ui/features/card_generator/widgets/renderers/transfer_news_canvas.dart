@@ -5,6 +5,8 @@ import '../../../../../domain/models/card_config.dart';
 import '../../../../../domain/models/card_data.dart';
 import '../../../../../data/services/gradient_builder.dart';
 
+import '../editable_canvas_text.dart';
+
 class TransferNewsCanvas extends StatelessWidget {
   const TransferNewsCanvas({
     super.key,
@@ -76,8 +78,9 @@ class TransferNewsCanvas extends StatelessWidget {
                   ],
                 ),
                 const Spacer(),
-                Text(
+                EditableCanvasText(
                   data.playerName,
+                  fieldKey: 'playerName',
                   style: config.font(
                     color: Colors.white,
                     fontSize: 26 * fontMultiplier,
@@ -92,6 +95,8 @@ class TransferNewsCanvas extends StatelessWidget {
                           ]
                         : null,
                   ),
+                  maxLines: 3,
+                  minFontSize: 12,
                 ),
                 const SizedBox(height: 12),
                 // Transfer Route: From -> To
@@ -121,17 +126,18 @@ class TransferNewsCanvas extends StatelessWidget {
                                 fontWeight: FontWeight.w700,
                               ),
                             ),
-                            Text(
+                            EditableCanvasText(
                               data.fromTeam != 'N/A'
                                   ? data.fromTeam
                                   : 'Current Club',
+                              fieldKey: 'fromTeam',
                               style: config.font(
                                 color: Colors.white,
                                 fontSize: 13,
                                 fontWeight: FontWeight.w700,
                               ),
                               maxLines: 1,
-                              overflow: TextOverflow.ellipsis,
+                              minFontSize: 9,
                             ),
                           ],
                         ),
@@ -141,12 +147,12 @@ class TransferNewsCanvas extends StatelessWidget {
                         child: Icon(
                           Icons.arrow_forward_rounded,
                           color: Colors.greenAccent,
-                          size: 20,
+                          size: 18,
                         ),
                       ),
                       Expanded(
                         child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.end,
+                          crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
                             Text(
                               'TO',
@@ -156,15 +162,16 @@ class TransferNewsCanvas extends StatelessWidget {
                                 fontWeight: FontWeight.w700,
                               ),
                             ),
-                            Text(
+                            EditableCanvasText(
                               data.toTeam != 'N/A' ? data.toTeam : 'New Club',
+                              fieldKey: 'toTeam',
                               style: config.font(
                                 color: Colors.white,
                                 fontSize: 13,
                                 fontWeight: FontWeight.w700,
                               ),
                               maxLines: 1,
-                              overflow: TextOverflow.ellipsis,
+                              minFontSize: 9,
                             ),
                           ],
                         ),

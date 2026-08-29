@@ -4,6 +4,7 @@ import 'package:google_fonts/google_fonts.dart';
 import '../../../../../domain/models/card_config.dart';
 import '../../../../../domain/models/card_data.dart';
 import '../../../../../data/services/gradient_builder.dart';
+import '../editable_canvas_text.dart';
 
 class HeadlineQuoteCanvas extends StatelessWidget {
   const HeadlineQuoteCanvas({
@@ -74,10 +75,13 @@ class HeadlineQuoteCanvas extends StatelessWidget {
                     fontWeight: FontWeight.w900,
                   ),
                 ),
-                Text(
+                EditableCanvasText(
                   data.subtext.isNotEmpty && data.subtext != 'N/A'
                       ? data.subtext
                       : data.headline,
+                  fieldKey: data.subtext.isNotEmpty && data.subtext != 'N/A'
+                      ? 'subtext'
+                      : 'headline',
                   style: config.font(
                     color: Colors.white,
                     fontSize: 20 * fontMultiplier,
@@ -93,8 +97,8 @@ class HeadlineQuoteCanvas extends StatelessWidget {
                           ]
                         : null,
                   ),
-                  maxLines: 5,
-                  overflow: TextOverflow.ellipsis,
+                  maxLines: 6,
+                  minFontSize: 11,
                 ),
                 const SizedBox(height: 16),
                 // Author Byline
@@ -106,17 +110,20 @@ class HeadlineQuoteCanvas extends StatelessWidget {
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          Text(
+                          EditableCanvasText(
                             data.quoteAuthor != 'N/A'
                                 ? data.quoteAuthor
                                 : data.headline,
+                            fieldKey: data.quoteAuthor != 'N/A'
+                                ? 'quoteAuthor'
+                                : 'headline',
                             style: config.font(
                               color: Colors.white,
                               fontSize: 14,
                               fontWeight: FontWeight.w800,
                             ),
                             maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
+                            minFontSize: 10,
                           ),
                           if (data.authorTitle != 'N/A')
                             Text(

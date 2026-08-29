@@ -140,7 +140,8 @@ class SocialPostCanvas extends StatelessWidget {
                 EditableCanvasText(
                   data.content,
                   fieldKey: 'headline',
-                  autoSize: false,
+                  autoSize: true,
+                  minFontSize: 10,
                   style: config.font(
                     color: Colors.white,
                     fontSize: 18 * fontMultiplier,
@@ -155,7 +156,7 @@ class SocialPostCanvas extends StatelessWidget {
                           ]
                         : null,
                   ),
-                  maxLines: 6,
+                  maxLines: 8,
                 ),
                 const SizedBox(height: 16),
                 // Metrics

@@ -503,7 +503,11 @@ class GenerateViewModel extends ChangeNotifier with WidgetsBindingObserver {
             'Please copy the tweet text directly and paste it here.\n\n'
             'Tip: Tap "..." on the tweet → "Copy text"';
         notifyListeners();
-      } else if (e is RateLimitFailure) {
+      } else if (e is RateLimitFailure ||
+          e.toString().contains('429') ||
+          e.toString().toLowerCase().contains('rate limit') ||
+          e.toString().toLowerCase().contains('quota') ||
+          e.toString().toLowerCase().contains('resource_exhausted')) {
         _errorMessage =
             'Rate limit exceeded for ${provider.displayName}. Try another provider.';
         _suggestedFallbackProvider = _getNextProvider(provider);

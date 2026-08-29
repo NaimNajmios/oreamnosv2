@@ -148,11 +148,12 @@ class CardDataExtractor {
     CardTemplate requested,
     CardBrief brief,
   ) {
-    // Intent routing
+    // If a specific template was requested by the user, honor it.
+    // Otherwise fallback to LLM intent classification.
     final intent = json['template_intent'] as String?;
-    final CardTemplate effective = intent != null
-        ? CardTemplate.fromIntent(intent)
-        : requested;
+    final CardTemplate effective = (requested != CardTemplate.socialPost)
+        ? requested
+        : (intent != null ? CardTemplate.fromIntent(intent) : requested);
 
     // Helper to pad stats to exactly 3
     // ignore: no_leading_underscores_for_local_identifiers
@@ -175,28 +176,47 @@ class CardDataExtractor {
     final sparseHeadline = _s(
       json,
       'headline',
-      brief.headline.isEmpty ? 'N/A' : brief.headline,
+      _s(
+        json,
+        'title',
+        _s(json, 'playerName', brief.headline.isEmpty ? 'N/A' : brief.headline),
+      ),
     );
     final sparseSubtext = _s(
       json,
       'subtext',
-      brief.subtext.isEmpty ? 'N/A' : brief.subtext,
+      _s(
+        json,
+        'keyQuote',
+        _s(
+          json,
+          'quote',
+          _s(json, 'content', brief.subtext.isEmpty ? 'N/A' : brief.subtext),
+        ),
+      ),
     );
     final sparseMicro =
-        json['microStat'] as String? ?? json['keyAction'] as String?;
+        json['microStat'] as String? ??
+        json['keyAction'] as String? ??
+        json['action'] as String? ??
+        json['fee'] as String?;
 
     switch (effective) {
       case CardTemplate.playerSpotlight:
         return CardData.playerSpotlight(
-          playerName: _s(json, 'playerName', sparseHeadline),
-          club: _s(json, 'club'),
-          position: _s(json, 'position'),
+          playerName: _s(
+            json,
+            'playerName',
+            _s(json, 'name', _s(json, 'player', sparseHeadline)),
+          ),
+          club: _s(json, 'club', _s(json, 'team', _s(json, 'fromTeam', 'N/A'))),
+          position: _s(json, 'position', _s(json, 'pos', 'N/A')),
           rating: _d(json, 'rating'),
           goals: _i(json, 'goals'),
           assists: _i(json, 'assists'),
           minutesPlayed: _i(json, 'minutesPlayed'),
           keyAction: sparseMicro ?? _s(json, 'keyAction'),
-          keyQuote: _s(json, 'keyQuote', sparseSubtext),
+          keyQuote: _s(json, 'keyQuote', _s(json, 'quote', sparseSubtext)),
           nationality: _s(json, 'nationality'),
           appearances: _i(json, 'appearances'),
           cleanSheets: _i(json, 'cleanSheets'),
@@ -208,10 +228,22 @@ class CardDataExtractor {
         return CardData.headlineQuote(
           headline: _s(json, 'headline', sparseHeadline),
           subtext: _s(json, 'subtext', sparseSubtext),
-          quoteAuthor: _s(json, 'quoteAuthor'),
-          authorTitle: _s(json, 'authorTitle'),
-          category: _s(json, 'category'),
-          relatedTeams: _s(json, 'relatedTeams'),
+          quoteAuthor: _s(
+            json,
+            'quoteAuthor',
+            _s(
+              json,
+              'author',
+              _s(json, 'speaker', _s(json, 'playerName', 'N/A')),
+            ),
+          ),
+          authorTitle: _s(
+            json,
+            'authorTitle',
+            _s(json, 'title', _s(json, 'club', 'N/A')),
+          ),
+          category: _s(json, 'category', sparseMicro ?? 'N/A'),
+          relatedTeams: _s(json, 'relatedTeams', _s(json, 'club', 'N/A')),
           suggestedTemplate: effective,
         );
       case CardTemplate.topStats:
@@ -222,13 +254,25 @@ class CardDataExtractor {
         );
       case CardTemplate.transferNews:
         return CardData.transferNews(
-          playerName: _s(json, 'playerName', sparseHeadline),
-          action: _s(json, 'action'),
-          fromTeam: _s(json, 'fromTeam'),
-          toTeam: _s(json, 'toTeam'),
+          playerName: _s(
+            json,
+            'playerName',
+            _s(json, 'player', _s(json, 'name', sparseHeadline)),
+          ),
+          action: _s(json, 'action', 'TRANSFER ALERT'),
+          fromTeam: _s(
+            json,
+            'fromTeam',
+            _s(json, 'currentClub', _s(json, 'club', 'N/A')),
+          ),
+          toTeam: _s(
+            json,
+            'toTeam',
+            _s(json, 'newClub', _s(json, 'destinationTeam', 'N/A')),
+          ),
           fee: _s(json, 'fee', sparseMicro ?? 'N/A'),
           contractLength: _s(json, 'contractLength'),
-          transferType: _s(json, 'transferType'),
+          transferType: _s(json, 'transferType', _s(json, 'type', 'N/A')),
           quote: _s(json, 'quote', sparseSubtext),
           feeCategory: _s(json, 'feeCategory'),
           medicalCompleted: json['medicalCompleted'] == true,
@@ -247,9 +291,9 @@ class CardDataExtractor {
         );
       case CardTemplate.matchPreview:
         return CardData.matchPreview(
-          competition: _s(json, 'competition'),
-          homeTeam: _s(json, 'homeTeam', 'N/A'),
-          awayTeam: _s(json, 'awayTeam', 'N/A'),
+          competition: _s(json, 'competition', 'N/A'),
+          homeTeam: _s(json, 'homeTeam', _s(json, 'team1', 'N/A')),
+          awayTeam: _s(json, 'awayTeam', _s(json, 'team2', 'N/A')),
           homeForm: _s(json, 'homeForm'),
           awayForm: _s(json, 'awayForm'),
           matchTime: _s(json, 'matchTime'),

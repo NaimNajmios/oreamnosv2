@@ -57,28 +57,36 @@ class GeminiCurator implements IContentCurator {
     final path =
         'https://generativelanguage.googleapis.com/v1beta/$actualModelId:generateContent';
 
-    final response = await _client.post(
-      path,
-      data: {
-        "system_instruction": {
-          "parts": [
-            {"text": systemPrompt},
-          ],
-        },
-        "contents": [
-          {
+    Response response;
+    try {
+      response = await _client.post(
+        path,
+        data: {
+          "system_instruction": {
             "parts": [
-              {"text": userPrompt},
+              {"text": systemPrompt},
             ],
           },
-        ],
-        "generationConfig": {
-          "temperature": 0.7,
-          "responseMimeType": "application/json",
+          "contents": [
+            {
+              "parts": [
+                {"text": userPrompt},
+              ],
+            },
+          ],
+          "generationConfig": {
+            "temperature": 0.7,
+            "responseMimeType": "application/json",
+          },
         },
-      },
-      options: Options(extra: {'apiKey': apiKey, 'provider': 'gemini'}),
-    );
+        options: Options(extra: {'apiKey': apiKey, 'provider': 'gemini'}),
+      );
+    } on DioException catch (e) {
+      if (e.requestOptions.extra.containsKey('failure')) {
+        throw e.requestOptions.extra['failure'] as Failure;
+      }
+      rethrow;
+    }
 
     if (response.statusCode != 200) {
       throw Exception(
@@ -227,9 +235,13 @@ class GeminiCurator implements IContentCurator {
     required String apiKey,
   }) async {
     try {
+      final safeText = text.replaceAll('<<<FIELD>>>', '[FIELD]').replaceAll('<<<END>>>', '[END]');
       final prompt =
-          'Rewrite the following $fieldName text to be concise, grammatically correct, and suitable for a social media graphic. Return ONLY the rewritten text, with no quotes or extra formatting.\n\nText: $text';
-
+          'You are a sports copy editor for Malaysian Malay (Bahasa Malaysia) audience.\n'
+          'Rewrite the $fieldName below to be concise, grammatically correct Bahasa Malaysia, suitable for a social media graphic.\n'
+          'Keep football terms in English in sentence case (e.g. "clean sheet", "hat-trick", not "CLEAN SHEET"). No emoji, no quotes, no extra formatting.\n'
+          'Return ONLY the rewritten text.\n\n'
+          '<<<FIELD>>>\n$safeText\n<<<END>>>';
       final actualModelId = modelId.startsWith('models/')
           ? modelId
           : 'models/$modelId';
@@ -238,6 +250,11 @@ class GeminiCurator implements IContentCurator {
       final response = await _client.post(
         path,
         data: {
+          "system_instruction": {
+            "parts": [
+              {"text": 'You are a concise Bahasa Malaysia copy editor. Output only the rewritten text, no quotes or formatting.'},
+            ],
+          },
           "contents": [
             {
               "parts": [
@@ -245,6 +262,10 @@ class GeminiCurator implements IContentCurator {
               ],
             },
           ],
+          "generationConfig": {
+            "temperature": 0.5,
+            "maxOutputTokens": 256,
+          },
         },
         options: Options(extra: {'apiKey': apiKey, 'provider': 'gemini'}),
       );
@@ -253,6 +274,11 @@ class GeminiCurator implements IContentCurator {
       final rewrittenText =
           data['candidates'][0]['content']['parts'][0]['text'] as String;
       return rewrittenText.trim();
+    } on DioException catch (e) {
+      if (e.requestOptions.extra.containsKey('failure')) {
+        throw e.requestOptions.extra['failure'] as Failure;
+      }
+      rethrow;
     } catch (e) {
       throw Exception('Failed to rewrite field: $e');
     }

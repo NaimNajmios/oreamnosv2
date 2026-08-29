@@ -12,8 +12,8 @@ void main() {
     });
     test('buildSystemPrompt without source has no source line', () {
       final s = GenerationPromptManager.buildSystemPrompt();
-      expect(s, contains('Jika tiada URL diberikan'));
-      expect(s, isNot(contains('Sumber input ialah URL')));
+      expect(s, contains('If no URL is provided'));
+      expect(s, isNot(contains('Input source URL is:')));
     });
     test('buildUserPrompt handles string', () {
       final p = GenerationPromptManager.buildUserPrompt('Hello news');

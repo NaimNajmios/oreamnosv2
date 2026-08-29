@@ -31,8 +31,10 @@ class GradientBuilder {
     return LinearGradient(
       begin: Alignment.topCenter,
       end: Alignment.bottomCenter,
+      stops: const [0.0, 0.4, 1.0],
       colors: [
-        Colors.transparent,
+        Colors.black.withValues(alpha: opacity * 0.25),
+        Colors.black.withValues(alpha: opacity * 0.55),
         Colors.black.withValues(alpha: opacity),
       ],
     );

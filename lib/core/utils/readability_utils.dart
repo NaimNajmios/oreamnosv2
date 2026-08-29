@@ -25,7 +25,8 @@ class ReadabilityUtils {
 
     // Flesch-Kincaid Grade Level Formula
     // 0.39 * (total words / total sentences) + 11.8 * (total syllables / total words) - 15.59
-    final score = 0.39 * (words / sentences) + 11.8 * (syllables / words) - 15.59;
+    final score =
+        0.39 * (words / sentences) + 11.8 * (syllables / words) - 15.59;
     return score < 0 ? 0.0 : double.parse(score.toStringAsFixed(1));
   }
 

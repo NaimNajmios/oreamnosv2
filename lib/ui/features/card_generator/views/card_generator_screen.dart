@@ -317,9 +317,11 @@ class _CardGeneratorScreenState extends ConsumerState<CardGeneratorScreen> {
                       fontSizeMultiplier: state.headlineScale,
                       overlayOpacity: state.scrimOpacity,
                       showScrim: true,
-                      scrimType: state.useVignette
+                      scrimType: state.backgroundImage != null
                           ? ScrimType.dark
-                          : ScrimType.minimal,
+                          : (state.useVignette
+                                ? ScrimType.dark
+                                : ScrimType.minimal),
                       backgroundImagePath: state.backgroundImage?.path,
                       useAutoPalette: state.useAutoPalette,
                       colorPair: state.extractedPalette != null

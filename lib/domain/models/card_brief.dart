@@ -14,6 +14,9 @@ class CardBrief extends Equatable {
   /// Optional single proof token e.g. "Hat-trick • 90'" or "" — mined by LLM or null.
   final String? microStat;
 
+  /// Optional full text body for rich template extraction
+  final String? fullText;
+
   final AiProvider provider;
   final String modelId;
 
@@ -21,27 +24,36 @@ class CardBrief extends Equatable {
     required this.headline,
     required this.subtext,
     this.microStat,
+    this.fullText,
     required this.provider,
     required this.modelId,
   });
 
-  /// Compact prompt context for extractor — not the full article.
+  /// Rich prompt context for extractor — gives full article context when available.
   String get promptContext {
     final parts = <String>[];
-    if (headline.trim().isNotEmpty) parts.add(headline.trim());
-    if (subtext.trim().isNotEmpty) parts.add(subtext.trim());
+    if (headline.trim().isNotEmpty) parts.add('Headline: ${headline.trim()}');
+    if (fullText != null && fullText!.trim().isNotEmpty) {
+      parts.add('Body:\n${fullText!.trim()}');
+    } else if (subtext.trim().isNotEmpty) {
+      parts.add('Body:\n${subtext.trim()}');
+    }
     if (microStat != null && microStat!.trim().isNotEmpty) {
-      parts.add(microStat!.trim());
+      parts.add('Micro Proof: ${microStat!.trim()}');
     }
     return parts.join('\n\n');
   }
 
-  bool get isEmpty => headline.trim().isEmpty && subtext.trim().isEmpty;
+  bool get isEmpty =>
+      headline.trim().isEmpty &&
+      subtext.trim().isEmpty &&
+      (fullText == null || fullText!.trim().isEmpty);
 
   CardBrief copyWith({
     String? headline,
     String? subtext,
     String? microStat,
+    String? fullText,
     AiProvider? provider,
     String? modelId,
   }) {
@@ -49,6 +61,7 @@ class CardBrief extends Equatable {
       headline: headline ?? this.headline,
       subtext: subtext ?? this.subtext,
       microStat: microStat ?? this.microStat,
+      fullText: fullText ?? this.fullText,
       provider: provider ?? this.provider,
       modelId: modelId ?? this.modelId,
     );
@@ -61,6 +74,7 @@ class CardBrief extends Equatable {
       subtext:
           (json['subtext'] as String?) ?? (json['subtitle'] as String?) ?? '',
       microStat: json['microStat'] as String?,
+      fullText: json['fullText'] as String?,
       provider: _providerFromString(json['provider'] as String?),
       modelId: (json['modelId'] as String?) ?? '',
     );
@@ -70,6 +84,7 @@ class CardBrief extends Equatable {
     'headline': headline,
     'subtext': subtext,
     'microStat': microStat,
+    if (fullText != null) 'fullText': fullText,
     'provider': provider.name,
     'modelId': modelId,
   };
@@ -83,7 +98,7 @@ class CardBrief extends Equatable {
   }
 
   /// Build a brief from a CuratedPost-like title/body pair.
-  /// Truncates headline to 60 chars at word boundary, subtext to first sentence ≤90.
+  /// Truncates headline to 80 chars at word boundary, subtext to first sentence ≤120, and attaches full body.
   static CardBrief fromPost({
     required String title,
     required String bodyMarkdown,
@@ -96,6 +111,7 @@ class CardBrief extends Equatable {
       headline: headline,
       subtext: subtext,
       microStat: null,
+      fullText: bodyMarkdown.trim(),
       provider: provider,
       modelId: modelId,
     );
@@ -136,5 +152,12 @@ class CardBrief extends Equatable {
   }
 
   @override
-  List<Object?> get props => [headline, subtext, microStat, provider, modelId];
+  List<Object?> get props => [
+    headline,
+    subtext,
+    microStat,
+    fullText,
+    provider,
+    modelId,
+  ];
 }

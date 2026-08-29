@@ -489,28 +489,65 @@ extension CardDataCopy on CardData {
     final h = headline;
     final s = subtext;
     final m = microStat ?? 'N/A';
+
+    // Smart context extraction from existing data if available
+    String smartPlayerName = h;
+    String smartClub = 'N/A';
+    String smartQuote = s.isEmpty ? 'N/A' : s;
+    String smartCategory = m;
+
+    if (this is PlayerSpotlight) {
+      final p = this as PlayerSpotlight;
+      if (p.playerName != 'N/A') smartPlayerName = p.playerName;
+      if (p.club != 'N/A') smartClub = p.club;
+      if (p.keyQuote != 'N/A') smartQuote = p.keyQuote;
+      if (p.keyAction != 'N/A') smartCategory = p.keyAction;
+    } else if (this is TransferNews) {
+      final t = this as TransferNews;
+      if (t.playerName != 'N/A') smartPlayerName = t.playerName;
+      if (t.fromTeam != 'N/A') smartClub = t.fromTeam;
+      if (t.quote != 'N/A') smartQuote = t.quote;
+      if (t.fee != 'N/A') smartCategory = t.fee;
+    } else if (this is HeadlineQuote) {
+      final q = this as HeadlineQuote;
+      if (q.quoteAuthor != 'N/A') smartPlayerName = q.quoteAuthor;
+      if (q.authorTitle != 'N/A') smartClub = q.authorTitle;
+      if (q.subtext != 'N/A') smartQuote = q.subtext;
+      if (q.category != 'N/A') smartCategory = q.category;
+    }
+
     return switch (target) {
       CardTemplate.playerSpotlight =>
         this is PlayerSpotlight
             ? this
             : CardData.playerSpotlight(
-                playerName: h,
-                keyQuote: s.isEmpty ? 'N/A' : s,
-                keyAction: m,
+                playerName: smartPlayerName,
+                club: smartClub,
+                keyQuote: smartQuote,
+                keyAction: smartCategory,
               ),
       CardTemplate.headlineQuote =>
         this is HeadlineQuote
             ? this
-            : CardData.headlineQuote(headline: h, subtext: s, category: m),
+            : CardData.headlineQuote(
+                headline: h,
+                subtext: smartQuote,
+                quoteAuthor: smartPlayerName != h ? smartPlayerName : 'N/A',
+                authorTitle: smartClub,
+                category: smartCategory,
+              ),
       CardTemplate.topStats =>
         this is TopStats ? this : CardData.topStats(matchContext: h),
       CardTemplate.transferNews =>
         this is TransferNews
             ? this
             : CardData.transferNews(
-                playerName: h,
-                quote: s.isEmpty ? 'N/A' : s,
-                fee: m,
+                playerName: smartPlayerName,
+                fromTeam: smartClub,
+                toTeam: 'N/A',
+                quote: smartQuote,
+                fee: smartCategory,
+                action: 'TRANSFER ALERT',
               ),
       CardTemplate.breakingNews =>
         this is BreakingNews
@@ -524,14 +561,14 @@ extension CardDataCopy on CardData {
         this is MatchPreview
             ? this
             : CardData.matchPreview(
-                homeTeam: h,
+                homeTeam: smartClub != 'N/A' ? smartClub : h,
                 awayTeam: s.isEmpty ? 'Opponent' : s,
               ),
       CardTemplate.detailedScoreboard =>
         this is DetailedScoreboard
             ? this
             : CardData.detailedScoreboard(
-                homeTeam: h,
+                homeTeam: smartClub != 'N/A' ? smartClub : h,
                 awayTeam: s.isEmpty ? 'Opponent' : s,
               ),
       CardTemplate.onThisDay =>
@@ -545,14 +582,14 @@ extension CardDataCopy on CardData {
         this is StartingXI
             ? this
             : CardData.startingXI(
-                teamName: h,
+                teamName: smartClub != 'N/A' ? smartClub : h,
                 formation: m == 'N/A' ? '4-3-3' : m,
               ),
       CardTemplate.matchStatsComparison =>
         this is MatchStatsComparison
             ? this
             : CardData.matchStatsComparison(
-                homeTeam: h,
+                homeTeam: smartClub != 'N/A' ? smartClub : h,
                 awayTeam: s.isEmpty ? 'Opponent' : s,
               ),
       CardTemplate.socialPost =>
@@ -567,7 +604,7 @@ extension CardDataCopy on CardData {
         this is Rivalry
             ? this
             : CardData.rivalry(
-                player1Name: h,
+                player1Name: smartPlayerName,
                 player2Name: s.isEmpty ? 'Rival' : s,
               ),
       CardTemplate.tableStandings =>
@@ -581,14 +618,14 @@ extension CardDataCopy on CardData {
         this is InjuryReport
             ? this
             : CardData.injuryReport(
-                teamName: h,
+                teamName: smartClub != 'N/A' ? smartClub : h,
                 nextMatch: s.isEmpty ? 'N/A' : s,
               ),
       CardTemplate.contractExpiry =>
         this is ContractExpiry
             ? this
             : CardData.contractExpiry(
-                teamName: h,
+                teamName: smartClub != 'N/A' ? smartClub : h,
                 seasonYear: s.isEmpty ? 'N/A' : s,
               ),
       CardTemplate.awardNominee =>

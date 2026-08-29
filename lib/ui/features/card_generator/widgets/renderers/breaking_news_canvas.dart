@@ -5,6 +5,8 @@ import '../../../../../domain/models/card_config.dart';
 import '../../../../../domain/models/card_data.dart';
 import '../../../../../data/services/gradient_builder.dart';
 
+import '../editable_canvas_text.dart';
+
 class BreakingNewsCanvas extends StatelessWidget {
   const BreakingNewsCanvas({
     super.key,
@@ -84,8 +86,9 @@ class BreakingNewsCanvas extends StatelessWidget {
                   ),
                 ),
                 const Spacer(),
-                Text(
+                EditableCanvasText(
                   data.headline,
+                  fieldKey: 'headline',
                   style: config.font(
                     color: Colors.white,
                     fontSize: 26 * fontMultiplier,
@@ -102,19 +105,20 @@ class BreakingNewsCanvas extends StatelessWidget {
                         : null,
                   ),
                   maxLines: 4,
-                  overflow: TextOverflow.ellipsis,
+                  minFontSize: 12,
                 ),
                 if (data.subtext.isNotEmpty && data.subtext != 'N/A') ...[
                   const SizedBox(height: 12),
-                  Text(
+                  EditableCanvasText(
                     data.subtext,
+                    fieldKey: 'subtext',
                     style: config.font(
                       color: Colors.white.withValues(alpha: 0.85),
                       fontSize: 13,
                       height: 1.3,
                     ),
                     maxLines: 3,
-                    overflow: TextOverflow.ellipsis,
+                    minFontSize: 9,
                   ),
                 ],
                 const SizedBox(height: 16),
