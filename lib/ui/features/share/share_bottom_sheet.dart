@@ -27,7 +27,7 @@ class _ShareBottomSheetState extends ConsumerState<ShareBottomSheet> {
   @override
   void initState() {
     super.initState();
-    _selectedTone = ref.read(settingsViewModelProvider.notifier).toneMode;
+    _selectedTone = ref.read(settingsViewModelProvider).toneMode;
   }
 
   void _generate() {

@@ -18,8 +18,9 @@ class ProviderSelectionDialog extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final theme = Theme.of(context);
-    final viewModel = ref.watch(settingsViewModelProvider);
-    final currentProvider = viewModel.selectedProvider;
+    final state = ref.watch(settingsViewModelProvider);
+    final notifier = ref.read(settingsViewModelProvider.notifier);
+    final currentProvider = state.selectedProvider;
 
     return Dialog(
       shape: RoundedRectangleBorder(
@@ -59,7 +60,7 @@ class ProviderSelectionDialog extends ConsumerWidget {
                   child: InkWell(
                     onTap: () {
                       Haptics.selectionClick();
-                      viewModel.setSelectedProvider(provider);
+                      notifier.setSelectedProvider(provider);
                       Navigator.of(context).pop();
                     },
                     borderRadius: AppSpacing.borderRadiusSm,

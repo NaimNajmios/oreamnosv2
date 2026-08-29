@@ -16,8 +16,9 @@ class HashtagManagerScreen extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final viewModel = ref.watch(settingsViewModelProvider);
-    final groups = viewModel.hashtagGroups;
+    final state = ref.watch(settingsViewModelProvider);
+    final notifier = ref.read(settingsViewModelProvider.notifier);
+    final groups = state.hashtagGroups;
     final theme = Theme.of(context);
 
     return Scaffold(
@@ -130,9 +131,9 @@ class HashtagManagerScreen extends ConsumerWidget {
                             onSelected: (value) {
                               Haptics.selectionClick();
                               if (value == 'default') {
-                                viewModel.setDefaultHashtagGroup(group.id);
+                                notifier.setDefaultHashtagGroup(group.id);
                               } else if (value == 'delete') {
-                                viewModel.removeHashtagGroup(group);
+                                notifier.removeHashtagGroup(group);
                               }
                             },
                             itemBuilder: (context) => [

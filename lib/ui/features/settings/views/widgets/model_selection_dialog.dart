@@ -4,6 +4,9 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:oreamnos/config/theme/app_spacing.dart';
 import 'package:oreamnos/data/models/ai_model.dart';
 import 'package:oreamnos/data/models/ai_provider.dart';
+
+import '../../view_models/settings_state.dart';
+
 import 'package:oreamnos/data/services/provider_api_service.dart';
 import 'package:oreamnos/ui/core/utils/haptics.dart';
 import 'package:oreamnos/ui/core/widgets/app_input.dart';
@@ -85,7 +88,7 @@ class _ModelSelectionDialogState extends ConsumerState<ModelSelectionDialog> {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final viewModel = ref.watch(settingsViewModelProvider);
+    final state = ref.watch(settingsViewModelProvider);
 
     return Dialog(
       shape: RoundedRectangleBorder(
@@ -125,7 +128,7 @@ class _ModelSelectionDialogState extends ConsumerState<ModelSelectionDialog> {
                 ),
                 const SizedBox(height: AppSpacing.md),
               ],
-              Expanded(child: _buildContent(theme, viewModel)),
+              Expanded(child: _buildContent(theme, state)),
               const SizedBox(height: AppSpacing.md),
               Align(
                 alignment: Alignment.centerRight,
@@ -141,7 +144,7 @@ class _ModelSelectionDialogState extends ConsumerState<ModelSelectionDialog> {
     );
   }
 
-  Widget _buildContent(ThemeData theme, SettingsViewModel viewModel) {
+  Widget _buildContent(ThemeData theme, SettingsState state) {
     if (_isLoading) {
       return Center(
         child: Column(
@@ -206,14 +209,16 @@ class _ModelSelectionDialogState extends ConsumerState<ModelSelectionDialog> {
       separatorBuilder: (context, index) => const Divider(height: 1),
       itemBuilder: (context, index) {
         final model = filtered[index];
-        final isSelected = viewModel.selectedModel == model.id;
+        final isSelected = state.selectedModel == model.id;
 
         return Material(
           color: Colors.transparent,
           child: InkWell(
             onTap: () {
               Haptics.selectionClick();
-              viewModel.setSelectedModel(model.id);
+              ref
+                  .read(settingsViewModelProvider.notifier)
+                  .setSelectedModel(model.id);
               Navigator.of(context).pop();
             },
             borderRadius: AppSpacing.borderRadiusSm,

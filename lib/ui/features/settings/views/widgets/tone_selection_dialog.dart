@@ -17,8 +17,9 @@ class ToneSelectionDialog extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final theme = Theme.of(context);
-    final viewModel = ref.watch(settingsViewModelProvider);
-    final currentTone = viewModel.toneMode;
+    final state = ref.watch(settingsViewModelProvider);
+    final notifier = ref.read(settingsViewModelProvider.notifier);
+    final currentTone = state.toneMode;
 
     const tones = [
       {
@@ -72,7 +73,7 @@ class ToneSelectionDialog extends ConsumerWidget {
                   child: InkWell(
                     onTap: () {
                       Haptics.selectionClick();
-                      viewModel.setToneMode(key);
+                      notifier.setToneMode(key);
                       Navigator.of(context).pop();
                     },
                     borderRadius: AppSpacing.borderRadiusSm,

@@ -52,8 +52,9 @@ class _ReadingModeScreenState extends ConsumerState<ReadingModeScreen> {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final settings = ref.watch(settingsViewModelProvider);
-    final textSize = settings.readingTextSize;
+    final state = ref.watch(settingsViewModelProvider);
+
+    final textSize = state.readingTextSize;
 
     return Scaffold(
       backgroundColor: theme.colorScheme.surface.withValues(alpha: _opacity),

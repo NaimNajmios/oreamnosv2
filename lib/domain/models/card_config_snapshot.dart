@@ -3,6 +3,7 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:oreamnos/domain/models/card_data.dart';
 import 'package:oreamnos/domain/models/card_template.dart';
+import 'package:oreamnos/domain/models/card_config.dart';
 import 'package:oreamnos/ui/features/card_generator/view_models/card_generator_view_model.dart';
 
 class CardConfigSnapshot {
@@ -23,6 +24,8 @@ class CardConfigSnapshot {
     this.brandName,
     this.brandHandle,
     this.showBrandFooter = true,
+    this.imagePosition = ImagePosition.background,
+    this.photoFilter = PhotoFilter.none,
   });
 
   final CardData? cardData;
@@ -41,4 +44,6 @@ class CardConfigSnapshot {
   final String? brandName;
   final String? brandHandle;
   final bool showBrandFooter;
+  final ImagePosition imagePosition;
+  final PhotoFilter photoFilter;
 }

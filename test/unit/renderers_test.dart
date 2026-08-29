@@ -3,8 +3,26 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:oreamnos/domain/models/card_config.dart';
 import 'package:oreamnos/domain/models/card_data.dart';
 import 'package:oreamnos/ui/features/card_generator/widgets/renderers/card_canvas_dispatcher.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+
+import 'package:oreamnos/core/di/injection.dart';
+import 'package:oreamnos/data/services/export_service.dart';
+import 'package:oreamnos/data/services/card_data_extractor.dart';
+import 'package:oreamnos/data/services/usage_service.dart';
+import 'package:oreamnos/data/services/preferences_service.dart';
+import '../helpers/test_helpers.dart';
 
 void main() {
+  setUpAll(() async {
+    final prefs = await createMockPrefs();
+    final prefService = createTestPreferencesService(prefs);
+    await getIt.reset();
+    getIt.registerLazySingleton<PreferencesService>(() => prefService);
+    getIt.registerLazySingleton<UsageService>(() => createTestUsageService(prefs));
+    getIt.registerLazySingleton<ExportService>(() => ExportService());
+    getIt.registerLazySingleton<CardDataExtractor>(() => CardDataExtractor());
+  });
+
   group('CardCanvasDispatcher 17 renderers', () {
     final config = CardConfig(colorPair: [Colors.blue, Colors.purple]);
     final variants = [
@@ -88,14 +106,16 @@ void main() {
         tester,
       ) async {
         await tester.pumpWidget(
-          MaterialApp(
-            home: Scaffold(
-              body: SizedBox(
-                width: 360,
-                height: 360,
-                child: CardCanvasDispatcher(
-                  cardData: variants[i],
-                  config: config,
+          ProviderScope(
+            child: MaterialApp(
+              home: Scaffold(
+                body: SizedBox(
+                  width: 360,
+                  height: 360,
+                  child: CardCanvasDispatcher(
+                    cardData: variants[i],
+                    config: config,
+                  ),
                 ),
               ),
             ),

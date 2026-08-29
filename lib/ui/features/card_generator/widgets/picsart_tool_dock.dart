@@ -5,6 +5,7 @@ import 'package:oreamnos/config/theme/app_spacing.dart';
 import 'package:oreamnos/core/di/injection.dart';
 import 'package:oreamnos/data/services/preferences_service.dart';
 import 'package:oreamnos/domain/models/card_template.dart';
+import 'package:oreamnos/domain/models/card_config.dart';
 import 'package:oreamnos/ui/core/utils/haptics.dart';
 import 'package:oreamnos/ui/core/widgets/app_chip.dart';
 import 'package:oreamnos/ui/core/widgets/app_switch.dart';
@@ -339,6 +340,30 @@ class _PicsartToolDockState extends ConsumerState<PicsartToolDock> {
           onRemove: notifier.removeImage,
         ),
         if (state.hasImage && state.extractedPalette != null) ...[
+          const SizedBox(height: AppSpacing.md),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+            children: [
+              DropdownButton<ImagePosition>(
+                value: state.imagePosition,
+                onChanged: (v) {
+                  if (v != null) notifier.setImagePosition(v);
+                },
+                items: ImagePosition.values
+                    .map((e) => DropdownMenuItem(value: e, child: Text(e.name)))
+                    .toList(),
+              ),
+              DropdownButton<PhotoFilter>(
+                value: state.photoFilter,
+                onChanged: (v) {
+                  if (v != null) notifier.setPhotoFilter(v);
+                },
+                items: PhotoFilter.values
+                    .map((e) => DropdownMenuItem(value: e, child: Text(e.name)))
+                    .toList(),
+              ),
+            ],
+          ),
           const SizedBox(height: AppSpacing.md),
           Row(
             mainAxisAlignment: MainAxisAlignment.center,

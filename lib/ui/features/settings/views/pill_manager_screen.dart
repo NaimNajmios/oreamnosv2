@@ -16,8 +16,9 @@ class PillManagerScreen extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final viewModel = ref.watch(settingsViewModelProvider);
-    final pills = viewModel.customPills;
+    final state = ref.watch(settingsViewModelProvider);
+    final notifier = ref.read(settingsViewModelProvider.notifier);
+    final pills = state.customPills;
     final theme = Theme.of(context);
 
     return Scaffold(
@@ -105,7 +106,7 @@ class PillManagerScreen extends ConsumerWidget {
                             tooltip: 'Delete Pill',
                             onPressed: () {
                               Haptics.heavyImpact();
-                              viewModel.removeCustomPill(pill);
+                              notifier.removeCustomPill(pill);
                             },
                           ),
                         ],

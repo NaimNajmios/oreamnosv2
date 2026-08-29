@@ -1,4 +1,3 @@
-import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:oreamnos/core/di/injection.dart';
 
@@ -7,106 +6,82 @@ import '../../../../data/services/preferences_service.dart';
 import '../../../../domain/models/app_theme_mode.dart';
 import '../../../../domain/models/custom_pill.dart';
 import '../../../../domain/models/hashtag_group.dart';
+import 'settings_state.dart';
 
-final settingsViewModelProvider = ChangeNotifierProvider<SettingsViewModel>(
-  (ref) => SettingsViewModel(ref),
-);
+final settingsViewModelProvider =
+    NotifierProvider<SettingsNotifier, SettingsState>(() => SettingsNotifier());
 
-class SettingsViewModel extends ChangeNotifier {
+class SettingsNotifier extends Notifier<SettingsState> {
   late final PreferencesService _preferencesService;
 
-  final Ref ref;
-  SettingsViewModel(this.ref) {
+  @override
+  SettingsState build() {
     _preferencesService = getIt<PreferencesService>();
     _loadState();
+    return const SettingsState();
   }
-
-  bool _isInitialized = false;
-  bool get isInitialized => _isInitialized;
-
-  late AppThemeMode _themeMode;
-  AppThemeMode get themeMode => _themeMode;
-
-  late AiProvider _selectedProvider;
-  AiProvider get selectedProvider => _selectedProvider;
-
-  String? _selectedModel;
-  String? get selectedModel => _selectedModel;
-
-  late String _toneMode;
-  String get toneMode => _toneMode;
-
-  late String _defaultHashtags;
-  String get defaultHashtags => _defaultHashtags;
-
-  late List<HashtagGroup> _hashtagGroups;
-  List<HashtagGroup> get hashtagGroups => _hashtagGroups;
-
-  late bool _autoAppendHashtags;
-  bool get autoAppendHashtags => _autoAppendHashtags;
-
-  late List<CustomPill> _customPills;
-  List<CustomPill> get customPills => _customPills;
-
-  late double _readingTextSize;
-  double get readingTextSize => _readingTextSize;
-
-  String? _currentApiKey;
-  String? get currentApiKey => _currentApiKey;
-
-  String? _tavilyApiKey;
-  String? get tavilyApiKey => _tavilyApiKey;
 
   Future<void> _loadState() async {
-    _themeMode = _preferencesService.themeMode;
-    _selectedProvider = _preferencesService.selectedProvider;
-    _selectedModel = _preferencesService.getSelectedModel(_selectedProvider);
-    _toneMode = _preferencesService.toneMode;
-    _defaultHashtags = _preferencesService.defaultHashtags;
-    _hashtagGroups = _preferencesService.hashtagGroups;
-    _autoAppendHashtags = _preferencesService.autoAppendHashtags;
-    _customPills = _preferencesService.customPills;
-    _readingTextSize = _preferencesService.readingTextSize;
+    final themeMode = _preferencesService.themeMode;
+    final selectedProvider = _preferencesService.selectedProvider;
+    final selectedModel = _preferencesService.getSelectedModel(
+      selectedProvider,
+    );
+    final toneMode = _preferencesService.toneMode;
+    final defaultHashtags = _preferencesService.defaultHashtags;
+    final hashtagGroups = _preferencesService.hashtagGroups;
+    final autoAppendHashtags = _preferencesService.autoAppendHashtags;
+    final customPills = _preferencesService.customPills;
+    final readingTextSize = _preferencesService.readingTextSize;
+    final tavilyApiKey = await _preferencesService.getTavilyApiKey();
+    final currentApiKey = await _preferencesService.getApiKey(selectedProvider);
 
-    await _loadApiKey(_selectedProvider);
-    _tavilyApiKey = await _preferencesService.getTavilyApiKey();
-
-    _isInitialized = true;
-    notifyListeners();
-  }
-
-  Future<void> _loadApiKey(AiProvider provider) async {
-    _currentApiKey = await _preferencesService.getApiKey(provider);
+    state = state.copyWith(
+      isInitialized: true,
+      themeMode: themeMode,
+      selectedProvider: selectedProvider,
+      selectedModel: selectedModel,
+      toneMode: toneMode,
+      defaultHashtags: defaultHashtags,
+      hashtagGroups: hashtagGroups,
+      autoAppendHashtags: autoAppendHashtags,
+      customPills: customPills,
+      readingTextSize: readingTextSize,
+      tavilyApiKey: tavilyApiKey,
+      currentApiKey: currentApiKey,
+    );
   }
 
   Future<void> setThemeMode(AppThemeMode mode) async {
-    if (_themeMode == mode) return;
+    if (state.themeMode == mode) return;
     await _preferencesService.setThemeMode(mode);
-    _themeMode = mode;
-    notifyListeners();
+    state = state.copyWith(themeMode: mode);
   }
 
   Future<void> setSelectedProvider(AiProvider provider) async {
-    if (_selectedProvider == provider) return;
+    if (state.selectedProvider == provider) return;
     await _preferencesService.setSelectedProvider(provider);
-    _selectedProvider = provider;
-    _selectedModel = _preferencesService.getSelectedModel(provider);
-    await _loadApiKey(provider);
-    notifyListeners();
+    final model = _preferencesService.getSelectedModel(provider);
+    final key = await _preferencesService.getApiKey(provider);
+    state = state.copyWith(
+      selectedProvider: provider,
+      selectedModel: model,
+      clearModel: model == null,
+      currentApiKey: key,
+      clearApiKey: key == null,
+    );
   }
 
   Future<void> setSelectedModel(String modelId) async {
-    if (_selectedModel == modelId) return;
-    await _preferencesService.setSelectedModel(_selectedProvider, modelId);
-    _selectedModel = modelId;
-    notifyListeners();
+    if (state.selectedModel == modelId) return;
+    await _preferencesService.setSelectedModel(state.selectedProvider, modelId);
+    state = state.copyWith(selectedModel: modelId);
   }
 
   Future<void> setApiKey(AiProvider provider, String key) async {
     await _preferencesService.setApiKey(provider, key);
-    if (_selectedProvider == provider) {
-      _currentApiKey = key;
-      notifyListeners();
+    if (state.selectedProvider == provider) {
+      state = state.copyWith(currentApiKey: key);
     }
   }
 
@@ -116,8 +91,7 @@ class SettingsViewModel extends ChangeNotifier {
 
   Future<void> setTavilyApiKey(String key) async {
     await _preferencesService.setTavilyApiKey(key);
-    _tavilyApiKey = key;
-    notifyListeners();
+    state = state.copyWith(tavilyApiKey: key);
   }
 
   Future<String?> getTavilyApiKey() async {
@@ -125,86 +99,85 @@ class SettingsViewModel extends ChangeNotifier {
   }
 
   Future<void> setToneMode(String tone) async {
-    if (_toneMode == tone) return;
+    if (state.toneMode == tone) return;
     await _preferencesService.setToneMode(tone);
-    _toneMode = tone;
-    notifyListeners();
+    state = state.copyWith(toneMode: tone);
   }
 
   Future<void> setDefaultHashtags(String hashtags) async {
-    if (_defaultHashtags == hashtags) return;
+    if (state.defaultHashtags == hashtags) return;
     await _preferencesService.setDefaultHashtags(hashtags);
-    _defaultHashtags = hashtags;
-    notifyListeners();
+    state = state.copyWith(defaultHashtags: hashtags);
   }
 
   Future<void> setAutoAppendHashtags(bool enabled) async {
-    if (_autoAppendHashtags == enabled) return;
+    if (state.autoAppendHashtags == enabled) return;
     await _preferencesService.setAutoAppendHashtags(enabled: enabled);
-    _autoAppendHashtags = enabled;
-    notifyListeners();
+    state = state.copyWith(autoAppendHashtags: enabled);
   }
 
   Future<void> addCustomPill(CustomPill pill) async {
-    _customPills = List.of(_customPills)..add(pill);
-    await _preferencesService.setCustomPills(_customPills);
-    notifyListeners();
+    final pills = List<CustomPill>.of(state.customPills)..add(pill);
+    await _preferencesService.setCustomPills(pills);
+    state = state.copyWith(customPills: pills);
   }
 
   Future<void> removeCustomPill(CustomPill pill) async {
-    _customPills = List.of(_customPills)
+    final pills = List<CustomPill>.of(state.customPills)
       ..removeWhere(
         (p) => p.label == pill.label && p.instruction == pill.instruction,
       );
-    await _preferencesService.setCustomPills(_customPills);
-    notifyListeners();
+    await _preferencesService.setCustomPills(pills);
+    state = state.copyWith(customPills: pills);
   }
 
   Future<void> addHashtagGroup(HashtagGroup group) async {
-    final isFirst = _hashtagGroups.isEmpty;
+    final isFirst = state.hashtagGroups.isEmpty;
     final newGroup = isFirst ? group.copyWith(isDefault: true) : group;
-
-    _hashtagGroups = List.of(_hashtagGroups)..add(newGroup);
-    await _preferencesService.setHashtagGroups(_hashtagGroups);
+    final groups = List<HashtagGroup>.of(state.hashtagGroups)..add(newGroup);
+    await _preferencesService.setHashtagGroups(groups);
     if (newGroup.isDefault) {
-      _defaultHashtags = newGroup.hashtags;
+      state = state.copyWith(
+        hashtagGroups: groups,
+        defaultHashtags: newGroup.hashtags,
+      );
+    } else {
+      state = state.copyWith(hashtagGroups: groups);
     }
-    notifyListeners();
   }
 
   Future<void> removeHashtagGroup(HashtagGroup group) async {
-    _hashtagGroups = List.of(_hashtagGroups)
+    final groups = List<HashtagGroup>.of(state.hashtagGroups)
       ..removeWhere((g) => g.id == group.id);
-
-    if (group.isDefault && _hashtagGroups.isNotEmpty) {
-      final newDefault = _hashtagGroups.first.copyWith(isDefault: true);
-      _hashtagGroups[0] = newDefault;
-      _defaultHashtags = newDefault.hashtags;
+    String defHashtags = state.defaultHashtags;
+    if (group.isDefault && groups.isNotEmpty) {
+      final newDefault = groups.first.copyWith(isDefault: true);
+      groups[0] = newDefault;
+      defHashtags = newDefault.hashtags;
     } else if (group.isDefault) {
-      _defaultHashtags = '';
+      defHashtags = '';
     }
-
-    await _preferencesService.setHashtagGroups(_hashtagGroups);
-    notifyListeners();
+    await _preferencesService.setHashtagGroups(groups);
+    state = state.copyWith(hashtagGroups: groups, defaultHashtags: defHashtags);
   }
 
   Future<void> setDefaultHashtagGroup(String id) async {
-    _hashtagGroups = _hashtagGroups.map((g) {
+    String defHashtags = state.defaultHashtags;
+    final groups = state.hashtagGroups.map((g) {
       if (g.id == id) {
-        _defaultHashtags = g.hashtags;
+        defHashtags = g.hashtags;
         return g.copyWith(isDefault: true);
       }
       return g.copyWith(isDefault: false);
     }).toList();
-    await _preferencesService.setHashtagGroups(_hashtagGroups);
-    notifyListeners();
+    await _preferencesService.setHashtagGroups(groups);
+    state = state.copyWith(hashtagGroups: groups, defaultHashtags: defHashtags);
   }
 
   Future<void> setReadingTextSize(double size) async {
     final clamped = size.clamp(12.0, 24.0);
-    if (_readingTextSize == clamped) return;
+    if (state.readingTextSize == clamped) return;
     await _preferencesService.setReadingTextSize(clamped);
-    _readingTextSize = clamped;
-    notifyListeners();
+    state = state.copyWith(readingTextSize: clamped);
   }
 }

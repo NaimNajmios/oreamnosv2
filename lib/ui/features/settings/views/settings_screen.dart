@@ -23,7 +23,8 @@ class SettingsScreen extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final viewModel = ref.watch(settingsViewModelProvider);
+    final state = ref.watch(settingsViewModelProvider);
+    final notifier = ref.read(settingsViewModelProvider.notifier);
     final theme = Theme.of(context);
 
     return Scaffold(
@@ -63,7 +64,7 @@ class SettingsScreen extends ConsumerWidget {
                       Builder(
                         builder: (context) {
                           final mode = AppThemeMode.values[i];
-                          final isSelected = viewModel.themeMode == mode;
+                          final isSelected = state.themeMode == mode;
 
                           Color previewColor;
                           switch (mode) {
@@ -99,7 +100,7 @@ class SettingsScreen extends ConsumerWidget {
                           return GestureDetector(
                             onTap: () {
                               Haptics.lightImpact();
-                              viewModel.setThemeMode(mode);
+                              notifier.setThemeMode(mode);
                             },
                             child: Column(
                               mainAxisSize: MainAxisSize.min,
@@ -160,28 +161,25 @@ class SettingsScreen extends ConsumerWidget {
               SettingsTile(
                 leadingIcon: Icons.smart_toy_outlined,
                 title: 'Active Provider',
-                subtitle: viewModel.selectedProvider.displayName,
+                subtitle: state.selectedProvider.displayName,
                 onTap: () => ProviderSelectionDialog.show(context),
               ),
               const Divider(),
               SettingsTile(
                 leadingIcon: Icons.psychology_outlined,
                 title: 'Model',
-                subtitle: viewModel.selectedModel ?? 'Default (Auto-select)',
-                onTap: () => ModelSelectionDialog.show(
-                  context,
-                  viewModel.selectedProvider,
-                ),
+                subtitle: state.selectedModel ?? 'Default (Auto-select)',
+                onTap: () =>
+                    ModelSelectionDialog.show(context, state.selectedProvider),
               ),
               const Divider(),
               SettingsTile(
                 leadingIcon: Icons.key_outlined,
                 title: 'API Key',
-                subtitle: (viewModel.currentApiKey?.isNotEmpty ?? false)
+                subtitle: (state.currentApiKey?.isNotEmpty ?? false)
                     ? '•••••••• (Configured)'
                     : 'Not configured',
-                onTap: () =>
-                    ApiKeyDialog.show(context, viewModel.selectedProvider),
+                onTap: () => ApiKeyDialog.show(context, state.selectedProvider),
               ),
               const Divider(),
               const SizedBox(height: AppSpacing.xxl),
@@ -192,7 +190,7 @@ class SettingsScreen extends ConsumerWidget {
               SettingsTile(
                 leadingIcon: Icons.travel_explore_rounded,
                 title: 'Tavily Search API',
-                subtitle: (viewModel.tavilyApiKey?.isNotEmpty ?? false)
+                subtitle: (state.tavilyApiKey?.isNotEmpty ?? false)
                     ? '•••••••• (Configured)'
                     : 'Configure for AI Research Mode',
                 onTap: () => TavilyApiKeyDialog.show(context),
@@ -207,15 +205,15 @@ class SettingsScreen extends ConsumerWidget {
                 leadingIcon: Icons.tune_rounded,
                 title: 'Tone',
                 subtitle:
-                    viewModel.toneMode[0].toUpperCase() +
-                    viewModel.toneMode.substring(1),
+                    state.toneMode[0].toUpperCase() +
+                    state.toneMode.substring(1),
                 onTap: () => ToneSelectionDialog.show(context),
               ),
               const Divider(),
               SettingsTile(
                 leadingIcon: Icons.tag_rounded,
                 title: 'Hashtag Manager',
-                subtitle: '${viewModel.hashtagGroups.length} groups',
+                subtitle: '${state.hashtagGroups.length} groups',
                 onTap: () => context.push(RoutePaths.hashtagManager),
               ),
               const Divider(),
@@ -253,9 +251,9 @@ class SettingsScreen extends ConsumerWidget {
                       ),
                     ),
                     AppSwitch(
-                      value: viewModel.autoAppendHashtags,
+                      value: state.autoAppendHashtags,
                       onChanged: (value) =>
-                          viewModel.setAutoAppendHashtags(value),
+                          notifier.setAutoAppendHashtags(value),
                     ),
                   ],
                 ),
@@ -264,7 +262,7 @@ class SettingsScreen extends ConsumerWidget {
               SettingsTile(
                 leadingIcon: Icons.edit_note_rounded,
                 title: 'Manage Refinement Pills',
-                subtitle: '${viewModel.customPills.length} custom pills',
+                subtitle: '${state.customPills.length} custom pills',
                 onTap: () => context.push(RoutePaths.pillManager),
               ),
               const Divider(),

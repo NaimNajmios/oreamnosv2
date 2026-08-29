@@ -5,6 +5,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:oreamnos/core/di/injection.dart';
 import 'package:oreamnos/core/repositories/card_repository.dart';
+import 'package:oreamnos/domain/models/card_config.dart';
 import 'package:oreamnos/core/repositories/content_repository.dart';
 import 'package:oreamnos/data/models/ai_provider.dart';
 import 'package:oreamnos/data/services/color_extractor.dart';
@@ -369,6 +370,16 @@ class CardGeneratorViewModel extends Notifier<CardGeneratorState> {
         ),
       );
     }
+  }
+
+  void setImagePosition(ImagePosition position) {
+    _saveSnapshot();
+    state = state.copyWith(imagePosition: position);
+  }
+
+  void setPhotoFilter(PhotoFilter filter) {
+    _saveSnapshot();
+    state = state.copyWith(photoFilter: filter);
   }
 
   void setAutoPalette(bool v) {

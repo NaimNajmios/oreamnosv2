@@ -7,6 +7,7 @@ import 'package:oreamnos/domain/models/card_brief.dart';
 import 'package:oreamnos/domain/models/card_data.dart';
 import 'package:oreamnos/domain/models/card_template.dart';
 import 'package:oreamnos/domain/models/card_config_snapshot.dart';
+import 'package:oreamnos/domain/models/card_config.dart';
 
 import 'card_generator_view_model.dart'; // For CardRatio and AppFont enums
 
@@ -26,6 +27,8 @@ abstract class CardGeneratorState with _$CardGeneratorState {
     @Default(CardRatio.portrait45) CardRatio selectedRatio,
     @Default(AppFont.defaultFont) AppFont selectedFont,
     @Default(1.0) double headlineScale,
+    @Default(ImagePosition.background) ImagePosition imagePosition,
+    @Default(PhotoFilter.none) PhotoFilter photoFilter,
     @Default(true) bool templateCompact,
 
     String? activePanel,
@@ -78,6 +81,8 @@ abstract class CardGeneratorState with _$CardGeneratorState {
       brandName: brandName,
       brandHandle: brandHandle,
       showBrandFooter: showBrandFooter,
+      imagePosition: imagePosition,
+      photoFilter: photoFilter,
     );
   }
 }

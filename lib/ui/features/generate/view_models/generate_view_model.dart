@@ -76,7 +76,7 @@ class GenerateViewModel extends ChangeNotifier with WidgetsBindingObserver {
 
     // We get dependencies from GetIt because we are using injectable for services,
     // and riverpod for UI state
-    _settingsViewModel = ref.read(settingsViewModelProvider);
+
     _usageService = getIt<UsageService>();
     try {
       _visionExtractor = getIt<IVisionExtractor>();
@@ -104,7 +104,6 @@ class GenerateViewModel extends ChangeNotifier with WidgetsBindingObserver {
         state == AppLifecycleState.inactive;
   }
 
-  late final SettingsViewModel _settingsViewModel;
   late final UsageService _usageService;
   late final IVisionExtractor? _visionExtractor;
 
@@ -146,7 +145,9 @@ class GenerateViewModel extends ChangeNotifier with WidgetsBindingObserver {
   String? get twitterExtractionUrl => _twitterExtractionUrl;
 
   Future<void> retryWithProvider(AiProvider provider) async {
-    await _settingsViewModel.setSelectedProvider(provider);
+    await ref
+        .read(settingsViewModelProvider.notifier)
+        .setSelectedProvider(provider);
     if (_pendingInput != null) {
       await generatePost(_pendingInput!);
     }
@@ -214,7 +215,7 @@ class GenerateViewModel extends ChangeNotifier with WidgetsBindingObserver {
         'Input too long (max 8000 characters). Please shorten or paste a URL.',
       );
     }
-    final modelId = _settingsViewModel.selectedModel;
+    final modelId = ref.read(settingsViewModelProvider).selectedModel;
     if (modelId == null || modelId.isEmpty) {
       return ValidationResult.invalid(
         'No model selected for $providerDisplayName. Go to Settings → Model.',
@@ -224,11 +225,13 @@ class GenerateViewModel extends ChangeNotifier with WidgetsBindingObserver {
   }
 
   String get providerDisplayName =>
-      _settingsViewModel.selectedProvider.displayName;
+      ref.read(settingsViewModelProvider).selectedProvider.displayName;
 
   Future<ValidationResult> validateApiKey() async {
-    final provider = _settingsViewModel.selectedProvider;
-    final apiKey = await _settingsViewModel.getApiKeyForProvider(provider);
+    final provider = ref.read(settingsViewModelProvider).selectedProvider;
+    final apiKey = await ref
+        .read(settingsViewModelProvider.notifier)
+        .getApiKeyForProvider(provider);
     if (apiKey == null || apiKey.isEmpty) {
       return ValidationResult.invalid(
         'API key not configured for ${provider.displayName}. Go to Settings → API Key.',
@@ -307,7 +310,7 @@ class GenerateViewModel extends ChangeNotifier with WidgetsBindingObserver {
     notifyListeners();
 
     final stopwatch = Stopwatch()..start();
-    final provider = _settingsViewModel.selectedProvider;
+    final provider = ref.read(settingsViewModelProvider).selectedProvider;
 
     try {
       dynamic contentToCurate = _pendingInput!.trim();
@@ -395,14 +398,16 @@ class GenerateViewModel extends ChangeNotifier with WidgetsBindingObserver {
         }
       }
 
-      final modelId = _settingsViewModel.selectedModel;
+      final modelId = ref.read(settingsViewModelProvider).selectedModel;
       if (modelId == null || modelId.isEmpty) {
         throw Exception(
           'No model selected. Please go to Settings to select a model.',
         );
       }
 
-      final apiKey = await _settingsViewModel.getApiKeyForProvider(provider);
+      final apiKey = await ref
+          .read(settingsViewModelProvider.notifier)
+          .getApiKeyForProvider(provider);
       if (apiKey == null || apiKey.isEmpty) {
         throw Exception('API key not configured for ${provider.displayName}.');
       }
@@ -432,8 +437,10 @@ class GenerateViewModel extends ChangeNotifier with WidgetsBindingObserver {
       _curatedPost = result;
 
       // Inject user configured hashtags
-      if (_settingsViewModel.defaultHashtags.isNotEmpty) {
-        final tags = _settingsViewModel.defaultHashtags
+      if (ref.read(settingsViewModelProvider).defaultHashtags.isNotEmpty) {
+        final tags = ref
+            .read(settingsViewModelProvider)
+            .defaultHashtags
             .split(RegExp(r'\s+'))
             .map((e) => e.replaceAll('#', '').trim())
             .where((e) => e.isNotEmpty)
@@ -479,7 +486,7 @@ class GenerateViewModel extends ChangeNotifier with WidgetsBindingObserver {
           id: const Uuid().v4(),
           timestamp: DateTime.now(),
           providerId: provider.name,
-          modelName: _settingsViewModel.selectedModel,
+          modelName: ref.read(settingsViewModelProvider).selectedModel,
           latencyMs: stopwatch.elapsedMilliseconds,
           estimatedTokens: 0,
           isSuccess: false,
@@ -545,17 +552,19 @@ class GenerateViewModel extends ChangeNotifier with WidgetsBindingObserver {
     notifyListeners();
 
     final stopwatch = Stopwatch()..start();
-    final provider = _settingsViewModel.selectedProvider;
+    final provider = ref.read(settingsViewModelProvider).selectedProvider;
 
     try {
-      final modelId = _settingsViewModel.selectedModel;
+      final modelId = ref.read(settingsViewModelProvider).selectedModel;
       if (modelId == null || modelId.isEmpty) {
         throw Exception(
           'No model selected. Please go to Settings to select a model.',
         );
       }
 
-      final apiKey = await _settingsViewModel.getApiKeyForProvider(provider);
+      final apiKey = await ref
+          .read(settingsViewModelProvider.notifier)
+          .getApiKeyForProvider(provider);
       if (apiKey == null || apiKey.isEmpty) {
         throw Exception('API key not configured for ${provider.displayName}.');
       }
@@ -637,7 +646,7 @@ class GenerateViewModel extends ChangeNotifier with WidgetsBindingObserver {
           id: const Uuid().v4(),
           timestamp: DateTime.now(),
           providerId: provider.name,
-          modelName: _settingsViewModel.selectedModel,
+          modelName: ref.read(settingsViewModelProvider).selectedModel,
           latencyMs: stopwatch.elapsedMilliseconds,
           estimatedTokens: 0,
           isSuccess: false,

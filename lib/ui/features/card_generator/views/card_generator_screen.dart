@@ -56,7 +56,7 @@ class _CardGeneratorScreenState extends ConsumerState<CardGeneratorScreen> {
       if (_activeBrief.isEmpty) {
         final generateVm = ref.read(generateViewModelProvider.notifier);
         if (generateVm.curatedPost != null) {
-          final settings = ref.read(settingsViewModelProvider.notifier);
+          final settings = ref.read(settingsViewModelProvider);
           if (settings.selectedModel != null) {
             _activeBrief = CardBrief.fromPost(
               title: generateVm.curatedPost!.title,
@@ -305,9 +305,9 @@ class _CardGeneratorScreenState extends ConsumerState<CardGeneratorScreen> {
                       boundaryMargin: const EdgeInsets.all(double.infinity),
                       minScale: 0.5,
                       maxScale: 4.0,
-                      child: Image.file(
-                        state.backgroundImage!,
-                        fit: BoxFit.cover,
+                      child: _applyPhotoFilter(
+                        state.photoFilter,
+                        Image.file(state.backgroundImage!, fit: BoxFit.cover),
                       ),
                     ),
                   CardCanvasDispatcher(
@@ -332,11 +332,20 @@ class _CardGeneratorScreenState extends ConsumerState<CardGeneratorScreen> {
                           state.selectedFont == AppFont.classicSerif
                           ? 'Lora'
                           : state.selectedFont == AppFont.typewriter
-                          ? 'SpaceMono'
+                          ? 'Space Mono'
                           : 'Inter',
                       brandName: state.brandName,
                       brandHandle: state.brandHandle,
                       showBrandFooter: state.showBrandFooter,
+                      isWatermarkEnabled: state.showWatermark,
+                      watermarkPath: state.watermarkText,
+                      imagePosition: state.imagePosition,
+                      photoFilter: state.photoFilter,
+                      exportSize: state.selectedRatio.name.contains('square')
+                          ? ExportSize.square
+                          : state.selectedRatio.name.contains('story')
+                          ? ExportSize.story
+                          : ExportSize.portrait,
                     ),
                   ),
                   if (state.showWatermark &&
@@ -375,5 +384,65 @@ class _CardGeneratorScreenState extends ConsumerState<CardGeneratorScreen> {
         PicsartToolDock(),
       ],
     );
+  }
+
+  Widget _applyPhotoFilter(PhotoFilter filter, Widget child) {
+    switch (filter) {
+      case PhotoFilter.blackWhite:
+        return ColorFiltered(
+          colorFilter: const ColorFilter.matrix([
+            0.2126,
+            0.7152,
+            0.0722,
+            0,
+            0,
+            0.2126,
+            0.7152,
+            0.0722,
+            0,
+            0,
+            0.2126,
+            0.7152,
+            0.0722,
+            0,
+            0,
+            0,
+            0,
+            0,
+            1,
+            0,
+          ]),
+          child: child,
+        );
+      case PhotoFilter.vintage:
+        return ColorFiltered(
+          colorFilter: const ColorFilter.matrix([
+            0.393,
+            0.769,
+            0.189,
+            0,
+            0,
+            0.349,
+            0.686,
+            0.168,
+            0,
+            0,
+            0.272,
+            0.534,
+            0.131,
+            0,
+            0,
+            0,
+            0,
+            0,
+            1,
+            0,
+          ]),
+          child: child,
+        );
+      case PhotoFilter.none:
+      default:
+        return child;
+    }
   }
 }

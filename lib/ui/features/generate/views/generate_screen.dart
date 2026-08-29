@@ -403,11 +403,12 @@ class _GenerateScreenState extends ConsumerState<GenerateScreen> {
     bool isGenerating,
   ) {
     final theme = Theme.of(context);
-    final settings = ref.watch(settingsViewModelProvider);
-    final providerLabel = settings.selectedProvider.displayName;
-    final modelLabel = settings.selectedModel ?? 'Auto';
+    final state = ref.watch(settingsViewModelProvider);
+
+    final providerLabel = state.selectedProvider.displayName;
+    final modelLabel = state.selectedModel ?? 'Auto';
     final toneLabel =
-        settings.toneMode[0].toUpperCase() + settings.toneMode.substring(1);
+        state.toneMode[0].toUpperCase() + state.toneMode.substring(1);
     final charCount = _controller.text.length;
     final wordCount = _controller.text.trim().isEmpty
         ? 0
@@ -853,15 +854,15 @@ class _GenerateScreenState extends ConsumerState<GenerateScreen> {
                           icon: const Icon(Icons.image_outlined, size: 20),
                           tooltip: 'Card Studio',
                           onPressed: () {
-                            final settings = ref.read(
-                              settingsViewModelProvider.notifier,
+                            final settingsState = ref.read(
+                              settingsViewModelProvider,
                             );
-                            if (settings.selectedModel != null) {
+                            if (settingsState.selectedModel != null) {
                               final brief = CardBrief.fromPost(
                                 title: post.title,
                                 bodyMarkdown: post.bodyMarkdown,
-                                provider: settings.selectedProvider,
-                                modelId: settings.selectedModel!,
+                                provider: settingsState.selectedProvider,
+                                modelId: settingsState.selectedModel!,
                               );
                               context.push(
                                 RoutePaths.cardGenerator,
