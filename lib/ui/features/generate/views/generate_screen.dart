@@ -185,16 +185,14 @@ class _GenerateScreenState extends ConsumerState<GenerateScreen> {
     final isGenerating =
         viewModel.state == GenerateState.generating ||
         viewModel.state == GenerateState.researching;
-    final isSuccess =
-        viewModel.state == GenerateState.success &&
-        viewModel.curatedPost != null;
+    final hasPost = viewModel.curatedPost != null;
 
-    if (isSuccess && !_lastSuccessState) {
+    if (hasPost && !_lastSuccessState) {
       _lastSuccessState = true;
       WidgetsBinding.instance.addPostFrameCallback((_) {
         _checkAndShowSuccessOverlay();
       });
-    } else if (!isSuccess) {
+    } else if (!hasPost) {
       _lastSuccessState = false;
     }
 
@@ -290,7 +288,7 @@ class _GenerateScreenState extends ConsumerState<GenerateScreen> {
                           ),
                         ),
                       // App Icon Decoration
-                      if (!isSuccess)
+                      if (!hasPost)
                         Padding(
                           padding: const EdgeInsets.only(bottom: AppSpacing.xl),
                           child: Center(
@@ -325,7 +323,7 @@ class _GenerateScreenState extends ConsumerState<GenerateScreen> {
                         ),
 
                       // Capture Section (Hidden on Success)
-                      if (!isSuccess)
+                      if (!hasPost)
                         _buildCaptureCard(
                           context,
                           viewModel,
@@ -336,7 +334,7 @@ class _GenerateScreenState extends ConsumerState<GenerateScreen> {
 
                       // Output Section (Hidden when Idle)
                       if (viewModel.state != GenerateState.idle) ...[
-                        if (!isSuccess) ...[
+                        if (!hasPost) ...[
                           const SizedBox(height: AppSpacing.xxl),
                           Divider(
                             thickness: 1,
@@ -354,24 +352,41 @@ class _GenerateScreenState extends ConsumerState<GenerateScreen> {
                           switchInCurve: Curves.easeOutCubic,
                           switchOutCurve: Curves.easeInCubic,
                           child: Column(
-                            key: ValueKey(viewModel.state),
+                            key: ValueKey(hasPost),
                             children: [
                               _buildResultArea(
                                 context,
                                 theme,
                                 viewModel,
-                                isSuccess,
+                                hasPost,
+                                isGenerating,
                               ),
-                              if (isSuccess) ...[
+                              if (hasPost) ...[
                                 const SizedBox(height: AppSpacing.xl),
-                                AppOutlinedButton(
-                                  label: 'New Entry',
-                                  icon: Icons.add_rounded,
-                                  onPressed: () {
-                                    _handleClear();
-                                    // Note: To clear curatedPost, we should clear pending inputs
-                                    viewModel.reset();
-                                  },
+                                Row(
+                                  children: [
+                                    Expanded(
+                                      child: AppOutlinedButton(
+                                        label: 'New Entry',
+                                        icon: Icons.add_rounded,
+                                        onPressed: () {
+                                          _handleClear();
+                                          viewModel.reset();
+                                        },
+                                      ),
+                                    ),
+                                    const SizedBox(width: AppSpacing.sm),
+                                    Expanded(
+                                      child: AppButton(
+                                        label: 'Regenerate',
+                                        icon: Icons.refresh_rounded,
+                                        isLoading: isGenerating,
+                                        onPressed: isGenerating ? null : () {
+                                          viewModel.generatePost(_controller.text);
+                                        },
+                                      ),
+                                    ),
+                                  ],
                                 ),
                               ],
                             ],
@@ -413,9 +428,7 @@ class _GenerateScreenState extends ConsumerState<GenerateScreen> {
     final wordCount = _controller.text.trim().isEmpty
         ? 0
         : _controller.text.trim().split(RegExp(r'\s+')).length;
-    final isSuccess =
-        viewModel.state == GenerateState.success &&
-        viewModel.curatedPost != null;
+    final hasPost = viewModel.curatedPost != null;
 
     return AppCard(
       padding: const EdgeInsets.all(AppSpacing.base),
@@ -737,7 +750,7 @@ class _GenerateScreenState extends ConsumerState<GenerateScreen> {
           ),
           if (viewModel.recentInputs.isNotEmpty &&
               !isGenerating &&
-              !isSuccess) ...[
+              !hasPost) ...[
             const SizedBox(height: AppSpacing.md),
             Row(
               children: [
@@ -784,17 +797,17 @@ class _GenerateScreenState extends ConsumerState<GenerateScreen> {
     BuildContext context,
     ThemeData theme,
     GenerateViewModel viewModel,
-    bool isSuccess,
+    bool hasPost,
+    bool isGenerating,
   ) {
-    if (viewModel.state == GenerateState.generating ||
-        viewModel.state == GenerateState.researching) {
+    if (isGenerating && !hasPost) {
       return AppCard(
         key: const ValueKey('generating'),
         child: SkeletonLoader.outputCard(context),
       );
     }
 
-    if (viewModel.state == GenerateState.error) {
+    if (viewModel.state == GenerateState.error && !hasPost) {
       return ErrorState(
         key: const ValueKey('error'),
         message: viewModel.errorMessage ?? 'An unexpected error occurred.',
@@ -802,7 +815,7 @@ class _GenerateScreenState extends ConsumerState<GenerateScreen> {
       );
     }
 
-    if (viewModel.state == GenerateState.rateLimited) {
+    if (viewModel.state == GenerateState.rateLimited && !hasPost) {
       return ErrorState(
         key: const ValueKey('rateLimited'),
         title: 'Rate Limit Reached',
@@ -821,7 +834,7 @@ class _GenerateScreenState extends ConsumerState<GenerateScreen> {
       );
     }
 
-    if (isSuccess) {
+    if (hasPost) {
       final post = viewModel.curatedPost!;
       final copyText = post.toMarkdownFiltered(
         showTitle: viewModel.showTitle,
@@ -838,6 +851,35 @@ class _GenerateScreenState extends ConsumerState<GenerateScreen> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
+                if (isGenerating) ...[
+                  LinearProgressIndicator(
+                    backgroundColor: theme.colorScheme.primary.withValues(alpha: 0.1),
+                    color: theme.colorScheme.primary,
+                  ),
+                  const SizedBox(height: AppSpacing.sm),
+                ] else if (viewModel.state == GenerateState.error || viewModel.state == GenerateState.rateLimited) ...[
+                  Container(
+                    margin: const EdgeInsets.only(bottom: AppSpacing.sm),
+                    padding: const EdgeInsets.symmetric(horizontal: AppSpacing.md, vertical: AppSpacing.sm),
+                    decoration: BoxDecoration(
+                      color: theme.colorScheme.errorContainer.withValues(alpha: 0.6),
+                      borderRadius: AppSpacing.borderRadiusSm,
+                      border: Border.all(color: theme.colorScheme.error.withValues(alpha: 0.2)),
+                    ),
+                    child: Row(
+                      children: [
+                        Icon(Icons.warning_amber_rounded, size: 18, color: theme.colorScheme.error),
+                        const SizedBox(width: AppSpacing.sm),
+                        Expanded(
+                          child: Text(
+                            viewModel.errorMessage ?? 'An error occurred.',
+                            style: theme.textTheme.bodySmall?.copyWith(color: theme.colorScheme.onErrorContainer, fontWeight: FontWeight.w500),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [

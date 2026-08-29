@@ -301,8 +301,6 @@ class GenerateViewModel extends ChangeNotifier with WidgetsBindingObserver {
     _generatingStep = GeneratingStep.prompting;
     _errorMessage = null;
     _validationMessage = null;
-    _curatedPost = null;
-    _legacyGeneratedContentForCompat = null;
     _suggestedFallbackProvider = null;
     _twitterExtractionUrl = null;
     _pendingInput = input.trim();
