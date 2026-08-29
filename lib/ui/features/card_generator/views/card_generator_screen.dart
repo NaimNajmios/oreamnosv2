@@ -348,6 +348,32 @@ class _CardGeneratorScreenState extends ConsumerState<CardGeneratorScreen> {
                           : ExportSize.portrait,
                     ),
                   ),
+                  if (state.isExtracting && hasData)
+                    Positioned.fill(
+                      child: Container(
+                        color: Colors.black.withValues(alpha: 0.6),
+                        child: Center(
+                          child: Column(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              SizedBox(
+                                width: 48,
+                                height: 48,
+                                child: KickoffLoadingIndicator(size: 48),
+                              ),
+                              const SizedBox(height: 16),
+                              Text(
+                                'AI Reprocessing...',
+                                style: theme.textTheme.titleMedium?.copyWith(
+                                  color: Colors.white,
+                                  fontWeight: FontWeight.w600,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                    ),
                   if (state.showWatermark &&
                       state.watermarkText != null &&
                       state.watermarkText!.isNotEmpty)

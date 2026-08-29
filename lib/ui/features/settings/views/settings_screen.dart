@@ -8,6 +8,7 @@ import 'package:oreamnos/ui/core/utils/haptics.dart';
 import 'package:oreamnos/ui/core/widgets/app_switch.dart';
 import 'package:oreamnos/ui/core/widgets/section_header.dart';
 import 'package:oreamnos/ui/core/widgets/settings_tile.dart';
+import 'package:oreamnos/ui/core/widgets/staggered_entrance.dart';
 import 'package:oreamnos/domain/models/app_theme_mode.dart';
 
 import '../view_models/settings_view_model.dart';
@@ -27,35 +28,11 @@ class SettingsScreen extends ConsumerWidget {
     final notifier = ref.read(settingsViewModelProvider.notifier);
     final theme = Theme.of(context);
 
-    return Scaffold(
-      appBar: AppBar(
-        title: Text(
-          'Settings',
-          style: theme.textTheme.titleMedium?.copyWith(
-            fontWeight: FontWeight.w700,
-            letterSpacing: -0.3,
-          ),
-        ),
-        bottom: PreferredSize(
-          preferredSize: const Size.fromHeight(1),
-          child: Container(color: theme.colorScheme.outline, height: 1),
-        ),
-      ),
-      body: Center(
-        child: ConstrainedBox(
-          constraints: const BoxConstraints(
-            maxWidth: AppSpacing.maxContentWidth,
-          ),
-          child: ListView(
-            padding: const EdgeInsets.symmetric(
-              horizontal: AppSpacing.screenHorizontal,
-              vertical: AppSpacing.xl,
-            ),
-            children: [
-              // Theme Toggle
-              const SectionHeader(title: 'Appearance'),
-              const SizedBox(height: AppSpacing.md),
-              SingleChildScrollView(
+    final items = <Widget>[
+      // Theme Toggle
+      const SectionHeader(title: 'Appearance'),
+      const SizedBox(height: AppSpacing.md),
+      SingleChildScrollView(
                 scrollDirection: Axis.horizontal,
                 clipBehavior: Clip.none,
                 child: Row(
@@ -291,7 +268,39 @@ class SettingsScreen extends ConsumerWidget {
               ),
               const Divider(),
               const SizedBox(height: AppSpacing.xl),
-            ],
+    ];
+
+    return Scaffold(
+      appBar: AppBar(
+        title: Text(
+          'Settings',
+          style: theme.textTheme.titleMedium?.copyWith(
+            fontWeight: FontWeight.w700,
+            letterSpacing: -0.3,
+          ),
+        ),
+        bottom: PreferredSize(
+          preferredSize: const Size.fromHeight(1),
+          child: Container(color: theme.colorScheme.outline, height: 1),
+        ),
+      ),
+      body: Center(
+        child: ConstrainedBox(
+          constraints: const BoxConstraints(
+            maxWidth: AppSpacing.maxContentWidth,
+          ),
+          child: ListView.builder(
+            padding: const EdgeInsets.symmetric(
+              horizontal: AppSpacing.screenHorizontal,
+              vertical: AppSpacing.xl,
+            ),
+            itemCount: items.length,
+            itemBuilder: (context, index) {
+              return StaggeredEntranceItem(
+                index: index,
+                child: items[index],
+              );
+            },
           ),
         ),
       ),

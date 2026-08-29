@@ -174,11 +174,30 @@ class CardGeneratorViewModel extends Notifier<CardGeneratorState> {
   }
 
   void setTemplate(CardTemplate template) {
+    if (state.selectedTemplate == template) return;
+
     _saveSnapshot();
+    
+    final currentTemplate = state.cardData?.effectiveTemplate;
+
     state = state.copyWith(
       selectedTemplate: template,
       cardData: state.cardData?.adaptToTemplate(template),
     );
+
+    if (currentTemplate != null && currentTemplate != template && state.brief != null) {
+      _reprocessForTemplate();
+    }
+  }
+
+  Future<void> _reprocessForTemplate() async {
+    final provider = state.brief?.provider;
+    if (provider == null) return;
+    
+    final apiKey = await _prefsService.getApiKey(provider);
+    if (apiKey != null && apiKey.isNotEmpty) {
+      await extractData(apiKey);
+    }
   }
 
   void setRatio(CardRatio ratio) {
