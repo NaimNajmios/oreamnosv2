@@ -10,6 +10,7 @@ import 'package:oreamnos/domain/services/json_cleaner.dart';
 import 'package:oreamnos/domain/models/card_brief.dart';
 import 'package:oreamnos/domain/models/card_template.dart';
 import 'package:oreamnos/domain/models/curated_post.dart';
+import 'package:oreamnos/core/error/failures.dart';
 
 class OpenAICompatibleCurator implements IContentCurator {
   OpenAICompatibleCurator(this.baseUrl, {ApiClient? apiClient})
@@ -53,19 +54,27 @@ class OpenAICompatibleCurator implements IContentCurator {
 
     final path = '$baseUrl/chat/completions';
 
-    final response = await _client.post(
-      path,
-      data: {
-        "model": modelId,
-        "messages": [
-          {"role": "system", "content": systemPrompt},
-          {"role": "user", "content": userPrompt},
-        ],
-        "temperature": 0.7,
-        "response_format": {"type": "json_object"},
-      },
-      options: Options(extra: {'apiKey': apiKey, 'provider': 'openai'}),
-    );
+    Response response;
+    try {
+      response = await _client.post(
+        path,
+        data: {
+          "model": modelId,
+          "messages": [
+            {"role": "system", "content": systemPrompt},
+            {"role": "user", "content": userPrompt},
+          ],
+          "temperature": 0.7,
+          "response_format": {"type": "json_object"},
+        },
+        options: Options(extra: {'apiKey': apiKey, 'provider': 'openai'}),
+      );
+    } on DioException catch (e) {
+      if (e.requestOptions.extra.containsKey('failure')) {
+        throw e.requestOptions.extra['failure'] as Failure;
+      }
+      rethrow;
+    }
 
     if (response.statusCode != 200) {
       throw Exception('API Error: ${response.statusCode} - ${response.data}');
@@ -136,19 +145,27 @@ class OpenAICompatibleCurator implements IContentCurator {
 
     final path = '$baseUrl/chat/completions';
 
-    final response = await _client.post(
-      path,
-      data: {
-        "model": modelId,
-        "messages": [
-          {"role": "system", "content": systemPrompt},
-          {"role": "user", "content": userPrompt},
-        ],
-        "temperature": 0.3,
-        "response_format": {"type": "json_object"},
-      },
-      options: Options(extra: {'apiKey': apiKey, 'provider': 'openai'}),
-    );
+    Response response;
+    try {
+      response = await _client.post(
+        path,
+        data: {
+          "model": modelId,
+          "messages": [
+            {"role": "system", "content": systemPrompt},
+            {"role": "user", "content": userPrompt},
+          ],
+          "temperature": 0.3,
+          "response_format": {"type": "json_object"},
+        },
+        options: Options(extra: {'apiKey': apiKey, 'provider': 'openai'}),
+      );
+    } on DioException catch (e) {
+      if (e.requestOptions.extra.containsKey('failure')) {
+        throw e.requestOptions.extra['failure'] as Failure;
+      }
+      rethrow;
+    }
 
     if (response.statusCode != 200) {
       throw Exception('API Error: ${response.statusCode} - ${response.data}');

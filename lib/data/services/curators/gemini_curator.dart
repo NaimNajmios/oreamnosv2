@@ -10,6 +10,7 @@ import 'package:oreamnos/domain/services/json_cleaner.dart';
 import 'package:oreamnos/domain/models/card_brief.dart';
 import 'package:oreamnos/domain/models/card_template.dart';
 import 'package:oreamnos/domain/models/curated_post.dart';
+import 'package:oreamnos/core/error/failures.dart';
 
 class GeminiCurator implements IContentCurator {
   GeminiCurator({ApiClient? apiClient}) : _client = apiClient ?? ApiClient();
@@ -160,28 +161,38 @@ class GeminiCurator implements IContentCurator {
     final path =
         'https://generativelanguage.googleapis.com/v1beta/$actualModelId:generateContent';
 
-    final response = await _client.post(
-      path,
-      data: {
-        "system_instruction": {
-          "parts": [
-            {"text": systemPrompt},
-          ],
-        },
-        "contents": [
-          {
+    Response response;
+    try {
+      response = await _client.post(
+        path,
+        data: {
+          "system_instruction": {
             "parts": [
-              {"text": userPrompt},
+              {"text": systemPrompt},
             ],
           },
-        ],
-        "generationConfig": {
-          "temperature": 0.3,
-          "responseMimeType": "application/json",
+          "contents": [
+            {
+              "parts": [
+                {"text": userPrompt},
+              ],
+            },
+          ],
+          "generationConfig": {
+            "temperature": 0.3,
+            "topP": 1,
+            "maxOutputTokens": 1024,
+            "responseMimeType": "application/json",
+          },
         },
-      },
-      options: Options(extra: {'apiKey': apiKey, 'provider': 'gemini'}),
-    );
+        options: Options(extra: {'apiKey': apiKey, 'provider': 'gemini'}),
+      );
+    } on DioException catch (e) {
+      if (e.requestOptions.extra.containsKey('failure')) {
+        throw e.requestOptions.extra['failure'] as Failure;
+      }
+      rethrow;
+    }
 
     if (response.statusCode != 200) {
       throw Exception(

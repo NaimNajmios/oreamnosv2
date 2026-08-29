@@ -211,10 +211,14 @@ class _PicsartToolDockState extends ConsumerState<PicsartToolDock> {
         content = const SizedBox();
     }
 
-    return Column(
-      mainAxisSize: MainAxisSize.min,
-      crossAxisAlignment: CrossAxisAlignment.stretch,
-      children: [
+    return ConstrainedBox(
+      constraints: BoxConstraints(
+        maxHeight: MediaQuery.of(context).size.height * 0.45,
+      ),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
         // Panel Header
         Padding(
           padding: const EdgeInsets.only(left: 8, right: 8, top: 4),
@@ -249,8 +253,9 @@ class _PicsartToolDockState extends ConsumerState<PicsartToolDock> {
           ),
         ),
       ],
-    );
-  }
+    ),
+  );
+}
 
   Widget _buildTemplatesPanel(ThemeData theme) {
     final state = ref.watch(cardGeneratorViewModelProvider);
@@ -378,6 +383,42 @@ class _PicsartToolDockState extends ConsumerState<PicsartToolDock> {
               ),
             ],
           ),
+        ] else if (!state.hasImage) ...[
+          const SizedBox(height: AppSpacing.md),
+          Text('Solid Background', style: theme.textTheme.labelMedium),
+          const SizedBox(height: AppSpacing.sm),
+          Wrap(
+            spacing: 8,
+            runSpacing: 8,
+            alignment: WrapAlignment.center,
+            children: [
+              Colors.black,
+              Colors.white,
+              Colors.blue[900]!,
+              Colors.red[900]!,
+              Colors.green[900]!,
+              Colors.purple[900]!,
+              Colors.orange[900]!,
+              Colors.grey[900]!,
+            ].map((color) {
+              final isSelected = state.extractedPalette?.first == color;
+              return GestureDetector(
+                onTap: () => notifier.setSolidBackgroundColor(color),
+                child: Container(
+                  width: 32,
+                  height: 32,
+                  decoration: BoxDecoration(
+                    color: color,
+                    shape: BoxShape.circle,
+                    border: Border.all(
+                      color: isSelected ? Colors.amberAccent : Colors.white24,
+                      width: isSelected ? 2 : 1,
+                    ),
+                  ),
+                ),
+              );
+            }).toList(),
+          ),
         ],
       ],
     );
@@ -437,42 +478,38 @@ class _PicsartToolDockState extends ConsumerState<PicsartToolDock> {
   Widget _buildTextPanel(ThemeData theme) {
     final state = ref.watch(cardGeneratorViewModelProvider);
     final notifier = ref.read(cardGeneratorViewModelProvider.notifier);
+    
+    if (state.cardData == null) return const SizedBox();
+    
+    final json = state.cardData!.toJson();
+    final stringFields = json.entries
+        .where((e) => e.value is String && e.key != 'runtimeType')
+        .toList();
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
-      children: [
-        _Field(
-          controller: _headlineCtrl,
-          focusNode: _headlineFocus,
-          label: 'Headline — max 60',
-          maxLen: 60,
-          maxLines: 2,
-          onChanged: (v) => notifier.updateHeadline(v),
-          isRewriting: state.isRewriting('headline'),
-          onRewrite: () => _handleRewrite('headline'),
-        ),
-        const SizedBox(height: AppSpacing.md),
-        _Field(
-          controller: _subtextCtrl,
-          focusNode: _subtextFocus,
-          label: 'Hook — one sentence, max 90',
-          maxLen: 90,
-          maxLines: 2,
-          onChanged: (v) => notifier.updateSubtext(v),
-          isRewriting: state.isRewriting('subtext'),
-          onRewrite: () => _handleRewrite('subtext'),
-        ),
-        const SizedBox(height: AppSpacing.md),
-        _Field(
-          controller: _badgeCtrl,
-          focusNode: _badgeFocus,
-          label: 'Badge (Optional) — max 24',
-          maxLen: 24,
-          maxLines: 1,
-          onChanged: (v) => notifier.updateMicroStat(v),
-          isRewriting: state.isRewriting('microStat'),
-          onRewrite: () => _handleRewrite('microStat'),
-        ),
-      ],
+      children: stringFields.map((entry) {
+        return _DynamicField(
+          key: ValueKey('${state.cardData!.runtimeType}_${entry.key}'),
+          fieldKey: entry.key,
+          initialValue: entry.value as String,
+          onChanged: (v) => notifier.updateCardField(entry.key, v),
+          isRewriting: state.isRewriting(entry.key),
+          onRewrite: () async {
+            final brief = state.brief;
+            if (brief == null) return;
+            final prefs = getIt<PreferencesService>();
+            final apiKey = await prefs.getApiKey(brief.provider);
+            if (apiKey == null || apiKey.isEmpty) return;
+            notifier.rewriteDynamicField(
+              fieldKey: entry.key,
+              provider: brief.provider,
+              modelId: brief.modelId,
+              apiKey: apiKey,
+            );
+          },
+        );
+      }).toList(),
     );
   }
 
@@ -549,49 +586,6 @@ class _PicsartToolDockState extends ConsumerState<PicsartToolDock> {
         ],
       ],
     );
-  }
-
-  Future<void> _handleRewrite(String field) async {
-    final notifier = ref.read(cardGeneratorViewModelProvider.notifier);
-    final state = ref.read(cardGeneratorViewModelProvider);
-    final brief = state.brief;
-    if (brief == null) return;
-    final prefs = getIt<PreferencesService>();
-    final apiKey = await prefs.getApiKey(brief.provider);
-    if (apiKey == null || apiKey.isEmpty) return;
-    switch (field) {
-      case 'headline':
-        await notifier.rewriteHeadline(
-          provider: brief.provider,
-          modelId: brief.modelId,
-          apiKey: apiKey,
-        );
-        break;
-      case 'subtext':
-        await notifier.rewriteSubtext(
-          provider: brief.provider,
-          modelId: brief.modelId,
-          apiKey: apiKey,
-        );
-        break;
-      case 'microStat':
-        await notifier.rewriteMicroStat(
-          provider: brief.provider,
-          modelId: brief.modelId,
-          apiKey: apiKey,
-        );
-        break;
-    }
-
-    final updatedState = ref.read(cardGeneratorViewModelProvider);
-    if (updatedState.rewriteError != null && mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(updatedState.rewriteError!),
-          backgroundColor: Colors.red[700],
-        ),
-      );
-    }
   }
 }
 
@@ -705,7 +699,6 @@ class _TemplateChip extends StatelessWidget {
 
 class _Field extends StatelessWidget {
   final TextEditingController controller;
-  final FocusNode? focusNode;
   final String label;
   final int maxLen;
   final int maxLines;
@@ -715,7 +708,6 @@ class _Field extends StatelessWidget {
 
   const _Field({
     required this.controller,
-    this.focusNode,
     required this.label,
     required this.maxLen,
     required this.maxLines,
@@ -729,7 +721,6 @@ class _Field extends StatelessWidget {
     final theme = Theme.of(context);
     return TextField(
       controller: controller,
-      focusNode: focusNode,
       maxLength: maxLen,
       maxLines: maxLines,
       minLines: 1,
@@ -781,6 +772,69 @@ class _Field extends StatelessWidget {
               ),
       ),
       onChanged: onChanged,
+    );
+  }
+}
+
+class _DynamicField extends StatefulWidget {
+  final String fieldKey;
+  final String initialValue;
+  final ValueChanged<String> onChanged;
+  final VoidCallback onRewrite;
+  final bool isRewriting;
+
+  const _DynamicField({
+    super.key,
+    required this.fieldKey,
+    required this.initialValue,
+    required this.onChanged,
+    required this.onRewrite,
+    required this.isRewriting,
+  });
+
+  @override
+  State<_DynamicField> createState() => _DynamicFieldState();
+}
+
+class _DynamicFieldState extends State<_DynamicField> {
+  late TextEditingController _ctrl;
+  
+  @override
+  void initState() {
+    super.initState();
+    _ctrl = TextEditingController(text: widget.initialValue == 'N/A' ? '' : widget.initialValue);
+  }
+
+  @override
+  void didUpdateWidget(_DynamicField old) {
+    super.didUpdateWidget(old);
+    final newVal = widget.initialValue == 'N/A' ? '' : widget.initialValue;
+    if (_ctrl.text != newVal && !FocusScope.of(context).hasFocus) {
+       _ctrl.text = newVal;
+    }
+  }
+  
+  @override
+  void dispose() {
+    _ctrl.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    // Capitalize fieldKey for label
+    final label = widget.fieldKey.substring(0, 1).toUpperCase() + widget.fieldKey.substring(1).replaceAllMapped(RegExp(r'[A-Z]'), (m) => ' ${m[0]}');
+    return Padding(
+      padding: const EdgeInsets.only(bottom: AppSpacing.md),
+      child: _Field(
+        controller: _ctrl,
+        label: label,
+        maxLen: 120,
+        maxLines: 2,
+        onChanged: widget.onChanged,
+        isRewriting: widget.isRewriting,
+        onRewrite: widget.onRewrite,
+      ),
     );
   }
 }

@@ -316,6 +316,29 @@ class CardGeneratorViewModel extends Notifier<CardGeneratorState> {
     }
   }
 
+  void updateCardField(String key, String value) {
+    if (state.cardData == null) return;
+    _saveSnapshot();
+    
+    final json = state.cardData!.toJson();
+    json[key] = value.isEmpty ? 'N/A' : value;
+    
+    try {
+      final updatedData = CardData.fromJson(json);
+      state = state.copyWith(cardData: updatedData);
+    } catch (e) {
+      // Ignore parse errors if somehow mapping fails
+    }
+  }
+
+  void setSolidBackgroundColor(Color color) {
+    _saveSnapshot();
+    state = state.copyWith(
+      useAutoPalette: false,
+      extractedPalette: [color, color],
+    );
+  }
+
   void updateSubtext(String value) {
     _saveSnapshot();
     final v = value.trim();
@@ -405,23 +428,12 @@ class CardGeneratorViewModel extends Notifier<CardGeneratorState> {
     state = state.copyWith(useAutoPalette: v);
   }
 
-  Future<void> rewriteHeadline({
+  Future<void> rewriteDynamicField({
+    required String fieldKey,
     required AiProvider provider,
     required String modelId,
     required String apiKey,
-  }) => _rewriteField('headline', provider, modelId, apiKey);
-
-  Future<void> rewriteSubtext({
-    required AiProvider provider,
-    required String modelId,
-    required String apiKey,
-  }) => _rewriteField('subtext', provider, modelId, apiKey);
-
-  Future<void> rewriteMicroStat({
-    required AiProvider provider,
-    required String modelId,
-    required String apiKey,
-  }) => _rewriteField('microStat', provider, modelId, apiKey);
+  }) => _rewriteField(fieldKey, provider, modelId, apiKey);
 
   Future<void> _rewriteField(
     String field,
@@ -429,12 +441,8 @@ class CardGeneratorViewModel extends Notifier<CardGeneratorState> {
     String modelId,
     String apiKey,
   ) async {
-    final current = switch (field) {
-      'headline' => state.cardData?.headline ?? '',
-      'subtext' => state.cardData?.subtext ?? '',
-      'microStat' => state.cardData?.microStat ?? '',
-      _ => '',
-    };
+    final json = state.cardData?.toJson();
+    final current = json?[field] as String? ?? '';
     if (current.trim().isEmpty || current == 'N/A') return;
 
     final newRewriting = Set<String>.from(state.rewritingFields)..add(field);
@@ -456,13 +464,7 @@ class CardGeneratorViewModel extends Notifier<CardGeneratorState> {
           final clean = trimmed
               .replaceAll(RegExp(r'^["“”]+|["“”]+$'), '')
               .trim();
-          if (field == 'headline') {
-            updateHeadline(clean);
-          } else if (field == 'subtext') {
-            updateSubtext(clean);
-          } else {
-            updateMicroStat(clean);
-          }
+          updateCardField(field, clean);
         },
         (failure) {
           state = state.copyWith(rewriteError: failure.message);
@@ -471,9 +473,8 @@ class CardGeneratorViewModel extends Notifier<CardGeneratorState> {
     } catch (e) {
       state = state.copyWith(rewriteError: e.toString());
     } finally {
-      final doneRewriting = Set<String>.from(state.rewritingFields)
-        ..remove(field);
-      state = state.copyWith(rewritingFields: doneRewriting);
+      final endRewriting = Set<String>.from(state.rewritingFields)..remove(field);
+      state = state.copyWith(rewritingFields: endRewriting);
     }
   }
 
