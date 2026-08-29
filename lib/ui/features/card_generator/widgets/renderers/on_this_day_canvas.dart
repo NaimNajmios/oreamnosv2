@@ -138,7 +138,7 @@ class OnThisDayCanvas extends StatelessWidget {
                     overflow: TextOverflow.ellipsis,
                   ),
                 ],
-                const Spacer(),
+                const SizedBox(height: 16),
                 Text(
                   config.brandName?.isNotEmpty == true
                       ? config.brandName!

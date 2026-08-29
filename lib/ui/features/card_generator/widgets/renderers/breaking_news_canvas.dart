@@ -117,7 +117,7 @@ class BreakingNewsCanvas extends StatelessWidget {
                     overflow: TextOverflow.ellipsis,
                   ),
                 ],
-                const Spacer(),
+                const SizedBox(height: 16),
                 Row(
                   children: [
                     Text(

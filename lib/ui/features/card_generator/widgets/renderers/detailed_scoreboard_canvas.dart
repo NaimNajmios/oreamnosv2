@@ -223,7 +223,7 @@ class DetailedScoreboardCanvas extends StatelessWidget {
                     ],
                   ),
                 ],
-                const Spacer(),
+                const SizedBox(height: 16),
                 Row(
                   children: [
                     Text(

@@ -175,7 +175,7 @@ class PlayerSpotlightCanvas extends StatelessWidget {
                     ),
                   ),
                 ],
-                const Spacer(),
+                const SizedBox(height: 16),
                 Text(
                   config.brandName?.isNotEmpty == true
                       ? config.brandName!
