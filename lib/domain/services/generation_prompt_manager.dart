@@ -3,7 +3,10 @@ import 'package:oreamnos/domain/models/curated_post.dart';
 import 'football_lexicon.dart';
 
 class GenerationPromptManager {
-  static String buildSystemPrompt({String? sourceUrl, List<String> searchSources = const []}) {
+  static String buildSystemPrompt({
+    String? sourceUrl,
+    List<String> searchSources = const [],
+  }) {
     final buf = StringBuffer();
     buf.writeln('Anda ialah kurator media sosial sukan yang pakar.');
     buf.writeln(
@@ -19,12 +22,18 @@ class GenerationPromptManager {
       'Tulis secara fakta dan objektif — elak bahasa provokatif, hiperbola atau sokongan pasukan. Jangan reka fakta yang tidak disebut dalam sumber.',
     );
     buf.writeln('');
-    
+
     if (searchSources.isNotEmpty) {
       buf.writeln('STRICT GROUNDEDNESS RULES:');
-      buf.writeln('1. You MUST base your facts, stats, and quotes ONLY on the provided search context.');
-      buf.writeln('2. Do NOT invent stats, scores, or transfer fees. If the context does not mention it, do not include it.');
-      buf.writeln('3. You MUST append the source URLs at the very end of the post in this format:');
+      buf.writeln(
+        '1. You MUST base your facts, stats, and quotes ONLY on the provided search context.',
+      );
+      buf.writeln(
+        '2. Do NOT invent stats, scores, or transfer fees. If the context does not mention it, do not include it.',
+      );
+      buf.writeln(
+        '3. You MUST append the source URLs at the very end of the post in this format:',
+      );
       buf.writeln('Sumber: ${searchSources.join(', ')}');
       buf.writeln('');
     }

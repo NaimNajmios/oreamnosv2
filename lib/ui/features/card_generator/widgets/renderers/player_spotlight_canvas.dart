@@ -20,7 +20,11 @@ class PlayerSpotlightCanvas extends StatelessWidget {
     final fontMultiplier = config.fontSizeMultiplier;
 
     return Container(
-      decoration: BoxDecoration(gradient: config.backgroundImagePath != null ? null : GradientBuilder.vertical(colors)),
+      decoration: BoxDecoration(
+        gradient: config.backgroundImagePath != null
+            ? null
+            : GradientBuilder.vertical(colors),
+      ),
       child: Stack(
         children: [
           if (config.showScrim)
@@ -126,10 +130,7 @@ class PlayerSpotlightCanvas extends StatelessWidget {
                     if (data.position != 'N/A')
                       Text(
                         data.position,
-                        style: config.font(
-                          color: Colors.white70,
-                          fontSize: 13,
-                        ),
+                        style: config.font(color: Colors.white70, fontSize: 13),
                       ),
                   ],
                 ),
@@ -168,10 +169,7 @@ class PlayerSpotlightCanvas extends StatelessWidget {
                     ),
                     child: Text(
                       data.keyAction,
-                      style: config.font(
-                        color: Colors.white70,
-                        fontSize: 11,
-                      ),
+                      style: config.font(color: Colors.white70, fontSize: 11),
                       maxLines: 2,
                       overflow: TextOverflow.ellipsis,
                     ),
@@ -180,8 +178,8 @@ class PlayerSpotlightCanvas extends StatelessWidget {
                 const Spacer(),
                 Text(
                   config.brandName?.isNotEmpty == true
-                        ? config.brandName!
-                        : (config.brandHandle?.isNotEmpty == true
+                      ? config.brandName!
+                      : (config.brandHandle?.isNotEmpty == true
                             ? config.brandHandle!
                             : 'Spotlight'),
                   style: GoogleFonts.jetBrainsMono(

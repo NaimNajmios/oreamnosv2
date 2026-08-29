@@ -26,7 +26,9 @@ class EnrichContextUseCase {
     if (intent == InputIntent.url) {
       try {
         // Try local scrape first
-        final localScrape = await _webScraper.extractArticleFromUrlInternal(input);
+        final localScrape = await _webScraper.extractArticleFromUrlInternal(
+          input,
+        );
         if (localScrape.text.length > 200) {
           return EnrichmentResult(content: localScrape.text, sources: [input]);
         }

@@ -70,7 +70,7 @@ class _PicsartToolDockState extends ConsumerState<PicsartToolDock> {
         _watermarkCtrl.text = state.watermarkText ?? '';
       }
     }
-    
+
     if (state.focusedField == 'headline') {
       _headlineFocus.requestFocus();
       ref.read(cardGeneratorViewModelProvider.notifier).setFocusedField(null);
@@ -320,8 +320,7 @@ class _PicsartToolDockState extends ConsumerState<PicsartToolDock> {
     return Align(
       alignment: Alignment.center,
       child: RatioSelector(
-        selected: ref
-            .watch(cardGeneratorViewModelProvider).selectedRatio,
+        selected: ref.watch(cardGeneratorViewModelProvider).selectedRatio,
         onSelect: ref.read(cardGeneratorViewModelProvider.notifier).setRatio,
       ),
     );
@@ -455,7 +454,7 @@ class _PicsartToolDockState extends ConsumerState<PicsartToolDock> {
   Widget _buildBrandingPanel(ThemeData theme) {
     final state = ref.watch(cardGeneratorViewModelProvider);
     final notifier = ref.read(cardGeneratorViewModelProvider.notifier);
-    
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
@@ -511,9 +510,14 @@ class _PicsartToolDockState extends ConsumerState<PicsartToolDock> {
             decoration: InputDecoration(
               labelText: 'Watermark Text',
               hintText: '@yourhandle',
-              border: OutlineInputBorder(borderRadius: AppSpacing.borderRadiusSm),
+              border: OutlineInputBorder(
+                borderRadius: AppSpacing.borderRadiusSm,
+              ),
               isDense: true,
-              prefixIcon: const Icon(Icons.branding_watermark_outlined, size: 20),
+              prefixIcon: const Icon(
+                Icons.branding_watermark_outlined,
+                size: 20,
+              ),
             ),
             onChanged: notifier.setWatermarkText,
           ),
@@ -553,7 +557,7 @@ class _PicsartToolDockState extends ConsumerState<PicsartToolDock> {
         );
         break;
     }
-    
+
     final updatedState = ref.read(cardGeneratorViewModelProvider);
     if (updatedState.rewriteError != null && mounted) {
       ScaffoldMessenger.of(context).showSnackBar(

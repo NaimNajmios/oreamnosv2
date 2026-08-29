@@ -2,10 +2,7 @@ class AiModel {
   final String id;
   final bool isFree;
 
-  const AiModel({
-    required this.id,
-    this.isFree = false,
-  });
+  const AiModel({required this.id, this.isFree = false});
 
   @override
   bool operator ==(Object other) {
@@ -16,4 +13,3 @@ class AiModel {
   @override
   int get hashCode => id.hashCode ^ isFree.hashCode;
 }
-

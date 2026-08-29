@@ -110,7 +110,9 @@ class CardConfig {
     bool applyMultiplier = true,
   }) {
     final family = primaryFontFamilyName ?? 'Inter';
-    final scaledSize = applyMultiplier ? fontSize * fontSizeMultiplier : fontSize;
+    final scaledSize = applyMultiplier
+        ? fontSize * fontSizeMultiplier
+        : fontSize;
     return GoogleFonts.getFont(
       family,
       fontSize: scaledSize,
@@ -119,7 +121,8 @@ class CardConfig {
       color: color ?? Colors.white,
       height: height,
       letterSpacing: letterSpacing,
-      shadows: shadows ??
+      shadows:
+          shadows ??
           (textShadowRadius > 0
               ? [Shadow(color: textShadowColor, blurRadius: textShadowRadius)]
               : null),

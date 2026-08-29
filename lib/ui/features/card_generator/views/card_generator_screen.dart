@@ -182,7 +182,9 @@ class _CardGeneratorScreenState extends ConsumerState<CardGeneratorScreen> {
                 onPressed: vm.canUndo
                     ? () {
                         Haptics.lightImpact();
-                        ref.read(cardGeneratorViewModelProvider.notifier).undo();
+                        ref
+                            .read(cardGeneratorViewModelProvider.notifier)
+                            .undo();
                       }
                     : null,
               ),
@@ -192,7 +194,9 @@ class _CardGeneratorScreenState extends ConsumerState<CardGeneratorScreen> {
                 onPressed: vm.canRedo
                     ? () {
                         Haptics.lightImpact();
-                        ref.read(cardGeneratorViewModelProvider.notifier).redo();
+                        ref
+                            .read(cardGeneratorViewModelProvider.notifier)
+                            .redo();
                       }
                     : null,
               ),
@@ -207,7 +211,9 @@ class _CardGeneratorScreenState extends ConsumerState<CardGeneratorScreen> {
                       ExportBottomSheet.show(
                         context,
                         onSaveToGallery: _handleSaveToGallery,
-                        onShare: () => ref.read(cardGeneratorViewModelProvider.notifier).shareCard(_boundaryKey),
+                        onShare: () => ref
+                            .read(cardGeneratorViewModelProvider.notifier)
+                            .shareCard(_boundaryKey),
                       );
                     },
                   ),
@@ -317,9 +323,13 @@ class _CardGeneratorScreenState extends ConsumerState<CardGeneratorScreen> {
                       backgroundImagePath: state.backgroundImage?.path,
                       useAutoPalette: state.useAutoPalette,
                       colorPair: state.extractedPalette != null
-                          ? [state.extractedPalette!.first, state.extractedPalette!.last]
+                          ? [
+                              state.extractedPalette!.first,
+                              state.extractedPalette!.last,
+                            ]
                           : const [Color(0xFF1A237E), Color(0xFF0D47A1)],
-                      primaryFontFamilyName: state.selectedFont == AppFont.classicSerif
+                      primaryFontFamilyName:
+                          state.selectedFont == AppFont.classicSerif
                           ? 'Lora'
                           : state.selectedFont == AppFont.typewriter
                           ? 'SpaceMono'
@@ -329,12 +339,17 @@ class _CardGeneratorScreenState extends ConsumerState<CardGeneratorScreen> {
                       showBrandFooter: state.showBrandFooter,
                     ),
                   ),
-                  if (state.showWatermark && state.watermarkText != null && state.watermarkText!.isNotEmpty)
+                  if (state.showWatermark &&
+                      state.watermarkText != null &&
+                      state.watermarkText!.isNotEmpty)
                     Positioned(
                       bottom: 12,
                       right: 12,
                       child: Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 8,
+                          vertical: 4,
+                        ),
                         decoration: BoxDecoration(
                           color: Colors.black.withValues(alpha: 0.5),
                           borderRadius: BorderRadius.circular(4),

@@ -65,11 +65,17 @@ class PreferencesService {
 
   Future<void> setTavilyApiKey(String value) async {
     try {
-      await _secureStorage.write(key: AppConstants.keyTavilyApiKey, value: value);
+      await _secureStorage.write(
+        key: AppConstants.keyTavilyApiKey,
+        value: value,
+      );
     } catch (e) {
       try {
         await _secureStorage.delete(key: AppConstants.keyTavilyApiKey);
-        await _secureStorage.write(key: AppConstants.keyTavilyApiKey, value: value);
+        await _secureStorage.write(
+          key: AppConstants.keyTavilyApiKey,
+          value: value,
+        );
       } catch (_) {}
     }
   }

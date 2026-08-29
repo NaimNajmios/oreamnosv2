@@ -39,23 +39,24 @@ class EditableCanvasText extends ConsumerWidget {
             minFontSize: minFontSize,
             stepGranularity: stepGranularity,
           )
-        : Text(
-            text,
-            style: style,
-            textAlign: textAlign,
-            maxLines: maxLines,
-          );
+        : Text(text, style: style, textAlign: textAlign, maxLines: maxLines);
 
     return GestureDetector(
       behavior: HitTestBehavior.opaque,
       onTap: () {
-        ref.read(cardGeneratorViewModelProvider.notifier).setActivePanel('text');
-        ref.read(cardGeneratorViewModelProvider.notifier).setFocusedField(fieldKey);
+        ref
+            .read(cardGeneratorViewModelProvider.notifier)
+            .setActivePanel('text');
+        ref
+            .read(cardGeneratorViewModelProvider.notifier)
+            .setFocusedField(fieldKey);
       },
       child: Container(
         decoration: BoxDecoration(
           border: Border.all(
-            color: isFocused ? Colors.blue.withValues(alpha: 0.5) : Colors.transparent,
+            color: isFocused
+                ? Colors.blue.withValues(alpha: 0.5)
+                : Colors.transparent,
             width: 2,
           ),
           borderRadius: BorderRadius.circular(4),

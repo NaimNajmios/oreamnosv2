@@ -330,7 +330,9 @@ class _UsageScreenState extends ConsumerState<UsageScreen> {
                             final now = DateTime.now();
                             final grouped = <String, List<UsageLog>>{};
                             final order = <String>[];
-                            final displayLogs = logs.take(_displayLimit).toList();
+                            final displayLogs = logs
+                                .take(_displayLimit)
+                                .toList();
                             for (final l in displayLogs) {
                               final d = l.timestamp;
                               String key;
@@ -386,7 +388,8 @@ class _UsageScreenState extends ConsumerState<UsageScreen> {
                           padding: const EdgeInsets.only(top: AppSpacing.md),
                           child: Center(
                             child: TextButton(
-                              onPressed: () => setState(() => _displayLimit += 10),
+                              onPressed: () =>
+                                  setState(() => _displayLimit += 10),
                               child: const Text('View More'),
                             ),
                           ),

@@ -27,6 +27,7 @@ import 'package:oreamnos/ui/core/widgets/app_switch.dart';
 import 'package:oreamnos/ui/core/widgets/curated_post_sections.dart';
 import 'package:oreamnos/ui/core/widgets/error_state.dart';
 import 'package:oreamnos/ui/core/widgets/input_clear_button.dart';
+import 'package:oreamnos/ui/features/generate/widgets/twitter_fallback_dialog.dart';
 import 'package:oreamnos/ui/core/widgets/link_preview_card.dart';
 import 'package:oreamnos/ui/core/widgets/ocr_extraction_sheet.dart';
 import 'package:oreamnos/ui/core/widgets/kickoff_loading_indicator.dart';
@@ -147,6 +148,25 @@ class _GenerateScreenState extends ConsumerState<GenerateScreen> {
             onRetryWithFallback: () =>
                 next.retryWithProvider(next.suggestedFallbackProvider!),
           );
+        });
+      } else if (next.state == GenerateState.error &&
+          next.twitterExtractionUrl != null &&
+          prev?.state != GenerateState.error) {
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          if (!context.mounted) return;
+          showDialog<String>(
+            context: context,
+            barrierDismissible: false,
+            builder: (context) =>
+                TwitterFallbackDialog(originalUrl: next.twitterExtractionUrl!),
+          ).then((pastedText) {
+            if (pastedText != null && pastedText.isNotEmpty) {
+              // Populate the UI with the pasted text and trigger generation
+              _controller.text = pastedText;
+              next.setPendingInput(pastedText);
+              next.generatePost(pastedText);
+            }
+          });
         });
       }
     });
@@ -856,7 +876,10 @@ class _GenerateScreenState extends ConsumerState<GenerateScreen> {
                           onPressed: () {
                             context.push(
                               RoutePaths.readingMode,
-                              extra: {'curatedPost': post, 'copyText': copyText},
+                              extra: {
+                                'curatedPost': post,
+                                'copyText': copyText,
+                              },
                             );
                           },
                         ),

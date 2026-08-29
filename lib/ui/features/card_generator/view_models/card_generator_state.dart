@@ -1,4 +1,5 @@
 import 'dart:io';
+
 import 'package:flutter/material.dart';
 import 'package:freezed_annotation/freezed_annotation.dart';
 
@@ -6,6 +7,7 @@ import 'package:oreamnos/domain/models/card_brief.dart';
 import 'package:oreamnos/domain/models/card_data.dart';
 import 'package:oreamnos/domain/models/card_template.dart';
 import 'package:oreamnos/domain/models/card_config_snapshot.dart';
+
 import 'card_generator_view_model.dart'; // For CardRatio and AppFont enums
 
 part 'card_generator_state.freezed.dart';
@@ -19,7 +21,7 @@ abstract class CardGeneratorState with _$CardGeneratorState {
     CardData? cardData,
     @Default(false) bool isExtracting,
     String? extractionError,
-    
+
     @Default(CardTemplate.socialPost) CardTemplate selectedTemplate,
     @Default(CardRatio.portrait45) CardRatio selectedRatio,
     @Default(AppFont.defaultFont) AppFont selectedFont,
@@ -43,7 +45,7 @@ abstract class CardGeneratorState with _$CardGeneratorState {
     String? brandName,
     String? brandHandle,
     @Default(true) bool showBrandFooter,
-    
+
     @Default(Offset(0.5, 0.2)) Offset headlineOffset,
     @Default(Offset(0.5, 0.5)) Offset subtextOffset,
     @Default(Offset(0.5, 0.8)) Offset microStatOffset,

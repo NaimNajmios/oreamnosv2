@@ -21,7 +21,11 @@ class TableStandingsCanvas extends StatelessWidget {
     final rows = data.standings;
 
     return Container(
-      decoration: BoxDecoration(gradient: config.backgroundImagePath != null ? null : GradientBuilder.vertical(colors)),
+      decoration: BoxDecoration(
+        gradient: config.backgroundImagePath != null
+            ? null
+            : GradientBuilder.vertical(colors),
+      ),
       child: Stack(
         children: [
           if (config.showScrim)
@@ -282,8 +286,8 @@ class TableStandingsCanvas extends StatelessWidget {
                 const SizedBox(height: 8),
                 Text(
                   config.brandName?.isNotEmpty == true
-                        ? config.brandName!
-                        : (config.brandHandle?.isNotEmpty == true
+                      ? config.brandName!
+                      : (config.brandHandle?.isNotEmpty == true
                             ? config.brandHandle!
                             : 'League Table'),
                   style: GoogleFonts.jetBrainsMono(

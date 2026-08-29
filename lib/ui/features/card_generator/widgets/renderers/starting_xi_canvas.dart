@@ -17,7 +17,11 @@ class StartingXICanvas extends StatelessWidget {
     final players = data.starters;
 
     return Container(
-      decoration: BoxDecoration(gradient: config.backgroundImagePath != null ? null : GradientBuilder.vertical(colors)),
+      decoration: BoxDecoration(
+        gradient: config.backgroundImagePath != null
+            ? null
+            : GradientBuilder.vertical(colors),
+      ),
       child: Stack(
         children: [
           if (config.showScrim)
@@ -93,10 +97,7 @@ class StartingXICanvas extends StatelessWidget {
                   const SizedBox(height: 4),
                   Text(
                     'Manager: ${data.manager}',
-                    style: config.font(
-                      color: Colors.white70,
-                      fontSize: 12,
-                    ),
+                    style: config.font(color: Colors.white70, fontSize: 12),
                   ),
                 ],
                 const SizedBox(height: 12),
@@ -180,10 +181,10 @@ class StartingXICanvas extends StatelessWidget {
                   children: [
                     Text(
                       config.brandName?.isNotEmpty == true
-                        ? config.brandName!
-                        : (config.brandHandle?.isNotEmpty == true
-                            ? config.brandHandle!
-                            : 'Lineup'),
+                          ? config.brandName!
+                          : (config.brandHandle?.isNotEmpty == true
+                                ? config.brandHandle!
+                                : 'Lineup'),
                       style: GoogleFonts.jetBrainsMono(
                         color: Colors.white.withValues(alpha: 0.6),
                         fontSize: 10,

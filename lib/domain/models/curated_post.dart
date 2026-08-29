@@ -400,7 +400,9 @@ class CuratedPost extends Equatable {
       buf.writeln();
       buf.writeln();
       String sourceText = source.label;
-      if (sourceText.isEmpty && source.domain != null && source.domain!.isNotEmpty) {
+      if (sourceText.isEmpty &&
+          source.domain != null &&
+          source.domain!.isNotEmpty) {
         sourceText = source.domain!;
       }
       if (sourceText.isEmpty && source.url != null && source.url!.isNotEmpty) {

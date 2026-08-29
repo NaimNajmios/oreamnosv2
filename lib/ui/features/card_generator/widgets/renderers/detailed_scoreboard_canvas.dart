@@ -20,7 +20,11 @@ class DetailedScoreboardCanvas extends StatelessWidget {
     final fontMultiplier = config.fontSizeMultiplier;
 
     return Container(
-      decoration: BoxDecoration(gradient: config.backgroundImagePath != null ? null : GradientBuilder.vertical(colors)),
+      decoration: BoxDecoration(
+        gradient: config.backgroundImagePath != null
+            ? null
+            : GradientBuilder.vertical(colors),
+      ),
       child: Stack(
         children: [
           if (config.showScrim)
@@ -224,10 +228,10 @@ class DetailedScoreboardCanvas extends StatelessWidget {
                   children: [
                     Text(
                       config.brandName?.isNotEmpty == true
-                        ? config.brandName!
-                        : (config.brandHandle?.isNotEmpty == true
-                            ? config.brandHandle!
-                            : 'Scoreboard'),
+                          ? config.brandName!
+                          : (config.brandHandle?.isNotEmpty == true
+                                ? config.brandHandle!
+                                : 'Scoreboard'),
                       style: GoogleFonts.jetBrainsMono(
                         color: Colors.white.withValues(alpha: 0.6),
                         fontSize: 10,

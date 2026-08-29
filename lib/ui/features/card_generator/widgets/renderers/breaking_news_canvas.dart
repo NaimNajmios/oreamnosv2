@@ -20,7 +20,11 @@ class BreakingNewsCanvas extends StatelessWidget {
     final fontMultiplier = config.fontSizeMultiplier;
 
     return Container(
-      decoration: BoxDecoration(gradient: config.backgroundImagePath != null ? null : GradientBuilder.vertical(colors)),
+      decoration: BoxDecoration(
+        gradient: config.backgroundImagePath != null
+            ? null
+            : GradientBuilder.vertical(colors),
+      ),
       child: Stack(
         children: [
           if (config.showScrim)
@@ -118,10 +122,10 @@ class BreakingNewsCanvas extends StatelessWidget {
                   children: [
                     Text(
                       config.brandName?.isNotEmpty == true
-                        ? config.brandName!
-                        : (config.brandHandle?.isNotEmpty == true
-                            ? config.brandHandle!
-                            : 'News Alert'),
+                          ? config.brandName!
+                          : (config.brandHandle?.isNotEmpty == true
+                                ? config.brandHandle!
+                                : 'News Alert'),
                       style: GoogleFonts.jetBrainsMono(
                         color: Colors.white.withValues(alpha: 0.6),
                         fontSize: 10,

@@ -18,7 +18,11 @@ class RivalryCanvas extends StatelessWidget {
     final p2Stats = data.player2Stats;
 
     return Container(
-      decoration: BoxDecoration(gradient: config.backgroundImagePath != null ? null : GradientBuilder.vertical(colors)),
+      decoration: BoxDecoration(
+        gradient: config.backgroundImagePath != null
+            ? null
+            : GradientBuilder.vertical(colors),
+      ),
       child: Stack(
         children: [
           if (config.showScrim)
@@ -193,8 +197,8 @@ class RivalryCanvas extends StatelessWidget {
                 const SizedBox(height: 8),
                 Text(
                   config.brandName?.isNotEmpty == true
-                        ? config.brandName!
-                        : (config.brandHandle?.isNotEmpty == true
+                      ? config.brandName!
+                      : (config.brandHandle?.isNotEmpty == true
                             ? config.brandHandle!
                             : 'Head to Head'),
                   style: GoogleFonts.jetBrainsMono(

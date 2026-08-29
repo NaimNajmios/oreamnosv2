@@ -1,8 +1,4 @@
-enum InputIntent {
-  fullArticle,
-  url,
-  shortQuery,
-}
+enum InputIntent { fullArticle, url, shortQuery }
 
 class IntentClassifier {
   static InputIntent classify(String input) {

@@ -490,112 +490,123 @@ extension CardDataCopy on CardData {
     final s = subtext;
     final m = microStat ?? 'N/A';
     return switch (target) {
-      CardTemplate.playerSpotlight => this is PlayerSpotlight
-          ? this
-          : CardData.playerSpotlight(
-              playerName: h,
-              keyQuote: s.isEmpty ? 'N/A' : s,
-              keyAction: m,
-            ),
-      CardTemplate.headlineQuote => this is HeadlineQuote
-          ? this
-          : CardData.headlineQuote(
-              headline: h,
-              subtext: s,
-              category: m,
-            ),
-      CardTemplate.topStats => this is TopStats
-          ? this
-          : CardData.topStats(matchContext: h),
-      CardTemplate.transferNews => this is TransferNews
-          ? this
-          : CardData.transferNews(
-              playerName: h,
-              quote: s.isEmpty ? 'N/A' : s,
-              fee: m,
-            ),
-      CardTemplate.breakingNews => this is BreakingNews
-          ? this
-          : CardData.breakingNews(
-              headline: h,
-              subtext: s,
-              label: m == 'N/A' ? 'BREAKING' : m,
-            ),
-      CardTemplate.matchPreview => this is MatchPreview
-          ? this
-          : CardData.matchPreview(
-              homeTeam: h,
-              awayTeam: s.isEmpty ? 'Opponent' : s,
-            ),
-      CardTemplate.detailedScoreboard => this is DetailedScoreboard
-          ? this
-          : CardData.detailedScoreboard(
-              homeTeam: h,
-              awayTeam: s.isEmpty ? 'Opponent' : s,
-            ),
-      CardTemplate.onThisDay => this is OnThisDay
-          ? this
-          : CardData.onThisDay(
-              headline: h,
-              significance: s.isEmpty ? 'N/A' : s,
-            ),
-      CardTemplate.startingXI => this is StartingXI
-          ? this
-          : CardData.startingXI(
-              teamName: h,
-              formation: m == 'N/A' ? '4-3-3' : m,
-            ),
-      CardTemplate.matchStatsComparison => this is MatchStatsComparison
-          ? this
-          : CardData.matchStatsComparison(
-              homeTeam: h,
-              awayTeam: s.isEmpty ? 'Opponent' : s,
-            ),
-      CardTemplate.socialPost => this is SocialPost
-          ? this
-          : CardData.socialPost(
-              content: s.isNotEmpty ? '$h\n\n$s' : h,
-              metrics: s,
-              handle: m,
-            ),
-      CardTemplate.rivalry => this is Rivalry
-          ? this
-          : CardData.rivalry(
-              player1Name: h,
-              player2Name: s.isEmpty ? 'Rival' : s,
-            ),
-      CardTemplate.tableStandings => this is TableStandings
-          ? this
-          : CardData.tableStandings(
-              leagueName: h,
-              matchday: s.isEmpty ? 'N/A' : s,
-            ),
-      CardTemplate.injuryReport => this is InjuryReport
-          ? this
-          : CardData.injuryReport(
-              teamName: h,
-              nextMatch: s.isEmpty ? 'N/A' : s,
-            ),
-      CardTemplate.contractExpiry => this is ContractExpiry
-          ? this
-          : CardData.contractExpiry(
-              teamName: h,
-              seasonYear: s.isEmpty ? 'N/A' : s,
-            ),
-      CardTemplate.awardNominee => this is AwardNominee
-          ? this
-          : CardData.awardNominee(
-              awardName: h,
-              category: s.isEmpty ? 'N/A' : s,
-            ),
-      CardTemplate.freeform => this is SparseCard && suggestedTemplate == CardTemplate.freeform
-          ? this
-          : CardData.sparse(
-              headline: h,
-              subtext: s,
-              microStat: m == 'N/A' ? null : m,
-              suggestedTemplate: CardTemplate.freeform,
-            ),
+      CardTemplate.playerSpotlight =>
+        this is PlayerSpotlight
+            ? this
+            : CardData.playerSpotlight(
+                playerName: h,
+                keyQuote: s.isEmpty ? 'N/A' : s,
+                keyAction: m,
+              ),
+      CardTemplate.headlineQuote =>
+        this is HeadlineQuote
+            ? this
+            : CardData.headlineQuote(headline: h, subtext: s, category: m),
+      CardTemplate.topStats =>
+        this is TopStats ? this : CardData.topStats(matchContext: h),
+      CardTemplate.transferNews =>
+        this is TransferNews
+            ? this
+            : CardData.transferNews(
+                playerName: h,
+                quote: s.isEmpty ? 'N/A' : s,
+                fee: m,
+              ),
+      CardTemplate.breakingNews =>
+        this is BreakingNews
+            ? this
+            : CardData.breakingNews(
+                headline: h,
+                subtext: s,
+                label: m == 'N/A' ? 'BREAKING' : m,
+              ),
+      CardTemplate.matchPreview =>
+        this is MatchPreview
+            ? this
+            : CardData.matchPreview(
+                homeTeam: h,
+                awayTeam: s.isEmpty ? 'Opponent' : s,
+              ),
+      CardTemplate.detailedScoreboard =>
+        this is DetailedScoreboard
+            ? this
+            : CardData.detailedScoreboard(
+                homeTeam: h,
+                awayTeam: s.isEmpty ? 'Opponent' : s,
+              ),
+      CardTemplate.onThisDay =>
+        this is OnThisDay
+            ? this
+            : CardData.onThisDay(
+                headline: h,
+                significance: s.isEmpty ? 'N/A' : s,
+              ),
+      CardTemplate.startingXI =>
+        this is StartingXI
+            ? this
+            : CardData.startingXI(
+                teamName: h,
+                formation: m == 'N/A' ? '4-3-3' : m,
+              ),
+      CardTemplate.matchStatsComparison =>
+        this is MatchStatsComparison
+            ? this
+            : CardData.matchStatsComparison(
+                homeTeam: h,
+                awayTeam: s.isEmpty ? 'Opponent' : s,
+              ),
+      CardTemplate.socialPost =>
+        this is SocialPost
+            ? this
+            : CardData.socialPost(
+                content: s.isNotEmpty ? '$h\n\n$s' : h,
+                metrics: s,
+                handle: m,
+              ),
+      CardTemplate.rivalry =>
+        this is Rivalry
+            ? this
+            : CardData.rivalry(
+                player1Name: h,
+                player2Name: s.isEmpty ? 'Rival' : s,
+              ),
+      CardTemplate.tableStandings =>
+        this is TableStandings
+            ? this
+            : CardData.tableStandings(
+                leagueName: h,
+                matchday: s.isEmpty ? 'N/A' : s,
+              ),
+      CardTemplate.injuryReport =>
+        this is InjuryReport
+            ? this
+            : CardData.injuryReport(
+                teamName: h,
+                nextMatch: s.isEmpty ? 'N/A' : s,
+              ),
+      CardTemplate.contractExpiry =>
+        this is ContractExpiry
+            ? this
+            : CardData.contractExpiry(
+                teamName: h,
+                seasonYear: s.isEmpty ? 'N/A' : s,
+              ),
+      CardTemplate.awardNominee =>
+        this is AwardNominee
+            ? this
+            : CardData.awardNominee(
+                awardName: h,
+                category: s.isEmpty ? 'N/A' : s,
+              ),
+      CardTemplate.freeform =>
+        this is SparseCard && suggestedTemplate == CardTemplate.freeform
+            ? this
+            : CardData.sparse(
+                headline: h,
+                subtext: s,
+                microStat: m == 'N/A' ? null : m,
+                suggestedTemplate: CardTemplate.freeform,
+              ),
     };
   }
 }

@@ -78,7 +78,10 @@ class ProviderApiService {
         .where((name) => name.contains('gemini'))
         .map((name) {
           final id = name.replaceFirst('models/', '');
-          return AiModel(id: id, isFree: false); // No dynamic pricing from Gemini API yet
+          return AiModel(
+            id: id,
+            isFree: false,
+          ); // No dynamic pricing from Gemini API yet
         })
         .toList();
   }
@@ -106,19 +109,24 @@ class ProviderApiService {
         : response.data;
     final modelsData = data['data'] as List<dynamic>? ?? [];
 
-    return modelsData.map((m) {
-      final id = m['id'] as String;
-      bool isFree = false;
-      if (m['pricing'] != null) {
-        final pricing = m['pricing'];
-        final promptCost = pricing['prompt'];
-        final completionCost = pricing['completion'];
-        if ((promptCost == "0" || promptCost == 0 || promptCost == "0.0") &&
-            (completionCost == "0" || completionCost == 0 || completionCost == "0.0")) {
-          isFree = true;
-        }
-      }
-      return AiModel(id: id, isFree: isFree);
-    }).where((m) => m.id.startsWith(prefixFilter)).toList();
+    return modelsData
+        .map((m) {
+          final id = m['id'] as String;
+          bool isFree = false;
+          if (m['pricing'] != null) {
+            final pricing = m['pricing'];
+            final promptCost = pricing['prompt'];
+            final completionCost = pricing['completion'];
+            if ((promptCost == "0" || promptCost == 0 || promptCost == "0.0") &&
+                (completionCost == "0" ||
+                    completionCost == 0 ||
+                    completionCost == "0.0")) {
+              isFree = true;
+            }
+          }
+          return AiModel(id: id, isFree: isFree);
+        })
+        .where((m) => m.id.startsWith(prefixFilter))
+        .toList();
   }
 }

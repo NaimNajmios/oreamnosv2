@@ -5,6 +5,7 @@ import 'package:injectable/injectable.dart';
 import 'package:oreamnos/core/network/api_client.dart';
 import 'package:oreamnos/core/di/injection.dart';
 import 'package:oreamnos/domain/models/curated_post.dart';
+import 'package:oreamnos/data/services/twitter_extractor.dart';
 
 @lazySingleton
 class WebScraperService {
@@ -33,6 +34,24 @@ class WebScraperService {
   /// Instance extraction via pooled Dio (with interceptors, timeout, retry).
   Future<ExtractedArticle> extractArticleFromUrlInternal(String url) async {
     final trimmed = url.trim();
+
+    // Intercept Twitter/X URLs
+    if (TwitterExtractor.isTwitterUrl(trimmed)) {
+      TweetContent? tweet = await TwitterExtractor.extractViaFxTwitter(trimmed);
+      if (tweet == null || !tweet.isValid) {
+        tweet = await TwitterExtractor.extractViaVxTwitter(trimmed);
+      }
+      if (tweet != null && tweet.isValid) {
+        return ExtractedArticle(
+          text: TwitterExtractor.formatForAiPrompt(tweet),
+          url: trimmed,
+          domain: 'x.com',
+          pageTitle: 'X/Twitter Post',
+        );
+      }
+      // Fall through to normal scraping if both fail
+    }
+
     try {
       final response = await _client.get<String>(
         trimmed,

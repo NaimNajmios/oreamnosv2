@@ -20,7 +20,11 @@ class MatchPreviewCanvas extends StatelessWidget {
     final fontMultiplier = config.fontSizeMultiplier;
 
     return Container(
-      decoration: BoxDecoration(gradient: config.backgroundImagePath != null ? null : GradientBuilder.vertical(colors)),
+      decoration: BoxDecoration(
+        gradient: config.backgroundImagePath != null
+            ? null
+            : GradientBuilder.vertical(colors),
+      ),
       child: Stack(
         children: [
           if (config.showScrim)
@@ -221,8 +225,8 @@ class MatchPreviewCanvas extends StatelessWidget {
                 const Spacer(),
                 Text(
                   config.brandName?.isNotEmpty == true
-                        ? config.brandName!
-                        : (config.brandHandle?.isNotEmpty == true
+                      ? config.brandName!
+                      : (config.brandHandle?.isNotEmpty == true
                             ? config.brandHandle!
                             : 'Match Preview'),
                   style: GoogleFonts.jetBrainsMono(

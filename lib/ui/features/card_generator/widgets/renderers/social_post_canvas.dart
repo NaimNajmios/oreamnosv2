@@ -17,7 +17,11 @@ class SocialPostCanvas extends StatelessWidget {
     final fontMultiplier = config.fontSizeMultiplier;
 
     return Container(
-      decoration: BoxDecoration(gradient: config.backgroundImagePath != null ? null : GradientBuilder.vertical(colors)),
+      decoration: BoxDecoration(
+        gradient: config.backgroundImagePath != null
+            ? null
+            : GradientBuilder.vertical(colors),
+      ),
       child: Stack(
         children: [
           if (config.showScrim)
@@ -70,8 +74,8 @@ class SocialPostCanvas extends StatelessWidget {
                                   data.name != 'N/A' && data.name.isNotEmpty
                                       ? data.name
                                       : (config.brandName?.isNotEmpty == true
-                                          ? config.brandName!
-                                          : 'Verified Account'),
+                                            ? config.brandName!
+                                            : 'Verified Account'),
                                   style: config.font(
                                     color: Colors.white,
                                     fontSize: 13,
@@ -96,8 +100,8 @@ class SocialPostCanvas extends StatelessWidget {
                             data.handle != 'N/A'
                                 ? data.handle
                                 : (config.brandHandle?.isNotEmpty == true
-                                    ? config.brandHandle!
-                                    : '@creator'),
+                                      ? config.brandHandle!
+                                      : '@creator'),
                             fieldKey: 'microStat',
                             autoSize: false,
                             style: config.font(
@@ -179,8 +183,8 @@ class SocialPostCanvas extends StatelessWidget {
                 ],
                 Text(
                   config.brandName?.isNotEmpty == true
-                        ? config.brandName!
-                        : (config.brandHandle?.isNotEmpty == true
+                      ? config.brandName!
+                      : (config.brandHandle?.isNotEmpty == true
                             ? config.brandHandle!
                             : 'Social Feed'),
                   style: GoogleFonts.jetBrainsMono(

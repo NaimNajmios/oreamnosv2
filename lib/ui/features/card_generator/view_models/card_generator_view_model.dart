@@ -1,4 +1,5 @@
 import 'dart:io';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:image_picker/image_picker.dart';
@@ -13,6 +14,7 @@ import 'package:oreamnos/domain/models/card_brief.dart';
 import 'package:oreamnos/domain/models/card_data.dart';
 import 'package:oreamnos/domain/models/card_template.dart';
 import 'package:oreamnos/domain/models/card_config_snapshot.dart';
+
 import 'card_generator_state.dart';
 
 enum CardRatio {
@@ -32,8 +34,8 @@ enum AppFont { defaultFont, classicSerif, typewriter }
 
 final cardGeneratorViewModelProvider =
     NotifierProvider<CardGeneratorViewModel, CardGeneratorState>(
-  CardGeneratorViewModel.new,
-);
+      CardGeneratorViewModel.new,
+    );
 
 class CardGeneratorViewModel extends Notifier<CardGeneratorState> {
   static const int _maxSnapshots = 50;
@@ -51,8 +53,8 @@ class CardGeneratorViewModel extends Notifier<CardGeneratorState> {
       watermarkText: _prefsService.watermarkText.isNotEmpty
           ? _prefsService.watermarkText
           : (_prefsService.brandHandle.isNotEmpty
-              ? _prefsService.brandHandle
-              : null),
+                ? _prefsService.brandHandle
+                : null),
       showWatermark: _prefsService.showWatermark,
       showBrandFooter: _prefsService.showBrandFooter,
     );
@@ -60,7 +62,8 @@ class CardGeneratorViewModel extends Notifier<CardGeneratorState> {
 
   void _saveSnapshot() {
     final current = state.toSnapshot();
-    final newUndo = List<CardConfigSnapshot>.from(state.undoStack)..add(current);
+    final newUndo = List<CardConfigSnapshot>.from(state.undoStack)
+      ..add(current);
     if (newUndo.length > _maxSnapshots) {
       newUndo.removeAt(0);
     }
@@ -72,8 +75,9 @@ class CardGeneratorViewModel extends Notifier<CardGeneratorState> {
     final current = state.toSnapshot();
     final newUndo = List<CardConfigSnapshot>.from(state.undoStack);
     final snapshot = newUndo.removeLast();
-    final newRedo = List<CardConfigSnapshot>.from(state.redoStack)..add(current);
-    
+    final newRedo = List<CardConfigSnapshot>.from(state.redoStack)
+      ..add(current);
+
     _applySnapshot(snapshot, newUndo, newRedo);
   }
 
@@ -82,13 +86,17 @@ class CardGeneratorViewModel extends Notifier<CardGeneratorState> {
     final current = state.toSnapshot();
     final newRedo = List<CardConfigSnapshot>.from(state.redoStack);
     final snapshot = newRedo.removeLast();
-    final newUndo = List<CardConfigSnapshot>.from(state.undoStack)..add(current);
-    
+    final newUndo = List<CardConfigSnapshot>.from(state.undoStack)
+      ..add(current);
+
     _applySnapshot(snapshot, newUndo, newRedo);
   }
 
   void _applySnapshot(
-      CardConfigSnapshot snapshot, List<CardConfigSnapshot> undo, List<CardConfigSnapshot> redo) {
+    CardConfigSnapshot snapshot,
+    List<CardConfigSnapshot> undo,
+    List<CardConfigSnapshot> redo,
+  ) {
     state = state.copyWith(
       cardData: snapshot.cardData,
       selectedTemplate: snapshot.selectedTemplate,
@@ -149,11 +157,13 @@ class CardGeneratorViewModel extends Notifier<CardGeneratorState> {
       } else {
         newCardData = polished;
       }
-      
+
       final suggested = polished.effectiveTemplate;
       state = state.copyWith(
         cardData: newCardData,
-        selectedTemplate: suggested != state.selectedTemplate ? suggested : state.selectedTemplate,
+        selectedTemplate: suggested != state.selectedTemplate
+            ? suggested
+            : state.selectedTemplate,
       );
     } catch (e) {
       state = state.copyWith(extractionError: e.toString());
@@ -229,7 +239,7 @@ class CardGeneratorViewModel extends Notifier<CardGeneratorState> {
     state = state.copyWith(showBrandFooter: show);
     _prefsService.setShowBrandFooter(show);
   }
-  
+
   void updateElementOffset(String field, Offset offset) {
     if (field == 'headline') {
       state = state.copyWith(headlineOffset: offset);
@@ -252,31 +262,37 @@ class CardGeneratorViewModel extends Notifier<CardGeneratorState> {
     _saveSnapshot();
     final v = value.trim();
     if (state.cardData == null) {
-      state = state.copyWith(cardData: CardData.sparse(
-        headline: v.isEmpty ? 'Generated Card' : v,
-        subtext: '',
-      ));
+      state = state.copyWith(
+        cardData: CardData.sparse(
+          headline: v.isEmpty ? 'Generated Card' : v,
+          subtext: '',
+        ),
+      );
     } else {
       final d = state.cardData!;
-      state = state.copyWith(cardData: d.map(
-        playerSpotlight: (x) => x.copyWith(playerName: v.isEmpty ? 'N/A' : v),
-        headlineQuote: (x) => x.copyWith(headline: v.isEmpty ? 'N/A' : v),
-        topStats: (x) => x,
-        transferNews: (x) => x.copyWith(playerName: v.isEmpty ? 'N/A' : v),
-        breakingNews: (x) => x.copyWith(headline: v.isEmpty ? 'N/A' : v),
-        matchPreview: (x) => x.copyWith(homeTeam: v.isEmpty ? 'N/A' : v),
-        detailedScoreboard: (x) => x.copyWith(homeTeam: v.isEmpty ? 'N/A' : v),
-        onThisDay: (x) => x.copyWith(headline: v.isEmpty ? 'N/A' : v),
-        startingXI: (x) => x.copyWith(teamName: v.isEmpty ? 'N/A' : v),
-        matchStatsComparison: (x) => x.copyWith(homeTeam: v.isEmpty ? 'N/A' : v),
-        socialPost: (x) => x.copyWith(content: v.isEmpty ? 'N/A' : v),
-        rivalry: (x) => x.copyWith(player1Name: v.isEmpty ? 'N/A' : v),
-        tableStandings: (x) => x.copyWith(leagueName: v.isEmpty ? 'N/A' : v),
-        injuryReport: (x) => x.copyWith(teamName: v.isEmpty ? 'N/A' : v),
-        contractExpiry: (x) => x.copyWith(teamName: v.isEmpty ? 'N/A' : v),
-        awardNominee: (x) => x.copyWith(awardName: v.isEmpty ? 'N/A' : v),
-        sparse: (x) => x.copyWith(headline: v.isEmpty ? 'Generated Card' : v),
-      ));
+      state = state.copyWith(
+        cardData: d.map(
+          playerSpotlight: (x) => x.copyWith(playerName: v.isEmpty ? 'N/A' : v),
+          headlineQuote: (x) => x.copyWith(headline: v.isEmpty ? 'N/A' : v),
+          topStats: (x) => x,
+          transferNews: (x) => x.copyWith(playerName: v.isEmpty ? 'N/A' : v),
+          breakingNews: (x) => x.copyWith(headline: v.isEmpty ? 'N/A' : v),
+          matchPreview: (x) => x.copyWith(homeTeam: v.isEmpty ? 'N/A' : v),
+          detailedScoreboard: (x) =>
+              x.copyWith(homeTeam: v.isEmpty ? 'N/A' : v),
+          onThisDay: (x) => x.copyWith(headline: v.isEmpty ? 'N/A' : v),
+          startingXI: (x) => x.copyWith(teamName: v.isEmpty ? 'N/A' : v),
+          matchStatsComparison: (x) =>
+              x.copyWith(homeTeam: v.isEmpty ? 'N/A' : v),
+          socialPost: (x) => x.copyWith(content: v.isEmpty ? 'N/A' : v),
+          rivalry: (x) => x.copyWith(player1Name: v.isEmpty ? 'N/A' : v),
+          tableStandings: (x) => x.copyWith(leagueName: v.isEmpty ? 'N/A' : v),
+          injuryReport: (x) => x.copyWith(teamName: v.isEmpty ? 'N/A' : v),
+          contractExpiry: (x) => x.copyWith(teamName: v.isEmpty ? 'N/A' : v),
+          awardNominee: (x) => x.copyWith(awardName: v.isEmpty ? 'N/A' : v),
+          sparse: (x) => x.copyWith(headline: v.isEmpty ? 'Generated Card' : v),
+        ),
+      );
     }
   }
 
@@ -284,28 +300,33 @@ class CardGeneratorViewModel extends Notifier<CardGeneratorState> {
     _saveSnapshot();
     final v = value.trim();
     if (state.cardData == null) {
-      state = state.copyWith(cardData: CardData.sparse(headline: 'Generated Card', subtext: v));
+      state = state.copyWith(
+        cardData: CardData.sparse(headline: 'Generated Card', subtext: v),
+      );
     } else {
       final d = state.cardData!;
-      state = state.copyWith(cardData: d.map(
-        playerSpotlight: (x) => x.copyWith(keyQuote: v.isEmpty ? 'N/A' : v),
-        headlineQuote: (x) => x.copyWith(subtext: v.isEmpty ? 'N/A' : v),
-        topStats: (x) => x,
-        transferNews: (x) => x.copyWith(quote: v.isEmpty ? 'N/A' : v),
-        breakingNews: (x) => x.copyWith(subtext: v.isEmpty ? 'N/A' : v),
-        matchPreview: (x) => x.copyWith(competition: v.isEmpty ? 'N/A' : v),
-        detailedScoreboard: (x) => x.copyWith(competition: v.isEmpty ? 'N/A' : v),
-        onThisDay: (x) => x.copyWith(significance: v.isEmpty ? 'N/A' : v),
-        startingXI: (x) => x.copyWith(manager: v.isEmpty ? 'N/A' : v),
-        matchStatsComparison: (x) => x,
-        socialPost: (x) => x.copyWith(metrics: v.isEmpty ? 'N/A' : v),
-        rivalry: (x) => x.copyWith(verdict: v.isEmpty ? 'N/A' : v),
-        tableStandings: (x) => x.copyWith(matchday: v.isEmpty ? 'N/A' : v),
-        injuryReport: (x) => x.copyWith(nextMatch: v.isEmpty ? 'N/A' : v),
-        contractExpiry: (x) => x.copyWith(seasonYear: v.isEmpty ? 'N/A' : v),
-        awardNominee: (x) => x.copyWith(category: v.isEmpty ? 'N/A' : v),
-        sparse: (x) => x.copyWith(subtext: v),
-      ));
+      state = state.copyWith(
+        cardData: d.map(
+          playerSpotlight: (x) => x.copyWith(keyQuote: v.isEmpty ? 'N/A' : v),
+          headlineQuote: (x) => x.copyWith(subtext: v.isEmpty ? 'N/A' : v),
+          topStats: (x) => x,
+          transferNews: (x) => x.copyWith(quote: v.isEmpty ? 'N/A' : v),
+          breakingNews: (x) => x.copyWith(subtext: v.isEmpty ? 'N/A' : v),
+          matchPreview: (x) => x.copyWith(competition: v.isEmpty ? 'N/A' : v),
+          detailedScoreboard: (x) =>
+              x.copyWith(competition: v.isEmpty ? 'N/A' : v),
+          onThisDay: (x) => x.copyWith(significance: v.isEmpty ? 'N/A' : v),
+          startingXI: (x) => x.copyWith(manager: v.isEmpty ? 'N/A' : v),
+          matchStatsComparison: (x) => x,
+          socialPost: (x) => x.copyWith(metrics: v.isEmpty ? 'N/A' : v),
+          rivalry: (x) => x.copyWith(verdict: v.isEmpty ? 'N/A' : v),
+          tableStandings: (x) => x.copyWith(matchday: v.isEmpty ? 'N/A' : v),
+          injuryReport: (x) => x.copyWith(nextMatch: v.isEmpty ? 'N/A' : v),
+          contractExpiry: (x) => x.copyWith(seasonYear: v.isEmpty ? 'N/A' : v),
+          awardNominee: (x) => x.copyWith(category: v.isEmpty ? 'N/A' : v),
+          sparse: (x) => x.copyWith(subtext: v),
+        ),
+      );
     }
   }
 
@@ -314,32 +335,39 @@ class CardGeneratorViewModel extends Notifier<CardGeneratorState> {
     final v = value.trim();
     final isClear = v.isEmpty;
     if (state.cardData == null) {
-      state = state.copyWith(cardData: CardData.sparse(
-        headline: 'Generated Card',
-        subtext: '',
-        microStat: isClear ? null : v,
-      ));
+      state = state.copyWith(
+        cardData: CardData.sparse(
+          headline: 'Generated Card',
+          subtext: '',
+          microStat: isClear ? null : v,
+        ),
+      );
     } else {
       final d = state.cardData!;
-      state = state.copyWith(cardData: d.map(
-        playerSpotlight: (x) => x.copyWith(keyAction: isClear ? 'N/A' : v),
-        headlineQuote: (x) => x.copyWith(category: isClear ? 'N/A' : v),
-        topStats: (x) => x,
-        transferNews: (x) => x.copyWith(fee: isClear ? 'N/A' : v),
-        breakingNews: (x) => x.copyWith(label: isClear ? '🚨 BREAKING' : v),
-        matchPreview: (x) => x.copyWith(homeForm: isClear ? 'N/A' : v),
-        detailedScoreboard: (x) => x.copyWith(possession: isClear ? 'N/A' : v),
-        onThisDay: (x) => x,
-        startingXI: (x) => x.copyWith(formation: isClear ? 'N/A' : v),
-        matchStatsComparison: (x) => x,
-        socialPost: (x) => x.copyWith(handle: isClear ? 'N/A' : v),
-        rivalry: (x) => x.copyWith(headToHead: isClear ? 'N/A' : v),
-        tableStandings: (x) => x.copyWith(highlightedTeam: isClear ? 'N/A' : v),
-        injuryReport: (x) => x.copyWith(recoveryPercentage: isClear ? 'N/A' : v),
-        contractExpiry: (x) => x.copyWith(wage: isClear ? 'N/A' : v),
-        awardNominee: (x) => x.copyWith(currentFavorite: isClear ? 'N/A' : v),
-        sparse: (x) => x.copyWith(microStat: isClear ? null : v),
-      ));
+      state = state.copyWith(
+        cardData: d.map(
+          playerSpotlight: (x) => x.copyWith(keyAction: isClear ? 'N/A' : v),
+          headlineQuote: (x) => x.copyWith(category: isClear ? 'N/A' : v),
+          topStats: (x) => x,
+          transferNews: (x) => x.copyWith(fee: isClear ? 'N/A' : v),
+          breakingNews: (x) => x.copyWith(label: isClear ? '🚨 BREAKING' : v),
+          matchPreview: (x) => x.copyWith(homeForm: isClear ? 'N/A' : v),
+          detailedScoreboard: (x) =>
+              x.copyWith(possession: isClear ? 'N/A' : v),
+          onThisDay: (x) => x,
+          startingXI: (x) => x.copyWith(formation: isClear ? 'N/A' : v),
+          matchStatsComparison: (x) => x,
+          socialPost: (x) => x.copyWith(handle: isClear ? 'N/A' : v),
+          rivalry: (x) => x.copyWith(headToHead: isClear ? 'N/A' : v),
+          tableStandings: (x) =>
+              x.copyWith(highlightedTeam: isClear ? 'N/A' : v),
+          injuryReport: (x) =>
+              x.copyWith(recoveryPercentage: isClear ? 'N/A' : v),
+          contractExpiry: (x) => x.copyWith(wage: isClear ? 'N/A' : v),
+          awardNominee: (x) => x.copyWith(currentFavorite: isClear ? 'N/A' : v),
+          sparse: (x) => x.copyWith(microStat: isClear ? null : v),
+        ),
+      );
     }
   }
 
@@ -378,10 +406,10 @@ class CardGeneratorViewModel extends Notifier<CardGeneratorState> {
       _ => '',
     };
     if (current.trim().isEmpty || current == 'N/A') return;
-    
+
     final newRewriting = Set<String>.from(state.rewritingFields)..add(field);
     state = state.copyWith(rewritingFields: newRewriting, rewriteError: null);
-    
+
     try {
       final repo = getIt<IContentRepository>();
       final res = await repo.rewriteField(
@@ -413,7 +441,8 @@ class CardGeneratorViewModel extends Notifier<CardGeneratorState> {
     } catch (e) {
       state = state.copyWith(rewriteError: e.toString());
     } finally {
-      final doneRewriting = Set<String>.from(state.rewritingFields)..remove(field);
+      final doneRewriting = Set<String>.from(state.rewritingFields)
+        ..remove(field);
       state = state.copyWith(rewritingFields: doneRewriting);
     }
   }
@@ -424,7 +453,10 @@ class CardGeneratorViewModel extends Notifier<CardGeneratorState> {
       final xfile = await picker.pickImage(source: source, imageQuality: 85);
       if (xfile != null) {
         final palette = await ColorExtractor.extractPalette(xfile.path);
-        state = state.copyWith(backgroundImage: File(xfile.path), extractedPalette: palette);
+        state = state.copyWith(
+          backgroundImage: File(xfile.path),
+          extractedPalette: palette,
+        );
       }
     } catch (e) {
       debugPrint('pickImage error: $e');
@@ -432,7 +464,11 @@ class CardGeneratorViewModel extends Notifier<CardGeneratorState> {
   }
 
   void removeImage() {
-    state = state.copyWith(backgroundImage: null, extractedPalette: null, useAutoPalette: false);
+    state = state.copyWith(
+      backgroundImage: null,
+      extractedPalette: null,
+      useAutoPalette: false,
+    );
   }
 
   Future<bool> saveToGallery(GlobalKey boundaryKey) async {
@@ -447,7 +483,10 @@ class CardGeneratorViewModel extends Notifier<CardGeneratorState> {
   Future<void> shareCard(GlobalKey boundaryKey) async {
     try {
       final bytes = await _exportService.capturePng(boundaryKey);
-      await _exportService.shareImage(bytes, text: state.cardData?.headline ?? '');
+      await _exportService.shareImage(
+        bytes,
+        text: state.cardData?.headline ?? '',
+      );
     } catch (e) {
       debugPrint('Share error: $e');
     }

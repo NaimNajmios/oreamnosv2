@@ -21,7 +21,11 @@ class InjuryReportCanvas extends StatelessWidget {
     final injuries = data.injuries;
 
     return Container(
-      decoration: BoxDecoration(gradient: config.backgroundImagePath != null ? null : GradientBuilder.vertical(colors)),
+      decoration: BoxDecoration(
+        gradient: config.backgroundImagePath != null
+            ? null
+            : GradientBuilder.vertical(colors),
+      ),
       child: Stack(
         children: [
           if (config.showScrim)
@@ -200,8 +204,8 @@ class InjuryReportCanvas extends StatelessWidget {
                 const SizedBox(height: 8),
                 Text(
                   config.brandName?.isNotEmpty == true
-                        ? config.brandName!
-                        : (config.brandHandle?.isNotEmpty == true
+                      ? config.brandName!
+                      : (config.brandHandle?.isNotEmpty == true
                             ? config.brandHandle!
                             : 'Injury Watch'),
                   style: GoogleFonts.jetBrainsMono(

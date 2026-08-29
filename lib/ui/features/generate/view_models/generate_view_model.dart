@@ -1,4 +1,5 @@
 import 'package:oreamnos/core/error/failures.dart';
+
 import 'dart:async';
 import 'dart:convert';
 
@@ -22,8 +23,17 @@ import 'package:oreamnos/data/services/notification_service.dart';
 import 'package:oreamnos/domain/services/vision_extractor.dart';
 import 'package:oreamnos/domain/services/enrich_context_usecase.dart';
 import 'package:oreamnos/domain/services/intent_classifier.dart';
+import 'package:oreamnos/data/services/twitter_extractor.dart';
+import 'package:oreamnos/domain/repositories/search_repository.dart';
 
-enum GenerateState { idle, researching, generating, success, error, rateLimited }
+enum GenerateState {
+  idle,
+  researching,
+  generating,
+  success,
+  error,
+  rateLimited,
+}
 
 enum GeneratingStep { idle, scraping, prompting }
 
@@ -131,6 +141,9 @@ class GenerateViewModel extends ChangeNotifier with WidgetsBindingObserver {
   String? get validationMessage => _validationMessage;
 
   AiProvider _getNextProvider(AiProvider current) => current.nextFallback;
+
+  String? _twitterExtractionUrl;
+  String? get twitterExtractionUrl => _twitterExtractionUrl;
 
   Future<void> retryWithProvider(AiProvider provider) async {
     await _settingsViewModel.setSelectedProvider(provider);
@@ -288,6 +301,7 @@ class GenerateViewModel extends ChangeNotifier with WidgetsBindingObserver {
     _curatedPost = null;
     _legacyGeneratedContentForCompat = null;
     _suggestedFallbackProvider = null;
+    _twitterExtractionUrl = null;
     _pendingInput = input.trim();
     _addRecentInput(_pendingInput!);
     notifyListeners();
@@ -302,22 +316,60 @@ class GenerateViewModel extends ChangeNotifier with WidgetsBindingObserver {
       if (_isResearchModeEnabled) {
         _state = GenerateState.researching;
         notifyListeners();
-        
+
         final enrichUsecase = getIt<EnrichContextUseCase>();
         final intent = IntentClassifier.classify(contentToCurate as String);
-        final enrichmentResult = await enrichUsecase.execute(contentToCurate, intent);
-        
+        final enrichmentResult = await enrichUsecase.execute(
+          contentToCurate,
+          intent,
+        );
+
         contentToCurate = enrichmentResult.content;
         _searchSources = enrichmentResult.sources;
         if (intent == InputIntent.url && enrichmentResult.sources.isNotEmpty) {
-           sourceUrl = enrichmentResult.sources.first;
+          sourceUrl = enrichmentResult.sources.first;
         }
         _state = GenerateState.generating;
         _generatingStep = GeneratingStep.prompting;
         notifyListeners();
       } else {
         _searchSources = [];
-        if (WebScraperService.isUrl(contentToCurate as String)) {
+
+        if (TwitterExtractor.isTwitterUrl(contentToCurate)) {
+          _generatingStep = GeneratingStep.scraping;
+          notifyListeners();
+
+          sourceUrl = contentToCurate;
+
+          // Fallback Chain
+          TweetContent? tweet;
+
+          // 1. fxtwitter
+          tweet = await TwitterExtractor.extractViaFxTwitter(contentToCurate);
+
+          // 2. vxtwitter
+          if (tweet == null || !tweet.isValid) {
+            tweet = await TwitterExtractor.extractViaVxTwitter(contentToCurate);
+          }
+
+          if (tweet != null && tweet.isValid) {
+            contentToCurate = TwitterExtractor.formatForAiPrompt(tweet);
+          } else {
+            // 3. Tavily Extract API
+            try {
+              final searchRepo = getIt<ISearchRepository>();
+              contentToCurate = await searchRepo.extractFromUrl(
+                contentToCurate,
+              );
+            } catch (e) {
+              // 4. All failed, throw exception to show dialog
+              throw TwitterExtractionException(sourceUrl);
+            }
+          }
+
+          _generatingStep = GeneratingStep.prompting;
+          notifyListeners();
+        } else if (WebScraperService.isUrl(contentToCurate)) {
           _generatingStep = GeneratingStep.scraping;
           notifyListeners();
           try {
@@ -357,7 +409,8 @@ class GenerateViewModel extends ChangeNotifier with WidgetsBindingObserver {
 
       if (contentToCurate is ExtractedArticle) {
         contentToCurate = ExtractedArticle(
-          text: '${contentToCurate.text}\n\nLENGTH REQUIREMENT: $_lengthInstruction',
+          text:
+              '${contentToCurate.text}\n\nLENGTH REQUIREMENT: $_lengthInstruction',
           url: contentToCurate.url,
           domain: contentToCurate.domain,
           pageTitle: contentToCurate.pageTitle,
@@ -435,7 +488,15 @@ class GenerateViewModel extends ChangeNotifier with WidgetsBindingObserver {
 
       getIt<LogService>().error('Failed to generate post', e, st);
 
-      if (e is RateLimitFailure) {
+      if (e is TwitterExtractionException) {
+        _state = GenerateState.error;
+        _twitterExtractionUrl = e.url;
+        _errorMessage =
+            'Could not extract tweet content from X. '
+            'Please copy the tweet text directly and paste it here.\n\n'
+            'Tip: Tap "..." on the tweet → "Copy text"';
+        notifyListeners();
+      } else if (e is RateLimitFailure) {
         _errorMessage =
             'Rate limit exceeded for ${provider.displayName}. Try another provider.';
         _suggestedFallbackProvider = _getNextProvider(provider);
@@ -667,4 +728,9 @@ class GenerateViewModel extends ChangeNotifier with WidgetsBindingObserver {
       notifyListeners();
     }
   }
+}
+
+class TwitterExtractionException implements Exception {
+  final String? url;
+  TwitterExtractionException(this.url);
 }
