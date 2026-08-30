@@ -35,7 +35,6 @@ class SettingsNotifier extends Notifier<SettingsState> {
     final readingTextSize = _preferencesService.readingTextSize;
     final tavilyApiKey = await _preferencesService.getTavilyApiKey();
     final currentApiKey = await _preferencesService.getApiKey(selectedProvider);
-
     state = state.copyWith(
       isInitialized: true,
       themeMode: themeMode,
@@ -180,4 +179,5 @@ class SettingsNotifier extends Notifier<SettingsState> {
     await _preferencesService.setReadingTextSize(clamped);
     state = state.copyWith(readingTextSize: clamped);
   }
+
 }

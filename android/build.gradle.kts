@@ -1,4 +1,7 @@
+@file:Suppress("DEPRECATION")
 import com.android.build.gradle.BaseExtension
+import org.jetbrains.kotlin.gradle.tasks.KotlinCompile
+import org.jetbrains.kotlin.gradle.dsl.JvmTarget
 
 allprojects {
     repositories {
@@ -16,6 +19,12 @@ subprojects {
                     targetCompatibility = JavaVersion.VERSION_17
                 }
             }
+        }
+    }
+    
+    tasks.withType(KotlinCompile::class.java).configureEach {
+        compilerOptions {
+            jvmTarget.set(JvmTarget.JVM_17)
         }
     }
 }

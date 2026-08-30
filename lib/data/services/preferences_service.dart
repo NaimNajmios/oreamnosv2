@@ -208,4 +208,5 @@ class PreferencesService {
   Future<bool> setShowBrandFooter(bool show) {
     return _prefs.setBool('card_show_brand_footer', show);
   }
+
 }

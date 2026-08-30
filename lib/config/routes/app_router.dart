@@ -32,10 +32,18 @@ abstract final class RoutePaths {
 final rootNavigatorKey = GlobalKey<NavigatorState>();
 
 /// Application router using GoRouter with shell route for 3-tab navigation.
-GoRouter createAppRouter() {
+GoRouter createAppRouter({String? initialLocation}) {
+  final defaultRoute =
+      WidgetsBinding.instance.platformDispatcher.defaultRouteName;
+  final effectiveInitialLocation =
+      initialLocation ??
+      (defaultRoute.isNotEmpty && defaultRoute != '/'
+          ? defaultRoute
+          : RoutePaths.generate);
+
   return GoRouter(
     navigatorKey: rootNavigatorKey,
-    initialLocation: RoutePaths.generate,
+    initialLocation: effectiveInitialLocation,
     routes: [
       ShellRoute(
         builder: (context, state, child) => ModernAppShell(child: child),
@@ -139,7 +147,8 @@ GoRouter createAppRouter() {
               curatedPost: extra,
             );
           }
-          final content = extra as String? ?? '';
+          final content =
+              extra as String? ?? state.uri.queryParameters['content'] ?? '';
           return ReadingModeScreen(content: content);
         },
       ),

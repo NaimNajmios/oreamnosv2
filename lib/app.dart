@@ -1,18 +1,20 @@
+import 'dart:convert';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:dynamic_color/dynamic_color.dart';
 import 'package:go_router/go_router.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 import 'config/constants.dart';
 import 'config/routes/app_router.dart';
 import 'config/theme/app_theme.dart';
 import 'domain/models/app_theme_mode.dart';
+import 'domain/models/curated_post.dart';
 
 import 'ui/features/settings/view_models/settings_view_model.dart';
 import 'ui/features/generate/view_models/generate_view_model.dart';
 import 'data/services/share_intent_service.dart';
-import 'ui/features/share/share_bottom_sheet.dart';
-import 'ui/core/widgets/kickoff_loading_indicator.dart';
 import 'data/services/notification_service.dart';
 
 /// Root application widget.
@@ -38,22 +40,57 @@ class _OreamnosAppState extends ConsumerState<OreamnosApp> {
       } catch (_) {}
     });
 
-    ShareIntentService().onSharedTextReceived = (text) {
+    // Route notification actions (tone quick chooser, open, copy) — must be set after DI.
+    NotificationService().onAction = (payload, actionId) async {
+      if (actionId == null || actionId == 'open_app') {
+        if (payload != null && payload.isNotEmpty) {
+          try {
+            final jsonMap = jsonDecode(payload) as Map<String, dynamic>;
+            final curated = CuratedPost.fromJson(jsonMap);
+            if (mounted) {
+              _router.go(RoutePaths.readingMode, extra: curated);
+              return;
+            }
+          } catch (_) {}
+        }
+
+        final prefs = await SharedPreferences.getInstance();
+        final jsonStr = prefs.getString('bg_last_generated_json');
+        if (jsonStr != null && jsonStr.isNotEmpty) {
+          try {
+            final jsonMap = jsonDecode(jsonStr) as Map<String, dynamic>;
+            final curated = CuratedPost.fromJson(jsonMap);
+            if (mounted) {
+              _router.go(RoutePaths.readingMode, extra: curated);
+              return;
+            }
+          } catch (_) {}
+        }
+
+        final markdown = prefs.getString('bg_last_generated_markdown');
+        if (markdown != null && markdown.isNotEmpty && mounted) {
+          _router.go(RoutePaths.readingMode, extra: markdown);
+          return;
+        }
+
+        if (mounted) {
+          _router.go(RoutePaths.generate);
+        }
+        return;
+      }
+    };
+
+    ShareIntentService().onSharedTextReceived = (text) async {
       if (!mounted) return;
 
-      final currentContext = rootNavigatorKey.currentContext;
-      if (currentContext != null) {
-        showModalBottomSheet(
-          context: currentContext,
-          isScrollControlled: true,
-          backgroundColor: Colors.transparent,
-          builder: (context) => ShareBottomSheet(initialContent: text),
-        );
-      } else {
-        // Fallback
-        ref.read(generateViewModelProvider.notifier).setPendingInput(text);
-        _router.go(RoutePaths.generate);
-      }
+      _router.go(RoutePaths.generate);
+      ref.read(generateViewModelProvider.notifier).setPendingInput(text);
+      
+      Future.microtask(() {
+        if (mounted) {
+          ref.read(generateViewModelProvider.notifier).generatePost(text);
+        }
+      });
     };
     ShareIntentService().initialize();
   }
@@ -68,14 +105,9 @@ class _OreamnosAppState extends ConsumerState<OreamnosApp> {
   @override
   Widget build(BuildContext context) {
     final settingsViewModel = ref.watch(settingsViewModelProvider);
-
-    if (!settingsViewModel.isInitialized) {
-      return const MaterialApp(
-        home: Scaffold(body: Center(child: KickoffLoadingIndicator(size: 48))),
-      );
-    }
-
-    final themeMode = settingsViewModel.themeMode;
+    final themeMode = settingsViewModel.isInitialized
+        ? settingsViewModel.themeMode
+        : AppThemeMode.system;
 
     return DynamicColorBuilder(
       builder: (ColorScheme? lightDynamic, ColorScheme? darkDynamic) {

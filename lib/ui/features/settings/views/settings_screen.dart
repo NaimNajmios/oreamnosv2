@@ -236,6 +236,7 @@ class SettingsScreen extends ConsumerWidget {
         onTap: () => context.push(RoutePaths.pillManager),
       ),
       const Divider(),
+
       const SizedBox(height: AppSpacing.xxl),
 
       // Usage & Analytics Section
