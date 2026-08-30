@@ -45,9 +45,23 @@ abstract class CardGeneratorState with _$CardGeneratorState {
 
     String? watermarkText,
     @Default(false) bool showWatermark,
+    File? watermarkImage,
+    @Default(60.0) double watermarkSize,
+    @Default(Offset(0.85, 0.9)) Offset watermarkOffset,
     String? brandName,
     String? brandHandle,
     @Default(true) bool showBrandFooter,
+
+    @Default(1.0) double imageOpacity,
+    @Default(0.0) double backgroundBlurRadius,
+    String? badgeText,
+    Color? accentColor,
+    @Default(1.0) double previewScale,
+    @Default(BackgroundType.gradient) BackgroundType backgroundType,
+    PresetBackground? presetBackground,
+    @Default(0.0) double textShadowRadius,
+    Color? textShadowColor,
+    @Default(false) bool isGlowEnabled,
 
     @Default(Offset(0.5, 0.2)) Offset headlineOffset,
     @Default(Offset(0.5, 0.5)) Offset subtextOffset,
@@ -59,6 +73,7 @@ abstract class CardGeneratorState with _$CardGeneratorState {
 
   bool get hasBrief => brief != null && !brief!.isEmpty;
   bool get hasImage => backgroundImage != null;
+  bool get hasWatermarkImage => watermarkImage != null;
   bool get canUndo => undoStack.isNotEmpty;
   bool get canRedo => redoStack.isNotEmpty;
   bool isRewriting(String field) => rewritingFields.contains(field);
@@ -78,11 +93,27 @@ abstract class CardGeneratorState with _$CardGeneratorState {
       extractedPalette: extractedPalette,
       watermarkText: watermarkText,
       showWatermark: showWatermark,
+      watermarkImage: watermarkImage,
+      watermarkSize: watermarkSize,
+      watermarkOffset: watermarkOffset,
       brandName: brandName,
       brandHandle: brandHandle,
       showBrandFooter: showBrandFooter,
       imagePosition: imagePosition,
       photoFilter: photoFilter,
+      imageOpacity: imageOpacity,
+      backgroundBlurRadius: backgroundBlurRadius,
+      badgeText: badgeText,
+      accentColor: accentColor,
+      previewScale: previewScale,
+      backgroundType: backgroundType,
+      presetBackground: presetBackground,
+      textShadowRadius: textShadowRadius,
+      textShadowColor: textShadowColor,
+      isGlowEnabled: isGlowEnabled,
+      headlineOffset: headlineOffset,
+      subtextOffset: subtextOffset,
+      microStatOffset: microStatOffset,
     );
   }
 }

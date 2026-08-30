@@ -1,23 +1,12 @@
-import 'package:google_mlkit_text_recognition/google_mlkit_text_recognition.dart';
-import 'package:oreamnos/domain/services/football_ocr_parser.dart';
 import 'package:oreamnos/domain/services/vision_extractor.dart';
 
+/// Stub extractor — vision / ML Kit on-device extraction is intentionally
+/// excluded (v2 verdict). This keeps DI compatibility and prevents
+/// `google_mlkit_text_recognition` dependency.
 class MLKitVisionExtractor implements IVisionExtractor {
   @override
   Future<String> extractText(String imagePath) async {
-    final inputImage = InputImage.fromFilePath(imagePath);
-    final textRecognizer = TextRecognizer(script: TextRecognitionScript.latin);
-
-    try {
-      final RecognizedText recognizedText = await textRecognizer.processImage(
-        inputImage,
-      );
-      return FootballOcrParser.formatForPrompt(
-        recognizedText.text,
-        addHeader: true,
-      );
-    } finally {
-      textRecognizer.close();
-    }
+    // Vision excluded — return empty to signal no extraction.
+    return '';
   }
 }

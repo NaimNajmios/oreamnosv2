@@ -20,6 +20,7 @@ import '../../data/services/export_service.dart' as _i496;
 import '../../data/services/log_service.dart' as _i713;
 import '../../data/services/preferences_service.dart' as _i867;
 import '../../data/services/provider_api_service.dart' as _i581;
+import '../../data/services/token_usage_side_channel.dart' as _i952;
 import '../../data/services/usage_service.dart' as _i1062;
 import '../../data/services/web_scraper_service.dart' as _i978;
 import '../../domain/repositories/search_repository.dart' as _i475;
@@ -49,6 +50,9 @@ extension GetItInjectableX on _i174.GetIt {
     gh.lazySingleton<_i557.ApiClient>(() => _i557.ApiClient());
     gh.lazySingleton<_i633.CardDataExtractor>(() => _i633.CardDataExtractor());
     gh.lazySingleton<_i496.ExportService>(() => _i496.ExportService());
+    gh.lazySingleton<_i952.TokenUsageSideChannel>(
+      () => _i952.TokenUsageSideChannel(),
+    );
     gh.lazySingleton<_i739.IContentRepository>(() => _i739.ContentRepository());
     gh.lazySingleton<_i867.PreferencesService>(
       () => _i867.PreferencesService(

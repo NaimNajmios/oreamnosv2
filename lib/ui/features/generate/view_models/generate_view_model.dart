@@ -1,5 +1,3 @@
-import 'package:oreamnos/core/error/failures.dart';
-
 import 'dart:async';
 import 'dart:convert';
 
@@ -7,24 +5,24 @@ import 'package:flutter/widgets.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import 'package:oreamnos/core/di/injection.dart';
-
-import 'package:uuid/uuid.dart';
-import 'package:oreamnos/data/services/curator_factory.dart';
-import 'package:oreamnos/ui/features/settings/view_models/settings_view_model.dart';
-import 'package:oreamnos/data/services/web_scraper_service.dart';
-import 'package:oreamnos/data/services/usage_service.dart';
-import 'package:oreamnos/domain/models/usage_log.dart';
-import 'package:oreamnos/domain/models/curated_post.dart';
+import 'package:oreamnos/core/error/failures.dart';
+import 'package:oreamnos/core/repositories/content_repository.dart';
 import 'package:oreamnos/data/models/ai_provider.dart';
-
-import 'package:image_picker/image_picker.dart';
 import 'package:oreamnos/data/services/log_service.dart';
 import 'package:oreamnos/data/services/notification_service.dart';
-import 'package:oreamnos/domain/services/vision_extractor.dart';
+import 'package:oreamnos/data/services/token_usage_side_channel.dart';
+import 'package:oreamnos/data/services/usage_service.dart';
+import 'package:oreamnos/data/services/web_scraper_service.dart';
+import 'package:oreamnos/domain/models/curated_post.dart';
+import 'package:oreamnos/domain/models/usage_log.dart';
+import 'package:oreamnos/domain/repositories/search_repository.dart';
 import 'package:oreamnos/domain/services/enrich_context_usecase.dart';
 import 'package:oreamnos/domain/services/intent_classifier.dart';
 import 'package:oreamnos/data/services/twitter_extractor.dart';
-import 'package:oreamnos/domain/repositories/search_repository.dart';
+import 'package:oreamnos/ui/features/settings/view_models/settings_view_model.dart';
+import 'package:uuid/uuid.dart';
+
+import 'generate_state.dart';
 
 enum GenerateState {
   idle,
@@ -44,58 +42,25 @@ class ValidationResult {
   const ValidationResult.invalid(this.message) : isValid = false;
 }
 
-final generateViewModelProvider = ChangeNotifierProvider<GenerateViewModel>(
-  (ref) => GenerateViewModel(ref),
-);
+final generateViewModelProvider =
+    NotifierProvider<GenerateViewModel, GenerateUiState>(GenerateViewModel.new);
 
 enum PromptLength { short, medium, long }
 
-class GenerateViewModel extends ChangeNotifier with WidgetsBindingObserver {
-  PromptLength _promptLength = PromptLength.medium;
-  PromptLength get promptLength => _promptLength;
+class GenerateViewModel extends Notifier<GenerateUiState>
+    with WidgetsBindingObserver {
+  late final UsageService _usageService;
+  bool _isBackgrounded = false;
 
-  void setPromptLength(PromptLength length) {
-    _promptLength = length;
-    notifyListeners();
-  }
-
-  String get _lengthInstruction {
-    switch (_promptLength) {
-      case PromptLength.short:
-        return "Keep the generated body text very concise and punchy (1-2 short sentences max).";
-      case PromptLength.medium:
-        return "Provide a standard length post (2-3 sentences).";
-      case PromptLength.long:
-        return "Write a detailed and comprehensive post with more context and information (3-5 sentences).";
-    }
-  }
-
-  final Ref ref;
-  GenerateViewModel(this.ref) {
-    WidgetsBinding.instance.addObserver(this);
-
-    // We get dependencies from GetIt because we are using injectable for services,
-    // and riverpod for UI state
-
+  @override
+  GenerateUiState build() {
     _usageService = getIt<UsageService>();
-    try {
-      _visionExtractor = getIt<IVisionExtractor>();
-    } catch (_) {
-      _visionExtractor = null;
-    }
-
+    WidgetsBinding.instance.addObserver(this);
     ref.onDispose(() {
       WidgetsBinding.instance.removeObserver(this);
     });
+    return const GenerateUiState();
   }
-
-  @override
-  void dispose() {
-    WidgetsBinding.instance.removeObserver(this);
-    super.dispose();
-  }
-
-  bool _isBackgrounded = false;
 
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
@@ -104,106 +69,83 @@ class GenerateViewModel extends ChangeNotifier with WidgetsBindingObserver {
         state == AppLifecycleState.inactive;
   }
 
-  late final UsageService _usageService;
-  late final IVisionExtractor? _visionExtractor;
+  // Compatibility getters — proxy to Notifier state for callers using notifier
+  GenerateState get status => state.status;
+  // ignore: avoid_renaming_method_parameters
+  GenerateState get generateState => state.status;
+  GeneratingStep get generatingStep => state.generatingStep;
+  CuratedPost? get curatedPost => state.curatedPost;
+  String? get generatedContent => state.curatedPost?.rawMarkdown;
+  bool get canUndo => state.canUndo;
+  List<String> get recentInputs => state.recentInputs;
+  String? get errorMessage => state.errorMessage;
+  AiProvider? get suggestedFallbackProvider => state.suggestedFallbackProvider;
+  String? get validationMessage => state.validationMessage;
+  String? get twitterExtractionUrl => state.twitterExtractionUrl;
+  String? get pendingInput => state.pendingInput;
+  bool get isResearchModeEnabled => state.isResearchModeEnabled;
+  List<String> get searchSources => state.searchSources;
+  bool get showTitle => state.showTitle;
+  bool get showHashtags => state.showHashtags;
+  bool get showSource => state.showSource;
+  PromptLength get promptLength => state.promptLength;
+  bool get isExtractingImage => state.isExtractingImage;
 
-  GenerateState _state = GenerateState.idle;
-  GenerateState get state => _state;
+  String? get formattedContent {
+    final cp = state.curatedPost;
+    if (cp == null) return null;
+    return cp.toMarkdownFiltered(
+      showTitle: state.showTitle,
+      showHashtags: state.showHashtags,
+      showSource: state.showSource,
+    );
+  }
 
-  GeneratingStep _generatingStep = GeneratingStep.idle;
-  GeneratingStep get generatingStep => _generatingStep;
+  String? get formattedBody => state.curatedPost?.bodyMarkdown;
+  SourceAttribution? get sourceAttribution => state.curatedPost?.source;
 
-  CuratedPost? _curatedPost;
-  CuratedPost? get curatedPost => _curatedPost;
+  String get _lengthInstruction {
+    switch (state.promptLength) {
+      case PromptLength.short:
+        return 'Keep the generated body text very concise and punchy (1-2 short sentences max).';
+      case PromptLength.medium:
+        return 'Provide a standard length post (2-3 sentences).';
+      case PromptLength.long:
+        return 'Write a detailed and comprehensive post with more context and information (3-5 sentences).';
+    }
+  }
 
-  // Compat: some screens still expect String
-  String? get generatedContent => _curatedPost?.rawMarkdown;
-  // For undo/history we store serialized CuratedPost
-  // ignore: unused_field
-  String? _legacyGeneratedContentForCompat;
-
-  // Undo history for refinements — store serialized CuratedPost
-  final List<String> _historyStack = [];
-  bool get canUndo => _historyStack.isNotEmpty;
-
-  // Recent inputs (kept in memory, persisted via PreferencesService draft)
-  final List<String> _recentInputs = [];
-  List<String> get recentInputs => List.unmodifiable(_recentInputs);
-
-  String? _errorMessage;
-  String? get errorMessage => _errorMessage;
-
-  AiProvider? _suggestedFallbackProvider;
-  AiProvider? get suggestedFallbackProvider => _suggestedFallbackProvider;
-
-  String? _validationMessage;
-  String? get validationMessage => _validationMessage;
+  void setPromptLength(PromptLength length) {
+    state = state.copyWith(promptLength: length);
+  }
 
   AiProvider _getNextProvider(AiProvider current) => current.nextFallback;
-
-  String? _twitterExtractionUrl;
-  String? get twitterExtractionUrl => _twitterExtractionUrl;
 
   Future<void> retryWithProvider(AiProvider provider) async {
     await ref
         .read(settingsViewModelProvider.notifier)
         .setSelectedProvider(provider);
-    if (_pendingInput != null) {
-      await generatePost(_pendingInput!);
+    final pi = state.pendingInput;
+    if (pi != null) {
+      await generatePost(pi);
     }
   }
 
-  String? _pendingInput;
-  String? get pendingInput => _pendingInput;
-
-  bool _isResearchModeEnabled = false;
-  bool get isResearchModeEnabled => _isResearchModeEnabled;
-
   void toggleResearchMode() {
-    _isResearchModeEnabled = !_isResearchModeEnabled;
-    notifyListeners();
+    state = state.copyWith(isResearchModeEnabled: !state.isResearchModeEnabled);
   }
 
-  List<String> _searchSources = [];
-  List<String> get searchSources => List.unmodifiable(_searchSources);
-
-  // Dynamic Output Toggles
-  bool _showTitle = true;
-  bool get showTitle => _showTitle;
-
-  bool _showHashtags = true;
-  bool get showHashtags => _showHashtags;
-
-  bool _showSource = true;
-  bool get showSource => _showSource;
-
   void toggleTitle() {
-    _showTitle = !_showTitle;
-    notifyListeners();
+    state = state.copyWith(showTitle: !state.showTitle);
   }
 
   void toggleHashtags() {
-    _showHashtags = !_showHashtags;
-    notifyListeners();
+    state = state.copyWith(showHashtags: !state.showHashtags);
   }
 
   void toggleSource() {
-    _showSource = !_showSource;
-    notifyListeners();
+    state = state.copyWith(showSource: !state.showSource);
   }
-
-  String? get formattedContent {
-    if (_curatedPost == null) return null;
-    return _curatedPost!.toMarkdownFiltered(
-      showTitle: _showTitle,
-      showHashtags: _showHashtags,
-      showSource: _showSource,
-    );
-  }
-
-  // For reading mode / card generator that needs body only
-  String? get formattedBody => _curatedPost?.bodyMarkdown;
-  SourceAttribution? get sourceAttribution => _curatedPost?.source;
 
   ValidationResult validateForGenerate(String input) {
     final trimmed = input.trim();
@@ -241,82 +183,90 @@ class GenerateViewModel extends ChangeNotifier with WidgetsBindingObserver {
   }
 
   void _pushHistory(CuratedPost content) {
-    _historyStack.add(jsonEncode(content.toJson()));
-    if (_historyStack.length > 20) _historyStack.removeAt(0);
+    final list = List<String>.from(state.historyStack)
+      ..add(jsonEncode(content.toJson()));
+    if (list.length > 20) list.removeAt(0);
+    state = state.copyWith(historyStack: list);
   }
 
   bool undoLastRefinement() {
-    if (_historyStack.isEmpty) return false;
-    final jsonStr = _historyStack.removeLast();
+    final stack = List<String>.from(state.historyStack);
+    if (stack.isEmpty) return false;
+    final jsonStr = stack.removeLast();
+    CuratedPost? restored;
     try {
       final map = jsonDecode(jsonStr) as Map<String, dynamic>;
-      _curatedPost = CuratedPost.fromJson(map);
+      restored = CuratedPost.fromJson(map);
     } catch (_) {
-      // fallback: treat as legacy markdown
-      _curatedPost = CuratedPost.fromMarkdownFallback(jsonStr);
+      restored = CuratedPost.fromMarkdownFallback(jsonStr);
     }
-    _legacyGeneratedContentForCompat = _curatedPost?.rawMarkdown;
-    _state = GenerateState.success;
-    notifyListeners();
+    state = state.copyWith(
+      historyStack: stack,
+      curatedPost: restored,
+      status: GenerateState.success,
+    );
     return true;
   }
 
   void _addRecentInput(String input) {
     final trimmed = input.trim();
     if (trimmed.isEmpty) return;
-    _recentInputs.remove(trimmed);
-    _recentInputs.insert(0, trimmed);
-    if (_recentInputs.length > 5) _recentInputs.removeLast();
+    final list = List<String>.from(state.recentInputs);
+    list.remove(trimmed);
+    list.insert(0, trimmed);
+    if (list.length > 5) list.removeLast();
+    state = state.copyWith(recentInputs: list);
   }
 
   void setPendingInput(String input) {
-    _pendingInput = input;
-    notifyListeners();
+    state = state.copyWith(pendingInput: input);
   }
 
   void clearPendingInput() {
-    _pendingInput = null;
-    notifyListeners();
+    state = state.copyWith(pendingInput: null);
   }
 
   Future<void> generatePost(String input) async {
     final v = validateForGenerate(input);
     if (!v.isValid) {
-      _errorMessage = v.message;
-      _validationMessage = v.message;
-      _state = GenerateState.error;
-      notifyListeners();
+      state = state.copyWith(
+        errorMessage: v.message,
+        validationMessage: v.message,
+        status: GenerateState.error,
+      );
       return;
     }
     final apiCheck = await validateApiKey();
     if (!apiCheck.isValid) {
-      _errorMessage = apiCheck.message;
-      _validationMessage = apiCheck.message;
-      _state = GenerateState.error;
-      notifyListeners();
+      state = state.copyWith(
+        errorMessage: apiCheck.message,
+        validationMessage: apiCheck.message,
+        status: GenerateState.error,
+      );
       return;
     }
 
-    _state = GenerateState.generating;
-    _generatingStep = GeneratingStep.prompting;
-    _errorMessage = null;
-    _validationMessage = null;
-    _suggestedFallbackProvider = null;
-    _twitterExtractionUrl = null;
-    _pendingInput = input.trim();
-    _addRecentInput(_pendingInput!);
-    notifyListeners();
+    final trimmedInput = input.trim();
+    _addRecentInput(trimmedInput);
+    state = state.copyWith(
+      status: GenerateState.generating,
+      generatingStep: GeneratingStep.prompting,
+      errorMessage: null,
+      validationMessage: null,
+      suggestedFallbackProvider: null,
+      twitterExtractionUrl: null,
+      pendingInput: trimmedInput,
+    );
 
     final stopwatch = Stopwatch()..start();
     final provider = ref.read(settingsViewModelProvider).selectedProvider;
 
     try {
-      dynamic contentToCurate = _pendingInput!.trim();
+      dynamic contentToCurate = state.pendingInput!.trim();
       String? sourceUrl;
 
-      if (_isResearchModeEnabled) {
-        _state = GenerateState.researching;
-        notifyListeners();
+      if (state.isResearchModeEnabled) {
+        state = state.copyWith(status: GenerateState.researching);
 
         final enrichUsecase = getIt<EnrichContextUseCase>();
         final intent = IntentClassifier.classify(contentToCurate as String);
@@ -326,29 +276,27 @@ class GenerateViewModel extends ChangeNotifier with WidgetsBindingObserver {
         );
 
         contentToCurate = enrichmentResult.content;
-        _searchSources = enrichmentResult.sources;
-        if (intent == InputIntent.url && enrichmentResult.sources.isNotEmpty) {
-          sourceUrl = enrichmentResult.sources.first;
+        final sources = enrichmentResult.sources;
+        if (intent == InputIntent.url && sources.isNotEmpty) {
+          sourceUrl = sources.first;
         }
-        _state = GenerateState.generating;
-        _generatingStep = GeneratingStep.prompting;
-        notifyListeners();
+        state = state.copyWith(
+          searchSources: sources,
+          status: GenerateState.generating,
+          generatingStep: GeneratingStep.prompting,
+        );
       } else {
-        _searchSources = [];
+        state = state.copyWith(searchSources: []);
 
         if (TwitterExtractor.isTwitterUrl(contentToCurate)) {
-          _generatingStep = GeneratingStep.scraping;
-          notifyListeners();
+          state = state.copyWith(generatingStep: GeneratingStep.scraping);
 
           sourceUrl = contentToCurate;
 
-          // Fallback Chain
           TweetContent? tweet;
 
-          // 1. fxtwitter
           tweet = await TwitterExtractor.extractViaFxTwitter(contentToCurate);
 
-          // 2. vxtwitter
           if (tweet == null || !tweet.isValid) {
             tweet = await TwitterExtractor.extractViaVxTwitter(contentToCurate);
           }
@@ -356,23 +304,19 @@ class GenerateViewModel extends ChangeNotifier with WidgetsBindingObserver {
           if (tweet != null && tweet.isValid) {
             contentToCurate = TwitterExtractor.formatForAiPrompt(tweet);
           } else {
-            // 3. Tavily Extract API
             try {
               final searchRepo = getIt<ISearchRepository>();
               contentToCurate = await searchRepo.extractFromUrl(
                 contentToCurate,
               );
             } catch (e) {
-              // 4. All failed, throw exception to show dialog
               throw TwitterExtractionException(sourceUrl);
             }
           }
 
-          _generatingStep = GeneratingStep.prompting;
-          notifyListeners();
+          state = state.copyWith(generatingStep: GeneratingStep.prompting);
         } else if (WebScraperService.isUrl(contentToCurate)) {
-          _generatingStep = GeneratingStep.scraping;
-          notifyListeners();
+          state = state.copyWith(generatingStep: GeneratingStep.scraping);
           try {
             final article = await WebScraperService.extractArticleFromUrl(
               contentToCurate,
@@ -383,16 +327,15 @@ class GenerateViewModel extends ChangeNotifier with WidgetsBindingObserver {
               getIt<LogService>().warning(
                 'Scrape returned empty, falling back to raw input',
               );
-              contentToCurate = _pendingInput!;
-              sourceUrl = _pendingInput;
+              contentToCurate = state.pendingInput!;
+              sourceUrl = state.pendingInput;
             }
           } on TimeoutException {
             throw Exception(
               'URL extraction timed out. Please paste the article text manually.',
             );
           }
-          _generatingStep = GeneratingStep.prompting;
-          notifyListeners();
+          state = state.copyWith(generatingStep: GeneratingStep.prompting);
         }
       }
 
@@ -421,20 +364,85 @@ class GenerateViewModel extends ChangeNotifier with WidgetsBindingObserver {
           faviconUrl: contentToCurate.faviconUrl,
         );
       } else {
-        contentToCurate += '\n\nLENGTH REQUIREMENT: $_lengthInstruction';
+        contentToCurate =
+            '$contentToCurate\n\nLENGTH REQUIREMENT: $_lengthInstruction';
       }
-      final curator = CuratorFactory.getCurator(provider);
+      // API resilience: via pooled IContentRepository + Result fold + 30s timeout
+      final repo = ref.read(contentRepositoryProvider);
+      final repoResult = await repo
+          .generateStructuredPost(
+            content: contentToCurate,
+            modelId: modelId,
+            apiKey: apiKey,
+            sourceUrl: sourceUrl,
+            provider: provider,
+            searchSources: state.searchSources,
+          )
+          .timeout(
+            const Duration(seconds: 30),
+            onTimeout: () =>
+                throw const NetworkFailure('Request timed out after 30s'),
+          );
 
-      final result = await curator.generateStructuredPost(
-        content: contentToCurate,
-        modelId: modelId,
-        apiKey: apiKey,
-        sourceUrl: sourceUrl,
-        searchSources: _searchSources,
-      );
-      _curatedPost = result;
+      // Handle Result via typed Failure — no string contains
+      if (repoResult is ResultError<CuratedPost>) {
+        final failure = repoResult.failure;
+        stopwatch.stop();
+        _usageService.logUsage(
+          UsageLog(
+            id: const Uuid().v4(),
+            timestamp: DateTime.now(),
+            providerId: provider.name,
+            modelName: modelId,
+            latencyMs: stopwatch.elapsedMilliseconds,
+            estimatedTokens: 0,
+            isSuccess: false,
+          ),
+        );
+        getIt<LogService>().error('Failed to generate post', failure, null);
+        if (failure is RateLimitFailure) {
+          state = state.copyWith(
+            errorMessage:
+                'Rate limit exceeded for ${provider.displayName}. Try another provider.',
+            suggestedFallbackProvider: _getNextProvider(provider),
+            status: GenerateState.rateLimited,
+            generatingStep: GeneratingStep.idle,
+          );
+        } else if (failure is AuthFailure) {
+          state = state.copyWith(
+            errorMessage:
+                'Authentication failed for ${provider.displayName}. Check your API key in Settings.',
+            status: GenerateState.error,
+            generatingStep: GeneratingStep.idle,
+          );
+        } else if (failure is NetworkFailure) {
+          state = state.copyWith(
+            errorMessage:
+                'Network error. Please check your connection and try again.',
+            status: GenerateState.error,
+            generatingStep: GeneratingStep.idle,
+          );
+        } else {
+          final msg = failure.message.length > 220
+              ? '${failure.message.substring(0, 220)}...'
+              : failure.message;
+          state = state.copyWith(
+            errorMessage: msg,
+            status: GenerateState.error,
+            generatingStep: GeneratingStep.idle,
+          );
+        }
+        if (_isBackgrounded) {
+          NotificationService().showGenerationCompleteNotification(
+            'Generation Failed',
+            'There was an error generating your post.',
+          );
+        }
+        return;
+      }
 
-      // Inject user configured hashtags
+      var curated = (repoResult as ResultSuccess<CuratedPost>).data;
+
       if (ref.read(settingsViewModelProvider).defaultHashtags.isNotEmpty) {
         final tags = ref
             .read(settingsViewModelProvider)
@@ -443,15 +451,20 @@ class GenerateViewModel extends ChangeNotifier with WidgetsBindingObserver {
             .map((e) => e.replaceAll('#', '').trim())
             .where((e) => e.isNotEmpty)
             .toList();
-        _curatedPost = _curatedPost!.copyWith(hashtags: tags);
+        curated = curated.copyWith(hashtags: tags);
       }
 
-      _legacyGeneratedContentForCompat = _curatedPost!.rawMarkdown;
-
       stopwatch.stop();
-      final estimatedTokens =
-          ((input.length + (_curatedPost?.rawMarkdown.length ?? 0)) / 4)
-              .round();
+      int estimatedTokens = ((input.length + (curated.rawMarkdown.length)) / 4)
+          .round();
+      // Side-channel: use real total_tokens if captured
+      try {
+        if (getIt.isRegistered<TokenUsageSideChannel>()) {
+          final side = getIt<TokenUsageSideChannel>();
+          final real = side.consumeTotal();
+          if (real != null && real > 0) estimatedTokens = real;
+        }
+      } catch (_) {}
       _usageService.logUsage(
         UsageLog(
           id: const Uuid().v4(),
@@ -468,8 +481,11 @@ class GenerateViewModel extends ChangeNotifier with WidgetsBindingObserver {
         'Generated post successfully in ${stopwatch.elapsedMilliseconds}ms',
       );
 
-      _state = GenerateState.success;
-      _generatingStep = GeneratingStep.idle;
+      state = state.copyWith(
+        curatedPost: curated,
+        status: GenerateState.success,
+        generatingStep: GeneratingStep.idle,
+      );
 
       if (_isBackgrounded) {
         NotificationService().showGenerationCompleteNotification(
@@ -478,6 +494,7 @@ class GenerateViewModel extends ChangeNotifier with WidgetsBindingObserver {
         );
       }
     } catch (e, st) {
+      // Only for non-API failures (Twitter, scrape, timeout before repo call)
       stopwatch.stop();
       _usageService.logUsage(
         UsageLog(
@@ -494,39 +511,28 @@ class GenerateViewModel extends ChangeNotifier with WidgetsBindingObserver {
       getIt<LogService>().error('Failed to generate post', e, st);
 
       if (e is TwitterExtractionException) {
-        _state = GenerateState.error;
-        _twitterExtractionUrl = e.url;
-        _errorMessage =
-            'Could not extract tweet content from X. '
-            'Please copy the tweet text directly and paste it here.\n\n'
-            'Tip: Tap "..." on the tweet → "Copy text"';
-        notifyListeners();
-      } else if (e is RateLimitFailure ||
-          e.toString().contains('429') ||
-          e.toString().toLowerCase().contains('rate limit') ||
-          e.toString().toLowerCase().contains('quota') ||
-          e.toString().toLowerCase().contains('resource_exhausted')) {
-        _errorMessage =
-            'Rate limit exceeded for ${provider.displayName}. Try another provider.';
-        _suggestedFallbackProvider = _getNextProvider(provider);
-        _state = GenerateState.rateLimited;
-      } else if (e is AuthFailure) {
-        _errorMessage =
-            'Authentication failed for ${provider.displayName}. Check your API key in Settings.';
-        _state = GenerateState.error;
-      } else if (e is NetworkFailure) {
-        _errorMessage =
-            'Network error. Please check your connection and try again.';
-        _state = GenerateState.error;
+        state = state.copyWith(
+          status: GenerateState.error,
+          twitterExtractionUrl: e.url,
+          errorMessage:
+              'Could not extract tweet content from X. '
+              'Please copy the tweet text directly and paste it here.\n\n'
+              'Tip: Tap "..." on the tweet → "Copy text"',
+          generatingStep: GeneratingStep.idle,
+        );
       } else {
         final raw = e.toString();
         final clean = raw.startsWith('Exception:')
             ? raw.substring(10).trim()
             : raw;
-        _errorMessage = clean.length > 220
+        final msg = clean.length > 220
             ? '${clean.substring(0, 220)}...'
             : clean;
-        _state = GenerateState.error;
+        state = state.copyWith(
+          errorMessage: msg,
+          status: GenerateState.error,
+          generatingStep: GeneratingStep.idle,
+        );
       }
 
       if (_isBackgrounded) {
@@ -535,23 +541,20 @@ class GenerateViewModel extends ChangeNotifier with WidgetsBindingObserver {
           'There was an error generating your post.',
         );
       }
-      if (_state != GenerateState.generating) {
-        _generatingStep = GeneratingStep.idle;
-      }
-    } finally {
-      notifyListeners();
     }
   }
 
   Future<void> refineContent(String instruction) async {
-    if (_curatedPost == null) return;
+    final cp = state.curatedPost;
+    if (cp == null) return;
 
-    _state = GenerateState.generating;
-    _generatingStep = GeneratingStep.prompting;
-    _errorMessage = null;
-    _validationMessage = null;
-    _pushHistory(_curatedPost!);
-    notifyListeners();
+    _pushHistory(cp);
+    state = state.copyWith(
+      status: GenerateState.generating,
+      generatingStep: GeneratingStep.prompting,
+      errorMessage: null,
+      validationMessage: null,
+    );
 
     final stopwatch = Stopwatch()..start();
     final provider = ref.read(settingsViewModelProvider).selectedProvider;
@@ -571,51 +574,58 @@ class GenerateViewModel extends ChangeNotifier with WidgetsBindingObserver {
         throw Exception('API key not configured for ${provider.displayName}.');
       }
 
-      final curator = CuratorFactory.getCurator(provider);
-
-      // Structured refinement: keep source, refine title/body
-      final currentJson = jsonEncode(_curatedPost!.toJson());
+      final currentJson = jsonEncode(cp.toJson());
       final refinementContent =
           'Arahan penambahbaikan: "$instruction".\n'
-          'Kekalkan sumber yang sama (${_curatedPost!.source.url ?? _curatedPost!.source.label}).\n'
+          'Kekalkan sumber yang sama (${cp.source.url ?? cp.source.label}).\n'
           'JSON semasa:\n$currentJson\n\n'
           'Kembalikan JSON dengan struktur yang sama (title, body, source) — perbaiki title/body mengikut arahan, jangan ubah source.url.';
 
-      final refinedRes = await curator.generateStructuredPost(
-        content: refinementContent,
-        modelId: modelId,
-        apiKey: apiKey,
-        sourceUrl: _curatedPost!.source.url,
-      );
-      final refined = refinedRes;
+      final repo = ref.read(contentRepositoryProvider);
+      final repoResult = await repo
+          .generateStructuredPost(
+            content: refinementContent,
+            modelId: modelId,
+            apiKey: apiKey,
+            sourceUrl: cp.source.url,
+            provider: provider,
+          )
+          .timeout(
+            const Duration(seconds: 30),
+            onTimeout: () =>
+                throw const NetworkFailure('Request timed out after 30s'),
+          );
+      if (repoResult is ResultError<CuratedPost>) {
+        throw repoResult.failure;
+      }
+      final refined = (repoResult as ResultSuccess<CuratedPost>).data;
 
-      // Merge: if refined title empty, keep old
-      _curatedPost = CuratedPost(
-        title: refined.title.isEmpty ? _curatedPost!.title : refined.title,
+      var merged = CuratedPost(
+        title: refined.title.isEmpty ? cp.title : refined.title,
         bodyMarkdown: refined.bodyMarkdown.isEmpty
-            ? _curatedPost!.bodyMarkdown
+            ? cp.bodyMarkdown
             : refined.bodyMarkdown,
-        hashtags: refined.hashtags.isEmpty
-            ? _curatedPost!.hashtags
-            : refined.hashtags,
-        source: _curatedPost!.source, // never change source on refinement
-        rawMarkdown: '', // will be rebuilt
+        hashtags: refined.hashtags.isEmpty ? cp.hashtags : refined.hashtags,
+        source: cp.source,
+        rawMarkdown: '',
       );
-      // Rebuild rawMarkdown via fromJson logic
-      _curatedPost = CuratedPost.fromJson({
-        'title': _curatedPost!.title,
-        'body': _curatedPost!.bodyMarkdown,
-        'hashtags': _curatedPost!.hashtags,
-        'source': _curatedPost!.source.toJson(),
+      merged = CuratedPost.fromJson({
+        'title': merged.title,
+        'body': merged.bodyMarkdown,
+        'hashtags': merged.hashtags,
+        'source': merged.source.toJson(),
       });
-      _legacyGeneratedContentForCompat = _curatedPost!.rawMarkdown;
 
       stopwatch.stop();
-      final estimatedTokens =
-          ((refinementContent.length +
-                      (_curatedPost?.rawMarkdown.length ?? 0)) /
-                  4)
+      int estimatedTokens =
+          ((refinementContent.length + (merged.rawMarkdown.length)) / 4)
               .round();
+      try {
+        if (getIt.isRegistered<TokenUsageSideChannel>()) {
+          final real = getIt<TokenUsageSideChannel>().consumeTotal();
+          if (real != null && real > 0) estimatedTokens = real;
+        }
+      } catch (_) {}
       _usageService.logUsage(
         UsageLog(
           id: const Uuid().v4(),
@@ -632,8 +642,11 @@ class GenerateViewModel extends ChangeNotifier with WidgetsBindingObserver {
         'Refined post successfully in ${stopwatch.elapsedMilliseconds}ms',
       );
 
-      _state = GenerateState.success;
-      _generatingStep = GeneratingStep.idle;
+      state = state.copyWith(
+        curatedPost: merged,
+        status: GenerateState.success,
+        generatingStep: GeneratingStep.idle,
+      );
 
       if (_isBackgrounded) {
         NotificationService().showGenerationCompleteNotification(
@@ -657,30 +670,38 @@ class GenerateViewModel extends ChangeNotifier with WidgetsBindingObserver {
 
       getIt<LogService>().error('Failed to refine post', e, st);
 
-      final errStr = e.toString().toLowerCase();
-      if (errStr.contains('429') ||
-          errStr.contains('rate limit') ||
-          errStr.contains('quota') ||
-          errStr.contains('resource_exhausted')) {
-        _errorMessage = 'Rate limit exceeded for ${provider.displayName}.';
-        _suggestedFallbackProvider = _getNextProvider(provider);
-        _state = GenerateState.rateLimited;
-      } else if (errStr.contains('401') ||
-          errStr.contains('403') ||
-          errStr.contains('unauthorized') ||
-          errStr.contains('invalid api key')) {
-        _errorMessage =
-            'Authentication failed for ${provider.displayName}. Check your API key in Settings.';
-        _state = GenerateState.error;
+      if (e is RateLimitFailure) {
+        state = state.copyWith(
+          errorMessage: 'Rate limit exceeded for ${provider.displayName}.',
+          suggestedFallbackProvider: _getNextProvider(provider),
+          status: GenerateState.rateLimited,
+          generatingStep: GeneratingStep.idle,
+        );
+      } else if (e is AuthFailure) {
+        state = state.copyWith(
+          errorMessage:
+              'Authentication failed for ${provider.displayName}. Check your API key in Settings.',
+          status: GenerateState.error,
+          generatingStep: GeneratingStep.idle,
+        );
+      } else if (e is NetworkFailure) {
+        state = state.copyWith(
+          errorMessage:
+              'Network error. Please check your connection and try again.',
+          status: GenerateState.error,
+          generatingStep: GeneratingStep.idle,
+        );
       } else {
         final raw = e.toString();
         final clean = raw.startsWith('Exception:')
             ? raw.substring(10).trim()
             : raw;
-        _errorMessage = clean.length > 220
-            ? '${clean.substring(0, 220)}…'
-            : clean;
-        _state = GenerateState.error;
+        final msg = clean.length > 220 ? '${clean.substring(0, 220)}…' : clean;
+        state = state.copyWith(
+          errorMessage: msg,
+          status: GenerateState.error,
+          generatingStep: GeneratingStep.idle,
+        );
       }
 
       if (_isBackgrounded) {
@@ -689,55 +710,29 @@ class GenerateViewModel extends ChangeNotifier with WidgetsBindingObserver {
           'There was an error refining your post.',
         );
       }
-      if (_state != GenerateState.generating) {
-        _generatingStep = GeneratingStep.idle;
+      if (state.status != GenerateState.generating) {
+        state = state.copyWith(generatingStep: GeneratingStep.idle);
       }
-    } finally {
-      notifyListeners();
     }
   }
 
   void reset() {
-    _state = GenerateState.idle;
-    _generatingStep = GeneratingStep.idle;
-    _curatedPost = null;
-    _legacyGeneratedContentForCompat = null;
-    _errorMessage = null;
-    _validationMessage = null;
-    _suggestedFallbackProvider = null;
-    notifyListeners();
+    state = state.copyWith(
+      status: GenerateState.idle,
+      generatingStep: GeneratingStep.idle,
+      curatedPost: null,
+      errorMessage: null,
+      validationMessage: null,
+      suggestedFallbackProvider: null,
+    );
   }
 
-  bool _isExtractingImage = false;
-  bool get isExtractingImage => _isExtractingImage;
-
-  Future<void> extractTextFromImage(ImageSource source) async {
-    if (_visionExtractor == null) return;
-
-    try {
-      final ImagePicker picker = ImagePicker();
-      final XFile? image = await picker.pickImage(source: source);
-
-      if (image != null) {
-        _isExtractingImage = true;
-        notifyListeners();
-
-        final extractedText = await _visionExtractor.extractText(image.path);
-
-        if (extractedText.isNotEmpty) {
-          setPendingInput(extractedText);
-        } else {
-          _errorMessage = "No text found in the image.";
-          _state = GenerateState.error;
-        }
-      }
-    } catch (e) {
-      _errorMessage = 'Failed to extract text: $e';
-      _state = GenerateState.error;
-    } finally {
-      _isExtractingImage = false;
-      notifyListeners();
-    }
+  // Vision/ML Kit extraction removed — vision models excluded per v2 verdict.
+  Future<void> extractTextFromImage(dynamic _) async {
+    state = state.copyWith(
+      errorMessage: 'Image extraction is disabled (vision models excluded).',
+      status: GenerateState.error,
+    );
   }
 }
 

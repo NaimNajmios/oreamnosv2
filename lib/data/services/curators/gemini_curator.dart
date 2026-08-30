@@ -2,7 +2,9 @@ import 'dart:convert';
 
 import 'package:dio/dio.dart';
 
+import 'package:oreamnos/core/di/injection.dart';
 import 'package:oreamnos/core/network/api_client.dart';
+import 'package:oreamnos/data/services/token_usage_side_channel.dart';
 import 'package:oreamnos/domain/services/content_curator.dart';
 import 'package:oreamnos/domain/services/card_prompt_manager.dart';
 import 'package:oreamnos/domain/services/generation_prompt_manager.dart';
@@ -77,6 +79,7 @@ class GeminiCurator implements IContentCurator {
           "generationConfig": {
             "temperature": 0.7,
             "responseMimeType": "application/json",
+            "responseSchema": GenerationPromptManager.jsonSchema,
           },
         },
         options: Options(extra: {'apiKey': apiKey, 'provider': 'gemini'}),
@@ -99,6 +102,13 @@ class GeminiCurator implements IContentCurator {
         : (response.data is String
               ? jsonDecode(response.data as String) as Map<String, dynamic>
               : (response.data as Map).cast<String, dynamic>());
+
+    // Side-channel: capture real token usage (Gemini usageMetadata) — keep skeleton minimal
+    try {
+      if (getIt.isRegistered<TokenUsageSideChannel>()) {
+        getIt<TokenUsageSideChannel>().storeGemini(data, 'gemini');
+      }
+    } catch (_) {}
 
     final candidates = data['candidates'] as List<dynamic>? ?? [];
     if (candidates.isEmpty) {
@@ -235,7 +245,9 @@ class GeminiCurator implements IContentCurator {
     required String apiKey,
   }) async {
     try {
-      final safeText = text.replaceAll('<<<FIELD>>>', '[FIELD]').replaceAll('<<<END>>>', '[END]');
+      final safeText = text
+          .replaceAll('<<<FIELD>>>', '[FIELD]')
+          .replaceAll('<<<END>>>', '[END]');
       final prompt =
           'You are a sports copy editor for Malaysian Malay (Bahasa Malaysia) audience.\n'
           'Rewrite the $fieldName below to be concise, grammatically correct Bahasa Malaysia, suitable for a social media graphic.\n'
@@ -252,7 +264,9 @@ class GeminiCurator implements IContentCurator {
         data: {
           "system_instruction": {
             "parts": [
-              {"text": 'You are a concise Bahasa Malaysia copy editor. Output only the rewritten text, no quotes or formatting.'},
+              {
+                "text": 'You are a concise Bahasa Malaysia copy editor. Output only the rewritten text, no quotes or formatting.',
+              },
             ],
           },
           "contents": [
@@ -262,10 +276,7 @@ class GeminiCurator implements IContentCurator {
               ],
             },
           ],
-          "generationConfig": {
-            "temperature": 0.5,
-            "maxOutputTokens": 256,
-          },
+          "generationConfig": {"temperature": 0.5, "maxOutputTokens": 256},
         },
         options: Options(extra: {'apiKey': apiKey, 'provider': 'gemini'}),
       );

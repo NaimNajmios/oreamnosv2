@@ -17,6 +17,7 @@ abstract class IContentRepository {
     required String apiKey,
     String? sourceUrl,
     required AiProvider provider,
+    List<String> searchSources = const [],
   });
 
   Future<Result<String>> generatePost({
@@ -78,6 +79,7 @@ class ContentRepository implements IContentRepository {
     required String apiKey,
     String? sourceUrl,
     required AiProvider provider,
+    List<String> searchSources = const [],
   }) async {
     try {
       final curator = CuratorFactory.getCurator(provider);
@@ -86,6 +88,7 @@ class ContentRepository implements IContentRepository {
         modelId: modelId,
         apiKey: apiKey,
         sourceUrl: sourceUrl,
+        searchSources: searchSources,
       );
       return ResultSuccess(res);
     } catch (e, st) {

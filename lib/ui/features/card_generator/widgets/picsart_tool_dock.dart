@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:oreamnos/config/theme/app_spacing.dart';
 import 'package:oreamnos/core/di/injection.dart';
 import 'package:oreamnos/data/services/preferences_service.dart';
+import 'package:image_picker/image_picker.dart';
 import 'package:oreamnos/domain/models/card_template.dart';
 import 'package:oreamnos/domain/models/card_config.dart';
 import 'package:oreamnos/ui/core/utils/haptics.dart';
@@ -369,6 +370,37 @@ class _PicsartToolDockState extends ConsumerState<PicsartToolDock> {
               ),
             ],
           ),
+          const SizedBox(height: AppSpacing.sm),
+          Row(
+            children: [
+              Text('Opacity', style: theme.textTheme.labelSmall),
+              Expanded(
+                child: Slider(
+                  value: state.imageOpacity,
+                  min: 0.2,
+                  max: 1.0,
+                  divisions: 8,
+                  label: '${(state.imageOpacity * 100).round()}%',
+                  onChanged: notifier.setImageOpacity,
+                ),
+              ),
+            ],
+          ),
+          Row(
+            children: [
+              Text('Blur', style: theme.textTheme.labelSmall),
+              Expanded(
+                child: Slider(
+                  value: state.backgroundBlurRadius,
+                  min: 0,
+                  max: 25,
+                  divisions: 5,
+                  label: '${state.backgroundBlurRadius.round()}',
+                  onChanged: notifier.setBackgroundBlurRadius,
+                ),
+              ),
+            ],
+          ),
           const SizedBox(height: AppSpacing.md),
           Row(
             mainAxisAlignment: MainAxisAlignment.center,
@@ -422,6 +454,48 @@ class _PicsartToolDockState extends ConsumerState<PicsartToolDock> {
                   );
                 }).toList(),
           ),
+          TextField(
+            decoration: InputDecoration(
+              labelText: 'Badge Text',
+              hintText: 'e.g. LIVE, NEW',
+              border: OutlineInputBorder(
+                borderRadius: AppSpacing.borderRadiusSm,
+              ),
+              isDense: true,
+            ),
+            controller: TextEditingController(text: state.badgeText ?? ''),
+            onChanged: notifier.setBadgeText,
+          ),
+          const SizedBox(height: AppSpacing.sm),
+          if (!state.hasImage) ...[
+            DropdownButton<PresetBackground>(
+              value: state.presetBackground,
+              hint: const Text('Preset background'),
+              isExpanded: true,
+              onChanged: notifier.setPresetBackground,
+              items: PresetBackground.values
+                  .map((e) => DropdownMenuItem(value: e, child: Text(e.name)))
+                  .toList(),
+            ),
+            const SizedBox(height: 8),
+            Wrap(
+              spacing: 8,
+              children: [
+                ChoiceChip(
+                  label: const Text('Gradient'),
+                  selected: state.backgroundType == BackgroundType.gradient,
+                  onSelected: (_) =>
+                      notifier.setBackgroundType(BackgroundType.gradient),
+                ),
+                ChoiceChip(
+                  label: const Text('Preset'),
+                  selected: state.backgroundType == BackgroundType.preset,
+                  onSelected: (_) =>
+                      notifier.setBackgroundType(BackgroundType.preset),
+                ),
+              ],
+            ),
+          ],
         ],
       ],
     );
@@ -615,8 +689,98 @@ class _PicsartToolDockState extends ConsumerState<PicsartToolDock> {
             ),
             onChanged: notifier.setWatermarkText,
           ),
+          const SizedBox(height: AppSpacing.md),
+          Row(
+            children: [
+              Expanded(
+                child: OutlinedButton.icon(
+                  icon: const Icon(Icons.image_outlined, size: 18),
+                  label: Text(
+                    state.watermarkImage == null
+                        ? 'Upload Logo'
+                        : 'Change Logo',
+                  ),
+                  onPressed: () async {
+                    final source = await _pickImageSource(context);
+                    if (source != null) {
+                      await notifier.pickWatermarkImage(source);
+                    }
+                  },
+                ),
+              ),
+              if (state.watermarkImage != null) ...[
+                const SizedBox(width: 8),
+                IconButton(
+                  icon: const Icon(Icons.delete_outline_rounded, size: 20),
+                  tooltip: 'Remove logo',
+                  onPressed: notifier.removeWatermarkImage,
+                ),
+              ],
+            ],
+          ),
+          if (state.watermarkImage != null) ...[
+            const SizedBox(height: 8),
+            ClipRRect(
+              borderRadius: AppSpacing.borderRadiusSm,
+              child: Image.file(
+                state.watermarkImage!,
+                height: 64,
+                fit: BoxFit.contain,
+              ),
+            ),
+          ],
+          const SizedBox(height: AppSpacing.md),
+          Row(
+            children: [
+              Text('Size', style: theme.textTheme.labelMedium),
+              Expanded(
+                child: Slider(
+                  value: state.watermarkSize,
+                  min: 24,
+                  max: 160,
+                  divisions: 17,
+                  label: '${state.watermarkSize.round()}',
+                  onChanged: notifier.setWatermarkSize,
+                ),
+              ),
+              Text(
+                '${state.watermarkSize.round()}',
+                style: theme.textTheme.labelMedium,
+              ),
+            ],
+          ),
+          const SizedBox(height: 4),
+          Text(
+            'Tip: drag watermark on card to reposition',
+            style: theme.textTheme.bodySmall?.copyWith(
+              color: theme.colorScheme.onSurface.withValues(alpha: 0.6),
+              fontSize: 11,
+            ),
+          ),
         ],
       ],
+    );
+  }
+
+  Future<ImageSource?> _pickImageSource(BuildContext context) async {
+    return showModalBottomSheet<ImageSource>(
+      context: context,
+      builder: (c) => SafeArea(
+        child: Wrap(
+          children: [
+            ListTile(
+              leading: const Icon(Icons.photo_library_outlined),
+              title: const Text('Gallery'),
+              onTap: () => Navigator.pop(c, ImageSource.gallery),
+            ),
+            ListTile(
+              leading: const Icon(Icons.camera_alt_outlined),
+              title: const Text('Camera'),
+              onTap: () => Navigator.pop(c, ImageSource.camera),
+            ),
+          ],
+        ),
+      ),
     );
   }
 }

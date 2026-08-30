@@ -112,9 +112,27 @@ class CardGeneratorViewModel extends Notifier<CardGeneratorState> {
       extractedPalette: snapshot.extractedPalette,
       watermarkText: snapshot.watermarkText,
       showWatermark: snapshot.showWatermark,
+      watermarkImage: snapshot.watermarkImage,
+      watermarkSize: snapshot.watermarkSize,
+      watermarkOffset: snapshot.watermarkOffset,
       brandName: snapshot.brandName,
       brandHandle: snapshot.brandHandle,
       showBrandFooter: snapshot.showBrandFooter,
+      imagePosition: snapshot.imagePosition,
+      photoFilter: snapshot.photoFilter,
+      imageOpacity: snapshot.imageOpacity,
+      backgroundBlurRadius: snapshot.backgroundBlurRadius,
+      badgeText: snapshot.badgeText,
+      accentColor: snapshot.accentColor,
+      previewScale: snapshot.previewScale,
+      backgroundType: snapshot.backgroundType,
+      presetBackground: snapshot.presetBackground,
+      textShadowRadius: snapshot.textShadowRadius,
+      textShadowColor: snapshot.textShadowColor,
+      isGlowEnabled: snapshot.isGlowEnabled,
+      headlineOffset: snapshot.headlineOffset,
+      subtextOffset: snapshot.subtextOffset,
+      microStatOffset: snapshot.microStatOffset,
       undoStack: undo,
       redoStack: redo,
     );
@@ -261,19 +279,113 @@ class CardGeneratorViewModel extends Notifier<CardGeneratorState> {
     _prefsService.setShowWatermark(show);
   }
 
+  void setWatermarkSize(double size) {
+    _saveSnapshot();
+    state = state.copyWith(watermarkSize: size.clamp(24.0, 160.0));
+  }
+
+  void setWatermarkOffset(Offset offset) {
+    // Clamp 0.05-0.95 to keep inside card, no snapshot for drag (high frequency)
+    final clamped = Offset(
+      offset.dx.clamp(0.05, 0.95),
+      offset.dy.clamp(0.05, 0.95),
+    );
+    state = state.copyWith(watermarkOffset: clamped);
+  }
+
+  void commitWatermarkOffset(Offset offset) {
+    _saveSnapshot();
+    setWatermarkOffset(offset);
+  }
+
+  Future<void> pickWatermarkImage(ImageSource source) async {
+    try {
+      final picker = ImagePicker();
+      final xfile = await picker.pickImage(source: source, imageQuality: 90);
+      if (xfile != null) {
+        _saveSnapshot();
+        state = state.copyWith(
+          watermarkImage: File(xfile.path),
+          showWatermark: true,
+        );
+        _prefsService.setShowWatermark(true);
+      }
+    } catch (e) {
+      debugPrint('pickWatermarkImage error: $e');
+    }
+  }
+
+  void removeWatermarkImage() {
+    _saveSnapshot();
+    state = state.copyWith(watermarkImage: null);
+  }
+
+  void setImageOpacity(double v) {
+    _saveSnapshot();
+    state = state.copyWith(imageOpacity: v.clamp(0.2, 1.0));
+  }
+
+  void setBackgroundBlurRadius(double v) {
+    _saveSnapshot();
+    state = state.copyWith(backgroundBlurRadius: v.clamp(0.0, 25.0));
+  }
+
+  void setBadgeText(String? text) {
+    _saveSnapshot();
+    state = state.copyWith(badgeText: text?.isEmpty == true ? null : text);
+  }
+
+  void setAccentColor(Color? c) {
+    _saveSnapshot();
+    state = state.copyWith(accentColor: c);
+  }
+
+  void setPreviewScale(double v) {
+    _saveSnapshot();
+    state = state.copyWith(previewScale: v.clamp(0.8, 1.4));
+  }
+
+  void setBackgroundType(BackgroundType t) {
+    _saveSnapshot();
+    state = state.copyWith(backgroundType: t);
+  }
+
+  void setPresetBackground(PresetBackground? p) {
+    _saveSnapshot();
+    state = state.copyWith(
+      presetBackground: p,
+      backgroundType: BackgroundType.preset,
+    );
+  }
+
+  void setTextShadow({double? radius, Color? color, bool? glow}) {
+    _saveSnapshot();
+    state = state.copyWith(
+      textShadowRadius: radius ?? state.textShadowRadius,
+      textShadowColor: color ?? state.textShadowColor,
+      isGlowEnabled: glow ?? state.isGlowEnabled,
+    );
+  }
+
   void setShowBrandFooter(bool show) {
     _saveSnapshot();
     state = state.copyWith(showBrandFooter: show);
     _prefsService.setShowBrandFooter(show);
   }
 
+  void saveDragSnapshot() => _saveSnapshot();
+
   void updateElementOffset(String field, Offset offset) {
+    final clamped = Offset(
+      offset.dx.clamp(0.05, 0.95),
+      offset.dy.clamp(0.05, 0.95),
+    );
     if (field == 'headline') {
-      state = state.copyWith(headlineOffset: offset);
+      state = state.copyWith(headlineOffset: clamped);
     } else if (field == 'subtext') {
-      state = state.copyWith(subtextOffset: offset);
+      state = state.copyWith(subtextOffset: clamped);
     } else if (field == 'microStat') {
-      state = state.copyWith(microStatOffset: offset);
+      state = state.copyWith(microStatOffset: clamped);
     }
   }
 
@@ -432,6 +544,7 @@ class CardGeneratorViewModel extends Notifier<CardGeneratorState> {
   }
 
   void setAutoPalette(bool v) {
+    _saveSnapshot();
     state = state.copyWith(useAutoPalette: v);
   }
 
@@ -491,6 +604,7 @@ class CardGeneratorViewModel extends Notifier<CardGeneratorState> {
       final picker = ImagePicker();
       final xfile = await picker.pickImage(source: source, imageQuality: 85);
       if (xfile != null) {
+        _saveSnapshot();
         final palette = await ColorExtractor.extractPalette(xfile.path);
         state = state.copyWith(
           backgroundImage: File(xfile.path),
@@ -503,6 +617,7 @@ class CardGeneratorViewModel extends Notifier<CardGeneratorState> {
   }
 
   void removeImage() {
+    _saveSnapshot();
     state = state.copyWith(
       backgroundImage: null,
       extractedPalette: null,
@@ -510,9 +625,22 @@ class CardGeneratorViewModel extends Notifier<CardGeneratorState> {
     );
   }
 
+  double _pixelRatioForRatio(CardRatio ratio) {
+    return switch (ratio) {
+      CardRatio.square => 3.0,
+      CardRatio.portrait45 => 2.8,
+      CardRatio.story => 2.5,
+      CardRatio.wide => 2.8,
+      CardRatio.photo34 => 2.8,
+    };
+  }
+
   Future<bool> saveToGallery(GlobalKey boundaryKey) async {
     try {
-      final bytes = await _exportService.capturePng(boundaryKey);
+      final bytes = await _exportService.capturePng(
+        boundaryKey,
+        pixelRatio: _pixelRatioForRatio(state.selectedRatio),
+      );
       return await _exportService.saveToGallery(bytes);
     } catch (e) {
       return false;
@@ -521,7 +649,10 @@ class CardGeneratorViewModel extends Notifier<CardGeneratorState> {
 
   Future<void> shareCard(GlobalKey boundaryKey) async {
     try {
-      final bytes = await _exportService.capturePng(boundaryKey);
+      final bytes = await _exportService.capturePng(
+        boundaryKey,
+        pixelRatio: _pixelRatioForRatio(state.selectedRatio),
+      );
       await _exportService.shareImage(
         bytes,
         text: state.cardData?.headline ?? '',

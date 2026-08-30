@@ -29,8 +29,6 @@ import 'package:oreamnos/ui/core/widgets/error_state.dart';
 import 'package:oreamnos/ui/core/widgets/input_clear_button.dart';
 import 'package:oreamnos/ui/features/generate/widgets/twitter_fallback_dialog.dart';
 import 'package:oreamnos/ui/core/widgets/link_preview_card.dart';
-import 'package:oreamnos/ui/core/widgets/ocr_extraction_sheet.dart';
-import 'package:oreamnos/ui/core/widgets/kickoff_loading_indicator.dart';
 import 'package:oreamnos/ui/core/widgets/refinement_pill.dart';
 import 'package:oreamnos/ui/core/widgets/section_header.dart';
 import 'package:oreamnos/ui/core/widgets/source_attribution_card.dart';
@@ -42,6 +40,7 @@ import 'package:oreamnos/ui/features/settings/views/widgets/add_pill_dialog.dart
 import 'package:shared_preferences/shared_preferences.dart';
 
 import '../view_models/generate_view_model.dart';
+import '../view_models/generate_state.dart';
 
 class GenerateScreen extends ConsumerStatefulWidget {
   const GenerateScreen({super.key});
@@ -135,23 +134,24 @@ class _GenerateScreenState extends ConsumerState<GenerateScreen> {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    ref.listen<GenerateViewModel>(generateViewModelProvider, (prev, next) {
-      if (next.state == GenerateState.rateLimited &&
+    ref.listen<GenerateUiState>(generateViewModelProvider, (prev, next) {
+      if (next.status == GenerateState.rateLimited &&
           next.suggestedFallbackProvider != null &&
-          prev?.state != GenerateState.rateLimited) {
+          prev?.status != GenerateState.rateLimited) {
         WidgetsBinding.instance.addPostFrameCallback((_) {
           if (!context.mounted) return;
+          final notifier = ref.read(generateViewModelProvider.notifier);
           RateLimitDialog.show(
             context,
             suggestedFallbackProvider: next.suggestedFallbackProvider,
-            currentProviderName: next.providerDisplayName,
+            currentProviderName: notifier.providerDisplayName,
             onRetryWithFallback: () =>
-                next.retryWithProvider(next.suggestedFallbackProvider!),
+                notifier.retryWithProvider(next.suggestedFallbackProvider!),
           );
         });
-      } else if (next.state == GenerateState.error &&
+      } else if (next.status == GenerateState.error &&
           next.twitterExtractionUrl != null &&
-          prev?.state != GenerateState.error) {
+          prev?.status != GenerateState.error) {
         WidgetsBinding.instance.addPostFrameCallback((_) {
           if (!context.mounted) return;
           showDialog<String>(
@@ -163,29 +163,31 @@ class _GenerateScreenState extends ConsumerState<GenerateScreen> {
             if (pastedText != null && pastedText.isNotEmpty) {
               // Populate the UI with the pasted text and trigger generation
               _controller.text = pastedText;
-              next.setPendingInput(pastedText);
-              next.generatePost(pastedText);
+              final notifier = ref.read(generateViewModelProvider.notifier);
+              notifier.setPendingInput(pastedText);
+              notifier.generatePost(pastedText);
             }
           });
         });
       }
     });
-    final viewModel = ref.watch(generateViewModelProvider);
+    final uiState = ref.watch(generateViewModelProvider);
+    final notifier = ref.read(generateViewModelProvider.notifier);
 
-    if (viewModel.pendingInput != null &&
-        viewModel.pendingInput != _controller.text) {
+    if (uiState.pendingInput != null &&
+        uiState.pendingInput != _controller.text) {
       WidgetsBinding.instance.addPostFrameCallback((_) {
-        _controller.text = viewModel.pendingInput!;
-        viewModel.clearPendingInput();
+        _controller.text = uiState.pendingInput!;
+        notifier.clearPendingInput();
       });
     }
 
     final isUrl = WebScraperService.isUrl(_controller.text.trim());
     final hasContent = _controller.text.trim().isNotEmpty;
     final isGenerating =
-        viewModel.state == GenerateState.generating ||
-        viewModel.state == GenerateState.researching;
-    final hasPost = viewModel.curatedPost != null;
+        uiState.status == GenerateState.generating ||
+        uiState.status == GenerateState.researching;
+    final hasPost = uiState.curatedPost != null;
 
     if (hasPost && !_lastSuccessState) {
       _lastSuccessState = true;
@@ -196,7 +198,7 @@ class _GenerateScreenState extends ConsumerState<GenerateScreen> {
       _lastSuccessState = false;
     }
 
-    final validationMsg = viewModel.validationMessage ?? viewModel.errorMessage;
+    final validationMsg = uiState.validationMessage ?? uiState.errorMessage;
     final needsConfig =
         validationMsg != null &&
         (validationMsg.toLowerCase().contains('api key') ||
@@ -240,7 +242,7 @@ class _GenerateScreenState extends ConsumerState<GenerateScreen> {
                     crossAxisAlignment: CrossAxisAlignment.stretch,
                     children: [
                       // Validation banner (pre-flight)
-                      if (needsConfig && viewModel.state == GenerateState.error)
+                      if (needsConfig && uiState.status == GenerateState.error)
                         Container(
                           margin: const EdgeInsets.only(
                             bottom: AppSpacing.base,
@@ -326,14 +328,14 @@ class _GenerateScreenState extends ConsumerState<GenerateScreen> {
                       if (!hasPost)
                         _buildCaptureCard(
                           context,
-                          viewModel,
+                          uiState,
                           isUrl,
                           hasContent,
                           isGenerating,
                         ),
 
                       // Output Section (Hidden when Idle)
-                      if (viewModel.state != GenerateState.idle) ...[
+                      if (uiState.status != GenerateState.idle) ...[
                         if (!hasPost) ...[
                           const SizedBox(height: AppSpacing.xxl),
                           Divider(
@@ -357,7 +359,7 @@ class _GenerateScreenState extends ConsumerState<GenerateScreen> {
                               _buildResultArea(
                                 context,
                                 theme,
-                                viewModel,
+                                uiState,
                                 hasPost,
                                 isGenerating,
                               ),
@@ -371,7 +373,7 @@ class _GenerateScreenState extends ConsumerState<GenerateScreen> {
                                         icon: Icons.add_rounded,
                                         onPressed: () {
                                           _handleClear();
-                                          viewModel.reset();
+                                          notifier.reset();
                                         },
                                       ),
                                     ),
@@ -381,9 +383,13 @@ class _GenerateScreenState extends ConsumerState<GenerateScreen> {
                                         label: 'Regenerate',
                                         icon: Icons.refresh_rounded,
                                         isLoading: isGenerating,
-                                        onPressed: isGenerating ? null : () {
-                                          viewModel.generatePost(_controller.text);
-                                        },
+                                        onPressed: isGenerating
+                                            ? null
+                                            : () {
+                                                notifier.generatePost(
+                                                  _controller.text,
+                                                );
+                                              },
                                       ),
                                     ),
                                   ],
@@ -412,7 +418,7 @@ class _GenerateScreenState extends ConsumerState<GenerateScreen> {
 
   Widget _buildCaptureCard(
     BuildContext context,
-    GenerateViewModel viewModel,
+    GenerateUiState viewModel,
     bool isUrl,
     bool hasContent,
     bool isGenerating,
@@ -452,7 +458,9 @@ class _GenerateScreenState extends ConsumerState<GenerateScreen> {
                   ? null
                   : () {
                       FocusScope.of(context).unfocus();
-                      viewModel.generatePost(_controller.text);
+                      ref
+                          .read(generateViewModelProvider.notifier)
+                          .generatePost(_controller.text);
                     },
             ),
           ],
@@ -465,55 +473,6 @@ class _GenerateScreenState extends ConsumerState<GenerateScreen> {
                   spacing: AppSpacing.sm,
                   runSpacing: AppSpacing.xs,
                   children: [
-                    InkWell(
-                      onTap: isGenerating
-                          ? null
-                          : () {
-                              OcrExtractionSheet.show(
-                                context,
-                                onSourceSelected: (source) {
-                                  viewModel.extractTextFromImage(source);
-                                },
-                              );
-                            },
-                      borderRadius: AppSpacing.borderRadiusPill,
-                      child: Container(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 12,
-                          vertical: 7,
-                        ),
-                        decoration: BoxDecoration(
-                          color: theme.colorScheme.surfaceContainerHighest
-                              .withValues(alpha: 0.8),
-                          borderRadius: AppSpacing.borderRadiusPill,
-                          border: Border.all(
-                            color: theme.colorScheme.outline,
-                            width: 1,
-                          ),
-                        ),
-                        child: Row(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            if (viewModel.isExtractingImage)
-                              SizedBox(child: KickoffLoadingIndicator(size: 14))
-                            else
-                              Icon(
-                                Icons.document_scanner_outlined,
-                                size: 14,
-                                color: theme.colorScheme.primary,
-                              ),
-                            const SizedBox(width: 6),
-                            Text(
-                              'Scan Image',
-                              style: theme.textTheme.labelSmall?.copyWith(
-                                fontWeight: FontWeight.w600,
-                                color: theme.colorScheme.onSurface,
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                    ),
                     if (hasContent)
                       InputClearButton(onClear: _handleClear)
                     else
@@ -637,7 +596,9 @@ class _GenerateScreenState extends ConsumerState<GenerateScreen> {
                   onSelectionChanged: isGenerating
                       ? null
                       : (set) {
-                          viewModel.setPromptLength(set.first);
+                          ref
+                              .read(generateViewModelProvider.notifier)
+                              .setPromptLength(set.first);
                         },
                   style: SegmentedButton.styleFrom(
                     visualDensity: VisualDensity.compact,
@@ -673,7 +634,9 @@ class _GenerateScreenState extends ConsumerState<GenerateScreen> {
                         value: viewModel.isResearchModeEnabled,
                         onChanged: isGenerating
                             ? null
-                            : (_) => viewModel.toggleResearchMode(),
+                            : (_) => ref
+                                  .read(generateViewModelProvider.notifier)
+                                  .toggleResearchMode(),
                       ),
                     ),
                   ],
@@ -733,7 +696,7 @@ class _GenerateScreenState extends ConsumerState<GenerateScreen> {
           const SizedBox(height: AppSpacing.base),
           AppButton(
             label: isGenerating
-                ? (viewModel.state == GenerateState.researching
+                ? (viewModel.status == GenerateState.researching
                       ? 'Searching for match stats...'
                       : (viewModel.generatingStep == GeneratingStep.scraping
                             ? 'Extracting URL...'
@@ -745,7 +708,9 @@ class _GenerateScreenState extends ConsumerState<GenerateScreen> {
                 ? null
                 : () {
                     FocusScope.of(context).unfocus();
-                    viewModel.generatePost(_controller.text);
+                    ref
+                        .read(generateViewModelProvider.notifier)
+                        .generatePost(_controller.text);
                   },
           ),
           if (viewModel.recentInputs.isNotEmpty &&
@@ -796,7 +761,7 @@ class _GenerateScreenState extends ConsumerState<GenerateScreen> {
   Widget _buildResultArea(
     BuildContext context,
     ThemeData theme,
-    GenerateViewModel viewModel,
+    GenerateUiState viewModel,
     bool hasPost,
     bool isGenerating,
   ) {
@@ -807,15 +772,17 @@ class _GenerateScreenState extends ConsumerState<GenerateScreen> {
       );
     }
 
-    if (viewModel.state == GenerateState.error && !hasPost) {
+    if (viewModel.status == GenerateState.error && !hasPost) {
       return ErrorState(
         key: const ValueKey('error'),
         message: viewModel.errorMessage ?? 'An unexpected error occurred.',
-        onRetry: () => viewModel.generatePost(_controller.text),
+        onRetry: () => ref
+            .read(generateViewModelProvider.notifier)
+            .generatePost(_controller.text),
       );
     }
 
-    if (viewModel.state == GenerateState.rateLimited && !hasPost) {
+    if (viewModel.status == GenerateState.rateLimited && !hasPost) {
       return ErrorState(
         key: const ValueKey('rateLimited'),
         title: 'Rate Limit Reached',
@@ -826,9 +793,13 @@ class _GenerateScreenState extends ConsumerState<GenerateScreen> {
             : 'Retry',
         onRetry: () {
           if (viewModel.suggestedFallbackProvider != null) {
-            viewModel.retryWithProvider(viewModel.suggestedFallbackProvider!);
+            ref
+                .read(generateViewModelProvider.notifier)
+                .retryWithProvider(viewModel.suggestedFallbackProvider!);
           } else {
-            viewModel.generatePost(_controller.text);
+            ref
+                .read(generateViewModelProvider.notifier)
+                .generatePost(_controller.text);
           }
         },
       );
@@ -853,27 +824,44 @@ class _GenerateScreenState extends ConsumerState<GenerateScreen> {
               children: [
                 if (isGenerating) ...[
                   LinearProgressIndicator(
-                    backgroundColor: theme.colorScheme.primary.withValues(alpha: 0.1),
+                    backgroundColor: theme.colorScheme.primary.withValues(
+                      alpha: 0.1,
+                    ),
                     color: theme.colorScheme.primary,
                   ),
                   const SizedBox(height: AppSpacing.sm),
-                ] else if (viewModel.state == GenerateState.error || viewModel.state == GenerateState.rateLimited) ...[
+                ] else if (viewModel.status == GenerateState.error ||
+                    viewModel.status == GenerateState.rateLimited) ...[
                   Container(
                     margin: const EdgeInsets.only(bottom: AppSpacing.sm),
-                    padding: const EdgeInsets.symmetric(horizontal: AppSpacing.md, vertical: AppSpacing.sm),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: AppSpacing.md,
+                      vertical: AppSpacing.sm,
+                    ),
                     decoration: BoxDecoration(
-                      color: theme.colorScheme.errorContainer.withValues(alpha: 0.6),
+                      color: theme.colorScheme.errorContainer.withValues(
+                        alpha: 0.6,
+                      ),
                       borderRadius: AppSpacing.borderRadiusSm,
-                      border: Border.all(color: theme.colorScheme.error.withValues(alpha: 0.2)),
+                      border: Border.all(
+                        color: theme.colorScheme.error.withValues(alpha: 0.2),
+                      ),
                     ),
                     child: Row(
                       children: [
-                        Icon(Icons.warning_amber_rounded, size: 18, color: theme.colorScheme.error),
+                        Icon(
+                          Icons.warning_amber_rounded,
+                          size: 18,
+                          color: theme.colorScheme.error,
+                        ),
                         const SizedBox(width: AppSpacing.sm),
                         Expanded(
                           child: Text(
                             viewModel.errorMessage ?? 'An error occurred.',
-                            style: theme.textTheme.bodySmall?.copyWith(color: theme.colorScheme.onErrorContainer, fontWeight: FontWeight.w500),
+                            style: theme.textTheme.bodySmall?.copyWith(
+                              color: theme.colorScheme.onErrorContainer,
+                              fontWeight: FontWeight.w500,
+                            ),
                           ),
                         ),
                       ],
@@ -940,7 +928,9 @@ class _GenerateScreenState extends ConsumerState<GenerateScreen> {
                         label: 'Title',
                         icon: viewModel.showTitle ? Icons.check_rounded : null,
                         selected: viewModel.showTitle,
-                        onTap: viewModel.toggleTitle,
+                        onTap: ref
+                            .read(generateViewModelProvider.notifier)
+                            .toggleTitle,
                       ),
                       const SizedBox(width: AppSpacing.sm),
                       AppChip(
@@ -949,14 +939,18 @@ class _GenerateScreenState extends ConsumerState<GenerateScreen> {
                             ? Icons.check_rounded
                             : null,
                         selected: viewModel.showHashtags,
-                        onTap: viewModel.toggleHashtags,
+                        onTap: ref
+                            .read(generateViewModelProvider.notifier)
+                            .toggleHashtags,
                       ),
                       const SizedBox(width: AppSpacing.sm),
                       AppChip(
                         label: 'Source',
                         icon: viewModel.showSource ? Icons.check_rounded : null,
                         selected: viewModel.showSource,
-                        onTap: viewModel.toggleSource,
+                        onTap: ref
+                            .read(generateViewModelProvider.notifier)
+                            .toggleSource,
                       ),
                     ],
                   ),
@@ -1037,7 +1031,9 @@ class _GenerateScreenState extends ConsumerState<GenerateScreen> {
                 alignment: Alignment.centerLeft,
                 child: InkWell(
                   onTap: () {
-                    viewModel.undoLastRefinement();
+                    ref
+                        .read(generateViewModelProvider.notifier)
+                        .undoLastRefinement();
                     Haptics.mediumImpact();
                     ScaffoldMessenger.of(context).showSnackBar(
                       SnackBar(
@@ -1085,9 +1081,11 @@ class _GenerateScreenState extends ConsumerState<GenerateScreen> {
                 RefinementPill(
                       label: 'Rephrase',
                       icon: Icons.refresh_rounded,
-                      onTap: () => viewModel.refineContent(
-                        'Rephrase the report to be more formal and concise while keeping all facts and a neutral tone.',
-                      ),
+                      onTap: () => ref
+                          .read(generateViewModelProvider.notifier)
+                          .refineContent(
+                            'Rephrase the report to be more formal and concise while keeping all facts and a neutral tone.',
+                          ),
                     )
                     .animate(delay: const Duration(milliseconds: 0))
                     .fadeIn(duration: const Duration(milliseconds: 180))
@@ -1099,9 +1097,11 @@ class _GenerateScreenState extends ConsumerState<GenerateScreen> {
                 RefinementPill(
                       label: 'Check Flow',
                       icon: Icons.auto_fix_high_rounded,
-                      onTap: () => viewModel.refineContent(
-                        'Improve the flow and clarity of the report without adding new facts.',
-                      ),
+                      onTap: () => ref
+                          .read(generateViewModelProvider.notifier)
+                          .refineContent(
+                            'Improve the flow and clarity of the report without adding new facts.',
+                          ),
                     )
                     .animate(delay: AppConstants.staggerDelay)
                     .fadeIn(duration: const Duration(milliseconds: 180))
@@ -1113,9 +1113,11 @@ class _GenerateScreenState extends ConsumerState<GenerateScreen> {
                 RefinementPill(
                       label: 'Shorter',
                       icon: Icons.compress_rounded,
-                      onTap: () => viewModel.refineContent(
-                        'Make the report shorter, 100-120 words, keeping a formal style.',
-                      ),
+                      onTap: () => ref
+                          .read(generateViewModelProvider.notifier)
+                          .refineContent(
+                            'Make the report shorter, 100-120 words, keeping a formal style.',
+                          ),
                     )
                     .animate(delay: AppConstants.staggerDelay * 2)
                     .fadeIn(duration: const Duration(milliseconds: 180))
@@ -1134,9 +1136,9 @@ class _GenerateScreenState extends ConsumerState<GenerateScreen> {
                         child:
                             RefinementPill(
                                   label: e.value.label,
-                                  onTap: () => viewModel.refineContent(
-                                    e.value.instruction,
-                                  ),
+                                  onTap: () => ref
+                                      .read(generateViewModelProvider.notifier)
+                                      .refineContent(e.value.instruction),
                                   onLongPress: () {
                                     AddPillDialog.show(
                                       context,
@@ -1213,7 +1215,7 @@ class _GenerateScreenState extends ConsumerState<GenerateScreen> {
           ),
           const SizedBox(height: 4),
           Text(
-            'Paste a URL, enter news, or scan an image to start.',
+            'Paste a URL or enter news to start.',
             style: theme.textTheme.bodySmall?.copyWith(
               color: theme.colorScheme.onSurface.withValues(alpha: 0.55),
             ),
@@ -1234,16 +1236,6 @@ class _GenerateScreenState extends ConsumerState<GenerateScreen> {
                     _controller.text = data!.text!;
                     setState(() {});
                   }
-                },
-              ),
-              _IdleExampleChip(
-                label: 'Scan Image',
-                icon: Icons.document_scanner_outlined,
-                onTap: () {
-                  OcrExtractionSheet.show(
-                    context,
-                    onSourceSelected: (s) => viewModel.extractTextFromImage(s),
-                  );
                 },
               ),
             ],

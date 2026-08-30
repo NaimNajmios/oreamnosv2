@@ -5,9 +5,6 @@ import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:oreamnos/data/services/preferences_service.dart';
 import 'package:oreamnos/data/services/usage_service.dart';
 import 'package:oreamnos/data/services/log_service.dart';
-import 'package:oreamnos/domain/services/vision_extractor.dart';
-
-import 'helpers/test_helpers.dart';
 
 import 'package:oreamnos/data/services/web_scraper_service.dart';
 import 'package:oreamnos/ui/features/generate/view_models/generate_view_model.dart';
@@ -45,16 +42,13 @@ void main() {
       getIt.allowReassignment = true;
       getIt.registerLazySingleton<PreferencesService>(() => prefService);
       getIt.registerLazySingleton<UsageService>(() => UsageService(prefs));
-      getIt.registerLazySingleton<IVisionExtractor>(
-        () => FakeVisionExtractor(),
-      );
       getIt.registerLazySingleton<LogService>(() => LogService(prefs));
 
       container = ProviderContainer();
 
       // wait for async init
       await Future.delayed(const Duration(milliseconds: 100));
-      vm = container.read(generateViewModelProvider);
+      vm = container.read(generateViewModelProvider.notifier);
     });
 
     tearDown(() {

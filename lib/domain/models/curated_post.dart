@@ -283,11 +283,13 @@ class CuratedPost extends Equatable {
     if (body.isEmpty) return body;
     // Preserve bullet lists as-is
     if (body.contains(RegExp(r'^\s*[-•]\s', multiLine: true))) return body;
-    
-    // Delegate to ReadabilityUtils to handle paragraph splitting (max 40 words per paragraph)
-    return ReadabilityUtils.splitLongParagraphs(body.trim(), maxWordsPerParagraph: 40);
-  }
 
+    // Delegate to ReadabilityUtils to handle paragraph splitting (max 40 words per paragraph)
+    return ReadabilityUtils.splitLongParagraphs(
+      body.trim(),
+      maxWordsPerParagraph: 40,
+    );
+  }
 
   /// Fallback when LLM returns plain markdown instead of JSON.
   factory CuratedPost.fromMarkdownFallback(

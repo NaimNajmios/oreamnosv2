@@ -1,3 +1,5 @@
+import 'dart:ui' as dart_ui;
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
@@ -293,27 +295,29 @@ class _CardGeneratorScreenState extends ConsumerState<CardGeneratorScreen> {
       children: [
         Expanded(
           child: Container(
-            color: theme.colorScheme.surface, // or black for Picsart feel? Let's stick to theme for now
+            color: theme.colorScheme.surface,
             child: CardStage(
               boundaryKey: _boundaryKey,
               aspectRatio: state.selectedRatio.ratio,
               child: Stack(
                 fit: StackFit.expand,
                 children: [
-                  if (state.backgroundImage != null)
-                    InteractiveViewer(
-                      boundaryMargin: const EdgeInsets.all(double.infinity),
-                      minScale: 0.5,
-                      maxScale: 4.0,
-                      child: _applyPhotoFilter(
-                        state.photoFilter,
-                        Image.file(state.backgroundImage!, fit: BoxFit.cover),
+                  // Preset background handling (as in original)
+                  if (state.backgroundType == BackgroundType.preset &&
+                      state.presetBackground != null)
+                    Container(
+                      decoration: BoxDecoration(
+                        gradient: _presetGradient(state.presetBackground!),
                       ),
-                    ),
+                    )
+                  else if (state.backgroundImage != null)
+                    _buildBackgroundByPosition(state),
                   CardCanvasDispatcher(
                     cardData: state.cardData!,
                     config: CardConfig(
                       template: state.selectedTemplate,
+                      backgroundType: state.backgroundType,
+                      presetBackground: state.presetBackground,
                       fontSizeMultiplier: state.headlineScale,
                       overlayOpacity: state.scrimOpacity,
                       showScrim: true,
@@ -329,13 +333,27 @@ class _CardGeneratorScreenState extends ConsumerState<CardGeneratorScreen> {
                               state.extractedPalette!.first,
                               state.extractedPalette!.last,
                             ]
-                          : const [Color(0xFF1A237E), Color(0xFF0D47A1)],
+                          : (state.accentColor != null
+                                ? [
+                                    state.accentColor!,
+                                    state.accentColor!.withValues(alpha: 0.7),
+                                  ]
+                                : const [Color(0xFF1A237E), Color(0xFF0D47A1)]),
                       primaryFontFamilyName:
                           state.selectedFont == AppFont.classicSerif
                           ? 'Lora'
                           : state.selectedFont == AppFont.typewriter
                           ? 'Space Mono'
                           : 'Inter',
+                      accentColor: state.accentColor,
+                      badgeText: state.badgeText,
+                      previewScale: state.previewScale,
+                      imageOpacity: state.imageOpacity,
+                      backgroundBlurRadius: state.backgroundBlurRadius,
+                      textShadowRadius: state.textShadowRadius,
+                      textShadowColor:
+                          state.textShadowColor ?? const Color(0x80000000),
+                      isGlowEnabled: state.isGlowEnabled,
                       brandName: state.brandName,
                       brandHandle: state.brandHandle,
                       showBrandFooter: state.showBrandFooter,
@@ -343,13 +361,36 @@ class _CardGeneratorScreenState extends ConsumerState<CardGeneratorScreen> {
                       watermarkPath: state.watermarkText,
                       imagePosition: state.imagePosition,
                       photoFilter: state.photoFilter,
-                      exportSize: state.selectedRatio.name.contains('square')
-                          ? ExportSize.square
-                          : state.selectedRatio.name.contains('story')
-                          ? ExportSize.story
-                          : ExportSize.portrait,
+                      exportSize: ExportSize.fromRatioName(
+                        state.selectedRatio.name,
+                      ),
                     ),
                   ),
+                  // Badge overlay as in original (badgeText)
+                  if (state.badgeText != null && state.badgeText!.isNotEmpty)
+                    Positioned(
+                      top: 12,
+                      left: 12,
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 10,
+                          vertical: 5,
+                        ),
+                        decoration: BoxDecoration(
+                          color: (state.accentColor ?? Colors.redAccent),
+                          borderRadius: BorderRadius.circular(20),
+                        ),
+                        child: Text(
+                          state.badgeText!,
+                          style: const TextStyle(
+                            color: Colors.white,
+                            fontSize: 11,
+                            fontWeight: FontWeight.w700,
+                            letterSpacing: 0.6,
+                          ),
+                        ),
+                      ),
+                    ),
                   if (state.isExtracting && hasData)
                     Positioned.fill(
                       child: Container(
@@ -376,31 +417,15 @@ class _CardGeneratorScreenState extends ConsumerState<CardGeneratorScreen> {
                         ),
                       ),
                     ),
-                  if (state.showWatermark &&
-                      state.watermarkText != null &&
-                      state.watermarkText!.isNotEmpty)
-                    Positioned(
-                      bottom: 12,
-                      right: 12,
-                      child: Container(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 8,
-                          vertical: 4,
-                        ),
-                        decoration: BoxDecoration(
-                          color: Colors.black.withValues(alpha: 0.5),
-                          borderRadius: BorderRadius.circular(4),
-                        ),
-                        child: Text(
-                          state.watermarkText!,
-                          style: const TextStyle(
-                            color: Colors.white,
-                            fontSize: 10,
-                            fontWeight: FontWeight.w600,
-                            letterSpacing: 0.5,
-                          ),
-                        ),
-                      ),
+                  if (state.showWatermark)
+                    _WatermarkOverlay(
+                      state: state,
+                      onDragUpdate: (offset) => ref
+                          .read(cardGeneratorViewModelProvider.notifier)
+                          .setWatermarkOffset(offset),
+                      onDragEnd: (offset) => ref
+                          .read(cardGeneratorViewModelProvider.notifier)
+                          .commitWatermarkOffset(offset),
                     ),
                 ],
               ),
@@ -414,8 +439,212 @@ class _CardGeneratorScreenState extends ConsumerState<CardGeneratorScreen> {
     );
   }
 
+  Widget _buildBackgroundByPosition(CardGeneratorState state) {
+    final img = _wrapWithOpacityAndBlur(
+      opacity: state.imageOpacity,
+      blur: state.backgroundBlurRadius,
+      child: _applyPhotoFilter(
+        state.photoFilter,
+        Image.file(state.backgroundImage!, fit: BoxFit.cover),
+      ),
+    );
+    switch (state.imagePosition) {
+      case ImagePosition.splitLeft:
+        return Row(
+          children: [
+            Expanded(
+              child: InteractiveViewer(
+                boundaryMargin: const EdgeInsets.all(double.infinity),
+                minScale: 0.5,
+                maxScale: 4.0,
+                child: img,
+              ),
+            ),
+            const Expanded(child: SizedBox.shrink()),
+          ],
+        );
+      case ImagePosition.splitRight:
+        return Row(
+          children: [
+            const Expanded(child: SizedBox.shrink()),
+            Expanded(
+              child: InteractiveViewer(
+                boundaryMargin: const EdgeInsets.all(double.infinity),
+                minScale: 0.5,
+                maxScale: 4.0,
+                child: img,
+              ),
+            ),
+          ],
+        );
+      case ImagePosition.overlayTop:
+        return Column(
+          children: [
+            SizedBox(
+              height: 140,
+              child: ClipRRect(
+                borderRadius: const BorderRadius.vertical(
+                  top: Radius.circular(12),
+                ),
+                child: img,
+              ),
+            ),
+            const Expanded(child: SizedBox.shrink()),
+          ],
+        );
+      case ImagePosition.minimal:
+        return Center(
+          child: Padding(
+            padding: const EdgeInsets.all(32),
+            child: ClipRRect(
+              borderRadius: BorderRadius.circular(12),
+              child: SizedBox(width: 200, height: 200, child: img),
+            ),
+          ),
+        );
+      case ImagePosition.cutout:
+        return Center(
+          child: Padding(padding: const EdgeInsets.all(16), child: img),
+        );
+      case ImagePosition.magazineBold:
+        return Padding(
+          padding: const EdgeInsets.all(12),
+          child: ClipRRect(borderRadius: BorderRadius.circular(8), child: img),
+        );
+      case ImagePosition.offsetCard:
+        return Align(
+          alignment: const Alignment(0.2, -0.2),
+          child: FractionallySizedBox(
+            widthFactor: 0.9,
+            heightFactor: 0.85,
+            child: ClipRRect(
+              borderRadius: BorderRadius.circular(12),
+              child: img,
+            ),
+          ),
+        );
+      case ImagePosition.brutalist:
+        return Container(
+          decoration: BoxDecoration(
+            border: Border.all(color: Colors.white24, width: 2),
+          ),
+          child: img,
+        );
+      case ImagePosition.floatWindow:
+        return Align(
+          alignment: Alignment.bottomRight,
+          child: Padding(
+            padding: const EdgeInsets.all(16),
+            child: ClipRRect(
+              borderRadius: BorderRadius.circular(8),
+              child: SizedBox(width: 140, height: 140, child: img),
+            ),
+          ),
+        );
+      case ImagePosition.background:
+        return InteractiveViewer(
+          boundaryMargin: const EdgeInsets.all(double.infinity),
+          minScale: 0.5,
+          maxScale: 4.0,
+          child: img,
+        );
+    }
+  }
+
+  Widget _wrapWithOpacityAndBlur({
+    required double opacity,
+    required double blur,
+    required Widget child,
+  }) {
+    Widget w = child;
+    if (opacity < 0.99) {
+      w = Opacity(opacity: opacity, child: w);
+    }
+    if (blur > 0.1) {
+      w = ImageFiltered(
+        imageFilter: dart_ui.ImageFilter.blur(sigmaX: blur, sigmaY: blur),
+        child: w,
+      );
+    }
+    return w;
+  }
+
+  LinearGradient _presetGradient(PresetBackground preset) {
+    return switch (preset) {
+      PresetBackground.stadiumBlur => const LinearGradient(
+        colors: [Color(0xFF0F172A), Color(0xFF334155)],
+        begin: Alignment.topLeft,
+        end: Alignment.bottomRight,
+      ),
+      PresetBackground.darkMesh => const LinearGradient(
+        colors: [Color(0xFF111827), Color(0xFF1F2937)],
+        begin: Alignment.topCenter,
+        end: Alignment.bottomCenter,
+      ),
+      PresetBackground.grassTexture => const LinearGradient(
+        colors: [Color(0xFF14532D), Color(0xFF22C55E)],
+        begin: Alignment.topLeft,
+        end: Alignment.bottomRight,
+      ),
+    };
+  }
+
   Widget _applyPhotoFilter(PhotoFilter filter, Widget child) {
     switch (filter) {
+      case PhotoFilter.vibrant:
+        // Saturation boost 1.8 via color matrix approximated
+        return ColorFiltered(
+          colorFilter: const ColorFilter.matrix([
+            1.4,
+            -0.2,
+            -0.2,
+            0,
+            0,
+            -0.2,
+            1.4,
+            -0.2,
+            0,
+            0,
+            -0.2,
+            -0.2,
+            1.4,
+            0,
+            0,
+            0,
+            0,
+            0,
+            1,
+            0,
+          ]),
+          child: child,
+        );
+      case PhotoFilter.highContrast:
+        // High contrast matrix
+        return ColorFiltered(
+          colorFilter: const ColorFilter.matrix([
+            1.5,
+            0,
+            0,
+            0,
+            -20,
+            0,
+            1.5,
+            0,
+            0,
+            -20,
+            0,
+            0,
+            1.5,
+            0,
+            -20,
+            0,
+            0,
+            0,
+            1,
+            0,
+          ]),
+          child: child,
+        );
       case PhotoFilter.blackWhite:
         return ColorFiltered(
           colorFilter: const ColorFilter.matrix([
@@ -469,8 +698,84 @@ class _CardGeneratorScreenState extends ConsumerState<CardGeneratorScreen> {
           child: child,
         );
       case PhotoFilter.none:
-      default:
         return child;
     }
+  }
+}
+
+class _WatermarkOverlay extends StatelessWidget {
+  final dynamic state;
+  final ValueChanged<Offset> onDragUpdate;
+  final ValueChanged<Offset> onDragEnd;
+
+  const _WatermarkOverlay({
+    required this.state,
+    required this.onDragUpdate,
+    required this.onDragEnd,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final hasImage = state.watermarkImage != null;
+    final hasText =
+        state.watermarkText != null && state.watermarkText!.isNotEmpty;
+    if (!hasImage && !hasText) return const SizedBox.shrink();
+
+    final size = (state.watermarkSize as double).clamp(24.0, 160.0);
+    final offset = state.watermarkOffset as Offset;
+
+    Widget content;
+    if (hasImage) {
+      content = Image.file(
+        state.watermarkImage!,
+        width: size,
+        height: size,
+        fit: BoxFit.contain,
+      );
+    } else {
+      final fontSize = (size / 6).clamp(8.0, 28.0);
+      content = Container(
+        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+        decoration: BoxDecoration(
+          color: Colors.black.withValues(alpha: 0.5),
+          borderRadius: BorderRadius.circular(4),
+        ),
+        child: Text(
+          state.watermarkText!,
+          style: TextStyle(
+            color: Colors.white,
+            fontSize: fontSize,
+            fontWeight: FontWeight.w600,
+            letterSpacing: 0.5,
+          ),
+        ),
+      );
+    }
+
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final w = constraints.maxWidth;
+        final h = constraints.maxHeight;
+        final dx = offset.dx.clamp(0.05, 0.95);
+        final dy = offset.dy.clamp(0.05, 0.95);
+        return Stack(
+          children: [
+            Positioned(
+              left: dx * w - size / 2,
+              top: dy * h - size / 2,
+              child: GestureDetector(
+                onPanUpdate: (details) {
+                  final newDx = (dx * w + details.delta.dx) / w;
+                  final newDy = (dy * h + details.delta.dy) / h;
+                  onDragUpdate(Offset(newDx, newDy));
+                },
+                onPanEnd: (_) => onDragEnd(offset),
+                child: Opacity(opacity: 0.92, child: content),
+              ),
+            ),
+          ],
+        );
+      },
+    );
   }
 }

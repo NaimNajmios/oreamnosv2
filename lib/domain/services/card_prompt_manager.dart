@@ -42,7 +42,11 @@ Example 2 — transfer_news with missing fields (INPUT: "Khabar angin: Joao Feli
     final schema = _schemaFor(template);
     final trimmed = articleText.trim();
     // Use explicit empty marker; extractor must return "" for missing fields.
-    final context = trimmed.isEmpty ? '' : trimmed.replaceAll('<<<INPUT>>>', '[INPUT]').replaceAll('<<<END>>>', '[END]');
+    final context = trimmed.isEmpty
+        ? ''
+        : trimmed
+              .replaceAll('<<<INPUT>>>', '[INPUT]')
+              .replaceAll('<<<END>>>', '[END]');
     return '$schema\n\n<<<INPUT>>>\n$context\n<<<END>>>$refreshTag\n\nRespond with ONLY the JSON object, starting with {';
   }
 

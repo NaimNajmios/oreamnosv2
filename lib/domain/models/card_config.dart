@@ -23,11 +23,21 @@ enum PhotoFilter { none, blackWhite, vintage, vibrant, highContrast }
 enum ExportSize {
   square(1080, 1080),
   portrait(1080, 1350),
-  story(1080, 1920);
+  story(1080, 1920),
+  wide(1920, 1080),
+  photo34(1080, 1440);
 
   const ExportSize(this.width, this.height);
   final int width;
   final int height;
+
+  static ExportSize fromRatioName(String ratioName) {
+    if (ratioName.contains('square')) return ExportSize.square;
+    if (ratioName.contains('story')) return ExportSize.story;
+    if (ratioName.contains('wide')) return ExportSize.wide;
+    if (ratioName.contains('photo34')) return ExportSize.photo34;
+    return ExportSize.portrait;
+  }
 }
 
 enum PresetBackground { stadiumBlur, darkMesh, grassTexture }
@@ -124,7 +134,13 @@ class CardConfig {
       shadows:
           shadows ??
           (textShadowRadius > 0
-              ? [Shadow(color: textShadowColor, blurRadius: textShadowRadius)]
+              ? [
+                  Shadow(
+                    color: textShadowColor,
+                    blurRadius: textShadowRadius,
+                    offset: isGlowEnabled ? Offset.zero : const Offset(2, 2),
+                  ),
+                ]
               : null),
     );
   }

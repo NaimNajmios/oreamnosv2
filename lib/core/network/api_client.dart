@@ -21,15 +21,15 @@ class ApiClient {
         ),
       ) {
     _dio.interceptors.addAll([
-      if (kDebugMode) LoggingInterceptor(),
       AuthInterceptor(),
-      ErrorMappingInterceptor(),
       RetryInterceptor(
         dio: _dio,
         maxRetries: 4,
         baseDelayMs: 500,
         maxDelayMs: 60000,
       ),
+      ErrorMappingInterceptor(),
+      if (kDebugMode) LoggingInterceptor(),
     ]);
   }
 

@@ -46,6 +46,7 @@ class FreeformCanvas extends ConsumerWidget {
             _DraggableElement(
               fieldKey: 'headline',
               offset: state.headlineOffset,
+              onDragStart: notifier.saveDragSnapshot,
               onOffsetChanged: (o) =>
                   notifier.updateElementOffset('headline', o),
               child: EditableCanvasText(
@@ -60,6 +61,7 @@ class FreeformCanvas extends ConsumerWidget {
             _DraggableElement(
               fieldKey: 'subtext',
               offset: state.subtextOffset,
+              onDragStart: notifier.saveDragSnapshot,
               onOffsetChanged: (o) =>
                   notifier.updateElementOffset('subtext', o),
               child: EditableCanvasText(
@@ -78,6 +80,7 @@ class FreeformCanvas extends ConsumerWidget {
             _DraggableElement(
               fieldKey: 'microStat',
               offset: state.microStatOffset,
+              onDragStart: notifier.saveDragSnapshot,
               onOffsetChanged: (o) =>
                   notifier.updateElementOffset('microStat', o),
               child: EditableCanvasText(
@@ -97,12 +100,14 @@ class _DraggableElement extends StatelessWidget {
   final String fieldKey;
   final Offset offset;
   final ValueChanged<Offset> onOffsetChanged;
+  final VoidCallback? onDragStart;
   final Widget child;
 
   const _DraggableElement({
     required this.fieldKey,
     required this.offset,
     required this.onOffsetChanged,
+    this.onDragStart,
     required this.child,
   });
 
@@ -124,6 +129,7 @@ class _DraggableElement extends StatelessWidget {
                 left: x,
                 top: y,
                 child: GestureDetector(
+                  onPanStart: (_) => onDragStart?.call(),
                   onPanUpdate: (details) {
                     final newX = (x + details.delta.dx) / constraints.maxWidth;
                     final newY = (y + details.delta.dy) / constraints.maxHeight;

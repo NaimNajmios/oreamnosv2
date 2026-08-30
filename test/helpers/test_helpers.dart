@@ -7,7 +7,6 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 import 'package:oreamnos/data/services/preferences_service.dart';
 import 'package:oreamnos/data/services/usage_service.dart';
-import 'package:oreamnos/domain/services/vision_extractor.dart';
 
 /// Reusable test scaffolding for Riverpod + provider migration.
 ///
@@ -15,14 +14,7 @@ import 'package:oreamnos/domain/services/vision_extractor.dart';
 ///   `FlutterSecureStorage.setMockInitialValues({})`
 ///   `SharedPreferences.setMockInitialValues({})`
 /// but exposes `ProviderScope` overrides for Riverpod phase.
-
-class FakeVisionExtractor implements IVisionExtractor {
-  final String textToReturn;
-  FakeVisionExtractor([this.textToReturn = 'extracted fake text']);
-
-  @override
-  Future<String> extractText(String imagePath) async => textToReturn;
-}
+// Vision/ML Kit excluded — FakeVisionExtractor removed.
 
 /// Creates a test [PreferencesService] with mocked storage.
 PreferencesService createTestPreferencesService(SharedPreferences prefs) {
@@ -66,9 +58,8 @@ List<dynamic> commonOverrides({
 // Keep until Phase A completes Riverpod migration, then delete.
 Widget buildLegacyTestApp(
   PreferencesService preferencesService,
-  SharedPreferences prefs, {
-  IVisionExtractor? visionExtractor,
-}) {
+  SharedPreferences prefs,
+) {
   // Intentionally not importing provider widgets here to avoid new lint issues
   // in Phase 0; tests that need legacy scaffolding should import `test/widget_test.dart:25`
   // directly. This helper is a placeholder for incremental migration.

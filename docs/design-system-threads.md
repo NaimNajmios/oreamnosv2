@@ -64,10 +64,10 @@ Remaining `Serene`/`Sciuro` docstring branding in comments is visual-noop; `FAB`
 
 ## Screens
 
-* **Generate** `lib/ui/features/generate/views/generate_screen.dart:1` — `ConstrainedBox 640` `screenHorizontal 20`, `SegmentedButton` length `Short/Medium/Long`, `AppInput` hint, `LinkPreviewCard`, `Scan Image` pill `surfaceContainerHighest 0.8`, `SkeletonLoader.outputCard:678` during `generating`, `SwipeableOutputCard` + `AppChip Title/Hashtags/Source`, `RefinementPill` row.
-* **Cards** `lib/ui/features/card_generator/views/card_generator_screen.dart:1` — `CardStage` + `CardCanvasDispatcher` 17 variants (16 + `SparseCard` fallback `dispatcher:52`).
+* **Generate** `lib/ui/features/generate/views/generate_screen.dart:1` — `ConstrainedBox 640` `screenHorizontal 20`, `SegmentedButton` length `Short/Medium/Long` `GenerateUiState.promptLength`, `AppInput` hint, `LinkPreviewCard` (URL-only), `SkeletonLoader.outputCard` (intentionally minimal, `EnhancedLoadingCard` unused) during `generating`, `SwipeableOutputCard` + `AppChip Title/Hashtags/Source`, `RefinementPill` row (Notifer `GenerateViewModel` `Notifier<GenerateUiState>` + `IContentRepository` Result fold 30s timeout + `TokenUsageSideChannel` side-channel). Vision/ML Kit OCR excluded — no `Scan Image` pill.
+* **Cards** `lib/ui/features/card_generator/views/card_generator_screen.dart:1` — `CardStage` + `CardCanvasDispatcher` 17 variants (16 + `SparseCard` `dispatcher:33`) + `ImagePosition` 10 branching `_buildBackgroundByPosition:313` (`splitLeft/Right/overlayTop/minimal/cutout...`) + `PhotoFilter` 5 matrices + `imageOpacity 0.2-1.0` `Opacity` + `backgroundBlur 0-25` `ImageFiltered` + `badgeText` pill + `accentColor` + `_WatermarkOverlay` draggable `watermarkImage/size 24-160/offset 0.05-0.95` `PicsartToolDock` 6 panels (`templates/ratio/background/typography/text/branding`).
 * **Settings** — Appearance horizontal scroll above + `SectionHeader` + `SettingsTile` rows + `Divider hairline`.
-* **Usage** `lib/ui/features/usage/views/usage_screen.dart:1` — `StatCard` 3× (`Tokens/Success/Latency` `mono 11`), `UsageChart` `CustomPaint 180px` per-provider hue `AppColors.tintForProvider`.
+* **Usage** `lib/ui/features/usage/views/usage_screen.dart:1` — `StatCard` 3× (`Tokens/Success/Latency` `mono 11`), `UsageChart` `CustomPaint 180px` per-provider hue `AppColors.tintForProvider`, real `total_tokens` via side-channel with heuristic fallback.
 
 ## Motion
 
@@ -75,4 +75,5 @@ Remaining `Serene`/`Sciuro` docstring branding in comments is visual-noop; `FAB`
 
 ## Next Doc
 
-* Remove `http` from `pubspec.yaml:25` after probes `test_scraper.dart` move to `tool/`; clarify `dio` is pooled source.
+* `http` probe moved `tool/scrape_probe.dart → tool/dev/scrape_probe.dart`; `pubspec.yaml: no http` direct, pooled `dio` is source (`ApiClient` `Auth→Retry→ErrorMapping→Logging`).
+* Freeform offsets `headlineOffset/subtextOffset/microStatOffset` now snapshotted `CardConfigSnapshot` + `updateElementOffset` with `saveDragSnapshot()`; `ImagePosition` 10 visually branched.

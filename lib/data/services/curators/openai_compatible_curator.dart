@@ -2,7 +2,9 @@ import 'dart:convert';
 
 import 'package:dio/dio.dart';
 
+import 'package:oreamnos/core/di/injection.dart';
 import 'package:oreamnos/core/network/api_client.dart';
+import 'package:oreamnos/data/services/token_usage_side_channel.dart';
 import 'package:oreamnos/domain/services/content_curator.dart';
 import 'package:oreamnos/domain/services/card_prompt_manager.dart';
 import 'package:oreamnos/domain/services/generation_prompt_manager.dart';
@@ -65,7 +67,14 @@ class OpenAICompatibleCurator implements IContentCurator {
             {"role": "user", "content": userPrompt},
           ],
           "temperature": 0.7,
-          "response_format": {"type": "json_object"},
+          "response_format": {
+            "type": "json_schema",
+            "json_schema": {
+              "name": "curated_post",
+              "strict": true,
+              "schema": GenerationPromptManager.jsonSchema,
+            },
+          },
         },
         options: Options(extra: {'apiKey': apiKey, 'provider': 'openai'}),
       );
@@ -85,6 +94,13 @@ class OpenAICompatibleCurator implements IContentCurator {
         : (response.data is String
               ? jsonDecode(response.data as String) as Map<String, dynamic>
               : (response.data as Map).cast<String, dynamic>());
+
+    // Side-channel: capture real token usage (OpenAI usage) — skeleton stays minimal
+    try {
+      if (getIt.isRegistered<TokenUsageSideChannel>()) {
+        getIt<TokenUsageSideChannel>().storeOpenAi(data, baseUrl);
+      }
+    } catch (_) {}
 
     final choices = data['choices'] as List<dynamic>? ?? [];
     if (choices.isEmpty) {
@@ -194,7 +210,9 @@ class OpenAICompatibleCurator implements IContentCurator {
     required String apiKey,
   }) async {
     try {
-      final safeText = text.replaceAll('<<<FIELD>>>', '[FIELD]').replaceAll('<<<END>>>', '[END]');
+      final safeText = text
+          .replaceAll('<<<FIELD>>>', '[FIELD]')
+          .replaceAll('<<<END>>>', '[END]');
       final response = await _client.post(
         '$baseUrl/chat/completions',
         options: Options(extra: {'apiKey': apiKey, 'provider': 'openai'}),
@@ -203,12 +221,12 @@ class OpenAICompatibleCurator implements IContentCurator {
           "messages": [
             {
               "role": "system",
-              "content":
-                  "You are a concise Bahasa Malaysia copy editor for sports. Keep football terms in English in sentence case (e.g. \"clean sheet\", not \"CLEAN SHEET\"). Return ONLY the rewritten text, no quotes or extra formatting.",
+              "content": "You are a concise Bahasa Malaysia copy editor for sports. Keep football terms in English in sentence case (e.g. \"clean sheet\", not \"CLEAN SHEET\"). Return ONLY the rewritten text, no quotes or extra formatting.",
             },
             {
               "role": "user",
-              "content": 'Rewrite the $fieldName below into concise, grammatically correct Bahasa Malaysia for a social graphic. No emoji, no quotes.\n\n<<<FIELD>>>\n$safeText\n<<<END>>>',
+              "content":
+                  'Rewrite the $fieldName below into concise, grammatically correct Bahasa Malaysia for a social graphic. No emoji, no quotes.\n\n<<<FIELD>>>\n$safeText\n<<<END>>>',
             },
           ],
           "temperature": 0.5,

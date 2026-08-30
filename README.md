@@ -1,42 +1,37 @@
 # Oreamnos
 
-**Oreamnos** is an AI-assisted editorial curator and social card generator built with Flutter. It streamlines the workflow of curating, polishing, and designing sports media content (specifically football/soccer) across multiple LLM providers (**Gemini**, **Groq**, **OpenRouter**, **Cerebras**) with rich Malay editorial styling, on-device OCR, and instant shareable canvas generation.
+**Oreamnos** is an AI-assisted editorial curator and social card generator built with Flutter. It streamlines the workflow of curating, polishing, and designing sports media content (specifically football/soccer) across multiple LLM providers (**Gemini**, **Groq**, **OpenRouter**, **Cerebras**) with rich Malay editorial styling, strict JSON extraction, and instant shareable canvas generation. **On-device vision/ML Kit is intentionally excluded (v2 verdict — stubbed `MLKitVisionExtractor`).**
 
 ---
 
 ## Key Features
 
-### 1. Multi-Provider AI Content Generation
-- **Supported Providers**: Google Gemini, Groq, OpenRouter, Cerebras.
-- **Dynamic Model Discovery**: Fetches compatible models on the fly per API key.
-- **Resilient Network Layer**: Powered by `ApiClient` (Dio connection pooling, auth injection, exponential backoff retries with jitter, and HTTP error mapping to sealed domain `Failure`s).
-- **Background Isolate Parsing**: Complex JSON cleanups and extractions run in Dart worker isolates via `JsonCleaner.decodeIsolate`.
+### 1. Multi-Provider AI Content Generation (Resilient)
+- **Supported Providers**: Google Gemini, Groq, OpenRouter, Cerebras (`AiProvider.nextFallback:21` chain `gemini→groq→openRouter→cerebras`).
+- **Dynamic Model Discovery**: Fetches compatible models on the fly per API key (`ProviderApiService` via pooled `ApiClient.dio`).
+- **Resilient Network Layer**: `ApiClient` `lib/core/network/api_client.dart:13` pooled Dio `15s` + 4 interceptors ordered `Auth→Retry(4×500ms→60s jitter, Retry-After)→ErrorMapping(429→RateLimitFailure)→Logging` + `IContentRepository` `lib/core/repositories/content_repository.dart:52` `Result<CuratedPost>` fold (no `contains('429')` strings) + 30s timeout `lib/ui/features/generate/view_models/generate_view_model.dart:370` + strict `json_schema` `GenerationPromptManager.jsonSchema` wired to `responseSchema`/`response_format`.
+- **Token Side-Channel**: `TokenUsageSideChannel` `lib/data/services/token_usage_side_channel.dart:1` captures `usageMetadata.totalTokenCount` (Gemini) / `usage.total_tokens` (OpenAI) per response; `GenerateViewModel` consumes real tokens with heuristic fallback.
+- **Background Isolate Parsing**: `JsonCleaner.decodeIsolate` `lib/domain/services/json_cleaner.dart:5`.
 
-### 2. Multi-Variant Card Generator (16 Templates + Sparse Fallback → 17 Renderers)
-Instant, pixel-perfect 1:1 and story graphics with deterministic JSON schema extraction and customized canvas renderers (`CardCanvasDispatcher` `lib/ui/features/card_generator/widgets/renderers/card_canvas_dispatcher.dart:33` dispatches 17: 16 + `SparseCard` fallback):
-- **Player Spotlight**: Prominent name, club/position badge, star rating, goals/assists/appearances pills, and key action callout.
-- **Headline Quote**: Editorial quote typography with quotation styling, author byline, and title badge.
-- **Top Stats**: 2x2 numeric metric cards with context labels.
-- **Transfer News**: `TRANSFER ALERT` badge, From $\rightarrow$ To transfer route cards, fee & contract duration badges.
-- **Breaking News**: High-impact red alert banner, bold typography, and team tags.
-- **Match Preview**: Home vs Away matchup cards, form comparison pills, venue & kickoff schedule.
-- **Detailed Scoreboard**: Full-time/live match status banner, big score display (`3 - 1`), scorers list, possession & shots metrics.
-- **On This Day**: Historic calendar badge, `X YEARS AGO` banner, and retrospective narrative.
-- **Starting XI**: Tactical formation badge (e.g. `4-3-3`), manager label, and two-column lineup grid with jersey numbers.
-- **Match Stats Comparison**: Proportion comparison bars with dual-color balance.
-- **Social Post**: Verified badge, social handle, avatar, post content, and engagement metrics.
-- **Head-to-Head Rivalry**: Split comparison layout for player/team rivalries.
-- **Table Standings**: League table ranking (`POS`, `TEAM`, `PL`, `GD`, `PTS`) with highlighted club accent row.
-- **Injury Report**: Medical cross badge, squad fitness list with recovery progress.
-- **Contract Expiry**: Countdown badge, player list with position, market value, and expiry year.
-- **Award Nominees**: Trophy badge, award category, nominees with `FAV` tag and odds.
-- **Sparse Fallback**: Graceful fallback renderer for unstructured outputs.
-- **Design Customization**: Palette auto-extraction via `ColorExtractor` (200px thumbnail optimization), manual gradient picking, font size multiplier, and scrim overlay adjustments.
-- **High-Res Export**: Direct gallery saving (`gal`) and native sharing (`share_plus`) via `RepaintBoundary`.
+### 2. Multi-Variant Card Generator (16 Templates + Sparse Fallback → 17 Renderers, 10 Image Positions, 5 Export Ratios)
+Instant, pixel-perfect graphics with deterministic JSON schema extraction and customized canvas renderers (`CardCanvasDispatcher` `lib/ui/features/card_generator/widgets/renderers/card_canvas_dispatcher.dart:33` dispatches 17: 16 + `SparseCard`):
+- **Templates (16→17)**: Player Spotlight, Headline Quote, Top Stats, Transfer News, Breaking News, Match Preview, Detailed Scoreboard, On This Day, Starting XI, Match Stats Comparison, Social Post, Rivalry, Table Standings, Injury Report, Contract Expiry, Award Nominee, Sparse.
+- **Design Studio (Picsart dock) `lib/ui/features/card_generator/widgets/picsart_tool_dock.dart:18` 6 panels** `templates/ratio/background/typography/text/branding`:
+  - **Ratios 5** `CardRatio` `lib/ui/features/card_generator/view_models/card_generator_view_model.dart:21` `square(1:1)/portrait45(4:5)/story(9:16)/wide(16:9)/photo34(3:4)` → `ExportSize` `lib/domain/models/card_config.dart:23` `square 1080×1080 ... photo34 1080×1440` via `fromRatioName` + adaptive `pixelRatio 2.5-3.0` `card_generator_view_model.dart:513`.
+  - **Image Positions 10** `ImagePosition` `lib/domain/models/card_config.dart:8` `background/splitLeft/splitRight/overlayTop/cutout/minimal/magazineBold/offsetCard/brutalist/floatWindow` visually branched `lib/ui/features/card_generator/views/card_generator_screen.dart:306` (`_buildBackgroundByPosition`).
+  - **Palette**: auto-extraction `ColorExtractor` 200px Thumb + manual solids + `accentColor` `card_config.dart:62`.
+  - **Typography**: `Inter/Lora/Space Mono` `card_generator_screen.dart:333` + `headlineScale 0.85-1.15` + `textShadowRadius/color` + `isGlowEnabled` (`Offset.zero` glow vs `2,2`) `card_config.dart:137`.
+  - **Filters 5** `PhotoFilter` `card_config.dart:21` `none/blackWhite/vintage/vibrant(1.4 sat)/highContrast(1.5)` matrix `card_generator_screen.dart:401`.
+  - **Overlays**: `imageOpacity 0.2-1.0` `Opacity` + `backgroundBlur 0-25` `ImageFiltered` `_wrapWithOpacityAndBlur:442`, `badgeText` pill `top:12 left:12 accentColor`, scrim `dark/minimal` + `overlayOpacity 0.3-0.75`.
+- **Watermark (image + text, draggable, undoable)**: `watermarkImage` `image_picker:90` `pickWatermarkImage:284` + `watermarkSize 24-160` slider `picsart_tool_dock.dart:660` + `watermarkOffset 0.05-0.95` drag `_WatermarkOverlay:514` `GestureDetector onPanUpdate` + snapshot `watermarkImage/size/offset` `card_config_snapshot.dart:22` `card_generator_state.dart:66` (`toSnapshot:81`/`_applySnapshot:96`).
+- **Freeform drag**: `headlineOffset/subtextOffset/microStatOffset` `card_generator_state.dart:66` draggable `FreeformCanvas:46` with `saveDragSnapshot()` `card_generator_view_model.dart:373` + snapshot restore.
+- **High-Res Export**: `RepaintBoundary` `_boundaryKey` → `ExportService.capturePng(pixelRatio)` → `Gal.putImage` / `SharePlus` `card_generator_view_model.dart:513`.
 
-### 3. Vision Extraction (On-Device OCR)
-- Privacy-first text recognition using `google_mlkit_text_recognition`.
-- Direct Gallery image picker integration on the Generate screen to extract text from screenshots, match graphics, and infographics.
+> Pruned (not implemented): `cutoutPath/previewScale/CardConfig.elementOffsets` map (shadowed by separate freeform offsets) — kept as dead fields intentionally pruned per “as original” (badge/accent/blur/opacity only).
+
+### 3. Vision Extraction — Excluded (v2 Verdict)
+- **On-device vision models excluded**: `Gemma 3n/1B/PaliGemma/Nano/LiteRTEngine/VisionModelManager` intentionally not ported (≈15% original complexity). `MLKitVisionExtractor` `lib/data/services/ml_kit_vision_extractor.dart:1` stubbed (returns `''`), `google_mlkit_text_recognition` removed from `pubspec.yaml` (probe moved `tool/scrape_probe.dart → tool/dev/scrape_probe.dart`).
+- **Image picker retained** for card backgrounds `lib/ui/features/card_generator/view_models/card_generator_view_model.dart:489` + watermark logos `284` (background/watermark `image_picker:90` only) — no OCR path on Generate.
 
 ### 4. Reading Mode & Customization
 - Immersive, distraction-free reading screen with dynamic font sizing (Small, Medium, Large, Extra Large).
@@ -44,11 +39,11 @@ Instant, pixel-perfect 1:1 and story graphics with deterministic JSON schema ext
 - 9 themes via `AppThemeMode` (`lib/domain/models/app_theme_mode.dart:2`): **Light**, **Dark**, **Deep Blue**, **Midnight Noir**, **Solarized Light**, **Cyberpunk**, **Matchday**, **Forest**, **System** (follows OS `ColorScheme` via `DynamicColorBuilder` `lib/app.dart:80`); picker is horizontally scrollable `SingleChildScrollView` `lib/ui/features/settings/views/settings_screen.dart:55`.
 
 ### 5. Delight & Micro-Interactions
-- **`EnhancedLoadingCard`**: 0–95% progress indicator with pulse breathing scale and 3-step stage dots.
-- **`SuccessOverlay`**: First-time completion celebration featuring a 25-particle radial explosion and animated checkmark path.
-- **`InputClearButton`**: 2-step confirmation (`Clear` $\rightarrow$ `Confirm?` with 3-second auto-reset timer) and haptic feedback.
-- **`LinkPreviewCard`**: Immediate domain extraction badge with quick action button.
-- **`SwipeableOutputCard`**: Swipe-to-copy / swipe-to-share gestures with an introductory 800ms shimmy nudge.
+- **`SkeletonLoader` (intentionally minimal)**: `SkeletonLoader.outputCard` `lib/ui/core/widgets/skeleton_loader.dart:5` shimmer `1200ms 0.3→0.7` with `shouldReduceMotion:117` (kept minimal per decision; `EnhancedLoadingCard:12` 0–95% pulse remains unused).
+- **`SuccessOverlay`**: 25-particle radial explosion + animated checkmark `lib/ui/core/widgets/success_overlay.dart:9` (once-ever flag `SharedPreferences hasShownSuccessOverlay` `generate_screen.dart:74`).
+- **`InputClearButton`**: 2-step `Clear→Confirm?` 3s timer `lib/ui/core/widgets/input_clear_button.dart:8` + SnackBar UNDO `generate_screen.dart:93`.
+- **`LinkPreviewCard`**: domain + `CachedNetworkImage` favicon `lib/ui/core/widgets/link_preview_card.dart:10` (URL-only until scrape).
+- **`SwipeableOutputCard`**: swipe-to-copy/share `lib/ui/core/widgets/swipeable_output_card.dart:1`.
 
 ### 6. Analytics & Debugging
 - **`LogService`**: In-memory ring buffer (200 entries) with debounced 500ms disk persistence and microtask notifications.
@@ -61,25 +56,19 @@ Instant, pixel-perfect 1:1 and story graphics with deterministic JSON schema ext
 
 ```
 lib/
-├── app.dart                   # Root ConsumerStatefulWidget + DynamicColorBuilder (9 themes) + GoRouter
-├── main.dart                  # configureDependencies() → ProviderScope + Notification/QuickSettings init
-├── config/
-│   ├── routes/                # GoRouter 4 Shell tabs (/generate, /card-generator, /usage, /settings) + 5 full-screen
-│   └── theme/                 # AppTheme (8 palettes + system), AppColors (0095F6), AppSpacing (radiusMd 12/Lg 16), AppTypography, AppMotion
+├── app.dart                   # ConsumerStatefulWidget + DynamicColorBuilder 9 themes + GoRouter (5 full-screen)
+├── main.dart                  # configureDependencies() → ProviderScope + Notification/QuickSettings
+├── config/theme/              # AppTheme 8 palettes + AppSpacing/AppColors(0095F6)/AppTypography/AppMotion
 ├── core/
-│   ├── di/                    # injection.dart / injection.config.dart / register_module.dart (get_it + injectable)
-│   ├── error/                 # failures.dart sealed Result<T>/Failure (dead — next phase)
-│   ├── network/               # ApiClient pooled Dio (4 interceptors: Auth, ErrorMapping, Retry, Logging)
-│   └── repositories/          # IContentRepository/ICardRepository/IUsageRepository/ISettingsRepository (defined, bypassed)
-├── data/
-│   ├── models/                # AiProvider 4 + nextFallback chain
-│   └── services/              # Curators (Gemini/OpenAICompat via ApiClient), CardDataExtractor (template-aware), WebScraperService/ProviderApiService (dio), Preferences/Usage/Log/MLKit/Export
-├── domain/
-│   ├── models/                # CardData sealed 17 (16 + Sparse), CardTemplate 16, CardConfig, CuratedPost, AppThemeMode 9, UsageLog
-│   └── services/              # IContentCurator, IVisionExtractor, CardPromptManager (16 schemas) / GenerationPromptManager, JsonCleaner
+│   ├── di/                    # get_it+injectable + register_module (SharedPreferences/SecureStorage encrypted)
+│   ├── error/                 # failures.dart sealed Result<T>/Failure (active via IContentRepository)
+│   ├── network/               # ApiClient pooled Dio 15s + Auth→Retry(4×500→60s jitter, Retry-After)→ErrorMapping(429→RateLimit)→Logging
+│   └── repositories/          # IContentRepository/ICardRepository/ISettingsRepository/IUsageRepository + contentRepositoryProvider
+├── data/services/             # Curators (Gemini/OpenAICompat via ApiClient + JsonCleaner isolate + GenerationPromptManager jsonSchema strict) + TokenUsageSideChannel + WebScraper/ProviderApi (dio) + Preferences/Usage/Log/Export/ColorExtractor
+├── domain/models/             # CardData 17 Freezed + CardTemplate 17 + CardConfig 28 fields (10 ImagePos,5 ExportSize,5 Filter) + CuratedPost + UsageLog
 └── ui/
-    ├── core/                  # AppCard 16dp / AppButton pillXl / AppChip pill / AppInput 12dp + SkeletonLoader + SuccessOverlay 25 particles + RateLimitDialog
-    └── features/              # generate (SwipeableOutputCard + RateLimit fallback) / card_generator (CardCanvasDispatcher) / settings (horizontal theme picker) / usage / shell (ModernAppShell)
+    ├── core/                  # AppCard 16dp/AppButton pill/AppChip pill/AppInput + SkeletonLoader (minimal) + SuccessOverlay 25p + RateLimitDialog + _WatermarkOverlay draggable
+    └── features/              # generate (Notifier<GenerateUiState> + RateLimit fallback) / card_generator (CardCanvasDispatcher 17 + PicsartToolDock 6 panels, Freeform drag) / settings/usage/shell
 ```
 
 ---
@@ -110,7 +99,7 @@ dart run build_runner build --delete-conflicting-outputs
 
 ## Testing & Quality Assurance
 
-- **Unit & Widget Tests**: Comprehensive test suites in `test/unit/` covering `UsageService`, `LogService`, `GeminiCurator`, `OpenAICompatibleCurator`, `WebScraperService`, `DelightWidgets`, `CardDataExtractor`, `CardCanvasDispatcher` (all 17 variants), `JsonCleaner`, and network interceptors (`interceptors_test` asserts `429→RateLimitFailure`).
-- **Continuous Integration**: Automated GitHub Actions workflow (`.github/workflows/ci.yaml` pinned `3.47.1` stable) verifying 4 gates — `dart format --output=none --set-exit-if-changed .` → `flutter analyze` (0) → `flutter test --coverage` → `dart run build_runner build` — on `push: [main,master]` and `pull_request: [main,master]`.
+- **Unit & Widget Tests**: `82 tests` `test/unit/` `UsageService(50)/LogService(200 ring,500ms persist)/Curators/JsonCleaner/Interceptors(429→RateLimit)/CardData(17)/CardCanvasDispatcher 17` + `test/widget_test.dart:28` 4-tab nav; `test/generate_view_model_test.dart:16` Notifier via `contentRepositoryProvider`.
+- **CI**: `.github/workflows/ci.yaml:20` pinned `3.47.1` → `pub get` → `dart format --output=none --set-exit-if-changed .` (0) → `flutter analyze` (0) → `flutter test --coverage` (82) → `dart run build_runner build` (freezed/json/injectable) on push/PR.
 
 See `docs/architecture.md`, `docs/design-system-threads.md`, `docs/migration-threads-convergence.md`, `docs/baseline-phaseB.md`, and `CHANGELOG.md` for v2 Threads Convergence details.
