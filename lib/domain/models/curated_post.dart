@@ -122,7 +122,7 @@ class CuratedPost extends Equatable {
   );
 
   static String _stripEmoji(String s) =>
-      s.replaceAll(_emojiRegex, '').replaceAll(RegExp(r'\s{2,}'), ' ').trim();
+      s.replaceAll(_emojiRegex, '').replaceAll(RegExp(r'[ \t]{2,}'), ' ').trim();
 
   static String _normalizeHashtag(String s) {
     var t = s.trim();

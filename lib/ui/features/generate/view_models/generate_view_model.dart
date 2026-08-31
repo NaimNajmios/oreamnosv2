@@ -357,19 +357,21 @@ class GenerateViewModel extends Notifier<GenerateUiState>
         throw Exception('API key not configured for ${provider.displayName}.');
       }
 
-      if (contentToCurate is ExtractedArticle) {
-        contentToCurate = ExtractedArticle(
-          text:
-              '${contentToCurate.text}\n\nLENGTH REQUIREMENT: $_lengthInstruction',
-          url: contentToCurate.url,
-          domain: contentToCurate.domain,
-          pageTitle: contentToCurate.pageTitle,
-          description: contentToCurate.description,
-          faviconUrl: contentToCurate.faviconUrl,
-        );
-      } else {
-        contentToCurate =
-            '$contentToCurate\n\nLENGTH REQUIREMENT: $_lengthInstruction';
+      if (!state.keepStructure) {
+        if (contentToCurate is ExtractedArticle) {
+          contentToCurate = ExtractedArticle(
+            text:
+                '${contentToCurate.text}\n\nLENGTH REQUIREMENT: $_lengthInstruction',
+            url: contentToCurate.url,
+            domain: contentToCurate.domain,
+            pageTitle: contentToCurate.pageTitle,
+            description: contentToCurate.description,
+            faviconUrl: contentToCurate.faviconUrl,
+          );
+        } else {
+          contentToCurate =
+              '$contentToCurate\n\nLENGTH REQUIREMENT: $_lengthInstruction';
+        }
       }
       // API resilience: via pooled IContentRepository + Result fold + 30s timeout
       final repo = ref.read(contentRepositoryProvider);
