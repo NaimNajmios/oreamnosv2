@@ -53,6 +53,7 @@ class _GenerateScreenState extends ConsumerState<GenerateScreen> {
   final _controller = TextEditingController();
   bool _showSuccessOverlay = false;
   bool _lastSuccessState = false;
+  bool _showSettings = false;
 
   @override
   void initState() {
@@ -476,45 +477,11 @@ class _GenerateScreenState extends ConsumerState<GenerateScreen> {
                     if (hasContent)
                       InputClearButton(onClear: _handleClear)
                     else
-                      InkWell(
+                      AppChip(
+                        label: 'Paste URL',
+                        icon: Icons.content_paste_rounded,
                         onTap: isGenerating ? null : _pasteFromClipboard,
-                        borderRadius: AppSpacing.borderRadiusPill,
-                        child: Container(
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 12,
-                            vertical: 7,
-                          ),
-                          decoration: BoxDecoration(
-                            color: theme.colorScheme.primary.withValues(
-                              alpha: 0.08,
-                            ),
-                            borderRadius: AppSpacing.borderRadiusPill,
-                            border: Border.all(
-                              color: theme.colorScheme.primary.withValues(
-                                alpha: 0.2,
-                              ),
-                              width: 1,
-                            ),
-                          ),
-                          child: Row(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              Icon(
-                                Icons.content_paste_rounded,
-                                size: 14,
-                                color: theme.colorScheme.primary,
-                              ),
-                              const SizedBox(width: 6),
-                              Text(
-                                'Paste',
-                                style: theme.textTheme.labelSmall?.copyWith(
-                                  fontWeight: FontWeight.w600,
-                                  color: theme.colorScheme.primary,
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
+                        selected: false,
                       ),
                   ],
                 ),
@@ -562,168 +529,197 @@ class _GenerateScreenState extends ConsumerState<GenerateScreen> {
           ),
           const SizedBox(height: AppSpacing.md),
 
-          // Settings Block
-          Container(
-            padding: const EdgeInsets.all(AppSpacing.sm),
-            decoration: BoxDecoration(
-              color: theme.colorScheme.surfaceContainerHighest.withValues(
-                alpha: 0.2,
-              ),
-              borderRadius: AppSpacing.borderRadiusSm,
-              border: Border.all(
-                color: theme.colorScheme.outlineVariant.withValues(alpha: 0.5),
+          // Advanced Settings Toggle
+          InkWell(
+            onTap: () {
+              Haptics.lightImpact();
+              setState(() => _showSettings = !_showSettings);
+            },
+            borderRadius: AppSpacing.borderRadiusSm,
+            child: Padding(
+              padding: const EdgeInsets.symmetric(vertical: AppSpacing.sm, horizontal: 4),
+              child: Row(
+                children: [
+                  Icon(
+                    Icons.settings_suggest_rounded,
+                    size: 16,
+                    color: theme.colorScheme.primary,
+                  ),
+                  const SizedBox(width: AppSpacing.xs),
+                  Text(
+                    'Advanced Options',
+                    style: theme.textTheme.labelSmall?.copyWith(
+                      fontWeight: FontWeight.w600,
+                      color: theme.colorScheme.primary,
+                    ),
+                  ),
+                  const Spacer(),
+                  Icon(
+                    _showSettings ? Icons.keyboard_arrow_up_rounded : Icons.keyboard_arrow_down_rounded,
+                    size: 18,
+                    color: theme.colorScheme.onSurface.withValues(alpha: 0.5),
+                  ),
+                ],
               ),
             ),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                SegmentedButton<PromptLength>(
-                  segments: const [
-                    ButtonSegment(
-                      value: PromptLength.short,
-                      label: Text('Short'),
-                    ),
-                    ButtonSegment(
-                      value: PromptLength.medium,
-                      label: Text('Medium'),
-                    ),
-                    ButtonSegment(
-                      value: PromptLength.long,
-                      label: Text('Long'),
-                    ),
-                  ],
-                  selected: {viewModel.promptLength},
-                  onSelectionChanged: isGenerating
-                      ? null
-                      : (set) {
-                          ref
-                              .read(generateViewModelProvider.notifier)
-                              .setPromptLength(set.first);
-                        },
-                  style: SegmentedButton.styleFrom(
-                    visualDensity: VisualDensity.compact,
-                    textStyle: theme.textTheme.labelSmall?.copyWith(
-                      fontWeight: FontWeight.w600,
+          ),
+          AnimatedCrossFade(
+            firstChild: const SizedBox(height: 0, width: double.infinity),
+            secondChild: Padding(
+              padding: const EdgeInsets.only(top: AppSpacing.sm, bottom: AppSpacing.sm),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  SegmentedButton<PromptLength>(
+                    segments: const [
+                      ButtonSegment(
+                        value: PromptLength.short,
+                        label: Text('Short'),
+                      ),
+                      ButtonSegment(
+                        value: PromptLength.medium,
+                        label: Text('Medium'),
+                      ),
+                      ButtonSegment(
+                        value: PromptLength.long,
+                        label: Text('Long'),
+                      ),
+                    ],
+                    selected: {viewModel.promptLength},
+                    onSelectionChanged: isGenerating
+                        ? null
+                        : (set) {
+                            ref
+                                .read(generateViewModelProvider.notifier)
+                                .setPromptLength(set.first);
+                          },
+                    style: SegmentedButton.styleFrom(
+                      visualDensity: VisualDensity.compact,
+                      textStyle: theme.textTheme.labelSmall?.copyWith(
+                        fontWeight: FontWeight.w600,
+                      ),
                     ),
                   ),
-                ),
-                const SizedBox(height: AppSpacing.sm),
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    Row(
-                      children: [
-                        Icon(
-                          Icons.travel_explore_rounded,
-                          size: 16,
-                          color: theme.colorScheme.primary,
-                        ),
-                        const SizedBox(width: AppSpacing.xs),
-                        Text(
-                          'AI Research Mode',
-                          style: theme.textTheme.labelSmall?.copyWith(
-                            fontWeight: FontWeight.w600,
-                            color: theme.colorScheme.onSurface,
+                  const SizedBox(height: AppSpacing.sm),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Row(
+                        children: [
+                          Icon(
+                            Icons.travel_explore_rounded,
+                            size: 16,
+                            color: theme.colorScheme.primary,
                           ),
-                        ),
-                      ],
-                    ),
-                    Transform.scale(
-                      scale: 0.85,
-                      child: AppSwitch(
-                        value: viewModel.isResearchModeEnabled,
-                        onChanged: isGenerating
-                            ? null
-                            : (_) => ref
-                                  .read(generateViewModelProvider.notifier)
-                                  .toggleResearchMode(),
-                      ),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: AppSpacing.sm),
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    Row(
-                      children: [
-                        Icon(
-                          Icons.format_align_left_rounded,
-                          size: 16,
-                          color: theme.colorScheme.primary,
-                        ),
-                        const SizedBox(width: AppSpacing.xs),
-                        Text(
-                          'Keep Structure',
-                          style: theme.textTheme.labelSmall?.copyWith(
-                            fontWeight: FontWeight.w600,
-                            color: theme.colorScheme.onSurface,
-                          ),
-                        ),
-                      ],
-                    ),
-                    Transform.scale(
-                      scale: 0.85,
-                      child: AppSwitch(
-                        value: viewModel.keepStructure,
-                        onChanged: isGenerating
-                            ? null
-                            : (_) => ref
-                                  .read(generateViewModelProvider.notifier)
-                                  .toggleKeepStructure(),
-                      ),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 2),
-                InkWell(
-                  onTap: () {
-                    Haptics.lightImpact();
-                    context.push(RoutePaths.settings);
-                  },
-                  borderRadius: AppSpacing.borderRadiusSm,
-                  child: Padding(
-                    padding: const EdgeInsets.symmetric(
-                      vertical: 6,
-                      horizontal: 2,
-                    ),
-                    child: Row(
-                      children: [
-                        Icon(
-                          Icons.tune_rounded,
-                          size: 13,
-                          color: theme.colorScheme.onSurface.withValues(
-                            alpha: 0.45,
-                          ),
-                        ),
-                        const SizedBox(width: 6),
-                        Expanded(
-                          child: Text(
-                            '$providerLabel • $modelLabel • $toneLabel',
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
+                          const SizedBox(width: AppSpacing.xs),
+                          Text(
+                            'AI Research Mode',
                             style: theme.textTheme.labelSmall?.copyWith(
-                              color: theme.colorScheme.onSurface.withValues(
-                                alpha: 0.55,
-                              ),
-                              fontWeight: FontWeight.w500,
-                              letterSpacing: 0.2,
+                              fontWeight: FontWeight.w600,
+                              color: theme.colorScheme.onSurface,
                             ),
                           ),
+                        ],
+                      ),
+                      Transform.scale(
+                        scale: 0.85,
+                        child: AppSwitch(
+                          value: viewModel.isResearchModeEnabled,
+                          onChanged: isGenerating
+                              ? null
+                              : (_) => ref
+                                    .read(generateViewModelProvider.notifier)
+                                    .toggleResearchMode(),
                         ),
-                        const SizedBox(width: 8),
-                        Icon(
-                          Icons.chevron_right_rounded,
-                          size: 16,
-                          color: theme.colorScheme.onSurface.withValues(
-                            alpha: 0.35,
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: AppSpacing.sm),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Row(
+                        children: [
+                          Icon(
+                            Icons.format_align_left_rounded,
+                            size: 16,
+                            color: theme.colorScheme.primary,
                           ),
+                          const SizedBox(width: AppSpacing.xs),
+                          Text(
+                            'Keep Structure',
+                            style: theme.textTheme.labelSmall?.copyWith(
+                              fontWeight: FontWeight.w600,
+                              color: theme.colorScheme.onSurface,
+                            ),
+                          ),
+                        ],
+                      ),
+                      Transform.scale(
+                        scale: 0.85,
+                        child: AppSwitch(
+                          value: viewModel.keepStructure,
+                          onChanged: isGenerating
+                              ? null
+                              : (_) => ref
+                                    .read(generateViewModelProvider.notifier)
+                                    .toggleKeepStructure(),
                         ),
-                      ],
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+            ),
+            crossFadeState: _showSettings ? CrossFadeState.showSecond : CrossFadeState.showFirst,
+            duration: const Duration(milliseconds: 200),
+          ),
+          const SizedBox(height: 2),
+          InkWell(
+            onTap: () {
+              Haptics.lightImpact();
+              context.push(RoutePaths.settings);
+            },
+            borderRadius: AppSpacing.borderRadiusSm,
+            child: Padding(
+              padding: const EdgeInsets.symmetric(
+                vertical: 6,
+                horizontal: 2,
+              ),
+              child: Row(
+                children: [
+                  Icon(
+                    Icons.tune_rounded,
+                    size: 13,
+                    color: theme.colorScheme.onSurface.withValues(
+                      alpha: 0.45,
                     ),
                   ),
-                ),
-              ],
+                  const SizedBox(width: 6),
+                  Expanded(
+                    child: Text(
+                      '$providerLabel • $modelLabel • $toneLabel',
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: theme.textTheme.labelSmall?.copyWith(
+                        color: theme.colorScheme.onSurface.withValues(
+                          alpha: 0.55,
+                        ),
+                        fontWeight: FontWeight.w500,
+                        letterSpacing: 0.2,
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  Icon(
+                    Icons.chevron_right_rounded,
+                    size: 16,
+                    color: theme.colorScheme.onSurface.withValues(
+                      alpha: 0.35,
+                    ),
+                  ),
+                ],
+              ),
             ),
           ),
 
@@ -1215,110 +1211,8 @@ class _GenerateScreenState extends ConsumerState<GenerateScreen> {
       );
     }
 
-    // Idle — flat typographic, no gradient card
-    return Container(
-      key: const ValueKey('idle'),
-      padding: const EdgeInsets.symmetric(
-        vertical: AppSpacing.lg,
-        horizontal: AppSpacing.base,
-      ),
-      decoration: BoxDecoration(
-        color: theme.colorScheme.surfaceContainerHighest.withValues(
-          alpha: 0.35,
-        ),
-        borderRadius: AppSpacing.borderRadiusMd,
-        border: Border.all(
-          color: theme.colorScheme.outline.withValues(alpha: 0.5),
-        ),
-      ),
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          SvgPicture.asset(
-            'assets/illustrations/empty_kickoff.svg',
-            height: 72,
-          ),
-          const SizedBox(height: AppSpacing.sm),
-          Text(
-            'Curate Football Posts',
-            style: theme.textTheme.titleSmall?.copyWith(
-              fontWeight: FontWeight.w700,
-              color: theme.colorScheme.onSurface.withValues(alpha: 0.85),
-              letterSpacing: -0.2,
-            ),
-          ),
-          const SizedBox(height: 4),
-          Text(
-            'Paste a URL or enter news to start.',
-            style: theme.textTheme.bodySmall?.copyWith(
-              color: theme.colorScheme.onSurface.withValues(alpha: 0.55),
-            ),
-            textAlign: TextAlign.center,
-          ),
-          const SizedBox(height: AppSpacing.base),
-          Wrap(
-            spacing: AppSpacing.sm,
-            runSpacing: AppSpacing.sm,
-            alignment: WrapAlignment.center,
-            children: [
-              _IdleExampleChip(
-                label: 'Paste URL',
-                icon: Icons.link_rounded,
-                onTap: () async {
-                  final data = await Clipboard.getData(Clipboard.kTextPlain);
-                  if (data?.text != null) {
-                    _controller.text = data!.text!;
-                    setState(() {});
-                  }
-                },
-              ),
-            ],
-          ),
-        ],
-      ),
-    );
+    // Should not be reached because this method is only called when status != idle.
+    return const SizedBox.shrink();
   }
 }
 
-class _IdleExampleChip extends ConsumerWidget {
-  const _IdleExampleChip({
-    required this.label,
-    required this.icon,
-    required this.onTap,
-  });
-  final String label;
-  final IconData icon;
-  final VoidCallback onTap;
-  @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final theme = Theme.of(context);
-    return InkWell(
-      onTap: () {
-        Haptics.lightImpact();
-        onTap();
-      },
-      borderRadius: AppSpacing.borderRadiusPill,
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
-        decoration: BoxDecoration(
-          color: theme.colorScheme.surface,
-          borderRadius: AppSpacing.borderRadiusPill,
-          border: Border.all(color: theme.colorScheme.outline, width: 1),
-        ),
-        child: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Icon(icon, size: 14, color: theme.colorScheme.primary),
-            const SizedBox(width: 6),
-            Text(
-              label,
-              style: theme.textTheme.labelSmall?.copyWith(
-                fontWeight: FontWeight.w600,
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-}
