@@ -28,6 +28,7 @@ abstract class GenerateUiState with _$GenerateUiState {
     @Default(true) bool showSource,
     String? twitterExtractionUrl,
     @Default(false) bool isExtractingImage,
+    @Default(false) bool keepStructure,
   }) = _GenerateUiState;
 
   bool get canUndo => historyStack.isNotEmpty;

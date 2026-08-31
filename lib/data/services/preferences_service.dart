@@ -209,4 +209,18 @@ class PreferencesService {
     return _prefs.setBool('card_show_brand_footer', show);
   }
 
+  // === Fan Mode (persistent) ===
+
+  bool get isFanModeEnabled => _prefs.getBool('is_fan_mode_enabled') ?? false;
+
+  Future<bool> setFanModeEnabled(bool enabled) {
+    return _prefs.setBool('is_fan_mode_enabled', enabled);
+  }
+
+  String get fanClubName => _prefs.getString('fan_club_name') ?? '';
+
+  Future<bool> setFanClubName(String name) {
+    return _prefs.setString('fan_club_name', name);
+  }
+
 }

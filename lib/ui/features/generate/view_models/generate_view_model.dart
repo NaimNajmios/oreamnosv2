@@ -139,6 +139,10 @@ class GenerateViewModel extends Notifier<GenerateUiState>
     state = state.copyWith(showTitle: !state.showTitle);
   }
 
+  void toggleKeepStructure() {
+    state = state.copyWith(keepStructure: !state.keepStructure);
+  }
+
   void toggleHashtags() {
     state = state.copyWith(showHashtags: !state.showHashtags);
   }
@@ -369,6 +373,8 @@ class GenerateViewModel extends Notifier<GenerateUiState>
       }
       // API resilience: via pooled IContentRepository + Result fold + 30s timeout
       final repo = ref.read(contentRepositoryProvider);
+      final settings = ref.read(settingsViewModelProvider);
+
       final repoResult = await repo
           .generateStructuredPost(
             content: contentToCurate,
@@ -377,6 +383,9 @@ class GenerateViewModel extends Notifier<GenerateUiState>
             sourceUrl: sourceUrl,
             provider: provider,
             searchSources: state.searchSources,
+            keepStructure: state.keepStructure,
+            isFanModeEnabled: settings.isFanModeEnabled,
+            fanClubName: settings.fanClubName,
           )
           .timeout(
             const Duration(seconds: 30),
@@ -582,6 +591,8 @@ class GenerateViewModel extends Notifier<GenerateUiState>
           'Kembalikan JSON dengan struktur yang sama (title, body, source) — perbaiki title/body mengikut arahan, jangan ubah source.url.';
 
       final repo = ref.read(contentRepositoryProvider);
+      final settings = ref.read(settingsViewModelProvider);
+
       final repoResult = await repo
           .generateStructuredPost(
             content: refinementContent,
@@ -589,6 +600,9 @@ class GenerateViewModel extends Notifier<GenerateUiState>
             apiKey: apiKey,
             sourceUrl: cp.source.url,
             provider: provider,
+            keepStructure: state.keepStructure,
+            isFanModeEnabled: settings.isFanModeEnabled,
+            fanClubName: settings.fanClubName,
           )
           .timeout(
             const Duration(seconds: 30),

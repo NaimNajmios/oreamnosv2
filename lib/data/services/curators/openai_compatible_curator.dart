@@ -45,12 +45,18 @@ class OpenAICompatibleCurator implements IContentCurator {
     required String apiKey,
     String? sourceUrl,
     List<String> searchSources = const [],
+    bool keepStructure = false,
+    bool isFanModeEnabled = false,
+    String fanClubName = '',
   }) async {
     final resolvedSourceUrl =
         sourceUrl ?? (content is ExtractedArticle ? content.url : null);
     final systemPrompt = GenerationPromptManager.buildSystemPrompt(
       sourceUrl: resolvedSourceUrl,
       searchSources: searchSources,
+      keepStructure: keepStructure,
+      isFanModeEnabled: isFanModeEnabled,
+      fanClubName: fanClubName,
     );
     final userPrompt = GenerationPromptManager.buildUserPrompt(content);
 

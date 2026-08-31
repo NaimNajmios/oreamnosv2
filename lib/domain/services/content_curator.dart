@@ -20,6 +20,9 @@ abstract class IContentCurator {
     required String apiKey,
     String? sourceUrl,
     List<String> searchSources = const [],
+    bool keepStructure = false,
+    bool isFanModeEnabled = false,
+    String fanClubName = '',
   });
 
   /// Extracts structured JSON data from a generated post to be used for the Card Generator.

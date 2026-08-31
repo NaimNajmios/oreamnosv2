@@ -641,6 +641,40 @@ class _GenerateScreenState extends ConsumerState<GenerateScreen> {
                     ),
                   ],
                 ),
+                const SizedBox(height: AppSpacing.sm),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Row(
+                      children: [
+                        Icon(
+                          Icons.format_align_left_rounded,
+                          size: 16,
+                          color: theme.colorScheme.primary,
+                        ),
+                        const SizedBox(width: AppSpacing.xs),
+                        Text(
+                          'Keep Structure',
+                          style: theme.textTheme.labelSmall?.copyWith(
+                            fontWeight: FontWeight.w600,
+                            color: theme.colorScheme.onSurface,
+                          ),
+                        ),
+                      ],
+                    ),
+                    Transform.scale(
+                      scale: 0.85,
+                      child: AppSwitch(
+                        value: viewModel.keepStructure,
+                        onChanged: isGenerating
+                            ? null
+                            : (_) => ref
+                                  .read(generateViewModelProvider.notifier)
+                                  .toggleKeepStructure(),
+                      ),
+                    ),
+                  ],
+                ),
                 const SizedBox(height: 2),
                 InkWell(
                   onTap: () {

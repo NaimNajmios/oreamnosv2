@@ -15,7 +15,7 @@ T _$identity<T>(T value) => value;
 /// @nodoc
 mixin _$GenerateUiState {
 
- PromptLength get promptLength; GenerateState get status; GeneratingStep get generatingStep; CuratedPost? get curatedPost; List<String> get historyStack; List<String> get recentInputs; String? get errorMessage; AiProvider? get suggestedFallbackProvider; String? get validationMessage; String? get pendingInput; bool get isResearchModeEnabled; List<String> get searchSources; bool get showTitle; bool get showHashtags; bool get showSource; String? get twitterExtractionUrl; bool get isExtractingImage;
+ PromptLength get promptLength; GenerateState get status; GeneratingStep get generatingStep; CuratedPost? get curatedPost; List<String> get historyStack; List<String> get recentInputs; String? get errorMessage; AiProvider? get suggestedFallbackProvider; String? get validationMessage; String? get pendingInput; bool get isResearchModeEnabled; List<String> get searchSources; bool get showTitle; bool get showHashtags; bool get showSource; String? get twitterExtractionUrl; bool get isExtractingImage; bool get keepStructure;
 /// Create a copy of GenerateUiState
 /// with the given fields replaced by the non-null parameter values.
 @JsonKey(includeFromJson: false, includeToJson: false)
@@ -26,16 +26,16 @@ $GenerateUiStateCopyWith<GenerateUiState> get copyWith => _$GenerateUiStateCopyW
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is GenerateUiState&&(identical(other.promptLength, promptLength) || other.promptLength == promptLength)&&(identical(other.status, status) || other.status == status)&&(identical(other.generatingStep, generatingStep) || other.generatingStep == generatingStep)&&(identical(other.curatedPost, curatedPost) || other.curatedPost == curatedPost)&&const DeepCollectionEquality().equals(other.historyStack, historyStack)&&const DeepCollectionEquality().equals(other.recentInputs, recentInputs)&&(identical(other.errorMessage, errorMessage) || other.errorMessage == errorMessage)&&(identical(other.suggestedFallbackProvider, suggestedFallbackProvider) || other.suggestedFallbackProvider == suggestedFallbackProvider)&&(identical(other.validationMessage, validationMessage) || other.validationMessage == validationMessage)&&(identical(other.pendingInput, pendingInput) || other.pendingInput == pendingInput)&&(identical(other.isResearchModeEnabled, isResearchModeEnabled) || other.isResearchModeEnabled == isResearchModeEnabled)&&const DeepCollectionEquality().equals(other.searchSources, searchSources)&&(identical(other.showTitle, showTitle) || other.showTitle == showTitle)&&(identical(other.showHashtags, showHashtags) || other.showHashtags == showHashtags)&&(identical(other.showSource, showSource) || other.showSource == showSource)&&(identical(other.twitterExtractionUrl, twitterExtractionUrl) || other.twitterExtractionUrl == twitterExtractionUrl)&&(identical(other.isExtractingImage, isExtractingImage) || other.isExtractingImage == isExtractingImage));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is GenerateUiState&&(identical(other.promptLength, promptLength) || other.promptLength == promptLength)&&(identical(other.status, status) || other.status == status)&&(identical(other.generatingStep, generatingStep) || other.generatingStep == generatingStep)&&(identical(other.curatedPost, curatedPost) || other.curatedPost == curatedPost)&&const DeepCollectionEquality().equals(other.historyStack, historyStack)&&const DeepCollectionEquality().equals(other.recentInputs, recentInputs)&&(identical(other.errorMessage, errorMessage) || other.errorMessage == errorMessage)&&(identical(other.suggestedFallbackProvider, suggestedFallbackProvider) || other.suggestedFallbackProvider == suggestedFallbackProvider)&&(identical(other.validationMessage, validationMessage) || other.validationMessage == validationMessage)&&(identical(other.pendingInput, pendingInput) || other.pendingInput == pendingInput)&&(identical(other.isResearchModeEnabled, isResearchModeEnabled) || other.isResearchModeEnabled == isResearchModeEnabled)&&const DeepCollectionEquality().equals(other.searchSources, searchSources)&&(identical(other.showTitle, showTitle) || other.showTitle == showTitle)&&(identical(other.showHashtags, showHashtags) || other.showHashtags == showHashtags)&&(identical(other.showSource, showSource) || other.showSource == showSource)&&(identical(other.twitterExtractionUrl, twitterExtractionUrl) || other.twitterExtractionUrl == twitterExtractionUrl)&&(identical(other.isExtractingImage, isExtractingImage) || other.isExtractingImage == isExtractingImage)&&(identical(other.keepStructure, keepStructure) || other.keepStructure == keepStructure));
 }
 
 
 @override
-int get hashCode => Object.hash(runtimeType,promptLength,status,generatingStep,curatedPost,const DeepCollectionEquality().hash(historyStack),const DeepCollectionEquality().hash(recentInputs),errorMessage,suggestedFallbackProvider,validationMessage,pendingInput,isResearchModeEnabled,const DeepCollectionEquality().hash(searchSources),showTitle,showHashtags,showSource,twitterExtractionUrl,isExtractingImage);
+int get hashCode => Object.hash(runtimeType,promptLength,status,generatingStep,curatedPost,const DeepCollectionEquality().hash(historyStack),const DeepCollectionEquality().hash(recentInputs),errorMessage,suggestedFallbackProvider,validationMessage,pendingInput,isResearchModeEnabled,const DeepCollectionEquality().hash(searchSources),showTitle,showHashtags,showSource,twitterExtractionUrl,isExtractingImage,keepStructure);
 
 @override
 String toString() {
-  return 'GenerateUiState(promptLength: $promptLength, status: $status, generatingStep: $generatingStep, curatedPost: $curatedPost, historyStack: $historyStack, recentInputs: $recentInputs, errorMessage: $errorMessage, suggestedFallbackProvider: $suggestedFallbackProvider, validationMessage: $validationMessage, pendingInput: $pendingInput, isResearchModeEnabled: $isResearchModeEnabled, searchSources: $searchSources, showTitle: $showTitle, showHashtags: $showHashtags, showSource: $showSource, twitterExtractionUrl: $twitterExtractionUrl, isExtractingImage: $isExtractingImage)';
+  return 'GenerateUiState(promptLength: $promptLength, status: $status, generatingStep: $generatingStep, curatedPost: $curatedPost, historyStack: $historyStack, recentInputs: $recentInputs, errorMessage: $errorMessage, suggestedFallbackProvider: $suggestedFallbackProvider, validationMessage: $validationMessage, pendingInput: $pendingInput, isResearchModeEnabled: $isResearchModeEnabled, searchSources: $searchSources, showTitle: $showTitle, showHashtags: $showHashtags, showSource: $showSource, twitterExtractionUrl: $twitterExtractionUrl, isExtractingImage: $isExtractingImage, keepStructure: $keepStructure)';
 }
 
 
@@ -46,7 +46,7 @@ abstract mixin class $GenerateUiStateCopyWith<$Res>  {
   factory $GenerateUiStateCopyWith(GenerateUiState value, $Res Function(GenerateUiState) _then) = _$GenerateUiStateCopyWithImpl;
 @useResult
 $Res call({
- PromptLength promptLength, GenerateState status, GeneratingStep generatingStep, CuratedPost? curatedPost, List<String> historyStack, List<String> recentInputs, String? errorMessage, AiProvider? suggestedFallbackProvider, String? validationMessage, String? pendingInput, bool isResearchModeEnabled, List<String> searchSources, bool showTitle, bool showHashtags, bool showSource, String? twitterExtractionUrl, bool isExtractingImage
+ PromptLength promptLength, GenerateState status, GeneratingStep generatingStep, CuratedPost? curatedPost, List<String> historyStack, List<String> recentInputs, String? errorMessage, AiProvider? suggestedFallbackProvider, String? validationMessage, String? pendingInput, bool isResearchModeEnabled, List<String> searchSources, bool showTitle, bool showHashtags, bool showSource, String? twitterExtractionUrl, bool isExtractingImage, bool keepStructure
 });
 
 
@@ -63,7 +63,7 @@ class _$GenerateUiStateCopyWithImpl<$Res>
 
 /// Create a copy of GenerateUiState
 /// with the given fields replaced by the non-null parameter values.
-@pragma('vm:prefer-inline') @override $Res call({Object? promptLength = null,Object? status = null,Object? generatingStep = null,Object? curatedPost = freezed,Object? historyStack = null,Object? recentInputs = null,Object? errorMessage = freezed,Object? suggestedFallbackProvider = freezed,Object? validationMessage = freezed,Object? pendingInput = freezed,Object? isResearchModeEnabled = null,Object? searchSources = null,Object? showTitle = null,Object? showHashtags = null,Object? showSource = null,Object? twitterExtractionUrl = freezed,Object? isExtractingImage = null,}) {
+@pragma('vm:prefer-inline') @override $Res call({Object? promptLength = null,Object? status = null,Object? generatingStep = null,Object? curatedPost = freezed,Object? historyStack = null,Object? recentInputs = null,Object? errorMessage = freezed,Object? suggestedFallbackProvider = freezed,Object? validationMessage = freezed,Object? pendingInput = freezed,Object? isResearchModeEnabled = null,Object? searchSources = null,Object? showTitle = null,Object? showHashtags = null,Object? showSource = null,Object? twitterExtractionUrl = freezed,Object? isExtractingImage = null,Object? keepStructure = null,}) {
   return _then(GenerateUiState(
 promptLength: null == promptLength ? _self.promptLength : promptLength // ignore: cast_nullable_to_non_nullable
 as PromptLength,status: null == status ? _self.status : status // ignore: cast_nullable_to_non_nullable
@@ -82,6 +82,7 @@ as bool,showHashtags: null == showHashtags ? _self.showHashtags : showHashtags /
 as bool,showSource: null == showSource ? _self.showSource : showSource // ignore: cast_nullable_to_non_nullable
 as bool,twitterExtractionUrl: freezed == twitterExtractionUrl ? _self.twitterExtractionUrl : twitterExtractionUrl // ignore: cast_nullable_to_non_nullable
 as String?,isExtractingImage: null == isExtractingImage ? _self.isExtractingImage : isExtractingImage // ignore: cast_nullable_to_non_nullable
+as bool,keepStructure: null == keepStructure ? _self.keepStructure : keepStructure // ignore: cast_nullable_to_non_nullable
 as bool,
   ));
 }
@@ -167,10 +168,10 @@ return $default(_that);case _:
 /// }
 /// ```
 
-@optionalTypeArgs TResult maybeWhen<TResult extends Object?>(TResult Function( PromptLength promptLength,  GenerateState status,  GeneratingStep generatingStep,  CuratedPost? curatedPost,  List<String> historyStack,  List<String> recentInputs,  String? errorMessage,  AiProvider? suggestedFallbackProvider,  String? validationMessage,  String? pendingInput,  bool isResearchModeEnabled,  List<String> searchSources,  bool showTitle,  bool showHashtags,  bool showSource,  String? twitterExtractionUrl,  bool isExtractingImage)?  $default,{required TResult orElse(),}) {final _that = this;
+@optionalTypeArgs TResult maybeWhen<TResult extends Object?>(TResult Function( PromptLength promptLength,  GenerateState status,  GeneratingStep generatingStep,  CuratedPost? curatedPost,  List<String> historyStack,  List<String> recentInputs,  String? errorMessage,  AiProvider? suggestedFallbackProvider,  String? validationMessage,  String? pendingInput,  bool isResearchModeEnabled,  List<String> searchSources,  bool showTitle,  bool showHashtags,  bool showSource,  String? twitterExtractionUrl,  bool isExtractingImage,  bool keepStructure)?  $default,{required TResult orElse(),}) {final _that = this;
 switch (_that) {
 case _GenerateUiState() when $default != null:
-return $default(_that.promptLength,_that.status,_that.generatingStep,_that.curatedPost,_that.historyStack,_that.recentInputs,_that.errorMessage,_that.suggestedFallbackProvider,_that.validationMessage,_that.pendingInput,_that.isResearchModeEnabled,_that.searchSources,_that.showTitle,_that.showHashtags,_that.showSource,_that.twitterExtractionUrl,_that.isExtractingImage);case _:
+return $default(_that.promptLength,_that.status,_that.generatingStep,_that.curatedPost,_that.historyStack,_that.recentInputs,_that.errorMessage,_that.suggestedFallbackProvider,_that.validationMessage,_that.pendingInput,_that.isResearchModeEnabled,_that.searchSources,_that.showTitle,_that.showHashtags,_that.showSource,_that.twitterExtractionUrl,_that.isExtractingImage,_that.keepStructure);case _:
   return orElse();
 
 }
@@ -188,10 +189,10 @@ return $default(_that.promptLength,_that.status,_that.generatingStep,_that.curat
 /// }
 /// ```
 
-@optionalTypeArgs TResult when<TResult extends Object?>(TResult Function( PromptLength promptLength,  GenerateState status,  GeneratingStep generatingStep,  CuratedPost? curatedPost,  List<String> historyStack,  List<String> recentInputs,  String? errorMessage,  AiProvider? suggestedFallbackProvider,  String? validationMessage,  String? pendingInput,  bool isResearchModeEnabled,  List<String> searchSources,  bool showTitle,  bool showHashtags,  bool showSource,  String? twitterExtractionUrl,  bool isExtractingImage)  $default,) {final _that = this;
+@optionalTypeArgs TResult when<TResult extends Object?>(TResult Function( PromptLength promptLength,  GenerateState status,  GeneratingStep generatingStep,  CuratedPost? curatedPost,  List<String> historyStack,  List<String> recentInputs,  String? errorMessage,  AiProvider? suggestedFallbackProvider,  String? validationMessage,  String? pendingInput,  bool isResearchModeEnabled,  List<String> searchSources,  bool showTitle,  bool showHashtags,  bool showSource,  String? twitterExtractionUrl,  bool isExtractingImage,  bool keepStructure)  $default,) {final _that = this;
 switch (_that) {
 case _GenerateUiState():
-return $default(_that.promptLength,_that.status,_that.generatingStep,_that.curatedPost,_that.historyStack,_that.recentInputs,_that.errorMessage,_that.suggestedFallbackProvider,_that.validationMessage,_that.pendingInput,_that.isResearchModeEnabled,_that.searchSources,_that.showTitle,_that.showHashtags,_that.showSource,_that.twitterExtractionUrl,_that.isExtractingImage);case _:
+return $default(_that.promptLength,_that.status,_that.generatingStep,_that.curatedPost,_that.historyStack,_that.recentInputs,_that.errorMessage,_that.suggestedFallbackProvider,_that.validationMessage,_that.pendingInput,_that.isResearchModeEnabled,_that.searchSources,_that.showTitle,_that.showHashtags,_that.showSource,_that.twitterExtractionUrl,_that.isExtractingImage,_that.keepStructure);case _:
   throw StateError('Unexpected subclass');
 
 }
@@ -208,10 +209,10 @@ return $default(_that.promptLength,_that.status,_that.generatingStep,_that.curat
 /// }
 /// ```
 
-@optionalTypeArgs TResult? whenOrNull<TResult extends Object?>(TResult? Function( PromptLength promptLength,  GenerateState status,  GeneratingStep generatingStep,  CuratedPost? curatedPost,  List<String> historyStack,  List<String> recentInputs,  String? errorMessage,  AiProvider? suggestedFallbackProvider,  String? validationMessage,  String? pendingInput,  bool isResearchModeEnabled,  List<String> searchSources,  bool showTitle,  bool showHashtags,  bool showSource,  String? twitterExtractionUrl,  bool isExtractingImage)?  $default,) {final _that = this;
+@optionalTypeArgs TResult? whenOrNull<TResult extends Object?>(TResult? Function( PromptLength promptLength,  GenerateState status,  GeneratingStep generatingStep,  CuratedPost? curatedPost,  List<String> historyStack,  List<String> recentInputs,  String? errorMessage,  AiProvider? suggestedFallbackProvider,  String? validationMessage,  String? pendingInput,  bool isResearchModeEnabled,  List<String> searchSources,  bool showTitle,  bool showHashtags,  bool showSource,  String? twitterExtractionUrl,  bool isExtractingImage,  bool keepStructure)?  $default,) {final _that = this;
 switch (_that) {
 case _GenerateUiState() when $default != null:
-return $default(_that.promptLength,_that.status,_that.generatingStep,_that.curatedPost,_that.historyStack,_that.recentInputs,_that.errorMessage,_that.suggestedFallbackProvider,_that.validationMessage,_that.pendingInput,_that.isResearchModeEnabled,_that.searchSources,_that.showTitle,_that.showHashtags,_that.showSource,_that.twitterExtractionUrl,_that.isExtractingImage);case _:
+return $default(_that.promptLength,_that.status,_that.generatingStep,_that.curatedPost,_that.historyStack,_that.recentInputs,_that.errorMessage,_that.suggestedFallbackProvider,_that.validationMessage,_that.pendingInput,_that.isResearchModeEnabled,_that.searchSources,_that.showTitle,_that.showHashtags,_that.showSource,_that.twitterExtractionUrl,_that.isExtractingImage,_that.keepStructure);case _:
   return null;
 
 }
@@ -223,7 +224,7 @@ return $default(_that.promptLength,_that.status,_that.generatingStep,_that.curat
 
 
 class _GenerateUiState extends GenerateUiState {
-  const _GenerateUiState({this.promptLength = PromptLength.medium, this.status = GenerateState.idle, this.generatingStep = GeneratingStep.idle, this.curatedPost,  List<String> historyStack = const [],  List<String> recentInputs = const [], this.errorMessage, this.suggestedFallbackProvider, this.validationMessage, this.pendingInput, this.isResearchModeEnabled = false,  List<String> searchSources = const [], this.showTitle = true, this.showHashtags = true, this.showSource = true, this.twitterExtractionUrl, this.isExtractingImage = false}): _historyStack = historyStack,_recentInputs = recentInputs,_searchSources = searchSources,super._();
+  const _GenerateUiState({this.promptLength = PromptLength.medium, this.status = GenerateState.idle, this.generatingStep = GeneratingStep.idle, this.curatedPost,  List<String> historyStack = const [],  List<String> recentInputs = const [], this.errorMessage, this.suggestedFallbackProvider, this.validationMessage, this.pendingInput, this.isResearchModeEnabled = false,  List<String> searchSources = const [], this.showTitle = true, this.showHashtags = true, this.showSource = true, this.twitterExtractionUrl, this.isExtractingImage = false, this.keepStructure = false}): _historyStack = historyStack,_recentInputs = recentInputs,_searchSources = searchSources,super._();
   
 
 @override@JsonKey() final  PromptLength promptLength;
@@ -261,6 +262,7 @@ class _GenerateUiState extends GenerateUiState {
 @override@JsonKey() final  bool showSource;
 @override final  String? twitterExtractionUrl;
 @override@JsonKey() final  bool isExtractingImage;
+@override@JsonKey() final  bool keepStructure;
 
 /// Create a copy of GenerateUiState
 /// with the given fields replaced by the non-null parameter values.
@@ -272,16 +274,16 @@ _$GenerateUiStateCopyWith<_GenerateUiState> get copyWith => __$GenerateUiStateCo
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is _GenerateUiState&&(identical(other.promptLength, promptLength) || other.promptLength == promptLength)&&(identical(other.status, status) || other.status == status)&&(identical(other.generatingStep, generatingStep) || other.generatingStep == generatingStep)&&(identical(other.curatedPost, curatedPost) || other.curatedPost == curatedPost)&&const DeepCollectionEquality().equals(other._historyStack, _historyStack)&&const DeepCollectionEquality().equals(other._recentInputs, _recentInputs)&&(identical(other.errorMessage, errorMessage) || other.errorMessage == errorMessage)&&(identical(other.suggestedFallbackProvider, suggestedFallbackProvider) || other.suggestedFallbackProvider == suggestedFallbackProvider)&&(identical(other.validationMessage, validationMessage) || other.validationMessage == validationMessage)&&(identical(other.pendingInput, pendingInput) || other.pendingInput == pendingInput)&&(identical(other.isResearchModeEnabled, isResearchModeEnabled) || other.isResearchModeEnabled == isResearchModeEnabled)&&const DeepCollectionEquality().equals(other._searchSources, _searchSources)&&(identical(other.showTitle, showTitle) || other.showTitle == showTitle)&&(identical(other.showHashtags, showHashtags) || other.showHashtags == showHashtags)&&(identical(other.showSource, showSource) || other.showSource == showSource)&&(identical(other.twitterExtractionUrl, twitterExtractionUrl) || other.twitterExtractionUrl == twitterExtractionUrl)&&(identical(other.isExtractingImage, isExtractingImage) || other.isExtractingImage == isExtractingImage));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is _GenerateUiState&&(identical(other.promptLength, promptLength) || other.promptLength == promptLength)&&(identical(other.status, status) || other.status == status)&&(identical(other.generatingStep, generatingStep) || other.generatingStep == generatingStep)&&(identical(other.curatedPost, curatedPost) || other.curatedPost == curatedPost)&&const DeepCollectionEquality().equals(other._historyStack, _historyStack)&&const DeepCollectionEquality().equals(other._recentInputs, _recentInputs)&&(identical(other.errorMessage, errorMessage) || other.errorMessage == errorMessage)&&(identical(other.suggestedFallbackProvider, suggestedFallbackProvider) || other.suggestedFallbackProvider == suggestedFallbackProvider)&&(identical(other.validationMessage, validationMessage) || other.validationMessage == validationMessage)&&(identical(other.pendingInput, pendingInput) || other.pendingInput == pendingInput)&&(identical(other.isResearchModeEnabled, isResearchModeEnabled) || other.isResearchModeEnabled == isResearchModeEnabled)&&const DeepCollectionEquality().equals(other._searchSources, _searchSources)&&(identical(other.showTitle, showTitle) || other.showTitle == showTitle)&&(identical(other.showHashtags, showHashtags) || other.showHashtags == showHashtags)&&(identical(other.showSource, showSource) || other.showSource == showSource)&&(identical(other.twitterExtractionUrl, twitterExtractionUrl) || other.twitterExtractionUrl == twitterExtractionUrl)&&(identical(other.isExtractingImage, isExtractingImage) || other.isExtractingImage == isExtractingImage)&&(identical(other.keepStructure, keepStructure) || other.keepStructure == keepStructure));
 }
 
 
 @override
-int get hashCode => Object.hash(runtimeType,promptLength,status,generatingStep,curatedPost,const DeepCollectionEquality().hash(_historyStack),const DeepCollectionEquality().hash(_recentInputs),errorMessage,suggestedFallbackProvider,validationMessage,pendingInput,isResearchModeEnabled,const DeepCollectionEquality().hash(_searchSources),showTitle,showHashtags,showSource,twitterExtractionUrl,isExtractingImage);
+int get hashCode => Object.hash(runtimeType,promptLength,status,generatingStep,curatedPost,const DeepCollectionEquality().hash(_historyStack),const DeepCollectionEquality().hash(_recentInputs),errorMessage,suggestedFallbackProvider,validationMessage,pendingInput,isResearchModeEnabled,const DeepCollectionEquality().hash(_searchSources),showTitle,showHashtags,showSource,twitterExtractionUrl,isExtractingImage,keepStructure);
 
 @override
 String toString() {
-  return 'GenerateUiState(promptLength: $promptLength, status: $status, generatingStep: $generatingStep, curatedPost: $curatedPost, historyStack: $historyStack, recentInputs: $recentInputs, errorMessage: $errorMessage, suggestedFallbackProvider: $suggestedFallbackProvider, validationMessage: $validationMessage, pendingInput: $pendingInput, isResearchModeEnabled: $isResearchModeEnabled, searchSources: $searchSources, showTitle: $showTitle, showHashtags: $showHashtags, showSource: $showSource, twitterExtractionUrl: $twitterExtractionUrl, isExtractingImage: $isExtractingImage)';
+  return 'GenerateUiState(promptLength: $promptLength, status: $status, generatingStep: $generatingStep, curatedPost: $curatedPost, historyStack: $historyStack, recentInputs: $recentInputs, errorMessage: $errorMessage, suggestedFallbackProvider: $suggestedFallbackProvider, validationMessage: $validationMessage, pendingInput: $pendingInput, isResearchModeEnabled: $isResearchModeEnabled, searchSources: $searchSources, showTitle: $showTitle, showHashtags: $showHashtags, showSource: $showSource, twitterExtractionUrl: $twitterExtractionUrl, isExtractingImage: $isExtractingImage, keepStructure: $keepStructure)';
 }
 
 
@@ -292,7 +294,7 @@ abstract mixin class _$GenerateUiStateCopyWith<$Res> implements $GenerateUiState
   factory _$GenerateUiStateCopyWith(_GenerateUiState value, $Res Function(_GenerateUiState) _then) = __$GenerateUiStateCopyWithImpl;
 @override @useResult
 $Res call({
- PromptLength promptLength, GenerateState status, GeneratingStep generatingStep, CuratedPost? curatedPost, List<String> historyStack, List<String> recentInputs, String? errorMessage, AiProvider? suggestedFallbackProvider, String? validationMessage, String? pendingInput, bool isResearchModeEnabled, List<String> searchSources, bool showTitle, bool showHashtags, bool showSource, String? twitterExtractionUrl, bool isExtractingImage
+ PromptLength promptLength, GenerateState status, GeneratingStep generatingStep, CuratedPost? curatedPost, List<String> historyStack, List<String> recentInputs, String? errorMessage, AiProvider? suggestedFallbackProvider, String? validationMessage, String? pendingInput, bool isResearchModeEnabled, List<String> searchSources, bool showTitle, bool showHashtags, bool showSource, String? twitterExtractionUrl, bool isExtractingImage, bool keepStructure
 });
 
 
@@ -309,7 +311,7 @@ class __$GenerateUiStateCopyWithImpl<$Res>
 
 /// Create a copy of GenerateUiState
 /// with the given fields replaced by the non-null parameter values.
-@override @pragma('vm:prefer-inline') $Res call({Object? promptLength = null,Object? status = null,Object? generatingStep = null,Object? curatedPost = freezed,Object? historyStack = null,Object? recentInputs = null,Object? errorMessage = freezed,Object? suggestedFallbackProvider = freezed,Object? validationMessage = freezed,Object? pendingInput = freezed,Object? isResearchModeEnabled = null,Object? searchSources = null,Object? showTitle = null,Object? showHashtags = null,Object? showSource = null,Object? twitterExtractionUrl = freezed,Object? isExtractingImage = null,}) {
+@override @pragma('vm:prefer-inline') $Res call({Object? promptLength = null,Object? status = null,Object? generatingStep = null,Object? curatedPost = freezed,Object? historyStack = null,Object? recentInputs = null,Object? errorMessage = freezed,Object? suggestedFallbackProvider = freezed,Object? validationMessage = freezed,Object? pendingInput = freezed,Object? isResearchModeEnabled = null,Object? searchSources = null,Object? showTitle = null,Object? showHashtags = null,Object? showSource = null,Object? twitterExtractionUrl = freezed,Object? isExtractingImage = null,Object? keepStructure = null,}) {
   return _then(_GenerateUiState(
 promptLength: null == promptLength ? _self.promptLength : promptLength // ignore: cast_nullable_to_non_nullable
 as PromptLength,status: null == status ? _self.status : status // ignore: cast_nullable_to_non_nullable
@@ -328,6 +330,7 @@ as bool,showHashtags: null == showHashtags ? _self.showHashtags : showHashtags /
 as bool,showSource: null == showSource ? _self.showSource : showSource // ignore: cast_nullable_to_non_nullable
 as bool,twitterExtractionUrl: freezed == twitterExtractionUrl ? _self.twitterExtractionUrl : twitterExtractionUrl // ignore: cast_nullable_to_non_nullable
 as String?,isExtractingImage: null == isExtractingImage ? _self.isExtractingImage : isExtractingImage // ignore: cast_nullable_to_non_nullable
+as bool,keepStructure: null == keepStructure ? _self.keepStructure : keepStructure // ignore: cast_nullable_to_non_nullable
 as bool,
   ));
 }

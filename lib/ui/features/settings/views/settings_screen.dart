@@ -183,6 +183,67 @@ class SettingsScreen extends ConsumerWidget {
         onTap: () => ToneSelectionDialog.show(context),
       ),
       const Divider(),
+      Padding(
+        padding: const EdgeInsets.symmetric(
+          horizontal: AppSpacing.base,
+          vertical: 16,
+        ),
+        child: Row(
+          children: [
+            Icon(
+              Icons.sports_soccer_rounded,
+              size: 24,
+              color: theme.colorScheme.onSurface,
+            ),
+            const SizedBox(width: AppSpacing.md),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'Fan Mode',
+                    style: theme.textTheme.titleSmall,
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    'Generate posts from a fan perspective',
+                    style: theme.textTheme.bodyMedium?.copyWith(
+                      color: theme.colorScheme.onSurface.withValues(alpha: 0.6),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            AppSwitch(
+              value: state.isFanModeEnabled,
+              onChanged: (value) => notifier.setFanModeEnabled(value),
+            ),
+          ],
+        ),
+      ),
+      if (state.isFanModeEnabled) ...[
+        Padding(
+          padding: const EdgeInsets.symmetric(
+            horizontal: AppSpacing.base,
+            vertical: 8,
+          ),
+          child: TextFormField(
+            initialValue: state.fanClubName,
+            decoration: InputDecoration(
+              labelText: 'Fan Club Name (e.g. Arsenal)',
+              border: OutlineInputBorder(
+                borderRadius: AppSpacing.borderRadiusSm,
+              ),
+              contentPadding: const EdgeInsets.symmetric(
+                horizontal: AppSpacing.md,
+                vertical: AppSpacing.sm,
+              ),
+            ),
+            onChanged: (value) => notifier.setFanClubName(value),
+          ),
+        ),
+      ],
+      const Divider(),
       SettingsTile(
         leadingIcon: Icons.tag_rounded,
         title: 'Hashtag Manager',

@@ -98,9 +98,13 @@ class _TypewriterMarkdownState extends State<TypewriterMarkdown> {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    
+    // Replace newlines with two spaces + newline to force markdown soft line breaks
+    // This prevents MarkdownBody from merging single newlines into a single paragraph
+    final processedText = _displayedText.replaceAll('\n', '  \n');
 
     return MarkdownBody(
-      data: _displayedText,
+      data: processedText,
       selectable: true,
       styleSheet: MarkdownStyleSheet(
         p: theme.textTheme.bodyMedium?.copyWith(

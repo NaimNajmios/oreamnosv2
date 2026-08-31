@@ -35,6 +35,8 @@ class SettingsNotifier extends Notifier<SettingsState> {
     final readingTextSize = _preferencesService.readingTextSize;
     final tavilyApiKey = await _preferencesService.getTavilyApiKey();
     final currentApiKey = await _preferencesService.getApiKey(selectedProvider);
+    final isFanModeEnabled = _preferencesService.isFanModeEnabled;
+    final fanClubName = _preferencesService.fanClubName;
     state = state.copyWith(
       isInitialized: true,
       themeMode: themeMode,
@@ -48,6 +50,8 @@ class SettingsNotifier extends Notifier<SettingsState> {
       readingTextSize: readingTextSize,
       tavilyApiKey: tavilyApiKey,
       currentApiKey: currentApiKey,
+      isFanModeEnabled: isFanModeEnabled,
+      fanClubName: fanClubName,
     );
   }
 
@@ -178,6 +182,18 @@ class SettingsNotifier extends Notifier<SettingsState> {
     if (state.readingTextSize == clamped) return;
     await _preferencesService.setReadingTextSize(clamped);
     state = state.copyWith(readingTextSize: clamped);
+  }
+
+  Future<void> setFanModeEnabled(bool enabled) async {
+    if (state.isFanModeEnabled == enabled) return;
+    await _preferencesService.setFanModeEnabled(enabled);
+    state = state.copyWith(isFanModeEnabled: enabled);
+  }
+
+  Future<void> setFanClubName(String name) async {
+    if (state.fanClubName == name) return;
+    await _preferencesService.setFanClubName(name);
+    state = state.copyWith(fanClubName: name);
   }
 
 }

@@ -18,6 +18,9 @@ abstract class IContentRepository {
     String? sourceUrl,
     required AiProvider provider,
     List<String> searchSources = const [],
+    bool keepStructure = false,
+    bool isFanModeEnabled = false,
+    String fanClubName = '',
   });
 
   Future<Result<String>> generatePost({
@@ -80,6 +83,9 @@ class ContentRepository implements IContentRepository {
     String? sourceUrl,
     required AiProvider provider,
     List<String> searchSources = const [],
+    bool keepStructure = false,
+    bool isFanModeEnabled = false,
+    String fanClubName = '',
   }) async {
     try {
       final curator = CuratorFactory.getCurator(provider);
@@ -89,6 +95,9 @@ class ContentRepository implements IContentRepository {
         apiKey: apiKey,
         sourceUrl: sourceUrl,
         searchSources: searchSources,
+        keepStructure: keepStructure,
+        isFanModeEnabled: isFanModeEnabled,
+        fanClubName: fanClubName,
       );
       return ResultSuccess(res);
     } catch (e, st) {
