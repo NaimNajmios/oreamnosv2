@@ -22,9 +22,13 @@ class CardStage extends StatelessWidget {
           constraints: const BoxConstraints(maxWidth: 380),
           decoration: BoxDecoration(
             borderRadius: AppSpacing.borderRadiusMd,
-            boxShadow: AppSpacing.elevatedShadow(
-              Theme.of(context).brightness == Brightness.dark,
-            ),
+            boxShadow: const [
+              BoxShadow(
+                color: Colors.black12,
+                blurRadius: 24,
+                spreadRadius: 4,
+              ),
+            ],
           ),
           clipBehavior: Clip.antiAlias,
           child: AspectRatio(

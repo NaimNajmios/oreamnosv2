@@ -120,18 +120,18 @@ class _PicsartToolDockState extends ConsumerState<PicsartToolDock> {
       ),
       child: SafeArea(
         top: false,
-        child: AnimatedSwitcher(
-          duration: const Duration(milliseconds: 250),
-          transitionBuilder: (child, animation) => SlideTransition(
-            position: Tween<Offset>(
-              begin: const Offset(0.0, 0.2),
-              end: Offset.zero,
-            ).animate(animation),
-            child: FadeTransition(opacity: animation, child: child),
-          ),
-          child: ref.watch(cardGeneratorViewModelProvider).activePanel == null
-              ? _buildMainToolbar(theme)
-              : _buildActivePanel(theme),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            AnimatedSize(
+              duration: const Duration(milliseconds: 250),
+              curve: Curves.easeOutCubic,
+              child: ref.watch(cardGeneratorViewModelProvider).activePanel != null
+                  ? _buildActivePanel(theme)
+                  : const SizedBox.shrink(),
+            ),
+            _buildMainToolbar(theme),
+          ],
         ),
       ),
     );
@@ -222,24 +222,20 @@ class _PicsartToolDockState extends ConsumerState<PicsartToolDock> {
         children: [
           // Panel Header
           Padding(
-            padding: const EdgeInsets.only(left: 8, right: 8, top: 4),
+            padding: const EdgeInsets.only(left: 16, right: 8, top: 4),
             child: Row(
               children: [
-                IconButton(
-                  icon: const Icon(Icons.close_rounded),
-                  onPressed: () => _setPanel(null),
-                ),
                 Expanded(
                   child: Text(
                     title,
-                    textAlign: TextAlign.center,
+                    textAlign: TextAlign.left,
                     style: theme.textTheme.titleSmall?.copyWith(
                       fontWeight: FontWeight.w600,
                     ),
                   ),
                 ),
                 IconButton(
-                  icon: const Icon(Icons.check_rounded),
+                  icon: const Icon(Icons.keyboard_arrow_down_rounded),
                   onPressed: () => _setPanel(null),
                 ),
               ],
@@ -375,13 +371,20 @@ class _PicsartToolDockState extends ConsumerState<PicsartToolDock> {
             children: [
               Text('Opacity', style: theme.textTheme.labelSmall),
               Expanded(
-                child: Slider(
-                  value: state.imageOpacity,
-                  min: 0.2,
-                  max: 1.0,
-                  divisions: 8,
-                  label: '${(state.imageOpacity * 100).round()}%',
-                  onChanged: notifier.setImageOpacity,
+                child: GestureDetector(
+                  onDoubleTap: () {
+                    Haptics.selectionClick();
+                    notifier.setImageOpacity(1.0);
+                  },
+                  child: Slider(
+                    value: state.imageOpacity,
+                    min: 0.2,
+                    max: 1.0,
+                    divisions: 8,
+                    label: '${(state.imageOpacity * 100).round()}%',
+                    onChanged: notifier.setImageOpacity,
+                    onChangeEnd: (_) => Haptics.selectionClick(),
+                  ),
                 ),
               ),
             ],
@@ -390,13 +393,20 @@ class _PicsartToolDockState extends ConsumerState<PicsartToolDock> {
             children: [
               Text('Blur', style: theme.textTheme.labelSmall),
               Expanded(
-                child: Slider(
-                  value: state.backgroundBlurRadius,
-                  min: 0,
-                  max: 25,
-                  divisions: 5,
-                  label: '${state.backgroundBlurRadius.round()}',
-                  onChanged: notifier.setBackgroundBlurRadius,
+                child: GestureDetector(
+                  onDoubleTap: () {
+                    Haptics.selectionClick();
+                    notifier.setBackgroundBlurRadius(0.0);
+                  },
+                  child: Slider(
+                    value: state.backgroundBlurRadius,
+                    min: 0,
+                    max: 25,
+                    divisions: 5,
+                    label: '${state.backgroundBlurRadius.round()}',
+                    onChanged: notifier.setBackgroundBlurRadius,
+                    onChangeEnd: (_) => Haptics.selectionClick(),
+                  ),
                 ),
               ),
             ],
@@ -425,14 +435,14 @@ class _PicsartToolDockState extends ConsumerState<PicsartToolDock> {
             alignment: WrapAlignment.center,
             children:
                 [
+                  theme.colorScheme.primary,
+                  theme.colorScheme.secondary,
+                  theme.colorScheme.tertiary,
+                  theme.colorScheme.error,
+                  theme.colorScheme.surface,
+                  theme.colorScheme.onSurface,
                   Colors.black,
                   Colors.white,
-                  Colors.blue[900]!,
-                  Colors.red[900]!,
-                  Colors.green[900]!,
-                  Colors.purple[900]!,
-                  Colors.orange[900]!,
-                  Colors.grey[900]!,
                 ].map((color) {
                   final isSelected = state.extractedPalette?.first == color;
                   return GestureDetector(
@@ -533,18 +543,21 @@ class _PicsartToolDockState extends ConsumerState<PicsartToolDock> {
           children: [
             Text('Size', style: theme.textTheme.labelMedium),
             Expanded(
-              child: Slider(
-                value: state.headlineScale,
-                min: 0.85,
-                max: 1.15,
-                divisions: 6,
-                label: '${(state.headlineScale * 100).round()}%',
-                onChanged: notifier.setHeadlineScale,
+              child: GestureDetector(
+                onDoubleTap: () {
+                  Haptics.selectionClick();
+                  notifier.setHeadlineScale(1.0);
+                },
+                child: Slider(
+                  value: state.headlineScale,
+                  min: 0.85,
+                  max: 1.15,
+                  divisions: 6,
+                  label: '${(state.headlineScale * 100).round()}%',
+                  onChanged: notifier.setHeadlineScale,
+                  onChangeEnd: (_) => Haptics.selectionClick(),
+                ),
               ),
-            ),
-            Text(
-              '${(state.headlineScale * 100).round()}%',
-              style: theme.textTheme.labelMedium,
             ),
           ],
         ),
@@ -582,7 +595,7 @@ class _PicsartToolDockState extends ConsumerState<PicsartToolDock> {
                   )
                 : const Icon(Icons.auto_awesome_rounded, size: 18),
             label: Text(
-              state.isExtracting ? 'Regenerating...' : 'Regenerate All Fields',
+              state.isExtracting ? 'Regenerating...' : 'AI Rewrite All',
               style: const TextStyle(fontWeight: FontWeight.w600),
             ),
             style: FilledButton.styleFrom(
@@ -734,18 +747,21 @@ class _PicsartToolDockState extends ConsumerState<PicsartToolDock> {
             children: [
               Text('Size', style: theme.textTheme.labelMedium),
               Expanded(
-                child: Slider(
-                  value: state.watermarkSize,
-                  min: 24,
-                  max: 160,
-                  divisions: 17,
-                  label: '${state.watermarkSize.round()}',
-                  onChanged: notifier.setWatermarkSize,
+                child: GestureDetector(
+                  onDoubleTap: () {
+                    Haptics.selectionClick();
+                    notifier.setWatermarkSize(64.0);
+                  },
+                  child: Slider(
+                    value: state.watermarkSize,
+                    min: 24,
+                    max: 160,
+                    divisions: 17,
+                    label: '${state.watermarkSize.round()}',
+                    onChanged: notifier.setWatermarkSize,
+                    onChangeEnd: (_) => Haptics.selectionClick(),
+                  ),
                 ),
-              ),
-              Text(
-                '${state.watermarkSize.round()}',
-                style: theme.textTheme.labelMedium,
               ),
             ],
           ),

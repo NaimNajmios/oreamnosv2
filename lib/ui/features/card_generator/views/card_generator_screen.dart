@@ -178,36 +178,12 @@ class _CardGeneratorScreenState extends ConsumerState<CardGeneratorScreen> {
               ),
             ),
             actions: [
-              IconButton(
-                icon: const Icon(Icons.undo_rounded),
-                tooltip: 'Undo',
-                onPressed: vm.canUndo
-                    ? () {
-                        Haptics.lightImpact();
-                        ref
-                            .read(cardGeneratorViewModelProvider.notifier)
-                            .undo();
-                      }
-                    : null,
-              ),
-              IconButton(
-                icon: const Icon(Icons.redo_rounded),
-                tooltip: 'Redo',
-                onPressed: vm.canRedo
-                    ? () {
-                        Haptics.lightImpact();
-                        ref
-                            .read(cardGeneratorViewModelProvider.notifier)
-                            .redo();
-                      }
-                    : null,
-              ),
               if (hasData)
                 Padding(
-                  padding: const EdgeInsets.only(right: AppSpacing.xs),
-                  child: IconButton(
-                    icon: const Icon(Icons.ios_share_rounded),
-                    tooltip: 'Export',
+                  padding: const EdgeInsets.symmetric(horizontal: AppSpacing.sm, vertical: 8),
+                  child: FilledButton.icon(
+                    icon: const Icon(Icons.ios_share_rounded, size: 18),
+                    label: const Text('Export', style: TextStyle(fontWeight: FontWeight.w600)),
                     onPressed: () {
                       Haptics.lightImpact();
                       ExportBottomSheet.show(
@@ -312,8 +288,11 @@ class _CardGeneratorScreenState extends ConsumerState<CardGeneratorScreen> {
                     )
                   else if (state.backgroundImage != null)
                     _buildBackgroundByPosition(state),
-                  CardCanvasDispatcher(
-                    cardData: state.cardData!,
+                  AnimatedSwitcher(
+                    duration: const Duration(milliseconds: 300),
+                    child: CardCanvasDispatcher(
+                      key: ValueKey(state.selectedTemplate),
+                      cardData: state.cardData!,
                     config: CardConfig(
                       template: state.selectedTemplate,
                       backgroundType: state.backgroundType,
@@ -365,6 +344,7 @@ class _CardGeneratorScreenState extends ConsumerState<CardGeneratorScreen> {
                         state.selectedRatio.name,
                       ),
                     ),
+                  ),
                   ),
                   // Badge overlay as in original (badgeText)
                   if (state.badgeText != null && state.badgeText!.isNotEmpty)
@@ -433,8 +413,42 @@ class _CardGeneratorScreenState extends ConsumerState<CardGeneratorScreen> {
           ),
         ),
 
+        // Undo / Redo controls above the dock
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: AppSpacing.md, vertical: AppSpacing.sm),
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.end,
+            children: [
+              IconButton.filledTonal(
+                icon: const Icon(Icons.undo_rounded, size: 20),
+                tooltip: 'Undo',
+                onPressed: state.canUndo
+                    ? () {
+                        Haptics.lightImpact();
+                        ref
+                            .read(cardGeneratorViewModelProvider.notifier)
+                            .undo();
+                      }
+                    : null,
+              ),
+              const SizedBox(width: AppSpacing.sm),
+              IconButton.filledTonal(
+                icon: const Icon(Icons.redo_rounded, size: 20),
+                tooltip: 'Redo',
+                onPressed: state.canRedo
+                    ? () {
+                        Haptics.lightImpact();
+                        ref
+                            .read(cardGeneratorViewModelProvider.notifier)
+                            .redo();
+                      }
+                    : null,
+              ),
+            ],
+          ),
+        ),
         // New PicsArt-style bottom tool dock
-        PicsartToolDock(),
+        const PicsartToolDock(),
       ],
     );
   }
