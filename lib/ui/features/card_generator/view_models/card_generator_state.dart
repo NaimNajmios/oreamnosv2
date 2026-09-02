@@ -42,6 +42,7 @@ abstract class CardGeneratorState with _$CardGeneratorState {
 
     @Default({}) Set<String> rewritingFields,
     String? rewriteError,
+    @Default({}) Set<String> missingFields,
 
     String? watermarkText,
     @Default(false) bool showWatermark,

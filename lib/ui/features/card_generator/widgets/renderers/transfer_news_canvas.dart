@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 
 import '../../../../../domain/models/card_config.dart';
 import '../../../../../domain/models/card_data.dart';
+import '../../../../../domain/services/card_data_normalizer.dart';
+import '../card_slot.dart';
 import '../editable_canvas_text.dart';
 import '../primitives/primitives.dart';
 
@@ -24,10 +26,11 @@ class TransferNewsCanvas extends StatelessWidget {
       subtext: data.quote,
     );
 
-    final hasQuote = data.quote.isNotEmpty && data.quote != 'N/A';
-    final hasFee = data.fee.isNotEmpty && data.fee != 'N/A';
-    final hasContract =
-        data.contractLength.isNotEmpty && data.contractLength != 'N/A';
+    final actionClean = CardDataNormalizer.cleanValue(data.action);
+    final hasQuote = CardDataNormalizer.cleanValue(data.quote).isNotEmpty;
+    final hasFee = CardDataNormalizer.cleanValue(data.fee).isNotEmpty;
+    final hasContract = CardDataNormalizer.cleanValue(data.contractLength)
+        .isNotEmpty;
 
     return BroadcastBackground(
       config: config,
@@ -40,8 +43,8 @@ class TransferNewsCanvas extends StatelessWidget {
             Row(
               children: [
                 Text(
-                  data.action.isNotEmpty && data.action != 'N/A'
-                      ? data.action.toUpperCase()
+                  actionClean.isNotEmpty
+                      ? actionClean.toUpperCase()
                       : 'TRANSFER NEWS',
                   style: CardTypography.kicker(
                     color: Colors.greenAccent,
@@ -49,14 +52,17 @@ class TransferNewsCanvas extends StatelessWidget {
                   ),
                 ),
                 const Spacer(),
-                if (data.feeCategory.isNotEmpty && data.feeCategory != 'N/A')
-                  Text(
+                CardSlot(
+                  value: data.feeCategory,
+                  fieldKey: 'feeCategory',
+                  child: Text(
                     data.feeCategory.toUpperCase(),
                     style: CardTypography.meta(
                       color: Colors.white70,
                       fontSize: 10,
                     ),
                   ),
+                ),
               ],
             ),
 
@@ -226,14 +232,17 @@ class TransferNewsCanvas extends StatelessWidget {
                   ),
                 ),
                 const Spacer(),
-                if (data.transferType.isNotEmpty && data.transferType != 'N/A')
-                  Text(
+                CardSlot(
+                  value: data.transferType,
+                  fieldKey: 'transferType',
+                  child: Text(
                     data.transferType.toUpperCase(),
                     style: CardTypography.meta(
                       color: Colors.white.withValues(alpha: 0.6),
                       fontSize: 10,
                     ),
                   ),
+                ),
               ],
             ),
           ],

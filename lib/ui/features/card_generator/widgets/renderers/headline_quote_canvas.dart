@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 
 import '../../../../../domain/models/card_config.dart';
 import '../../../../../domain/models/card_data.dart';
+import '../../../../../domain/services/card_data_normalizer.dart';
+import '../card_slot.dart';
 import '../editable_canvas_text.dart';
 import '../primitives/primitives.dart';
 
@@ -18,11 +20,11 @@ class HeadlineQuoteCanvas extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final fontMultiplier = config.fontSizeMultiplier;
-    final quoteText = data.subtext.isNotEmpty && data.subtext != 'N/A'
-        ? data.subtext
-        : data.headline;
-    final hasAuthor = data.quoteAuthor.isNotEmpty && data.quoteAuthor != 'N/A';
-    final hasCategory = data.category.isNotEmpty && data.category != 'N/A';
+    final cleanSubtext = CardDataNormalizer.cleanValue(data.subtext);
+    final cleanHeadline = CardDataNormalizer.cleanValue(data.headline);
+    final quoteText = cleanSubtext.isNotEmpty ? cleanSubtext : cleanHeadline;
+    final hasAuthor = CardDataNormalizer.cleanValue(data.quoteAuthor)
+        .isNotEmpty;
 
     final density = ContentFitResolver.resolve(
       hero: quoteText,
@@ -59,23 +61,24 @@ class HeadlineQuoteCanvas extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 // Category Kicker
-                if (hasCategory)
-                  Text(
+                CardSlot(
+                  value: data.category,
+                  fieldKey: 'category',
+                  child: Text(
                     data.category.toUpperCase(),
                     style: CardTypography.kicker(
                       color: Colors.amberAccent,
                       fontSize: 11,
                     ),
                   ),
+                ),
 
                 const Spacer(),
 
                 // Main Quote in Headline Scale with Broadcast Glow
                 EditableCanvasText(
                   '“$quoteText”',
-                  fieldKey: data.subtext.isNotEmpty && data.subtext != 'N/A'
-                      ? 'subtext'
-                      : 'headline',
+                  fieldKey: cleanSubtext.isNotEmpty ? 'subtext' : 'headline',
                   enableGlow: true,
                   style: config
                       .font(
@@ -133,18 +136,23 @@ class HeadlineQuoteCanvas extends StatelessWidget {
                               minFontSize: 10,
                             ),
                             if (data.authorTitle.isNotEmpty &&
-                                data.authorTitle != 'N/A') ...[
-                              const SizedBox(height: 2),
-                              Text(
-                                data.authorTitle,
-                                style: CardTypography.meta(
-                                  color: Colors.white70,
-                                  fontSize: 11,
+                                data.authorTitle != 'N/A')
+                              CardSlot(
+                                value: data.authorTitle,
+                                fieldKey: 'authorTitle',
+                                child: Padding(
+                                  padding: const EdgeInsets.only(top: 2),
+                                  child: Text(
+                                    data.authorTitle,
+                                    style: CardTypography.meta(
+                                      color: Colors.white70,
+                                      fontSize: 11,
+                                    ),
+                                    maxLines: 1,
+                                    overflow: TextOverflow.ellipsis,
+                                  ),
                                 ),
-                                maxLines: 1,
-                                overflow: TextOverflow.ellipsis,
                               ),
-                            ],
                           ],
                         ),
                       ),
@@ -170,11 +178,15 @@ class HeadlineQuoteCanvas extends StatelessWidget {
                     const Spacer(),
                     if (data.relatedTeams.isNotEmpty &&
                         data.relatedTeams != 'N/A')
-                      Text(
-                        data.relatedTeams,
-                        style: CardTypography.meta(
-                          color: Colors.white.withValues(alpha: 0.6),
-                          fontSize: 10,
+                      CardSlot(
+                        value: data.relatedTeams,
+                        fieldKey: 'relatedTeams',
+                        child: Text(
+                          data.relatedTeams,
+                          style: CardTypography.meta(
+                            color: Colors.white.withValues(alpha: 0.6),
+                            fontSize: 10,
+                          ),
                         ),
                       ),
                   ],

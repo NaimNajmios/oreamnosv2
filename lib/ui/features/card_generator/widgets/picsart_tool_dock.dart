@@ -7,6 +7,8 @@ import 'package:oreamnos/data/services/preferences_service.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:oreamnos/domain/models/card_template.dart';
 import 'package:oreamnos/domain/models/card_config.dart';
+import 'package:oreamnos/domain/models/card_field.dart';
+import 'package:oreamnos/domain/models/card_field_registry.dart';
 import 'package:oreamnos/ui/core/utils/haptics.dart';
 import 'package:oreamnos/ui/core/widgets/app_chip.dart';
 import 'package:oreamnos/ui/core/widgets/app_switch.dart';
@@ -573,9 +575,13 @@ class _PicsartToolDockState extends ConsumerState<PicsartToolDock> {
     if (state.cardData == null) return const SizedBox();
 
     final json = state.cardData!.toJson();
-    final stringFields = json.entries
-        .where((e) => e.value is String && e.key != 'runtimeType')
+    final fields = CardFieldRegistry.fieldsFor(state.selectedTemplate);
+    final editableFields = fields
+        .where(
+          (f) => f.type != CardFieldType.list && f.type != CardFieldType.bool_,
+        )
         .toList();
+    final groups = ['primary', 'secondary', 'optional'];
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -607,28 +613,65 @@ class _PicsartToolDockState extends ConsumerState<PicsartToolDock> {
             ),
           ),
         ),
-        ...stringFields.map((entry) {
-          return _DynamicField(
-            key: ValueKey('${state.cardData!.runtimeType}_${entry.key}'),
-            fieldKey: entry.key,
-            initialValue: entry.value as String,
-            onChanged: (v) => notifier.updateCardField(entry.key, v),
-            isRewriting: state.isRewriting(entry.key),
-            onRewrite: () async {
-              final brief = state.brief;
-              if (brief == null) return;
-              final prefs = getIt<PreferencesService>();
-              final apiKey = await prefs.getApiKey(brief.provider);
-              if (apiKey == null || apiKey.isEmpty) return;
-              notifier.rewriteDynamicField(
-                fieldKey: entry.key,
-                provider: brief.provider,
-                modelId: brief.modelId,
-                apiKey: apiKey,
+        for (final group in groups) ...[
+          if (editableFields.any((f) => f.group == group)) ...[
+            Padding(
+              padding: const EdgeInsets.only(top: 4, bottom: 8),
+              child: Row(
+                children: [
+                  Text(
+                    group.toUpperCase(),
+                    style: theme.textTheme.labelSmall?.copyWith(
+                      letterSpacing: 1.2,
+                      fontWeight: FontWeight.w700,
+                      color: theme.colorScheme.primary.withValues(alpha: 0.8),
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Divider(
+                      color: theme.colorScheme.outlineVariant.withValues(
+                        alpha: 0.5,
+                      ),
+                      height: 1,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            ...editableFields.where((f) => f.group == group).map((field) {
+              final rawVal = json[field.key];
+              final initialVal = rawVal == null ? '' : rawVal.toString();
+              final isMissing = state.missingFields.contains(field.key);
+
+              return _DynamicField(
+                key: ValueKey('${state.cardData!.runtimeType}_${field.key}'),
+                fieldKey: field.key,
+                label: field.label,
+                maxLen: field.maxChars > 0 ? field.maxChars : 120,
+                isRequired: field.required,
+                isMissing: isMissing,
+                aiHint: field.aiHint,
+                initialValue: initialVal,
+                onChanged: (v) => notifier.updateCardField(field.key, v),
+                isRewriting: state.isRewriting(field.key),
+                onRewrite: () async {
+                  final brief = state.brief;
+                  if (brief == null) return;
+                  final prefs = getIt<PreferencesService>();
+                  final apiKey = await prefs.getApiKey(brief.provider);
+                  if (apiKey == null || apiKey.isEmpty) return;
+                  notifier.rewriteDynamicField(
+                    fieldKey: field.key,
+                    provider: brief.provider,
+                    modelId: brief.modelId,
+                    apiKey: apiKey,
+                  );
+                },
               );
-            },
-          );
-        }),
+            }),
+          ],
+        ],
       ],
     );
   }
@@ -918,6 +961,9 @@ class _Field extends StatelessWidget {
   final ValueChanged<String> onChanged;
   final VoidCallback? onRewrite;
   final bool isRewriting;
+  final bool isMissing;
+  final bool isRequired;
+  final String? aiHint;
 
   const _Field({
     required this.controller,
@@ -927,11 +973,16 @@ class _Field extends StatelessWidget {
     required this.onChanged,
     this.onRewrite,
     this.isRewriting = false,
+    this.isMissing = false,
+    this.isRequired = false,
+    this.aiHint,
   });
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final isWarn = isMissing && isRequired;
+
     return TextField(
       controller: controller,
       maxLength: maxLen,
@@ -939,10 +990,21 @@ class _Field extends StatelessWidget {
       minLines: 1,
       style: theme.textTheme.bodyMedium?.copyWith(fontWeight: FontWeight.w500),
       decoration: InputDecoration(
-        labelText: label,
+        labelText: isRequired ? '$label *' : label,
         labelStyle: theme.textTheme.labelMedium?.copyWith(
-          color: theme.colorScheme.onSurface.withValues(alpha: 0.6),
+          color: isWarn
+              ? Colors.amber.shade700
+              : theme.colorScheme.onSurface.withValues(alpha: 0.7),
+          fontWeight: isWarn ? FontWeight.w700 : FontWeight.w500,
         ),
+        helperText: isWarn ? 'Missing value — tap to fill' : aiHint,
+        helperStyle: isWarn
+            ? TextStyle(
+                color: Colors.amber.shade700,
+                fontSize: 11,
+                fontWeight: FontWeight.w600,
+              )
+            : null,
         counterText: '',
         isDense: true,
         contentPadding: const EdgeInsets.symmetric(
@@ -951,22 +1013,30 @@ class _Field extends StatelessWidget {
         ),
         border: OutlineInputBorder(
           borderRadius: AppSpacing.borderRadiusSm,
-          borderSide: BorderSide(color: theme.colorScheme.outline),
+          borderSide: BorderSide(
+            color: isWarn ? Colors.amber.shade600 : theme.colorScheme.outline,
+          ),
         ),
         enabledBorder: OutlineInputBorder(
           borderRadius: AppSpacing.borderRadiusSm,
           borderSide: BorderSide(
-            color: theme.colorScheme.outline.withValues(alpha: 0.7),
+            color: isWarn
+                ? Colors.amber.shade600
+                : theme.colorScheme.outline.withValues(alpha: 0.7),
+            width: isWarn ? 1.5 : 1,
           ),
         ),
         focusedBorder: OutlineInputBorder(
           borderRadius: AppSpacing.borderRadiusSm,
-          borderSide: BorderSide(color: theme.colorScheme.primary, width: 1.4),
+          borderSide: BorderSide(
+            color: isWarn ? Colors.amber.shade600 : theme.colorScheme.primary,
+            width: 1.5,
+          ),
         ),
         filled: true,
-        fillColor: theme.colorScheme.surfaceContainerHighest.withValues(
-          alpha: 0.35,
-        ),
+        fillColor: isWarn
+            ? Colors.amber.withValues(alpha: 0.08)
+            : theme.colorScheme.surfaceContainerHighest.withValues(alpha: 0.35),
         suffixIcon: onRewrite == null
             ? null
             : isRewriting
@@ -991,6 +1061,11 @@ class _Field extends StatelessWidget {
 
 class _DynamicField extends StatefulWidget {
   final String fieldKey;
+  final String label;
+  final int maxLen;
+  final bool isRequired;
+  final bool isMissing;
+  final String? aiHint;
   final String initialValue;
   final ValueChanged<String> onChanged;
   final VoidCallback onRewrite;
@@ -999,6 +1074,11 @@ class _DynamicField extends StatefulWidget {
   const _DynamicField({
     super.key,
     required this.fieldKey,
+    required this.label,
+    required this.maxLen,
+    required this.isRequired,
+    required this.isMissing,
+    this.aiHint,
     required this.initialValue,
     required this.onChanged,
     required this.onRewrite,
@@ -1016,14 +1096,18 @@ class _DynamicFieldState extends State<_DynamicField> {
   void initState() {
     super.initState();
     _ctrl = TextEditingController(
-      text: widget.initialValue == 'N/A' ? '' : widget.initialValue,
+      text: (widget.initialValue == 'N/A' || widget.initialValue == '-')
+          ? ''
+          : widget.initialValue,
     );
   }
 
   @override
   void didUpdateWidget(_DynamicField old) {
     super.didUpdateWidget(old);
-    final newVal = widget.initialValue == 'N/A' ? '' : widget.initialValue;
+    final newVal = (widget.initialValue == 'N/A' || widget.initialValue == '-')
+        ? ''
+        : widget.initialValue;
     if (_ctrl.text != newVal && !FocusScope.of(context).hasFocus) {
       _ctrl.text = newVal;
     }
@@ -1037,19 +1121,16 @@ class _DynamicFieldState extends State<_DynamicField> {
 
   @override
   Widget build(BuildContext context) {
-    // Capitalize fieldKey for label
-    final label =
-        widget.fieldKey.substring(0, 1).toUpperCase() +
-        widget.fieldKey
-            .substring(1)
-            .replaceAllMapped(RegExp(r'[A-Z]'), (m) => ' ${m[0]}');
     return Padding(
       padding: const EdgeInsets.only(bottom: AppSpacing.md),
       child: _Field(
         controller: _ctrl,
-        label: label,
-        maxLen: 120,
-        maxLines: 2,
+        label: widget.label,
+        maxLen: widget.maxLen,
+        maxLines: widget.maxLen > 60 ? 3 : 1,
+        isRequired: widget.isRequired,
+        isMissing: widget.isMissing,
+        aiHint: widget.aiHint,
         onChanged: widget.onChanged,
         isRewriting: widget.isRewriting,
         onRewrite: widget.onRewrite,

@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../../../../../domain/models/card_config.dart';
 import '../../../../../domain/models/card_data.dart';
+import '../card_slot.dart';
 import '../primitives/primitives.dart';
 
 class TopStatsCanvas extends StatelessWidget {
@@ -43,14 +44,17 @@ class TopStatsCanvas extends StatelessWidget {
                   ),
                 ),
                 const Spacer(),
-                if (data.matchContext != 'N/A' && data.matchContext.isNotEmpty)
-                  Text(
+                CardSlot(
+                  value: data.matchContext,
+                  fieldKey: 'matchContext',
+                  child: Text(
                     data.matchContext.toUpperCase(),
                     style: CardTypography.meta(
                       color: Colors.white70,
                       fontSize: 10,
                     ),
                   ),
+                ),
               ],
             ),
 
@@ -105,18 +109,21 @@ class TopStatsCanvas extends StatelessWidget {
                               maxLines: 1,
                               overflow: TextOverflow.ellipsis,
                             ),
-                            if (s.context.isNotEmpty && s.context != 'N/A') ...[
-                              const SizedBox(height: 2),
-                              Text(
-                                s.context,
-                                style: CardTypography.meta(
-                                  color: Colors.white60,
-                                  fontSize: 10,
+                            CardSlot(
+                              value: s.context,
+                              child: Padding(
+                                padding: const EdgeInsets.only(top: 2),
+                                child: Text(
+                                  s.context,
+                                  style: CardTypography.meta(
+                                    color: Colors.white60,
+                                    fontSize: 10,
+                                  ),
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
                                 ),
-                                maxLines: 1,
-                                overflow: TextOverflow.ellipsis,
                               ),
-                            ],
+                            ),
                           ],
                         ),
                       ),

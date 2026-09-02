@@ -15,6 +15,7 @@ import 'package:oreamnos/domain/models/card_brief.dart';
 import 'package:oreamnos/domain/models/card_data.dart';
 import 'package:oreamnos/domain/models/card_template.dart';
 import 'package:oreamnos/domain/models/card_config_snapshot.dart';
+import 'package:oreamnos/domain/services/card_data_normalizer.dart';
 
 import 'card_generator_state.dart';
 
@@ -172,13 +173,22 @@ class CardGeneratorViewModel extends Notifier<CardGeneratorState> {
       );
 
       CardData newCardData;
-      if (polished.headline == 'N/A' && b.headline.isNotEmpty) {
+      if ((polished.headline == 'N/A' || polished.headline.isEmpty) &&
+          b.headline.isNotEmpty) {
         newCardData = polished.copyWithHeadline(b.headline);
       } else {
         newCardData = polished;
       }
 
-      state = state.copyWith(cardData: newCardData);
+      final normalized = CardDataNormalizer.normalize(
+        state.selectedTemplate,
+        newCardData.toJson(),
+      );
+
+      state = state.copyWith(
+        cardData: newCardData,
+        missingFields: normalized.missingKeys,
+      );
     } catch (e) {
       state = state.copyWith(extractionError: e.toString());
     } finally {
@@ -440,11 +450,19 @@ class CardGeneratorViewModel extends Notifier<CardGeneratorState> {
     _saveSnapshot();
 
     final json = state.cardData!.toJson();
-    json[key] = value.isEmpty ? 'N/A' : value;
+    final cleanedVal = CardDataNormalizer.cleanValue(value);
+    json[key] = cleanedVal;
 
     try {
       final updatedData = CardData.fromJson(json);
-      state = state.copyWith(cardData: updatedData);
+      final normalized = CardDataNormalizer.normalize(
+        state.selectedTemplate,
+        json,
+      );
+      state = state.copyWith(
+        cardData: updatedData,
+        missingFields: normalized.missingKeys,
+      );
     } catch (e) {
       // Ignore parse errors if somehow mapping fails
     }

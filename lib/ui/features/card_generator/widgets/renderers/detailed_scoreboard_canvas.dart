@@ -3,6 +3,8 @@ import 'package:flutter/material.dart';
 
 import '../../../../../domain/models/card_config.dart';
 import '../../../../../domain/models/card_data.dart';
+import '../../../../../domain/services/card_data_normalizer.dart';
+import '../card_slot.dart';
 import '../editable_canvas_text.dart';
 import '../primitives/primitives.dart';
 
@@ -17,9 +19,10 @@ class DetailedScoreboardCanvas extends StatelessWidget {
   final CardConfig config;
 
   double _parseHomePct(String raw) {
-    if (raw == 'N/A' || raw.isEmpty) return 0.5;
-    final clean = raw.replaceAll(RegExp(r'[^0-9]'), '');
-    final val = double.tryParse(clean);
+    final clean = CardDataNormalizer.cleanValue(raw);
+    if (clean.isEmpty) return 0.5;
+    final digits = clean.replaceAll(RegExp(r'[^0-9]'), '');
+    final val = double.tryParse(digits);
     if (val == null) return 0.5;
     if (val > 1.0) return (val / 100).clamp(0.1, 0.9);
     return val.clamp(0.1, 0.9);
@@ -34,14 +37,15 @@ class DetailedScoreboardCanvas extends StatelessWidget {
       subtext: '${data.homeScorers} ${data.awayScorers}',
     );
 
-    final hasHomeScorers =
-        data.homeScorers.isNotEmpty && data.homeScorers != 'N/A';
-    final hasAwayScorers =
-        data.awayScorers.isNotEmpty && data.awayScorers != 'N/A';
-    final hasPossession =
-        data.possession.isNotEmpty && data.possession != 'N/A';
-    final hasShots =
-        data.shotsOnTarget.isNotEmpty && data.shotsOnTarget != 'N/A';
+    final compClean = CardDataNormalizer.cleanValue(data.competition);
+    final hasHomeScorers = CardDataNormalizer.cleanValue(data.homeScorers)
+        .isNotEmpty;
+    final hasAwayScorers = CardDataNormalizer.cleanValue(data.awayScorers)
+        .isNotEmpty;
+    final hasPossession = CardDataNormalizer.cleanValue(data.possession)
+        .isNotEmpty;
+    final hasShots = CardDataNormalizer.cleanValue(data.shotsOnTarget)
+        .isNotEmpty;
 
     final homeColor = config.colorPair.isNotEmpty
         ? config.colorPair.first
@@ -62,8 +66,8 @@ class DetailedScoreboardCanvas extends StatelessWidget {
             Row(
               children: [
                 Text(
-                  data.competition != 'N/A' && data.competition.isNotEmpty
-                      ? data.competition.toUpperCase()
+                  compClean.isNotEmpty
+                      ? compClean.toUpperCase()
                       : 'MATCH RESULT',
                   style: CardTypography.kicker(
                     color: Colors.white70,
@@ -71,14 +75,17 @@ class DetailedScoreboardCanvas extends StatelessWidget {
                   ),
                 ),
                 const Spacer(),
-                if (data.matchStatus != 'N/A' && data.matchStatus.isNotEmpty)
-                  Text(
+                CardSlot(
+                  value: data.matchStatus,
+                  fieldKey: 'matchStatus',
+                  child: Text(
                     data.matchStatus.toUpperCase(),
                     style: CardTypography.kicker(
                       color: Colors.greenAccent,
                       fontSize: 11,
                     ),
                   ),
+                ),
               ],
             ),
 
@@ -312,14 +319,17 @@ class DetailedScoreboardCanvas extends StatelessWidget {
                   ),
                 ),
                 const Spacer(),
-                if (data.attendance != 'N/A' && data.attendance.isNotEmpty)
-                  Text(
+                CardSlot(
+                  value: data.attendance,
+                  fieldKey: 'attendance',
+                  child: Text(
                     'Att: ${data.attendance}',
                     style: CardTypography.meta(
                       color: Colors.white.withValues(alpha: 0.6),
                       fontSize: 10,
                     ),
                   ),
+                ),
               ],
             ),
           ],

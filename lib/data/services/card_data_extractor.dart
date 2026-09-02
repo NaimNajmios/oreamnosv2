@@ -8,9 +8,18 @@ import 'package:oreamnos/domain/models/card_template.dart';
 import 'package:oreamnos/data/services/curator_factory.dart';
 import 'package:oreamnos/data/models/ai_provider.dart';
 
+import 'package:oreamnos/domain/services/card_data_normalizer.dart';
+
 @lazySingleton
 class CardDataExtractor {
-  static const String _na = 'N/A';
+  final Map<String, CardData> _cache = {};
+  Set<String> _lastMissingKeys = {};
+
+  /// Missing required keys from the most recent normalization pass.
+  Set<String> get lastMissingKeys => Set.unmodifiable(_lastMissingKeys);
+
+  /// Clears the in-memory extraction cache.
+  void clearCache() => _cache.clear();
 
   Future<CardData> extractCardData({
     required CardBrief brief,
@@ -21,6 +30,13 @@ class CardDataExtractor {
     bool isRefresh = false,
   }) async {
     final effectiveTemplate = template ?? CardTemplate.socialPost;
+    final cacheKey =
+        '${effectiveTemplate.name}:${brief.promptContext.hashCode}';
+
+    if (!isRefresh && _cache.containsKey(cacheKey)) {
+      return _cache[cacheKey]!;
+    }
+
     final curator = CuratorFactory.getCurator(provider);
     final res = await curator.extractCardData(
       brief: brief,
@@ -35,19 +51,75 @@ class CardDataExtractor {
 
     try {
       final Map<String, dynamic> jsonMap = _parseLenient(cleanedJson);
-      return _mapToCardData(jsonMap, effectiveTemplate, brief);
+      final normalized = CardDataNormalizer.normalize(
+        effectiveTemplate,
+        jsonMap,
+      );
+      _lastMissingKeys = normalized.missingKeys;
+      final cardData = _mapToCardData(
+        normalized.json,
+        effectiveTemplate,
+        brief,
+      );
+      _cache[cacheKey] = cardData;
+      return cardData;
     } catch (e) {
-      // Fallback: treat as sparse companion if rich parse fails
+      // Fallback 1: Attempt lenient JSON repair on FormatException
+      try {
+        final repaired = _attemptJsonRepair(cleanedJson);
+        final Map<String, dynamic> jsonMap =
+            jsonDecode(repaired) as Map<String, dynamic>;
+        final normalized = CardDataNormalizer.normalize(
+          effectiveTemplate,
+          jsonMap,
+        );
+        _lastMissingKeys = normalized.missingKeys;
+        final cardData = _mapToCardData(
+          normalized.json,
+          effectiveTemplate,
+          brief,
+        );
+        _cache[cacheKey] = cardData;
+        return cardData;
+      } catch (_) {}
+
+      // Fallback 2: treat as sparse companion if rich parse fails
       try {
         final fallback = jsonDecode(cleanedJson) as Map<String, dynamic>;
         if (fallback.containsKey('headline') ||
             fallback.containsKey('content') ||
             fallback.containsKey('playerName')) {
-          return _mapToCardData(fallback, effectiveTemplate, brief);
+          final normalized = CardDataNormalizer.normalize(
+            effectiveTemplate,
+            fallback,
+          );
+          _lastMissingKeys = normalized.missingKeys;
+          final cardData = _mapToCardData(
+            normalized.json,
+            effectiveTemplate,
+            brief,
+          );
+          _cache[cacheKey] = cardData;
+          return cardData;
         }
       } catch (_) {}
       throw Exception('Failed to parse CardData JSON: $e\nRaw: $cleanedJson');
     }
+  }
+
+  String _attemptJsonRepair(String raw) {
+    var s = raw.trim();
+    if (!s.startsWith('{')) {
+      final start = s.indexOf('{');
+      if (start != -1) s = s.substring(start);
+    }
+    if (!s.endsWith('}')) {
+      final end = s.lastIndexOf('}');
+      if (end != -1) s = s.substring(0, end + 1);
+    }
+    return s
+        .replaceAll(RegExp(r',\s*}'), '}')
+        .replaceAll(RegExp(r',\s*]'), ']');
   }
 
   // Lenient fence strip + bracket depth scan (Android parity)
@@ -98,10 +170,10 @@ class CardDataExtractor {
     }
   }
 
-  String _s(Map<String, dynamic> m, String key, [String fallback = _na]) {
+  String _s(Map<String, dynamic> m, String key, [String fallback = '']) {
     final v = m[key];
     if (v == null) return fallback;
-    final s = v.toString().trim();
+    final s = CardDataNormalizer.cleanValue(v.toString());
     if (s.isEmpty) return fallback;
     return s;
   }
