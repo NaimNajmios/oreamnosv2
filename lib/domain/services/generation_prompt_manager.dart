@@ -64,6 +64,16 @@ class GenerationPromptManager {
       buf.writeln('   Reference sources: ${searchSources.join(', ')}');
       buf.writeln('');
     }
+    buf.writeln('STRICT EDITORIAL GUIDELINES:');
+    buf.writeln('- You are writing formal sports news. NEVER include conversational filler, encouraging words, or well-wishes (e.g., "Good luck", "Semoga berjaya", "Here is the news").');
+    buf.writeln('- Do not add any personal commentary unless specifically requested by the user.');
+    buf.writeln('- Maintain a strictly objective, journalistic tone at all times.');
+    buf.writeln('');
+    buf.writeln('QUOTE HANDLING:');
+    buf.writeln('- PRESERVE QUOTES: If the source material contains direct quotes (text enclosed in quotation marks), you MUST preserve them as direct quotes. Do NOT rephrase them into indirect, third-person speech.');
+    buf.writeln('- TRANSLATION TONE: Translate quoted speech into a natural, conversational Bahasa Malaysia. It should sound like a real person speaking — not too stiff or hyper-formal, but not overly casual slang either.');
+    buf.writeln('- Keep the translated speech enclosed in quotation marks ("...").');
+    buf.writeln('');
 
     buf.writeln(
       'OUTPUT FORMAT: Return ONLY a single valid JSON object. No preamble, no explanation, no markdown, no code fence.',

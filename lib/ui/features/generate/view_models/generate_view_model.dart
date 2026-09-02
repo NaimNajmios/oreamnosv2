@@ -107,11 +107,11 @@ class GenerateViewModel extends Notifier<GenerateUiState>
   String get _lengthInstruction {
     switch (state.promptLength) {
       case PromptLength.short:
-        return 'Keep the generated body text very concise and punchy (1-2 short sentences max).';
+        return 'Short and Direct. You MUST include ALL facts and meaning from the original content, but strip away all filler words. Be extremely direct and concise. DO NOT omit any key details or names.';
       case PromptLength.medium:
-        return 'Provide a standard length post (2-3 sentences).';
+        return 'Medium and Natural. Translate and rewrite the original content naturally so it is easy to digest. Avoid stiff, literal translation phrasing, but ensure 100% of the original meaning is retained.';
       case PromptLength.long:
-        return 'Write a detailed and comprehensive post with more context and information (3-5 sentences).';
+        return 'Long and Contextual. Provide a comprehensive post. Weave in additional relevant context and background information (using the provided research/source facts or general football knowledge) to enrich the story, while keeping the original facts intact.';
     }
   }
 
