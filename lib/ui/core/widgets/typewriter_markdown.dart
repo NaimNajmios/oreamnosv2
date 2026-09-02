@@ -98,7 +98,7 @@ class _TypewriterMarkdownState extends State<TypewriterMarkdown> {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    
+
     // Replace newlines with double newlines to force markdown paragraph breaks.
     // This prevents MarkdownBody from merging single newlines into a single paragraph.
     final processedText = _displayedText.replaceAll('\n', '\n\n');

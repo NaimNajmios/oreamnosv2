@@ -121,8 +121,10 @@ class CuratedPost extends Equatable {
     unicode: true,
   );
 
-  static String _stripEmoji(String s) =>
-      s.replaceAll(_emojiRegex, '').replaceAll(RegExp(r'[ \t]{2,}'), ' ').trim();
+  static String _stripEmoji(String s) => s
+      .replaceAll(_emojiRegex, '')
+      .replaceAll(RegExp(r'[ \t]{2,}'), ' ')
+      .trim();
 
   static String _normalizeHashtag(String s) {
     var t = s.trim();
@@ -257,6 +259,8 @@ class CuratedPost extends Equatable {
       source = const SourceAttribution(label: '');
     }
 
+    source = _sanitizeSource(source);
+
     // Build rawMarkdown: title + body + hashtags only (no source inside)
     final buf = StringBuffer();
     if (title.isNotEmpty) {
@@ -288,6 +292,50 @@ class CuratedPost extends Equatable {
     return ReadabilityUtils.splitLongParagraphs(
       body.trim(),
       maxWordsPerParagraph: 40,
+    );
+  }
+
+  static SourceAttribution _sanitizeSource(SourceAttribution source) {
+    String label = source.label.trim();
+    String? url = source.url;
+
+    // Clear label if it's just a platform name
+    final purePlatform = RegExp(
+      r'^(x|x\.com|twitter|twitter\.com|x\s*/\s*twitter|twitter\s*/\s*x|t\.co)$',
+      caseSensitive: false,
+    );
+    if (purePlatform.hasMatch(label)) {
+      label = '';
+    }
+
+    // Strip " via X" or " via Twitter" from the end of valid labels
+    label = label
+        .replaceAll(
+          RegExp(
+            r'\s+via\s+(x|x\.com|twitter|twitter\.com)$',
+            caseSensitive: false,
+          ),
+          '',
+        )
+        .trim();
+
+    // Clear URL if it is a Twitter/X link (since the platform itself shouldn't be the source link)
+    if (url != null &&
+        (url.contains('twitter.com') ||
+            url.contains('x.com') ||
+            url.contains('t.co'))) {
+      url = null;
+    }
+
+    if (label.isEmpty && url == null) {
+      return const SourceAttribution(label: '');
+    }
+
+    return SourceAttribution(
+      label: label,
+      url: url,
+      domain: source.domain,
+      isInferred: source.isInferred,
     );
   }
 
@@ -348,6 +396,7 @@ class CuratedPost extends Equatable {
       );
       text = text.replaceAll(sourceRegex, '').trim();
     }
+    resolvedSource = _sanitizeSource(resolvedSource);
 
     // Title is first line if it looks like heading/bold or first line <100 chars and remaining text is longer
     String title = '';

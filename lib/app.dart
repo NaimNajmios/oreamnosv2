@@ -85,7 +85,7 @@ class _OreamnosAppState extends ConsumerState<OreamnosApp> {
 
       _router.go(RoutePaths.generate);
       ref.read(generateViewModelProvider.notifier).setPendingInput(text);
-      
+
       Future.microtask(() {
         if (mounted) {
           ref.read(generateViewModelProvider.notifier).generatePost(text);

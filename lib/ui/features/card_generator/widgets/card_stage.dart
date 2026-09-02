@@ -23,11 +23,7 @@ class CardStage extends StatelessWidget {
           decoration: BoxDecoration(
             borderRadius: AppSpacing.borderRadiusMd,
             boxShadow: const [
-              BoxShadow(
-                color: Colors.black12,
-                blurRadius: 24,
-                spreadRadius: 4,
-              ),
+              BoxShadow(color: Colors.black12, blurRadius: 24, spreadRadius: 4),
             ],
           ),
           clipBehavior: Clip.antiAlias,

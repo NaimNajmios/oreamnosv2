@@ -21,7 +21,7 @@ class GenerationPromptManager {
     buf.writeln(
       'OUTPUT LANGUAGE: All JSON values (title, body, source.label) MUST be in formal Bahasa Malaysia. Do NOT output English except for the football terms listed below.',
     );
-    
+
     if (isFanModeEnabled) {
       final club = fanClubName.isNotEmpty ? fanClubName : 'the club mentioned';
       buf.writeln(
@@ -122,7 +122,7 @@ class GenerationPromptManager {
       );
     }
     buf.writeln(
-      '- X/TWITTER SOURCE RULE: If the input is an X/Twitter post, extract the original source directly from the POST CONTENT. If found, format `source.label` as "[Original Source] via [Account Name]" (e.g., "David Ornstein via ArsenalNews") and leave `source.url` blank. If no original source is in the content, leave BOTH `source.label` and `source.url` blank (""). Do NOT use "X", "Twitter", "x.com", "twitter.com", or any mention of the platform as the source.',
+      '- X/TWITTER SOURCE RULE: If the input is an X/Twitter post, extract the original source directly from the POST CONTENT. If found, format `source.label` as "[Original Source] via [Account Name]" (e.g., "David Ornstein via ArsenalNews") and leave `source.url` blank. If no original source is in the content, leave BOTH `source.label` and `source.url` blank (""). ABSOLUTELY DO NOT use "X", "Twitter", "x.com", "twitter.com", or the account handle alone as the source.',
     );
     buf.writeln(
       '- If INPUT is empty, whitespace-only, or non-football / nonsensical, return title "" and body "" with source as above — do not hallucinate.',

@@ -12,6 +12,7 @@ class EditableCanvasText extends ConsumerWidget {
   final double minFontSize;
   final double stepGranularity;
   final bool autoSize;
+  final bool enableGlow;
 
   const EditableCanvasText(
     this.text, {
@@ -23,6 +24,7 @@ class EditableCanvasText extends ConsumerWidget {
     this.minFontSize = 8,
     this.stepGranularity = 1,
     this.autoSize = true,
+    this.enableGlow = false,
   });
 
   @override
@@ -30,10 +32,30 @@ class EditableCanvasText extends ConsumerWidget {
     final isFocused =
         ref.watch(cardGeneratorViewModelProvider).focusedField == fieldKey;
 
+    final effectiveShadows = enableGlow
+        ? [
+            const Shadow(
+              color: Color(0xB3000000),
+              blurRadius: 28,
+              offset: Offset(0, 6),
+            ),
+            const Shadow(
+              color: Color(0x66000000),
+              blurRadius: 8,
+              offset: Offset(0, 2),
+            ),
+            ...?style?.shadows,
+          ]
+        : style?.shadows;
+
+    final effectiveStyle = style != null
+        ? style!.copyWith(shadows: effectiveShadows)
+        : (enableGlow ? TextStyle(shadows: effectiveShadows) : null);
+
     Widget textWidget = autoSize
         ? AutoSizeText(
             text,
-            style: style,
+            style: effectiveStyle,
             textAlign: textAlign,
             maxLines: maxLines,
             minFontSize: minFontSize,
@@ -42,7 +64,7 @@ class EditableCanvasText extends ConsumerWidget {
           )
         : Text(
             text,
-            style: style,
+            style: effectiveStyle,
             textAlign: textAlign,
             maxLines: maxLines,
             overflow: TextOverflow.ellipsis,

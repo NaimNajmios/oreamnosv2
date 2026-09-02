@@ -195,5 +195,4 @@ class SettingsNotifier extends Notifier<SettingsState> {
     await _preferencesService.setFanClubName(name);
     state = state.copyWith(fanClubName: name);
   }
-
 }

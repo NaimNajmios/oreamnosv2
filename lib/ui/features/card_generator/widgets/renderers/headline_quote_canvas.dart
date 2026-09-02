@@ -1,10 +1,9 @@
 import 'package:flutter/material.dart';
-import 'package:google_fonts/google_fonts.dart';
 
 import '../../../../../domain/models/card_config.dart';
 import '../../../../../domain/models/card_data.dart';
-import '../../../../../data/services/gradient_builder.dart';
 import '../editable_canvas_text.dart';
+import '../primitives/primitives.dart';
 
 class HeadlineQuoteCanvas extends StatelessWidget {
   const HeadlineQuoteCanvas({
@@ -12,145 +11,173 @@ class HeadlineQuoteCanvas extends StatelessWidget {
     required this.data,
     required this.config,
   });
+
   final HeadlineQuote data;
   final CardConfig config;
 
   @override
   Widget build(BuildContext context) {
-    final colors = config.colorPair;
     final fontMultiplier = config.fontSizeMultiplier;
+    final quoteText = data.subtext.isNotEmpty && data.subtext != 'N/A'
+        ? data.subtext
+        : data.headline;
+    final hasAuthor = data.quoteAuthor.isNotEmpty && data.quoteAuthor != 'N/A';
+    final hasCategory = data.category.isNotEmpty && data.category != 'N/A';
 
-    return Container(
-      decoration: BoxDecoration(
-        gradient: config.backgroundImagePath != null
-            ? null
-            : GradientBuilder.vertical(colors),
-      ),
+    final density = ContentFitResolver.resolve(
+      hero: quoteText,
+      headline: data.quoteAuthor,
+      subtext: data.authorTitle,
+    );
+
+    return BroadcastBackground(
+      config: config,
       child: Stack(
+        fit: StackFit.expand,
         children: [
-          if (config.showScrim)
-            Positioned.fill(
-              child: Container(
-                decoration: BoxDecoration(
-                  gradient: GradientBuilder.scrimFor(
-                    config.scrimType,
-                    config.overlayOpacity,
-                  ),
+          // Giant Translucent Background Quote Glyph (Layered Ambient Depth)
+          Positioned(
+            top: 24,
+            left: 16,
+            child: IgnorePointer(
+              child: Text(
+                '“',
+                style: TextStyle(
+                  fontFamily: 'BarlowCondensed',
+                  fontWeight: FontWeight.w900,
+                  fontSize: 180,
+                  height: 0.8,
+                  color: Colors.white.withValues(alpha: 0.08),
                 ),
               ),
             ),
+          ),
+
           Padding(
-            padding: const EdgeInsets.all(28),
+            padding: const EdgeInsets.symmetric(horizontal: 26, vertical: 24),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                if (data.category != 'N/A')
-                  Container(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 10,
-                      vertical: 4,
-                    ),
-                    decoration: BoxDecoration(
-                      color: Colors.white.withValues(alpha: 0.16),
-                      borderRadius: BorderRadius.circular(16),
-                    ),
-                    child: Text(
-                      data.category.toUpperCase(),
-                      style: GoogleFonts.jetBrainsMono(
-                        color: Colors.white,
-                        fontSize: 10,
-                        fontWeight: FontWeight.w700,
-                        letterSpacing: 1,
-                      ),
+                // Category Kicker
+                if (hasCategory)
+                  Text(
+                    data.category.toUpperCase(),
+                    style: CardTypography.kicker(
+                      color: Colors.amberAccent,
+                      fontSize: 11,
                     ),
                   ),
+
                 const Spacer(),
-                // Large Quote Mark
-                Text(
-                  '“',
-                  style: config.font(
-                    color: Colors.white.withValues(alpha: 0.35),
-                    fontSize: 64,
-                    height: 0.8,
-                    fontWeight: FontWeight.w900,
-                  ),
-                ),
+
+                // Main Quote in Headline Scale with Broadcast Glow
                 EditableCanvasText(
-                  data.subtext.isNotEmpty && data.subtext != 'N/A'
-                      ? data.subtext
-                      : data.headline,
+                  '“$quoteText”',
                   fieldKey: data.subtext.isNotEmpty && data.subtext != 'N/A'
                       ? 'subtext'
                       : 'headline',
-                  style: config.font(
-                    color: Colors.white,
-                    fontSize: 20 * fontMultiplier,
-                    fontWeight: FontWeight.w600,
-                    fontStyle: FontStyle.italic,
-                    height: 1.3,
-                    shadows: config.textShadowRadius > 0
-                        ? [
-                            Shadow(
-                              color: config.textShadowColor,
-                              blurRadius: config.textShadowRadius,
-                            ),
-                          ]
-                        : null,
-                  ),
-                  maxLines: 6,
-                  minFontSize: 11,
+                  enableGlow: true,
+                  style: config
+                      .font(
+                        fontSize:
+                            (density == ContentDensity.compact
+                                ? 26
+                                : (density == ContentDensity.normal
+                                      ? 32
+                                      : 38)) *
+                            fontMultiplier,
+                        fontWeight: FontWeight.w700,
+                        fontStyle: FontStyle.italic,
+                        height: 1.15,
+                        letterSpacing: 0.2,
+                      )
+                      .merge(
+                        const TextStyle(
+                          fontFamily: 'BarlowCondensed',
+                          fontStyle: FontStyle.italic,
+                          fontWeight: FontWeight.w700,
+                        ),
+                      ),
+                  maxLines: density == ContentDensity.compact ? 4 : 6,
+                  minFontSize: 16,
                 ),
-                const SizedBox(height: 16),
-                // Author Byline
-                Row(
-                  children: [
-                    Container(width: 32, height: 2, color: Colors.amberAccent),
-                    const SizedBox(width: 10),
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          EditableCanvasText(
-                            data.quoteAuthor != 'N/A'
-                                ? data.quoteAuthor
-                                : data.headline,
-                            fieldKey: data.quoteAuthor != 'N/A'
-                                ? 'quoteAuthor'
-                                : 'headline',
-                            style: config.font(
-                              color: Colors.white,
-                              fontSize: 14,
-                              fontWeight: FontWeight.w800,
-                            ),
-                            maxLines: 1,
-                            minFontSize: 10,
-                          ),
-                          if (data.authorTitle != 'N/A')
-                            Text(
-                              data.authorTitle,
-                              style: config.font(
-                                color: Colors.white70,
-                                fontSize: 11,
+
+                const SizedBox(height: 20),
+
+                // Author Byline with Dot Separator (No hard border bars)
+                if (hasAuthor)
+                  Row(
+                    crossAxisAlignment: CrossAxisAlignment.center,
+                    children: [
+                      Container(
+                        width: 6,
+                        height: 6,
+                        decoration: const BoxDecoration(
+                          color: Colors.amberAccent,
+                          shape: BoxShape.circle,
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            EditableCanvasText(
+                              data.quoteAuthor,
+                              fieldKey: 'quoteAuthor',
+                              style: CardTypography.kicker(
+                                color: Colors.white,
+                                fontSize: 13,
                               ),
                               maxLines: 1,
-                              overflow: TextOverflow.ellipsis,
+                              minFontSize: 10,
                             ),
-                        ],
+                            if (data.authorTitle.isNotEmpty &&
+                                data.authorTitle != 'N/A') ...[
+                              const SizedBox(height: 2),
+                              Text(
+                                data.authorTitle,
+                                style: CardTypography.meta(
+                                  color: Colors.white70,
+                                  fontSize: 11,
+                                ),
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                            ],
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
+
+                const SizedBox(height: 16),
+
+                // Footer
+                Row(
+                  children: [
+                    Text(
+                      config.brandName?.isNotEmpty == true
+                          ? config.brandName!
+                          : (config.brandHandle?.isNotEmpty == true
+                                ? config.brandHandle!
+                                : 'Quote of the Day'),
+                      style: CardTypography.meta(
+                        color: Colors.white.withValues(alpha: 0.6),
+                        fontSize: 10,
                       ),
                     ),
+                    const Spacer(),
+                    if (data.relatedTeams.isNotEmpty &&
+                        data.relatedTeams != 'N/A')
+                      Text(
+                        data.relatedTeams,
+                        style: CardTypography.meta(
+                          color: Colors.white.withValues(alpha: 0.6),
+                          fontSize: 10,
+                        ),
+                      ),
                   ],
-                ),
-                const SizedBox(height: 16),
-                Text(
-                  config.brandName?.isNotEmpty == true
-                      ? config.brandName!
-                      : (config.brandHandle?.isNotEmpty == true
-                            ? config.brandHandle!
-                            : 'Quote'),
-                  style: GoogleFonts.jetBrainsMono(
-                    color: Colors.white.withValues(alpha: 0.6),
-                    fontSize: 10,
-                  ),
                 ),
               ],
             ),

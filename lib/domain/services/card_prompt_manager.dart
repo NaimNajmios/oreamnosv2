@@ -65,15 +65,15 @@ Example 2 — transfer_news with missing fields (INPUT: "Khabar angin: Joao Feli
       case CardTemplate.playerSpotlight:
         return '''Extract Player Spotlight. Return ONLY JSON:
 {
-  "playerName": "Nama pemain",
-  "club": "Kelab",
+  "playerName": "Nama pemain ≤25 aksara",
+  "club": "Kelab ≤20 aksara",
   "position": "Posisi (striker etc, sentence case)",
   "rating": 8.5,
   "goals": 2,
   "assists": 1,
   "minutesPlayed": 90,
-  "keyAction": "hat-trick / clean sheet etc or empty string",
-  "keyQuote": "Quote ringkas or empty string",
+  "keyAction": "hat-trick / clean sheet etc ≤20 aksara or empty string",
+  "keyQuote": "Quote ringkas ≤90 aksara or empty string",
   "nationality": "",
   "appearances": 0,
   "cleanSheets": 0,
@@ -86,16 +86,16 @@ Example 2 — transfer_news with missing fields (INPUT: "Khabar angin: Joao Feli
 {
   "headline": "Tajuk padat ≤60 aksara",
   "subtext": "Quote atau hook satu ayat ≤90 aksara",
-  "quoteAuthor": "Nama penutur or empty string",
-  "authorTitle": "Jawatan / kelab or empty string",
+  "quoteAuthor": "Nama penutur ≤25 aksara or empty string",
+  "authorTitle": "Jawatan / kelab ≤30 aksara or empty string",
   "category": "Kategori or empty string",
-  "relatedTeams": "Pasukan berkaitan or empty string",
+  "relatedTeams": "Pasukan berkaitan ≤25 aksara or empty string",
   "template_intent": "headline_quote"
 }''';
       case CardTemplate.topStats:
         return '''Extract Top 3 Stats. Return ONLY JSON:
 {
-  "matchContext": "Konteks perlawanan or empty string",
+  "matchContext": "Konteks perlawanan ≤30 aksara or empty string",
   "stats": [
     {"label": "Gol", "value": "2", "context": ""},
     {"label": "Assist", "value": "1", "context": ""},
@@ -106,14 +106,14 @@ Example 2 — transfer_news with missing fields (INPUT: "Khabar angin: Joao Feli
       case CardTemplate.transferNews:
         return '''Extract Transfer News. Return ONLY JSON:
 {
-  "playerName": "Nama pemain",
-  "action": "SAH / DIPINJAM / SELESAI / KHABAR ANGIN",
-  "fromTeam": "Pasukan asal or empty string",
-  "toTeam": "Pasukan destinasi or empty string",
-  "fee": "Yuran or empty string",
-  "contractLength": "Tempoh kontrak or empty string",
+  "playerName": "Nama pemain ≤25 aksara",
+  "action": "ONE WORD: SAH / DIPINJAM / SELESAI / KHABAR ANGIN",
+  "fromTeam": "Pasukan asal ≤20 aksara or empty string",
+  "toTeam": "Pasukan destinasi ≤20 aksara or empty string",
+  "fee": "Yuran ringkas e.g. €85M ≤10 aksara or empty string",
+  "contractLength": "Tempoh kontrak ≤15 aksara or empty string",
   "transferType": "Jenis perpindahan or empty string",
-  "quote": "Quote or empty string",
+  "quote": "Quote atau ringkasan sumber ≤90 aksara or empty string",
   "feeCategory": "",
   "medicalCompleted": false,
   "workPermit": false,
@@ -125,21 +125,21 @@ Example 2 — transfer_news with missing fields (INPUT: "Khabar angin: Joao Feli
 {
   "label": "BREAKING",
   "headline": "Tajuk tergempar ≤60 aksara",
-  "subtext": "Ringkasan satu ayat or empty string",
+  "subtext": "Ringkasan satu ayat ≤90 aksara or empty string",
   "impactRating": 3,
-  "relatedTeams": "Pasukan berkaitan or empty string",
+  "relatedTeams": "Pasukan berkaitan ≤25 aksara or empty string",
   "template_intent": "breaking_news"
 }''';
       case CardTemplate.matchPreview:
         return '''Extract Match Preview. Return ONLY JSON:
 {
-  "competition": "Liga / Kejohanan or empty string",
-  "homeTeam": "Tuan rumah",
-  "awayTeam": "Pelawat",
+  "competition": "Liga / Kejohanan ≤25 aksara or empty string",
+  "homeTeam": "Tuan rumah ≤20 aksara",
+  "awayTeam": "Pelawat ≤20 aksara",
   "homeForm": "Form or empty string",
   "awayForm": "Form or empty string",
-  "matchTime": "Tarikh/masa or empty string",
-  "stadium": "Stadium or empty string",
+  "matchTime": "Tarikh/masa ≤20 aksara or empty string",
+  "stadium": "Stadium ≤25 aksara or empty string",
   "referee": "",
   "tvChannel": "",
   "kickoffTime": "",
@@ -150,21 +150,21 @@ Example 2 — transfer_news with missing fields (INPUT: "Khabar angin: Joao Feli
       case CardTemplate.detailedScoreboard:
         return '''Extract Detailed Scoreboard. Return ONLY JSON:
 {
-  "homeTeam": "Tuan rumah",
-  "awayTeam": "Pelawat",
+  "homeTeam": "Tuan rumah ≤20 aksara",
+  "awayTeam": "Pelawat ≤20 aksara",
   "homeScore": 2,
   "awayScore": 1,
-  "homeScorers": "Penjaring or empty string",
-  "awayScorers": "Penjaring or empty string",
+  "homeScorers": "Penjaring ringkas ≤60 aksara or empty string",
+  "awayScorers": "Penjaring ringkas ≤60 aksara or empty string",
   "possession": "",
   "shotsOnTarget": "",
-  "competition": "",
+  "competition": "Kejohanan ≤25 aksara or empty string",
   "matchStatus": "FT / HT or empty string",
   "corners": "",
   "fouls": "",
   "yellowCards": "",
   "redCards": "",
-  "attendance": "",
+  "attendance": "Kehadiran ≤15 aksara or empty string",
   "referee": "",
   "penaltyShootout": "",
   "assistProviders": "",
@@ -173,27 +173,27 @@ Example 2 — transfer_news with missing fields (INPUT: "Khabar angin: Joao Feli
       case CardTemplate.onThisDay:
         return '''Extract On This Day. Return ONLY JSON:
 {
-  "dateLabel": "Tarikh or empty string",
+  "dateLabel": "Tarikh ≤20 aksara or empty string",
   "yearsAgo": 10,
-  "competition": "",
-  "headline": "Tajuk peristiwa or empty string",
+  "competition": "Kejohanan ≤25 aksara or empty string",
+  "headline": "Tajuk peristiwa ≤60 aksara or empty string",
   "keyStats": [{"label": "Gol", "value": "3", "context": ""}],
   "venue": "",
   "attendance": "",
   "result": "",
-  "significance": "",
+  "significance": "Kepentingan peristiwa ≤90 aksara or empty string",
   "template_intent": "on_this_day"
 }''';
       case CardTemplate.startingXI:
         return '''Extract Starting XI. Return ONLY JSON:
 {
-  "teamName": "Pasukan or empty string",
-  "formation": "4-3-3 or empty string",
+  "teamName": "Pasukan ≤20 aksara or empty string",
+  "formation": "4-3-3 ≤10 aksara or empty string",
   "starters": [{"number": "10", "name": "Nama"}],
   "subs": [{"number": "9", "name": "Nama"}],
-  "manager": "",
+  "manager": "Pengurus ≤25 aksara or empty string",
   "averageAge": "",
-  "keyAbsences": "",
+  "keyAbsences": "Ketiadaan pemain ≤60 aksara or empty string",
   "captain": "",
   "viceCaptain": "",
   "tactics": "",
@@ -204,19 +204,19 @@ Example 2 — transfer_news with missing fields (INPUT: "Khabar angin: Joao Feli
       case CardTemplate.matchStatsComparison:
         return '''Extract Match Stats Comparison. Return ONLY JSON:
 {
-  "homeTeam": "Tuan rumah or empty string",
-  "awayTeam": "Pelawat or empty string",
+  "homeTeam": "Tuan rumah ≤20 aksara or empty string",
+  "awayTeam": "Pelawat ≤20 aksara or empty string",
   "stats": [{"label": "Possession", "homeValue": "55%", "awayValue": "45%"}],
   "template_intent": "match_stats_comparison"
 }''';
       case CardTemplate.socialPost:
         return '''Extract Social Post (sparse companion). Return ONLY JSON:
 {
-  "handle": "@handle or empty string",
-  "name": "Nama or empty string",
-  "content": "Kandungan padat",
+  "handle": "@handle ≤20 aksara or empty string",
+  "name": "Nama ≤25 aksara or empty string",
+  "content": "Kandungan padat ≤120 aksara",
   "timestamp": "",
-  "metrics": "",
+  "metrics": "Metrik ringkas ≤30 aksara or empty string",
   "verified": false,
   "followers": "",
   "shares": "",
@@ -228,13 +228,13 @@ Example 2 — transfer_news with missing fields (INPUT: "Khabar angin: Joao Feli
       case CardTemplate.rivalry:
         return '''Extract Rivalry. Return ONLY JSON:
 {
-  "player1Name": "",
-  "player2Name": "",
-  "matchContext": "",
+  "player1Name": "Pemain 1 ≤25 aksara",
+  "player2Name": "Pemain 2 ≤25 aksara",
+  "matchContext": "Konteks ≤30 aksara or empty string",
   "player1Stats": [{"label": "Gol", "value": "10", "context": ""}],
   "player2Stats": [{"label": "Gol", "value": "8", "context": ""}],
   "headToHead": "",
-  "verdict": "",
+  "verdict": "Rumusan perbandingan ≤60 aksara or empty string",
   "compareType": "",
   "totalMatches": "",
   "draws": "",
@@ -246,7 +246,7 @@ Example 2 — transfer_news with missing fields (INPUT: "Khabar angin: Joao Feli
       case CardTemplate.tableStandings:
         return '''Extract League Table. Return ONLY JSON:
 {
-  "leagueName": "Liga or empty string",
+  "leagueName": "Liga ≤25 aksara or empty string",
   "matchday": "",
   "standings": [
     {"position": 1, "teamName": "Pasukan A", "played": 10, "won": 7, "drawn": 2, "lost": 1, "points": 23, "form": ""}
@@ -263,9 +263,9 @@ Example 2 — transfer_news with missing fields (INPUT: "Khabar angin: Joao Feli
       case CardTemplate.injuryReport:
         return '''Extract Injury Report. Return ONLY JSON:
 {
-  "teamName": "Pasukan or empty string",
+  "teamName": "Pasukan ≤20 aksara or empty string",
   "reportDate": "",
-  "injuries": [{"playerName": "Nama", "injury": "Kecederaan", "status": "Out", "position": "", "recoveryPercentage": "", "isLongTerm": false, "surgeryRequired": false}],
+  "injuries": [{"playerName": "Nama ≤25 aksara", "injury": "Kecederaan ≤20 aksara", "status": "Out", "position": "", "recoveryPercentage": "", "isLongTerm": false, "surgeryRequired": false}],
   "doubtfits": [],
   "returns": [],
   "nextMatch": "",
@@ -275,9 +275,9 @@ Example 2 — transfer_news with missing fields (INPUT: "Khabar angin: Joao Feli
       case CardTemplate.contractExpiry:
         return '''Extract Contract Expiry. Return ONLY JSON:
 {
-  "teamName": "Pasukan or empty string",
+  "teamName": "Pasukan ≤20 aksara or empty string",
   "seasonYear": "",
-  "expiringPlayers": [{"playerName": "Nama", "position": "", "expiresIn": "", "marketValue": "", "status": "", "wage": "", "askingPrice": "", "interestLevel": "", "negotiationProgress": "", "previousClub": ""}],
+  "expiringPlayers": [{"playerName": "Nama ≤25 aksara", "position": "", "expiresIn": "", "marketValue": "Nilai ≤15 aksara", "status": "", "wage": "", "askingPrice": "", "interestLevel": "", "negotiationProgress": "", "previousClub": ""}],
   "renewals": [],
   "wage": "",
   "askingPrice": "",
@@ -287,9 +287,9 @@ Example 2 — transfer_news with missing fields (INPUT: "Khabar angin: Joao Feli
       case CardTemplate.awardNominee:
         return '''Extract Award Nominees. Return ONLY JSON:
 {
-  "awardName": "Anugerah or empty string",
+  "awardName": "Anugerah ≤30 aksara or empty string",
   "category": "",
-  "nominees": [{"playerName": "Nama", "club": "Kelab", "achievement": "Pencapaian", "odds": "", "isFavorite": false, "previousWinner": false, "votes": ""}],
+  "nominees": [{"playerName": "Nama ≤25 aksara", "club": "Kelab ≤20 aksara", "achievement": "Pencapaian ≤40 aksara", "odds": "", "isFavorite": false, "previousWinner": false, "votes": ""}],
   "ceremonyDate": "",
   "currentFavorite": "",
   "votingDeadline": "",
@@ -302,9 +302,9 @@ Example 2 — transfer_news with missing fields (INPUT: "Khabar angin: Joao Feli
       case CardTemplate.freeform:
         return '''Extract freeform minimal. Return ONLY JSON:
 {
-  "headline": "Tajuk/Kandungan padat",
-  "subtext": "Sarikata atau statistik ringkas",
-  "microStat": "Label kecil / handle or empty string",
+  "headline": "Tajuk/Kandungan padat ≤60 aksara",
+  "subtext": "Sarikata atau statistik ringkas ≤90 aksara",
+  "microStat": "Label kecil / handle ≤24 aksara or empty string",
   "template_intent": "freeform"
 }''';
     }

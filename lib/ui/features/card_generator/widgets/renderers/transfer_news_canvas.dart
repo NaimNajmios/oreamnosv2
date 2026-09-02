@@ -1,11 +1,9 @@
 import 'package:flutter/material.dart';
-import 'package:google_fonts/google_fonts.dart';
 
 import '../../../../../domain/models/card_config.dart';
 import '../../../../../domain/models/card_data.dart';
-import '../../../../../data/services/gradient_builder.dart';
-
 import '../editable_canvas_text.dart';
+import '../primitives/primitives.dart';
 
 class TransferNewsCanvas extends StatelessWidget {
   const TransferNewsCanvas({
@@ -13,234 +11,233 @@ class TransferNewsCanvas extends StatelessWidget {
     required this.data,
     required this.config,
   });
+
   final TransferNews data;
   final CardConfig config;
 
   @override
   Widget build(BuildContext context) {
-    final colors = config.colorPair;
     final fontMultiplier = config.fontSizeMultiplier;
+    final density = ContentFitResolver.resolve(
+      hero: data.playerName,
+      headline: '${data.fromTeam} ${data.toTeam}',
+      subtext: data.quote,
+    );
 
-    return Container(
-      decoration: BoxDecoration(
-        gradient: config.backgroundImagePath != null
-            ? null
-            : GradientBuilder.vertical(colors),
-      ),
-      child: Stack(
-        children: [
-          if (config.showScrim)
-            Positioned.fill(
-              child: Container(
-                decoration: BoxDecoration(
-                  gradient: GradientBuilder.scrimFor(
-                    config.scrimType,
-                    config.overlayOpacity,
-                  ),
-                ),
-              ),
-            ),
-          Padding(
-            padding: const EdgeInsets.all(26),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
+    final hasQuote = data.quote.isNotEmpty && data.quote != 'N/A';
+    final hasFee = data.fee.isNotEmpty && data.fee != 'N/A';
+    final hasContract =
+        data.contractLength.isNotEmpty && data.contractLength != 'N/A';
+
+    return BroadcastBackground(
+      config: config,
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 26, vertical: 24),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            // Top Kicker Bar
+            Row(
               children: [
-                Row(
-                  children: [
-                    Container(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 10,
-                        vertical: 4,
-                      ),
-                      decoration: BoxDecoration(
-                        color: Colors.greenAccent.withValues(alpha: 0.25),
-                        borderRadius: BorderRadius.circular(16),
-                      ),
-                      child: Text(
-                        'TRANSFER ALERT',
-                        style: GoogleFonts.jetBrainsMono(
-                          color: Colors.greenAccent,
-                          fontSize: 10,
-                          fontWeight: FontWeight.w800,
-                          letterSpacing: 1,
-                        ),
-                      ),
-                    ),
-                    const Spacer(),
-                    if (data.feeCategory != 'N/A')
-                      Text(
-                        data.feeCategory,
-                        style: GoogleFonts.jetBrainsMono(
-                          color: Colors.white70,
-                          fontSize: 10,
-                        ),
-                      ),
-                  ],
+                Text(
+                  data.action.isNotEmpty && data.action != 'N/A'
+                      ? data.action.toUpperCase()
+                      : 'TRANSFER NEWS',
+                  style: CardTypography.kicker(
+                    color: Colors.greenAccent,
+                    fontSize: 11,
+                  ),
                 ),
                 const Spacer(),
-                EditableCanvasText(
-                  data.playerName,
-                  fieldKey: 'playerName',
-                  style: config.font(
-                    color: Colors.white,
-                    fontSize: 26 * fontMultiplier,
-                    fontWeight: FontWeight.w900,
-                    height: 1.1,
-                    shadows: config.textShadowRadius > 0
-                        ? [
-                            Shadow(
-                              color: config.textShadowColor,
-                              blurRadius: config.textShadowRadius,
-                            ),
-                          ]
-                        : null,
-                  ),
-                  maxLines: 3,
-                  minFontSize: 12,
-                ),
-                const SizedBox(height: 12),
-                // Transfer Route: From -> To
-                Container(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 14,
-                    vertical: 10,
-                  ),
-                  decoration: BoxDecoration(
-                    color: Colors.black.withValues(alpha: 0.35),
-                    borderRadius: BorderRadius.circular(14),
-                    border: Border.all(
-                      color: Colors.white.withValues(alpha: 0.12),
+                if (data.feeCategory.isNotEmpty && data.feeCategory != 'N/A')
+                  Text(
+                    data.feeCategory.toUpperCase(),
+                    style: CardTypography.meta(
+                      color: Colors.white70,
+                      fontSize: 10,
                     ),
                   ),
-                  child: Row(
+              ],
+            ),
+
+            const Spacer(),
+
+            // Hero: Player Name with Broadcast Glow
+            EditableCanvasText(
+              data.playerName,
+              fieldKey: 'playerName',
+              enableGlow: true,
+              style: config
+                  .font(
+                    fontSize:
+                        (density == ContentDensity.compact ? 36 : 48) *
+                        fontMultiplier,
+                    fontWeight: FontWeight.w900,
+                    height: 0.95,
+                    letterSpacing: 0.5,
+                  )
+                  .merge(
+                    const TextStyle(
+                      fontFamily: 'BarlowCondensed',
+                      fontWeight: FontWeight.w900,
+                    ),
+                  ),
+              maxLines: density == ContentDensity.compact ? 2 : 3,
+              minFontSize: 20,
+            ),
+
+            const SizedBox(height: 16),
+
+            // Transfer Route (Seamless without borders)
+            Row(
+              children: [
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              'FROM',
-                              style: GoogleFonts.jetBrainsMono(
-                                color: Colors.white54,
-                                fontSize: 9,
-                                fontWeight: FontWeight.w700,
-                              ),
-                            ),
-                            EditableCanvasText(
-                              data.fromTeam != 'N/A'
-                                  ? data.fromTeam
-                                  : 'Current Club',
-                              fieldKey: 'fromTeam',
-                              style: config.font(
-                                color: Colors.white,
-                                fontSize: 13,
-                                fontWeight: FontWeight.w700,
-                              ),
-                              maxLines: 1,
-                              minFontSize: 9,
-                            ),
-                          ],
+                      Text(
+                        'FROM',
+                        style: CardTypography.kicker(
+                          color: Colors.white54,
+                          fontSize: 9,
                         ),
                       ),
-                      const Padding(
-                        padding: EdgeInsets.symmetric(horizontal: 8),
-                        child: Icon(
-                          Icons.arrow_forward_rounded,
-                          color: Colors.greenAccent,
-                          size: 18,
+                      const SizedBox(height: 2),
+                      EditableCanvasText(
+                        data.fromTeam != 'N/A' ? data.fromTeam : 'Current Club',
+                        fieldKey: 'fromTeam',
+                        style: config.font(
+                          fontSize: 16 * fontMultiplier,
+                          fontWeight: FontWeight.w700,
+                          color: Colors.white,
                         ),
-                      ),
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              'TO',
-                              style: GoogleFonts.jetBrainsMono(
-                                color: Colors.white54,
-                                fontSize: 9,
-                                fontWeight: FontWeight.w700,
-                              ),
-                            ),
-                            EditableCanvasText(
-                              data.toTeam != 'N/A' ? data.toTeam : 'New Club',
-                              fieldKey: 'toTeam',
-                              style: config.font(
-                                color: Colors.white,
-                                fontSize: 13,
-                                fontWeight: FontWeight.w700,
-                              ),
-                              maxLines: 1,
-                              minFontSize: 9,
-                            ),
-                          ],
-                        ),
+                        maxLines: 1,
+                        minFontSize: 11,
                       ),
                     ],
                   ),
                 ),
-                const SizedBox(height: 12),
-                // Fee & Contract Details
-                Row(
-                  children: [
-                    if (data.fee != 'N/A')
-                      Container(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 12,
-                          vertical: 6,
-                        ),
-                        decoration: BoxDecoration(
-                          color: Colors.white,
-                          borderRadius: BorderRadius.circular(20),
-                        ),
-                        child: Text(
-                          'Fee: ${data.fee}',
-                          style: GoogleFonts.jetBrainsMono(
-                            color: Colors.black,
-                            fontSize: 11,
-                            fontWeight: FontWeight.w800,
-                          ),
-                        ),
-                      ),
-                    if (data.fee != 'N/A' && data.contractLength != 'N/A')
-                      const SizedBox(width: 8),
-                    if (data.contractLength != 'N/A')
-                      Container(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 10,
-                          vertical: 6,
-                        ),
-                        decoration: BoxDecoration(
-                          color: Colors.white.withValues(alpha: 0.18),
-                          borderRadius: BorderRadius.circular(20),
-                        ),
-                        child: Text(
-                          '${data.contractLength} deal',
-                          style: GoogleFonts.jetBrainsMono(
-                            color: Colors.white,
-                            fontSize: 11,
-                            fontWeight: FontWeight.w700,
-                          ),
-                        ),
-                      ),
-                  ],
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 10),
+                  child: SubjectGlow(
+                    size: 36,
+                    color: Colors.greenAccent.withValues(alpha: 0.35),
+                    child: const Icon(
+                      Icons.arrow_forward_rounded,
+                      color: Colors.greenAccent,
+                      size: 20,
+                    ),
+                  ),
                 ),
-                const SizedBox(height: 16),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'TO',
+                        style: CardTypography.kicker(
+                          color: Colors.white54,
+                          fontSize: 9,
+                        ),
+                      ),
+                      const SizedBox(height: 2),
+                      EditableCanvasText(
+                        data.toTeam != 'N/A' ? data.toTeam : 'New Club',
+                        fieldKey: 'toTeam',
+                        style: config.font(
+                          fontSize: 16 * fontMultiplier,
+                          fontWeight: FontWeight.w700,
+                          color: Colors.white,
+                        ),
+                        maxLines: 1,
+                        minFontSize: 11,
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+
+            if (hasFee || hasContract) ...[
+              const SizedBox(height: 14),
+              Row(
+                crossAxisAlignment: CrossAxisAlignment.baseline,
+                textBaseline: TextBaseline.alphabetic,
+                children: [
+                  if (hasFee)
+                    Text(
+                      data.fee,
+                      style: CardTypography.hero.copyWith(
+                        fontSize: 28 * fontMultiplier,
+                        color: Colors.amberAccent,
+                        shadows: const [
+                          Shadow(
+                            color: Color(0x99000000),
+                            blurRadius: 16,
+                            offset: Offset(0, 4),
+                          ),
+                        ],
+                      ),
+                    ),
+                  if (hasFee && hasContract) const SizedBox(width: 12),
+                  if (hasContract)
+                    Text(
+                      '${data.contractLength} deal',
+                      style: CardTypography.meta(
+                        color: Colors.white.withValues(alpha: 0.85),
+                        fontSize: 13,
+                      ),
+                    ),
+                ],
+              ),
+            ],
+
+            if (hasQuote && density != ContentDensity.compact) ...[
+              const SizedBox(height: 12),
+              const FadeHairline(opacity: 0.3),
+              const SizedBox(height: 10),
+              EditableCanvasText(
+                '“${data.quote}”',
+                fieldKey: 'quote',
+                style: CardTypography.body(
+                  color: Colors.white.withValues(alpha: 0.85),
+                  fontSize: 13,
+                  fontStyle: FontStyle.italic,
+                ),
+                maxLines: density == ContentDensity.spacious ? 3 : 2,
+                minFontSize: 10,
+              ),
+            ],
+
+            const SizedBox(height: 14),
+
+            // Footer
+            Row(
+              children: [
                 Text(
                   config.brandName?.isNotEmpty == true
                       ? config.brandName!
                       : (config.brandHandle?.isNotEmpty == true
                             ? config.brandHandle!
                             : 'Transfer Center'),
-                  style: GoogleFonts.jetBrainsMono(
+                  style: CardTypography.meta(
                     color: Colors.white.withValues(alpha: 0.6),
                     fontSize: 10,
                   ),
                 ),
+                const Spacer(),
+                if (data.transferType.isNotEmpty && data.transferType != 'N/A')
+                  Text(
+                    data.transferType.toUpperCase(),
+                    style: CardTypography.meta(
+                      color: Colors.white.withValues(alpha: 0.6),
+                      fontSize: 10,
+                    ),
+                  ),
               ],
             ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }

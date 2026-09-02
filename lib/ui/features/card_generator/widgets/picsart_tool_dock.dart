@@ -126,7 +126,8 @@ class _PicsartToolDockState extends ConsumerState<PicsartToolDock> {
             AnimatedSize(
               duration: const Duration(milliseconds: 250),
               curve: Curves.easeOutCubic,
-              child: ref.watch(cardGeneratorViewModelProvider).activePanel != null
+              child:
+                  ref.watch(cardGeneratorViewModelProvider).activePanel != null
                   ? _buildActivePanel(theme)
                   : const SizedBox.shrink(),
             ),

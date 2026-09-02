@@ -180,10 +180,16 @@ class _CardGeneratorScreenState extends ConsumerState<CardGeneratorScreen> {
             actions: [
               if (hasData)
                 Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: AppSpacing.sm, vertical: 8),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: AppSpacing.sm,
+                    vertical: 8,
+                  ),
                   child: FilledButton.icon(
                     icon: const Icon(Icons.ios_share_rounded, size: 18),
-                    label: const Text('Export', style: TextStyle(fontWeight: FontWeight.w600)),
+                    label: const Text(
+                      'Export',
+                      style: TextStyle(fontWeight: FontWeight.w600),
+                    ),
                     onPressed: () {
                       Haptics.lightImpact();
                       ExportBottomSheet.show(
@@ -293,58 +299,61 @@ class _CardGeneratorScreenState extends ConsumerState<CardGeneratorScreen> {
                     child: CardCanvasDispatcher(
                       key: ValueKey(state.selectedTemplate),
                       cardData: state.cardData!,
-                    config: CardConfig(
-                      template: state.selectedTemplate,
-                      backgroundType: state.backgroundType,
-                      presetBackground: state.presetBackground,
-                      fontSizeMultiplier: state.headlineScale,
-                      overlayOpacity: state.scrimOpacity,
-                      showScrim: true,
-                      scrimType: state.backgroundImage != null
-                          ? ScrimType.dark
-                          : (state.useVignette
-                                ? ScrimType.dark
-                                : ScrimType.minimal),
-                      backgroundImagePath: state.backgroundImage?.path,
-                      useAutoPalette: state.useAutoPalette,
-                      colorPair: state.extractedPalette != null
-                          ? [
-                              state.extractedPalette!.first,
-                              state.extractedPalette!.last,
-                            ]
-                          : (state.accentColor != null
-                                ? [
-                                    state.accentColor!,
-                                    state.accentColor!.withValues(alpha: 0.7),
-                                  ]
-                                : const [Color(0xFF1A237E), Color(0xFF0D47A1)]),
-                      primaryFontFamilyName:
-                          state.selectedFont == AppFont.classicSerif
-                          ? 'Lora'
-                          : state.selectedFont == AppFont.typewriter
-                          ? 'Space Mono'
-                          : 'Inter',
-                      accentColor: state.accentColor,
-                      badgeText: state.badgeText,
-                      previewScale: state.previewScale,
-                      imageOpacity: state.imageOpacity,
-                      backgroundBlurRadius: state.backgroundBlurRadius,
-                      textShadowRadius: state.textShadowRadius,
-                      textShadowColor:
-                          state.textShadowColor ?? const Color(0x80000000),
-                      isGlowEnabled: state.isGlowEnabled,
-                      brandName: state.brandName,
-                      brandHandle: state.brandHandle,
-                      showBrandFooter: state.showBrandFooter,
-                      isWatermarkEnabled: state.showWatermark,
-                      watermarkPath: state.watermarkText,
-                      imagePosition: state.imagePosition,
-                      photoFilter: state.photoFilter,
-                      exportSize: ExportSize.fromRatioName(
-                        state.selectedRatio.name,
+                      config: CardConfig(
+                        template: state.selectedTemplate,
+                        backgroundType: state.backgroundType,
+                        presetBackground: state.presetBackground,
+                        fontSizeMultiplier: state.headlineScale,
+                        overlayOpacity: state.scrimOpacity,
+                        showScrim: true,
+                        scrimType: state.backgroundImage != null
+                            ? ScrimType.dark
+                            : (state.useVignette
+                                  ? ScrimType.dark
+                                  : ScrimType.minimal),
+                        backgroundImagePath: state.backgroundImage?.path,
+                        useAutoPalette: state.useAutoPalette,
+                        colorPair: state.extractedPalette != null
+                            ? [
+                                state.extractedPalette!.first,
+                                state.extractedPalette!.last,
+                              ]
+                            : (state.accentColor != null
+                                  ? [
+                                      state.accentColor!,
+                                      state.accentColor!.withValues(alpha: 0.7),
+                                    ]
+                                  : const [
+                                      Color(0xFF1A237E),
+                                      Color(0xFF0D47A1),
+                                    ]),
+                        primaryFontFamilyName:
+                            state.selectedFont == AppFont.classicSerif
+                            ? 'Lora'
+                            : state.selectedFont == AppFont.typewriter
+                            ? 'Space Mono'
+                            : 'Inter',
+                        accentColor: state.accentColor,
+                        badgeText: state.badgeText,
+                        previewScale: state.previewScale,
+                        imageOpacity: state.imageOpacity,
+                        backgroundBlurRadius: state.backgroundBlurRadius,
+                        textShadowRadius: state.textShadowRadius,
+                        textShadowColor:
+                            state.textShadowColor ?? const Color(0x80000000),
+                        isGlowEnabled: state.isGlowEnabled,
+                        brandName: state.brandName,
+                        brandHandle: state.brandHandle,
+                        showBrandFooter: state.showBrandFooter,
+                        isWatermarkEnabled: state.showWatermark,
+                        watermarkPath: state.watermarkText,
+                        imagePosition: state.imagePosition,
+                        photoFilter: state.photoFilter,
+                        exportSize: ExportSize.fromRatioName(
+                          state.selectedRatio.name,
+                        ),
                       ),
                     ),
-                  ),
                   ),
                   // Badge overlay as in original (badgeText)
                   if (state.badgeText != null && state.badgeText!.isNotEmpty)
@@ -415,7 +424,10 @@ class _CardGeneratorScreenState extends ConsumerState<CardGeneratorScreen> {
 
         // Undo / Redo controls above the dock
         Padding(
-          padding: const EdgeInsets.symmetric(horizontal: AppSpacing.md, vertical: AppSpacing.sm),
+          padding: const EdgeInsets.symmetric(
+            horizontal: AppSpacing.md,
+            vertical: AppSpacing.sm,
+          ),
           child: Row(
             mainAxisAlignment: MainAxisAlignment.end,
             children: [

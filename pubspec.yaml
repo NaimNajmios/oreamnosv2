@@ -82,6 +82,14 @@ flutter:
     - icon/icon_kickoff_transparent.svg
     - assets/illustrations/empty_kickoff.svg
 
+  fonts:
+    - family: BarlowCondensed
+      fonts:
+        - asset: assets/fonts/BarlowCondensed-Bold.ttf
+          weight: 700
+        - asset: assets/fonts/BarlowCondensed-Black.ttf
+          weight: 900
+
 flutter_launcher_icons:
   android: "launcher_icon"
   ios: true

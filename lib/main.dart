@@ -7,8 +7,6 @@ import 'core/di/injection.dart';
 import 'data/services/notification_service.dart';
 import 'data/services/quick_settings_service.dart';
 
-
-
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
@@ -19,8 +17,6 @@ void main() async {
   } catch (e) {
     debugPrint('Notification init error: $e');
   }
-
-
 
   try {
     await QuickSettingsService.init();

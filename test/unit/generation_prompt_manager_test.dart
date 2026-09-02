@@ -17,17 +17,27 @@ void main() {
     });
 
     test('buildSystemPrompt adds Fan Mode instruction when enabled', () {
-      final s1 = GenerationPromptManager.buildSystemPrompt(isFanModeEnabled: true, fanClubName: 'Arsenal');
+      final s1 = GenerationPromptManager.buildSystemPrompt(
+        isFanModeEnabled: true,
+        fanClubName: 'Arsenal',
+      );
       expect(s1, contains('Act as a fan page representing Arsenal'));
       expect(s1, isNot(contains('neutral, unbiased')));
 
-      final s2 = GenerationPromptManager.buildSystemPrompt(isFanModeEnabled: true);
+      final s2 = GenerationPromptManager.buildSystemPrompt(
+        isFanModeEnabled: true,
+      );
       expect(s2, contains('Act as a fan page representing the club mentioned'));
     });
 
     test('buildSystemPrompt adds Keep Structure instruction when enabled', () {
       final s = GenerationPromptManager.buildSystemPrompt(keepStructure: true);
-      expect(s, contains('Keep the exact same structure, paragraphing, and bullet points as the source text'));
+      expect(
+        s,
+        contains(
+          'Keep the exact same structure, paragraphing, and bullet points as the source text',
+        ),
+      );
     });
 
     test('buildUserPrompt handles string', () {

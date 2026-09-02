@@ -222,5 +222,4 @@ class PreferencesService {
   Future<bool> setFanClubName(String name) {
     return _prefs.setString('fan_club_name', name);
   }
-
 }

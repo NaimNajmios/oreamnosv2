@@ -537,7 +537,10 @@ class _GenerateScreenState extends ConsumerState<GenerateScreen> {
             },
             borderRadius: AppSpacing.borderRadiusSm,
             child: Padding(
-              padding: const EdgeInsets.symmetric(vertical: AppSpacing.sm, horizontal: 4),
+              padding: const EdgeInsets.symmetric(
+                vertical: AppSpacing.sm,
+                horizontal: 4,
+              ),
               child: Row(
                 children: [
                   Icon(
@@ -555,7 +558,9 @@ class _GenerateScreenState extends ConsumerState<GenerateScreen> {
                   ),
                   const Spacer(),
                   Icon(
-                    _showSettings ? Icons.keyboard_arrow_up_rounded : Icons.keyboard_arrow_down_rounded,
+                    _showSettings
+                        ? Icons.keyboard_arrow_up_rounded
+                        : Icons.keyboard_arrow_down_rounded,
                     size: 18,
                     color: theme.colorScheme.onSurface.withValues(alpha: 0.5),
                   ),
@@ -566,7 +571,10 @@ class _GenerateScreenState extends ConsumerState<GenerateScreen> {
           AnimatedCrossFade(
             firstChild: const SizedBox(height: 0, width: double.infinity),
             secondChild: Padding(
-              padding: const EdgeInsets.only(top: AppSpacing.sm, bottom: AppSpacing.sm),
+              padding: const EdgeInsets.only(
+                top: AppSpacing.sm,
+                bottom: AppSpacing.sm,
+              ),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
@@ -671,7 +679,9 @@ class _GenerateScreenState extends ConsumerState<GenerateScreen> {
                 ],
               ),
             ),
-            crossFadeState: _showSettings ? CrossFadeState.showSecond : CrossFadeState.showFirst,
+            crossFadeState: _showSettings
+                ? CrossFadeState.showSecond
+                : CrossFadeState.showFirst,
             duration: const Duration(milliseconds: 200),
           ),
           const SizedBox(height: 2),
@@ -682,18 +692,13 @@ class _GenerateScreenState extends ConsumerState<GenerateScreen> {
             },
             borderRadius: AppSpacing.borderRadiusSm,
             child: Padding(
-              padding: const EdgeInsets.symmetric(
-                vertical: 6,
-                horizontal: 2,
-              ),
+              padding: const EdgeInsets.symmetric(vertical: 6, horizontal: 2),
               child: Row(
                 children: [
                   Icon(
                     Icons.tune_rounded,
                     size: 13,
-                    color: theme.colorScheme.onSurface.withValues(
-                      alpha: 0.45,
-                    ),
+                    color: theme.colorScheme.onSurface.withValues(alpha: 0.45),
                   ),
                   const SizedBox(width: 6),
                   Expanded(
@@ -714,9 +719,7 @@ class _GenerateScreenState extends ConsumerState<GenerateScreen> {
                   Icon(
                     Icons.chevron_right_rounded,
                     size: 16,
-                    color: theme.colorScheme.onSurface.withValues(
-                      alpha: 0.35,
-                    ),
+                    color: theme.colorScheme.onSurface.withValues(alpha: 0.35),
                   ),
                 ],
               ),
@@ -1215,4 +1218,3 @@ class _GenerateScreenState extends ConsumerState<GenerateScreen> {
     return const SizedBox.shrink();
   }
 }
-

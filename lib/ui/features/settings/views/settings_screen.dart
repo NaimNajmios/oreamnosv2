@@ -200,10 +200,7 @@ class SettingsScreen extends ConsumerWidget {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(
-                    'Fan Mode',
-                    style: theme.textTheme.titleSmall,
-                  ),
+                  Text('Fan Mode', style: theme.textTheme.titleSmall),
                   const SizedBox(height: 4),
                   Text(
                     'Generate posts from a fan perspective',
