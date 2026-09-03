@@ -35,8 +35,7 @@ class _UsageScreenState extends ConsumerState<UsageScreen> {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final isDark = Theme.of(context).brightness == Brightness.dark;
-    final usageService = ref.watch(usageServiceProvider);
-    final logsAll = usageService.logs;
+    final logsAll = ref.watch(usageNotifierProvider);
     final logs = _filter == 'all'
         ? logsAll
         : logsAll.where((l) => l.providerId.toLowerCase() == _filter).toList();
@@ -77,7 +76,7 @@ class _UsageScreenState extends ConsumerState<UsageScreen> {
             IconButton(
               icon: const Icon(Icons.delete_outline_rounded),
               tooltip: 'Clear History',
-              onPressed: () => _confirmClear(context, usageService),
+              onPressed: () => _confirmClear(context, ref),
             ),
         ],
       ),
@@ -100,7 +99,7 @@ class _UsageScreenState extends ConsumerState<UsageScreen> {
                 ),
                 child: RefreshIndicator(
                   onRefresh: () async {
-                    await usageService.reload();
+                    await ref.read(usageNotifierProvider.notifier).reload();
                     Haptics.mediumImpact();
                   },
                   color: theme.colorScheme.primary,
@@ -470,7 +469,7 @@ class _UsageScreenState extends ConsumerState<UsageScreen> {
     );
   }
 
-  Future<void> _confirmClear(BuildContext context, UsageService service) async {
+  Future<void> _confirmClear(BuildContext context, WidgetRef ref) async {
     final theme = Theme.of(context);
     final result = await showDialog<bool>(
       context: context,
@@ -528,7 +527,7 @@ class _UsageScreenState extends ConsumerState<UsageScreen> {
 
     if (result == true) {
       Haptics.heavyImpact();
-      service.clearLogs();
+      await ref.read(usageNotifierProvider.notifier).clearLogs();
     }
   }
 }

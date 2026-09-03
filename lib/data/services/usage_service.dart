@@ -1,6 +1,5 @@
 import 'dart:convert';
 
-import 'package:flutter/foundation.dart';
 import 'package:injectable/injectable.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -9,20 +8,54 @@ import 'package:oreamnos/core/di/injection.dart';
 
 import '../../domain/models/usage_log.dart';
 
-final usageServiceProvider = ChangeNotifierProvider<UsageService>(
-  (ref) => getIt<UsageService>(),
+final usageNotifierProvider = NotifierProvider<UsageNotifier, List<UsageLog>>(
+  UsageNotifier.new,
 );
 
+class UsageNotifier extends Notifier<List<UsageLog>> {
+  late final UsageService _service;
+
+  @override
+  List<UsageLog> build() {
+    _service = getIt<UsageService>();
+    final unsubscribe = _service.addListener((logs) {
+      state = logs;
+    });
+    ref.onDispose(unsubscribe);
+    return _service.logs;
+  }
+
+  Future<void> logUsage(UsageLog log) => _service.logUsage(log);
+  Future<void> clearLogs() => _service.clearLogs();
+  Future<void> reload() => _service.reload();
+  double getSuccessRateByProvider(String providerId) =>
+      _service.getSuccessRateByProvider(providerId);
+  Map<String, double> getAllSuccessRates() => _service.getAllSuccessRates();
+}
+
 @lazySingleton
-class UsageService extends ChangeNotifier {
+class UsageService {
   static const String _keyLogs = 'usage_logs';
   static const int _maxLogs = 50;
 
   final SharedPreferences _prefs;
   List<UsageLog> _logs = [];
+  final List<void Function(List<UsageLog>)> _listeners = [];
 
   UsageService(this._prefs) {
     _loadLogs();
+  }
+
+  void Function() addListener(void Function(List<UsageLog>) listener) {
+    _listeners.add(listener);
+    return () => _listeners.remove(listener);
+  }
+
+  void _notify() {
+    final currentLogs = logs;
+    for (final listener in List.of(_listeners)) {
+      listener(currentLogs);
+    }
   }
 
   List<UsageLog> get logs => List.unmodifiable(_logs);
@@ -30,7 +63,7 @@ class UsageService extends ChangeNotifier {
   void _loadLogs() {
     final list = _prefs.getStringList(_keyLogs) ?? [];
     _logs = list.map((e) => UsageLog.fromJson(jsonDecode(e))).toList();
-    notifyListeners();
+    _notify();
   }
 
   Future<void> reload() async {
@@ -46,7 +79,7 @@ class UsageService extends ChangeNotifier {
       _logs = _logs.sublist(0, _maxLogs);
     }
     await _saveLogs();
-    notifyListeners();
+    _notify();
   }
 
   Future<void> _saveLogs() async {
@@ -57,7 +90,7 @@ class UsageService extends ChangeNotifier {
   Future<void> clearLogs() async {
     _logs = [];
     await _prefs.remove(_keyLogs);
-    notifyListeners();
+    _notify();
   }
 
   double getSuccessRateByProvider(String providerId) {

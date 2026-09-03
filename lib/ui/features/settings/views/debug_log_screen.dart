@@ -1,6 +1,6 @@
-import 'package:oreamnos/core/di/injection.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../../config/theme/app_colors.dart';
 import '../../../../config/theme/app_spacing.dart';
@@ -12,38 +12,26 @@ import '../../../core/widgets/empty_state.dart';
 import 'widgets/log_details_dialog.dart';
 
 /// Internal system debug log viewer with monospace typography and semantic badges.
-class DebugLogScreen extends StatefulWidget {
+class DebugLogScreen extends ConsumerStatefulWidget {
   const DebugLogScreen({super.key});
 
   @override
-  State<DebugLogScreen> createState() => _DebugLogScreenState();
+  ConsumerState<DebugLogScreen> createState() => _DebugLogScreenState();
 }
 
-class _DebugLogScreenState extends State<DebugLogScreen> {
-  final LogService _logService = getIt<LogService>();
+class _DebugLogScreenState extends ConsumerState<DebugLogScreen> {
   String _selectedLevel = 'ALL';
   String _searchQuery = '';
   final TextEditingController _searchCtrl = TextEditingController();
 
   @override
-  void initState() {
-    super.initState();
-    _logService.addListener(_onLogsChanged);
-  }
-
-  @override
   void dispose() {
-    _logService.removeListener(_onLogsChanged);
     _searchCtrl.dispose();
     super.dispose();
   }
 
-  void _onLogsChanged() {
-    if (mounted) setState(() {});
-  }
-
   Future<void> _copyLogs() async {
-    final logs = _logService.logs;
+    final logs = ref.read(logNotifierProvider);
     if (logs.isEmpty) return;
 
     final buffer = StringBuffer();
@@ -101,7 +89,7 @@ class _DebugLogScreenState extends State<DebugLogScreen> {
     );
     if (result == true) {
       Haptics.heavyImpact();
-      _logService.clear();
+      ref.read(logNotifierProvider.notifier).clear();
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
@@ -142,7 +130,7 @@ class _DebugLogScreenState extends State<DebugLogScreen> {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final allLogs = _logService.logs.reversed.toList();
+    final allLogs = ref.watch(logNotifierProvider).reversed.toList();
     final query = _searchQuery.trim().toLowerCase();
 
     final filteredLogs = allLogs.where((l) {

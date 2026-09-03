@@ -55,12 +55,10 @@ class CardConfig {
   final double imageOpacity;
   final bool showScrim;
   final ScrimType scrimType;
-  final String? cutoutPath;
   final double fontSizeMultiplier;
   final double overlayOpacity;
   final String? primaryFontFamilyName;
   final Color? accentColor;
-  final Map<String, Offset> elementOffsets;
   final double backgroundBlurRadius;
   final String? watermarkPath;
   final double textShadowRadius;
@@ -87,12 +85,10 @@ class CardConfig {
     this.imageOpacity = 1.0,
     this.showScrim = true,
     this.scrimType = ScrimType.dark,
-    this.cutoutPath,
     this.fontSizeMultiplier = 1.0,
     this.overlayOpacity = 0.6,
     this.primaryFontFamilyName,
     this.accentColor,
-    this.elementOffsets = const {},
     this.backgroundBlurRadius = 0,
     this.watermarkPath,
     this.textShadowRadius = 0,
@@ -156,12 +152,10 @@ class CardConfig {
     double? imageOpacity,
     bool? showScrim,
     ScrimType? scrimType,
-    String? cutoutPath,
     double? fontSizeMultiplier,
     double? overlayOpacity,
     String? primaryFontFamilyName,
     Color? accentColor,
-    Map<String, Offset>? elementOffsets,
     double? backgroundBlurRadius,
     String? watermarkPath,
     double? textShadowRadius,
@@ -188,13 +182,11 @@ class CardConfig {
       imageOpacity: imageOpacity ?? this.imageOpacity,
       showScrim: showScrim ?? this.showScrim,
       scrimType: scrimType ?? this.scrimType,
-      cutoutPath: cutoutPath ?? this.cutoutPath,
       fontSizeMultiplier: fontSizeMultiplier ?? this.fontSizeMultiplier,
       overlayOpacity: overlayOpacity ?? this.overlayOpacity,
       primaryFontFamilyName:
           primaryFontFamilyName ?? this.primaryFontFamilyName,
       accentColor: accentColor ?? this.accentColor,
-      elementOffsets: elementOffsets ?? this.elementOffsets,
       backgroundBlurRadius: backgroundBlurRadius ?? this.backgroundBlurRadius,
       watermarkPath: watermarkPath ?? this.watermarkPath,
       textShadowRadius: textShadowRadius ?? this.textShadowRadius,
@@ -213,7 +205,6 @@ class CardConfig {
   }
 
   // Helpers for clearing nullable fields
-  CardConfig clearBackgroundImage() =>
-      copyWith(backgroundImagePath: null, cutoutPath: null);
+  CardConfig clearBackgroundImage() => copyWith(backgroundImagePath: null);
   CardConfig clearWatermark() => copyWith(watermarkPath: null);
 }

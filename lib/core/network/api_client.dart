@@ -3,6 +3,7 @@ import 'package:flutter/foundation.dart';
 
 import 'package:injectable/injectable.dart';
 
+import '../../config/constants.dart';
 import 'interceptors/auth_interceptor.dart';
 import 'interceptors/error_interceptor.dart';
 import 'interceptors/logging_interceptor.dart';
@@ -14,9 +15,9 @@ class ApiClient {
   ApiClient()
     : _dio = Dio(
         BaseOptions(
-          connectTimeout: const Duration(seconds: 15),
-          sendTimeout: const Duration(seconds: 15),
-          receiveTimeout: const Duration(seconds: 15),
+          connectTimeout: AppConstants.connectTimeout,
+          sendTimeout: AppConstants.readTimeout,
+          receiveTimeout: AppConstants.readTimeout,
           headers: {'Content-Type': 'application/json'},
         ),
       ) {
@@ -24,9 +25,10 @@ class ApiClient {
       AuthInterceptor(),
       RetryInterceptor(
         dio: _dio,
-        maxRetries: 4,
-        baseDelayMs: 500,
-        maxDelayMs: 60000,
+        maxRetries: AppConstants.maxRetries,
+        baseDelayMs: AppConstants.initialBackoff.inMilliseconds,
+        maxDelayMs: AppConstants.maxBackoff.inMilliseconds,
+        backoffMultiplier: AppConstants.backoffMultiplier,
       ),
       ErrorMappingInterceptor(),
       if (kDebugMode) LoggingInterceptor(),

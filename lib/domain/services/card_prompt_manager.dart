@@ -95,16 +95,4 @@ Example 2 — transfer_news with missing fields (INPUT: "Khabar angin: Joao Feli
     final opt = f.required ? '' : ' or empty string';
     return '"$cap$hint$opt"'.trim();
   }
-
-  // ignore: unused_element
-  static String _sparseSchema() {
-    return '''
-Polish the INPUT into a lightweight social companion card.
-Return ONLY a JSON object with this exact structure (write values in Bahasa Malaysia per rules, use "" for missing, keep lexicon in sentence case):
-{
-  "headline": "Tajuk hook padat (maks 60 aksara)",
-  "subtext": "Satu ayat umpan ringan (maks 90 aksara, satu ayat sahaja)",
-  "microStat": "Satu badge ringkas (maks 24 aksara) or empty string if none"
-}''';
-  }
 }

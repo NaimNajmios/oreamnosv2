@@ -65,14 +65,26 @@ class GenerationPromptManager {
       buf.writeln('');
     }
     buf.writeln('STRICT EDITORIAL GUIDELINES:');
-    buf.writeln('- You are writing formal sports news. NEVER include conversational filler, encouraging words, or well-wishes (e.g., "Good luck", "Semoga berjaya", "Here is the news").');
-    buf.writeln('- Do not add any personal commentary unless specifically requested by the user.');
-    buf.writeln('- Maintain a strictly objective, journalistic tone at all times.');
+    buf.writeln(
+      '- You are writing formal sports news. NEVER include conversational filler, encouraging words, or well-wishes (e.g., "Good luck", "Semoga berjaya", "Here is the news").',
+    );
+    buf.writeln(
+      '- Do not add any personal commentary unless specifically requested by the user.',
+    );
+    buf.writeln(
+      '- Maintain a strictly objective, journalistic tone at all times.',
+    );
     buf.writeln('');
     buf.writeln('QUOTE HANDLING:');
-    buf.writeln('- PRESERVE QUOTES: If the source material contains direct quotes (text enclosed in quotation marks), you MUST preserve them as direct quotes. Do NOT rephrase them into indirect, third-person speech.');
-    buf.writeln('- TRANSLATION TONE: Translate quoted speech into a natural, conversational Bahasa Malaysia. It should sound like a real person speaking — not too stiff or hyper-formal, but not overly casual slang either.');
-    buf.writeln('- Keep the translated speech enclosed in quotation marks ("...").');
+    buf.writeln(
+      '- PRESERVE QUOTES: If the source material contains direct quotes (text enclosed in quotation marks), you MUST preserve them as direct quotes. Do NOT rephrase them into indirect, third-person speech.',
+    );
+    buf.writeln(
+      '- TRANSLATION TONE: Translate quoted speech into a natural, conversational Bahasa Malaysia. It should sound like a real person speaking — not too stiff or hyper-formal, but not overly casual slang either.',
+    );
+    buf.writeln(
+      '- Keep the translated speech enclosed in quotation marks ("...").',
+    );
     buf.writeln('');
 
     buf.writeln(
@@ -226,22 +238,6 @@ class GenerationPromptManager {
   }
 
   // --- Detection helpers (parity with PromptManager.kt) ---
-  static bool containsQuotes(String? text) {
-    if (text == null || text.isEmpty) return false;
-    for (int i = 0; i < text.length; i++) {
-      final c = text[i];
-      if (c == '"' ||
-          c == '\u201C' ||
-          c == '\u201D' ||
-          c == "'" ||
-          c == '\u2018' ||
-          c == '\u2019') {
-        return true;
-      }
-    }
-    return false;
-  }
-
   static bool containsBulletPoints(String? text) {
     if (text == null || text.isEmpty) return false;
     final lines = text.split('\n');
@@ -261,42 +257,6 @@ class GenerationPromptManager {
       }
       if (RegExp(r'^\d+\)\s').hasMatch(t)) return true;
       if (RegExp(r'^[a-z]\)\s').hasMatch(t)) return true;
-    }
-    return false;
-  }
-
-  static bool isLongTechnicalContent(String? text) {
-    if (text == null || text.length < 2000) return false;
-    final lower = text.toLowerCase();
-    const keywords = [
-      'formation',
-      'tactical',
-      'pressing',
-      'possession',
-      'xg',
-      'expected goals',
-      'pass completion',
-      'progressive passes',
-      'defensive line',
-      'build-up',
-      'counter-attack',
-      'high press',
-      'low block',
-      'transition',
-      'shape',
-      'midfielder',
-      'forward',
-      'defender',
-      'fullback',
-      'winger',
-      '4-3-3',
-      '4-4-2',
-      '3-5-2',
-    ];
-    int hits = 0;
-    for (final k in keywords) {
-      if (lower.contains(k)) hits++;
-      if (hits >= 5) return true;
     }
     return false;
   }

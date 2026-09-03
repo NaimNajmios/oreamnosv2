@@ -22,8 +22,7 @@ class _SessionListScreenState extends ConsumerState<SessionListScreen> {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final isDark = theme.brightness == Brightness.dark;
-    final usage = ref.watch(usageServiceProvider);
-    final allLogs = usage.logs;
+    final allLogs = ref.watch(usageNotifierProvider);
     final logs = _filter == 'all'
         ? allLogs
         : allLogs.where((l) => l.providerId.toLowerCase() == _filter).toList();

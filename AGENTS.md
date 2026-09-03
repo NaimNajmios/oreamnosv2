@@ -2,11 +2,11 @@
 
 ## Stack
 - Single-package Flutter app (`pubspec.yaml:1`, `project_type: app` in `.metadata`). Dart `^3.13.1`, Flutter `3.47.1` stable.
-- State: `flutter_riverpod 2.6.1` + `ProviderScope` (`lib/main.dart:26` `ProviderScope+configureDependencies()`) — `Notifier` pure `GenerateViewModel extends Notifier<GenerateUiState>` `lib/ui/features/generate/view_models/generate_view_model.dart:49` + `CardGeneratorViewModel extends Notifier<CardGeneratorState>` `lib/ui/features/card_generator/view_models/card_generator_view_model.dart:36` + `SettingsNotifier extends Notifier<SettingsState>` `lib/ui/features/settings/view_models/settings_view_model.dart:11` (migrated from `ChangeNotifier`).
+- State: `flutter_riverpod 2.6.1` + `ProviderScope` (`lib/main.dart:26` `ProviderScope+configureDependencies()`) — `Notifier` pure `GenerateViewModel extends Notifier<GenerateUiState>` `lib/ui/features/generate/view_models/generate_view_model.dart:49` + `CardGeneratorViewModel extends Notifier<CardGeneratorState>` `lib/ui/features/card_generator/view_models/card_generator_view_model.dart:36` + `SettingsNotifier extends Notifier<SettingsState>` `lib/ui/features/settings/view_models/settings_view_model.dart:11` + `LogNotifier extends Notifier<List<LogEntry>>` `lib/data/services/log_service.dart` + `UsageNotifier extends Notifier<List<UsageLog>>` `lib/data/services/usage_service.dart`.
 - Routing: `go_router` `14.8.1` `GoRouter` `lib/config/routes/app_router.dart:16` — 4 `ShellRoute` tabs (`/generate`, `/card-generator`, `/usage`, `/settings`) `ModernAppShell:52` 60dp + 5 full-screen (`/reading-mode`, `/pill-manager`, `/hashtag-manager`, `/debug-logs`, `/sessions`).
 - Network: `dio 5.11.0` pooled `ApiClient` `lib/core/network/api_client.dart:13` `BaseOptions 15s` + 4 interceptors `Auth(extra→?key/Bearer)→Retry(4×500ms→60s jitter Retry-After)→ErrorMapping(429→RateLimitFailure:15)→Logging(if kDebugMode)` + `IContentRepository` `Result<CuratedPost>` fold + 30s timeout `generate_view_model.dart:370` + strict `jsonSchema` `GenerationPromptManager.jsonSchema` wired to Gemini `responseSchema`/`OpenAI json_schema`; side-channel `TokenUsageSideChannel` `lib/data/services/token_usage_side_channel.dart:1` for `usageMetadata/total_tokens` → `UsageService`. `WebScraperService:10` + `ProviderApiService:17` via same pool (`http` probe moved `tool/dev/scrape_probe.dart`).
 - DI: `get_it`+`injectable` `lib/core/di/injection.dart:13` `getIt.init()` + `register_module.dart` → `lib/core/di/injection.config.dart:50` `ApiClient`, `TokenUsageSideChannel`, `CardDataExtractor`, `ExportService`, `IContentRepository`/`ICardRepository`/`ISettingsRepository`/`IUsageRepository`, `WebScraperService`, `ProviderApiService`, `PreferencesService`, `LogService`, `UsageService`.
-- Codegen: `freezed 4.0.0` + `injectable` for sealed `CardData` 17 `lib/domain/models/card_data.dart:104` (+`SparseCard:323`) / `CardTemplate` 17 `lib/domain/models/card_template.dart:3` + `CardConfig` 28 `lib/domain/models/card_config.dart:47` (10 `ImagePosition`,5 `ExportSize`,5 `PhotoFilter`) + `GenerateUiState` `lib/ui/features/generate/view_models/generate_state.dart:10` + `CardGeneratorState` `lib/ui/features/card_generator/view_models/card_generator_state.dart:16`.
+- Codegen: `freezed 4.0.0` + `injectable` for sealed `CardData` 17 `lib/domain/models/card_data.dart:104` (+`SparseCard:323`) / `CardTemplate` 17 `lib/domain/models/card_template.dart:3` + `CardConfig` 26 `lib/domain/models/card_config.dart:47` (10 `ImagePosition`,5 `ExportSize`,5 `PhotoFilter`) + `GenerateUiState` `lib/ui/features/generate/view_models/generate_state.dart:10` + `CardGeneratorState` `lib/ui/features/card_generator/view_models/card_generator_state.dart:16`.
 
 ## Commands
 ```bash
@@ -14,11 +14,11 @@ flutter pub get
 flutter run                                               # local device/emulator
 dart format --output=none --set-exit-if-changed .         # CI gate (must be 0 changed)
 flutter analyze                                           # lints via analysis_options.yaml (0 issues)
-flutter test --coverage                                   # run all 82 tests across test/ (17 renderers via CardCanvasDispatcher)
+flutter test --coverage                                   # run all 117 tests across test/ (17 renderers via CardCanvasDispatcher)
 flutter test test/widget_test.dart                         # single test file
 flutter test test/unit/renderers_test.dart                # test all 17 card renderers
 dart run build_runner build --delete-conflicting-outputs  # codegen for Freezed / json_serializable / injectable
-# See docs/architecture.md, docs/design-system-threads.md, docs/baseline-phaseB.md
+# See docs/architecture.md, docs/design-system-threads.md, docs/baseline-phaseD.md
 ```
 
 ## Architecture
@@ -33,11 +33,11 @@ dart run build_runner build --delete-conflicting-outputs  # codegen for Freezed 
 ## Testing & CI
 - **Automated CI**: `.github/workflows/ci.yaml:20` pinned `3.47.1 stable` → `flutter pub get` → `dart format --output=none --set-exit-if-changed .` → `flutter analyze` (0) → `flutter test --coverage` → `dart run build_runner build` on `push: [main,master]` + `pull_request: [main,master]`.
 - **Mocking**: `FlutterSecureStorage.setMockInitialValues({})` + `SharedPreferences.setMockInitialValues({})` + `ProviderScope` overrides `test/helpers/test_helpers.dart:48` (updated from deleted `app_providers.dart` → `injection.dart`).
-- **Test Suites**: 82 tests spanning `test/unit/` (Curators, Renderers 17, UsageService capped 50, LogService ring 200 + 500ms persist, Interceptors `429→RateLimitFailure`, JsonCleaner, CardDataExtractor) and `test/widget_test.dart:28` 3 widget tests (4-tab nav).
+- **Test Suites**: 117 tests across 21 test files in `test/` (Curators, Renderers 17, UsageService capped 50, LogService ring 200 + 500ms persist, Interceptors `429→RateLimitFailure`, JsonCleaner, CardDataExtractor extended, RateLimit flow, CardGeneratorViewModel 50 snapshots, widget_test 4-tab nav).
 
 ## Docs
 - `docs/architecture.md` — layers/DI/Network/Result (active)
 - `docs/design-system-threads.md` — tokens, 9 themes, horizontal scroll
 - `docs/migration-threads-convergence.md` — Kotlin Socurate → Flutter map
-- `docs/baseline-phaseC.md` — Phase C baseline (vision excluded, Notifier, side-channel, 10 ImagePos) — supersedes `docs/baseline-phaseB.md`
+- `docs/baseline-phaseD.md` — Phase D baseline (ChangeNotifier complete removal, dead code cleanup, AppConstants alignment, 117 tests) — supersedes `docs/baseline-phaseC.md`
 - `CHANGELOG.md` + `CONTRIBUTING.md` — release & workflow

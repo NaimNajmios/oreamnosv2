@@ -85,7 +85,7 @@ class LogEntry {
 }
 
 /// Abstraction for logging — enables Riverpod injection + mocking.
-abstract class ILogService implements Listenable {
+abstract class ILogService {
   List<LogEntry> get logs;
   void debug(String message, {String tag = 'App', String? details});
   void info(String message, {String tag = 'App', String? details});
@@ -94,13 +94,37 @@ abstract class ILogService implements Listenable {
   void clear();
 }
 
-/// A persistent in-memory ring buffer for debugging logs.
-final logServiceProvider = ChangeNotifierProvider<LogService>(
-  (ref) => getIt<LogService>(),
+/// Reactive Riverpod provider for debug logs.
+final logNotifierProvider = NotifierProvider<LogNotifier, List<LogEntry>>(
+  LogNotifier.new,
 );
 
+class LogNotifier extends Notifier<List<LogEntry>> {
+  late final LogService _service;
+
+  @override
+  List<LogEntry> build() {
+    _service = getIt<LogService>();
+    final unsubscribe = _service.addListener((logs) {
+      state = logs;
+    });
+    ref.onDispose(unsubscribe);
+    return _service.logs;
+  }
+
+  void debug(String message, {String tag = 'App', String? details}) =>
+      _service.debug(message, tag: tag, details: details);
+  void info(String message, {String tag = 'App', String? details}) =>
+      _service.info(message, tag: tag, details: details);
+  void warning(String message, {String tag = 'App', String? details}) =>
+      _service.warning(message, tag: tag, details: details);
+  void error(String message, [dynamic error, StackTrace? stackTrace]) =>
+      _service.error(message, error, stackTrace);
+  void clear() => _service.clear();
+}
+
 @lazySingleton
-class LogService extends ChangeNotifier implements ILogService {
+class LogService implements ILogService {
   LogService(this._prefs) {
     _initPersistence();
   }
@@ -112,6 +136,12 @@ class LogService extends ChangeNotifier implements ILogService {
   final int _maxLogs = 200;
   bool _isNotificationPending = false;
   Timer? _persistTimer;
+  final List<void Function(List<LogEntry>)> _listeners = [];
+
+  void Function() addListener(void Function(List<LogEntry>) listener) {
+    _listeners.add(listener);
+    return () => _listeners.remove(listener);
+  }
 
   @override
   List<LogEntry> get logs => List.unmodifiable(_logs);
@@ -175,7 +205,7 @@ class LogService extends ChangeNotifier implements ILogService {
     _logs.clear();
     _persistTimer?.cancel();
     _prefs.remove(_keyLogs);
-    notifyListeners();
+    _scheduleThrottledNotify();
   }
 
   void _scheduleThrottledNotify() {
@@ -183,7 +213,10 @@ class LogService extends ChangeNotifier implements ILogService {
     _isNotificationPending = true;
     scheduleMicrotask(() {
       _isNotificationPending = false;
-      notifyListeners();
+      final currentLogs = logs;
+      for (final listener in List.of(_listeners)) {
+        listener(currentLogs);
+      }
     });
   }
 

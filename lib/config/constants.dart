@@ -12,13 +12,13 @@ abstract final class AppConstants {
   static const String cerebrasBaseUrl = 'https://api.cerebras.ai/v1';
 
   // === Network Timeouts ===
-  static const Duration connectTimeout = Duration(seconds: 30);
-  static const Duration readTimeout = Duration(seconds: 60);
+  static const Duration connectTimeout = Duration(seconds: 15);
+  static const Duration readTimeout = Duration(seconds: 15);
 
   // === Retry Configuration ===
-  static const int maxRetries = 5;
-  static const Duration initialBackoff = Duration(seconds: 1);
-  static const Duration maxBackoff = Duration(seconds: 32);
+  static const int maxRetries = 4;
+  static const Duration initialBackoff = Duration(milliseconds: 500);
+  static const Duration maxBackoff = Duration(seconds: 60);
   static const double backoffMultiplier = 2.0;
 
   // === Content Generation ===
