@@ -1,5 +1,6 @@
 import 'package:equatable/equatable.dart';
 import 'package:oreamnos/core/utils/readability_utils.dart';
+import 'package:oreamnos/domain/services/source_policy.dart';
 
 /// Attribution for the original source, kept separate from body.
 class SourceAttribution extends Equatable {
@@ -41,6 +42,10 @@ class SourceAttribution extends Equatable {
 }
 
 /// Result of web scraping, preserving metadata separately from text.
+///
+/// [siteName] is the portal/outlet name (og:site_name etc.) used as the
+/// preferred `source.label` candidate. [url]/[domain] are internal only and
+/// must never be displayed as the citation label (see [SourcePolicy]).
 class ExtractedArticle extends Equatable {
   final String text;
   final String? pageTitle;
@@ -48,6 +53,7 @@ class ExtractedArticle extends Equatable {
   final String domain;
   final String? description;
   final String? faviconUrl;
+  final String? siteName;
 
   const ExtractedArticle({
     required this.text,
@@ -56,6 +62,7 @@ class ExtractedArticle extends Equatable {
     this.pageTitle,
     this.description,
     this.faviconUrl,
+    this.siteName,
   });
 
   @override
@@ -66,6 +73,7 @@ class ExtractedArticle extends Equatable {
     domain,
     description,
     faviconUrl,
+    siteName,
   ];
 }
 
@@ -285,47 +293,74 @@ class CuratedPost extends Equatable {
 
   static String _formatBody(String body) {
     if (body.isEmpty) return body;
-    // Preserve bullet lists as-is
-    if (body.contains(RegExp(r'^\s*[-•]\s', multiLine: true))) return body;
+    final canonical = _canonicalizeBody(body);
+    // Preserve bullet lists as-is (now paste-safe with •)
+    if (canonical.contains(RegExp(r'^\s*•\s', multiLine: true))) {
+      return canonical;
+    }
 
     // Delegate to ReadabilityUtils to handle paragraph splitting (max 40 words per paragraph)
     return ReadabilityUtils.splitLongParagraphs(
-      body.trim(),
+      canonical.trim(),
       maxWordsPerParagraph: 40,
     );
   }
 
-  static SourceAttribution _sanitizeSource(SourceAttribution source) {
-    String label = source.label.trim();
-    String? url = source.url;
-
-    // Clear label if it's just a platform name
-    final purePlatform = RegExp(
-      r'^(x|x\.com|twitter|twitter\.com|x\s*/\s*twitter|twitter\s*/\s*x|t\.co)$',
-      caseSensitive: false,
+  /// Canonicalizes body text so display and clipboard agree (WYSIWYG copy).
+  /// Normalizes every list marker to paste-safe `•`, strips markdown syntax
+  /// that `MarkdownBody` hides visually but clipboard would leak literally,
+  /// and collapses 3+ newlines. Idempotent — safe to run on already-clean text.
+  static String _canonicalizeBody(String input) {
+    var text = input.replaceAll('\r\n', '\n');
+    final lines = text.split('\n');
+    final out = <String>[];
+    for (var line in lines) {
+      var l = line.replaceAll(RegExp(r'[ \t]+$'), '');
+      // Strip heading / quote markers the renderer hides but paste would leak.
+      l = l.replaceAll(RegExp(r'^\s*#{1,6}\s+'), '');
+      l = l.replaceAll(RegExp(r'^\s*>\s?'), '');
+      // Normalize bullets: - * + > • · ▪ ▫ ‣ ⁃ → •
+      l = l.replaceAllMapped(
+        RegExp(r'^(\s*)[-*+>•·▪▫‣⁃](\s+)'),
+        (m) => '${m.group(1)}•${m.group(2)}',
+      );
+      // Numbered / lettered list markers → • (prompt mandates • only).
+      l = l.replaceAllMapped(
+        RegExp(r'^(\s*)\d{1,3}[.)](\s+)'),
+        (m) => '${m.group(1)}•${m.group(2)}',
+      );
+      l = l.replaceAllMapped(
+        RegExp(r'^(\s*)[a-z]\)(\s+)'),
+        (m) => '${m.group(1)}•${m.group(2)}',
+      );
+      out.add(l);
+    }
+    text = out.join('\n');
+    // Strip inline markdown the renderer hides but paste would leak.
+    text = text.replaceAllMapped(
+      RegExp(r'\*\*(.*?)\*\*'),
+      (m) => m.group(1) ?? '',
     );
-    if (purePlatform.hasMatch(label)) {
-      label = '';
-    }
+    text = text.replaceAllMapped(RegExp(r'__(.*?)__'), (m) => m.group(1) ?? '');
+    text = text.replaceAllMapped(RegExp(r'~~(.*?)~~'), (m) => m.group(1) ?? '');
+    text = text.replaceAll(RegExp(r'`+'), '');
+    text = text.replaceAll(RegExp(r'\n\s*\n\s*\n+'), '\n\n');
+    return text.trim();
+  }
 
-    // Strip " via X" or " via Twitter" from the end of valid labels
-    label = label
-        .replaceAll(
-          RegExp(
-            r'\s+via\s+(x|x\.com|twitter|twitter\.com)$',
-            caseSensitive: false,
-          ),
-          '',
-        )
-        .trim();
+  /// Plain-text normalizer for clipboard/share targets with no markdown
+  /// engine (WhatsApp, FB, X, Notes). Guarantees bullets survive as `•`.
+  static String toPlainText(String input) {
+    return _canonicalizeBody(input);
+  }
 
-    // Clear URL if it is a Twitter/X link (since the platform itself shouldn't be the source link)
-    if (url != null &&
-        (url.contains('twitter.com') ||
-            url.contains('x.com') ||
-            url.contains('t.co'))) {
-      url = null;
-    }
+  static SourceAttribution _sanitizeSource(SourceAttribution source) {
+    // Central policy: label must be an outlet name from content, never a
+    // URL/domain/platform/handle. URL is kept internally (Open/Copy) and
+    // Twitter/X links are kept too (internal only) — only the label is
+    // hardened here.
+    final label = SourcePolicy.sanitizeLabel(source.label);
+    String? url = source.url;
 
     if (label.isEmpty && url == null) {
       return const SourceAttribution(label: '');
@@ -464,19 +499,13 @@ class CuratedPost extends Equatable {
     }
     if (bodyMarkdown.isNotEmpty) buf.writeln(bodyMarkdown);
 
-    if (appendSourceForCopy && showSource && !source.isEmpty) {
+    // Never emit a URL/domain as the citation text. Only the hardened
+    // outlet label is copied; when it is empty the Sumber line is omitted
+    // entirely (url stays in the model for Open/Copy buttons only).
+    if (appendSourceForCopy && showSource && source.label.trim().isNotEmpty) {
       buf.writeln();
       buf.writeln();
-      String sourceText = source.label;
-      if (sourceText.isEmpty &&
-          source.domain != null &&
-          source.domain!.isNotEmpty) {
-        sourceText = source.domain!;
-      }
-      if (sourceText.isEmpty && source.url != null && source.url!.isNotEmpty) {
-        sourceText = source.url!;
-      }
-      buf.write('Sumber: $sourceText');
+      buf.write('Sumber: ${source.label.trim()}');
     }
 
     if (showHashtags && hashtags.isNotEmpty) {
@@ -486,6 +515,25 @@ class CuratedPost extends Equatable {
     }
 
     return buf.toString().trim();
+  }
+
+  /// Paste-safe plain text for clipboard/share targets with no markdown
+  /// engine. Same layout as [toMarkdownFiltered] (hashtags newline-per-tag
+  /// per user choice B) but re-normalized so `•` bullets and `#tags` survive
+  /// paste exactly as displayed. Use for ALL copy/share callers.
+  String toPlainTextFiltered({
+    bool showTitle = true,
+    bool showHashtags = true,
+    bool showSource = false,
+    bool appendSourceForCopy = false,
+  }) {
+    final md = toMarkdownFiltered(
+      showTitle: showTitle,
+      showHashtags: showHashtags,
+      showSource: showSource,
+      appendSourceForCopy: appendSourceForCopy,
+    );
+    return toPlainText(md);
   }
 
   /// For card generator: body only

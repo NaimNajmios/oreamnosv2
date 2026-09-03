@@ -39,12 +39,16 @@ class SourceAttributionCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    if (source.isEmpty) return const SizedBox.shrink();
+    // Hardened: the visible citation must be an outlet name from content.
+    // When the label is empty we hide the card entirely instead of falling
+    // back to domain/URL text (url remains available via hasUrl buttons
+    // only when a valid label exists).
+    if (source.label.trim().isEmpty) return const SizedBox.shrink();
 
     final hasUrl = source.hasUrl;
     final domain =
         source.domain ?? (hasUrl ? Uri.tryParse(source.url!)?.host : null);
-    final label = source.label.isNotEmpty ? source.label : (domain ?? '');
+    final label = source.label.trim();
 
     return Container(
       padding: const EdgeInsets.symmetric(
@@ -89,7 +93,7 @@ class SourceAttributionCard extends StatelessWidget {
                 ),
                 const SizedBox(height: 2),
                 Text(
-                  label.isNotEmpty ? label : (domain ?? source.url ?? ''),
+                  label,
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                   style: theme.textTheme.bodySmall?.copyWith(

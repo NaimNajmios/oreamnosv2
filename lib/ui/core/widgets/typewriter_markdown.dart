@@ -20,6 +20,28 @@ class TypewriterMarkdown extends StatefulWidget {
 
   @override
   State<TypewriterMarkdown> createState() => _TypewriterMarkdownState();
+
+  /// Normalizes markdown for display: collapses 3+ newlines, trims line
+  /// trailing spaces, and maps paste-safe `•` bullets to `-` so
+  /// `MarkdownBody` renders them as a tight native list instead of
+  /// double-spaced paragraphs. Single `\n` between list items stays tight;
+  /// `\n\n` between paragraphs stays airy.
+  static String normalizeForDisplay(String input) {
+    var text = input.replaceAll('\r\n', '\n');
+    text = text.replaceAll(RegExp(r'[ \t]+$'), '');
+    text = text.replaceAll(RegExp(r'\n{3,}'), '\n\n');
+    final lines = text.split('\n');
+    final out = <String>[];
+    for (final line in lines) {
+      final m = RegExp(r'^(\s*)[•·▪▫‣⁃](\s+)').firstMatch(line);
+      if (m != null) {
+        out.add('${m.group(1)}- ${line.substring(m.end).trimLeft()}');
+      } else {
+        out.add(line);
+      }
+    }
+    return out.join('\n');
+  }
 }
 
 class _TypewriterMarkdownState extends State<TypewriterMarkdown> {
@@ -99,9 +121,9 @@ class _TypewriterMarkdownState extends State<TypewriterMarkdown> {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
 
-    // Replace newlines with double newlines to force markdown paragraph breaks.
-    // This prevents MarkdownBody from merging single newlines into a single paragraph.
-    final processedText = _displayedText.replaceAll('\n', '\n\n');
+    final processedText = TypewriterMarkdown.normalizeForDisplay(
+      _displayedText,
+    );
 
     return MarkdownBody(
       data: processedText,
@@ -112,6 +134,12 @@ class _TypewriterMarkdownState extends State<TypewriterMarkdown> {
           color: theme.colorScheme.onSurface,
         ),
         pPadding: const EdgeInsets.only(bottom: 12),
+        listBullet: theme.textTheme.bodyMedium?.copyWith(
+          height: 1.65,
+          color: theme.colorScheme.onSurface,
+        ),
+        listBulletPadding: const EdgeInsets.only(right: 8),
+        listIndent: 20,
         h1: theme.textTheme.headlineMedium?.copyWith(
           fontWeight: FontWeight.w700,
           letterSpacing: -0.5,

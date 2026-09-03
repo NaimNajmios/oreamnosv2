@@ -32,12 +32,23 @@ void main() {
 
     test('buildSystemPrompt adds Keep Structure instruction when enabled', () {
       final s = GenerationPromptManager.buildSystemPrompt(keepStructure: true);
-      expect(
-        s,
-        contains(
-          'Keep the exact same structure, paragraphing, and bullet points as the source text',
-        ),
-      );
+      expect(s, contains('Mirror the source skeleton exactly'));
+      expect(s, contains('Do NOT translate word-for-word'));
+      expect(s, contains('Memang kelas tersendiri'));
+      expect(s, isNot(contains('Translate line-by-line')));
+    });
+
+    test('keepStructure schema describes tight bullet lists', () {
+      final keep = GenerationPromptManager.jsonSchema(keepStructure: true);
+      final normal = GenerationPromptManager.jsonSchema();
+      final keepBody =
+          ((keep['properties'] as Map)['body'] as Map)['description'] as String;
+      final normalBody =
+          ((normal['properties'] as Map)['body'] as Map)['description']
+              as String;
+      expect(keepBody, contains('single \\n'));
+      expect(keepBody, contains('never word-for-word'));
+      expect(normalBody, contains('proportional to source'));
     });
 
     test('buildUserPrompt handles string', () {
@@ -55,7 +66,7 @@ void main() {
     });
 
     test('geminiResponseSchema strips additionalProperties recursively', () {
-      final schema = GenerationPromptManager.geminiResponseSchema;
+      final schema = GenerationPromptManager.geminiResponseSchema();
       bool hasAdditional(dynamic node) {
         if (node is Map) {
           if (node.containsKey('additionalProperties')) return true;
@@ -76,7 +87,7 @@ void main() {
     });
 
     test('jsonSchema keeps additionalProperties for OpenAI strict mode', () {
-      final schema = GenerationPromptManager.jsonSchema;
+      final schema = GenerationPromptManager.jsonSchema();
       expect(schema['additionalProperties'], isFalse);
     });
   });

@@ -906,7 +906,7 @@ class _GenerateScreenState extends ConsumerState<GenerateScreen> {
 
     if (hasPost) {
       final post = viewModel.curatedPost!;
-      final copyText = post.toMarkdownFiltered(
+      final copyText = post.toPlainTextFiltered(
         showTitle: viewModel.showTitle,
         showHashtags: viewModel.showHashtags,
         showSource: viewModel.showSource,

@@ -53,10 +53,17 @@ class EnrichContextUseCase {
 
     final sources = <String>[];
     for (final result in searchResponse.results) {
-      mergedContent.writeln('--- Source: ${result.title} (${result.url}) ---');
+      mergedContent.writeln('--- Source: ${result.title} ---');
+      mergedContent.writeln(
+        'URL (INTERNAL ONLY, grounding reference — never use as source.label): '
+        '${result.url}',
+      );
       mergedContent.writeln(result.content);
       sources.add(result.url);
     }
+    mergedContent.writeln(
+      'SOURCE RULE: Derive source.label ONLY from outlet names in the content above. NEVER use a URL, domain, or platform name as the citation.',
+    );
 
     if (searchResponse.answer.isNotEmpty) {
       mergedContent.writeln('\nAI SUMMARY: ${searchResponse.answer}');

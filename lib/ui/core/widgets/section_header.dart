@@ -28,12 +28,11 @@ class SectionHeader extends StatelessWidget {
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
           Text(
-            title,
-            style: theme.textTheme.labelMedium?.copyWith(
-              color: theme
-                  .colorScheme
-                  .onSurfaceVariant, // Minimalist subtle section header
-              fontWeight: FontWeight.w600,
+            title.toUpperCase(),
+            style: theme.textTheme.labelSmall?.copyWith(
+              color: theme.colorScheme.onSurfaceVariant,
+              fontWeight: FontWeight.w700,
+              letterSpacing: 0.8,
             ),
           ),
           ?trailing,

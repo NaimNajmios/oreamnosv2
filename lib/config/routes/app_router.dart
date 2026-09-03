@@ -135,7 +135,8 @@ GoRouter createAppRouter({String? initialLocation}) {
             final cp = extra['curatedPost'];
             if (cp is CuratedPost) {
               return ReadingModeScreen(
-                content: extra['copyText'] as String? ?? cp.rawMarkdown,
+                content:
+                    extra['copyText'] as String? ?? cp.toPlainTextFiltered(),
                 curatedPost: cp,
               );
             }
@@ -143,7 +144,7 @@ GoRouter createAppRouter({String? initialLocation}) {
           // Fallback for CuratedPost directly
           if (extra is CuratedPost) {
             return ReadingModeScreen(
-              content: extra.rawMarkdown,
+              content: extra.toPlainTextFiltered(),
               curatedPost: extra,
             );
           }

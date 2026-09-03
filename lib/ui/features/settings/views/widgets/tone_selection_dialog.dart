@@ -32,12 +32,16 @@ class ToneSelectionDialog extends ConsumerWidget {
         'label': 'Casual',
         'desc': 'Relaxed, conversational fan tone with natural slang',
       },
+      {
+        'key': 'matchday',
+        'label': 'Matchday Live',
+        'desc': 'Energetic, live-commentary energy for big games',
+      },
     ];
 
     return Dialog(
-      shape: RoundedRectangleBorder(
+      shape: const RoundedRectangleBorder(
         borderRadius: AppSpacing.borderRadiusLg,
-        side: BorderSide(color: theme.colorScheme.outline),
       ),
       backgroundColor: theme.colorScheme.surface,
       child: ConstrainedBox(
@@ -58,7 +62,7 @@ class ToneSelectionDialog extends ConsumerWidget {
               Text(
                 'Select the voice and personality for generated posts.',
                 style: theme.textTheme.bodySmall?.copyWith(
-                  color: theme.colorScheme.onSurface.withValues(alpha: 0.6),
+                  color: theme.colorScheme.onSurfaceVariant,
                 ),
               ),
               const SizedBox(height: AppSpacing.md),
@@ -99,9 +103,7 @@ class ToneSelectionDialog extends ConsumerWidget {
                               size: 16,
                               color: isSelected
                                   ? theme.colorScheme.primary
-                                  : theme.colorScheme.onSurface.withValues(
-                                      alpha: 0.7,
-                                    ),
+                                  : theme.colorScheme.onSurfaceVariant,
                             ),
                           ),
                           const SizedBox(width: AppSpacing.md),
@@ -124,8 +126,7 @@ class ToneSelectionDialog extends ConsumerWidget {
                                 Text(
                                   desc,
                                   style: theme.textTheme.bodySmall?.copyWith(
-                                    color: theme.colorScheme.onSurface
-                                        .withValues(alpha: 0.6),
+                                    color: theme.colorScheme.onSurfaceVariant,
                                     fontSize: 12,
                                   ),
                                 ),

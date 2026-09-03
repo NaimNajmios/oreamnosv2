@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import 'package:oreamnos/config/theme/app_colors.dart';
 import 'package:oreamnos/config/theme/app_spacing.dart';
 import 'package:oreamnos/ui/core/utils/haptics.dart';
 import 'package:oreamnos/ui/core/widgets/app_card.dart';
@@ -118,9 +117,7 @@ class HashtagManagerScreen extends ConsumerWidget {
                             icon: Icon(
                               Icons.more_vert_rounded,
                               size: 20,
-                              color: theme.colorScheme.onSurface.withValues(
-                                alpha: 0.6,
-                              ),
+                              color: theme.colorScheme.onSurfaceVariant,
                             ),
                             shape: RoundedRectangleBorder(
                               borderRadius: AppSpacing.borderRadiusSm,
@@ -128,12 +125,62 @@ class HashtagManagerScreen extends ConsumerWidget {
                                 color: theme.colorScheme.outline,
                               ),
                             ),
-                            onSelected: (value) {
+                            onSelected: (value) async {
                               Haptics.selectionClick();
                               if (value == 'default') {
                                 notifier.setDefaultHashtagGroup(group.id);
                               } else if (value == 'delete') {
-                                notifier.removeHashtagGroup(group);
+                                final groups = ref
+                                    .read(settingsViewModelProvider)
+                                    .hashtagGroups;
+                                final nextDefault = groups
+                                    .where((g) => g.id != group.id)
+                                    .firstOrNull
+                                    ?.name;
+                                final confirm = await showDialog<bool>(
+                                  context: context,
+                                  builder: (context) => AlertDialog(
+                                    title: Text('Delete "${group.name}"?'),
+                                    content: Text(
+                                      group.isDefault && nextDefault != null
+                                          ? 'Default will move to "$nextDefault".'
+                                          : 'This hashtag group will be removed permanently.',
+                                    ),
+                                    actions: [
+                                      TextButton(
+                                        onPressed: () =>
+                                            Navigator.of(context).pop(false),
+                                        child: const Text('Cancel'),
+                                      ),
+                                      TextButton(
+                                        onPressed: () =>
+                                            Navigator.of(context).pop(true),
+                                        style: TextButton.styleFrom(
+                                          foregroundColor:
+                                              theme.colorScheme.error,
+                                        ),
+                                        child: const Text('Delete'),
+                                      ),
+                                    ],
+                                  ),
+                                );
+                                if (confirm != true) return;
+                                Haptics.heavyImpact();
+                                await notifier.removeHashtagGroup(group);
+                                if (!context.mounted) return;
+                                ScaffoldMessenger.of(context)
+                                  ..clearSnackBars()
+                                  ..showSnackBar(
+                                    SnackBar(
+                                      content: const Text('Group deleted'),
+                                      action: SnackBarAction(
+                                        label: 'Undo',
+                                        onPressed: () =>
+                                            notifier.addHashtagGroup(group),
+                                      ),
+                                      duration: const Duration(seconds: 5),
+                                    ),
+                                  );
                               }
                             },
                             itemBuilder: (context) => [
@@ -151,19 +198,21 @@ class HashtagManagerScreen extends ConsumerWidget {
                                     ],
                                   ),
                                 ),
-                              const PopupMenuItem(
+                              PopupMenuItem(
                                 value: 'delete',
                                 child: Row(
                                   children: [
                                     Icon(
                                       Icons.delete_outline_rounded,
                                       size: 18,
-                                      color: AppColors.error,
+                                      color: theme.colorScheme.error,
                                     ),
-                                    SizedBox(width: 8),
+                                    const SizedBox(width: 8),
                                     Text(
                                       'Delete',
-                                      style: TextStyle(color: AppColors.error),
+                                      style: TextStyle(
+                                        color: theme.colorScheme.error,
+                                      ),
                                     ),
                                   ],
                                 ),

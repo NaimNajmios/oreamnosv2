@@ -89,9 +89,15 @@ class GeminiCurator implements IContentCurator {
     bool isFanModeEnabled = false,
     String fanClubName = '',
     String length = 'medium',
+    String? siteName,
+    String? authorDisplayName,
+    String? candidateOutlet,
+    bool isTwitter = false,
   }) async {
     final resolvedSourceUrl =
         sourceUrl ?? (content is ExtractedArticle ? content.url : null);
+    final resolvedSiteName =
+        siteName ?? (content is ExtractedArticle ? content.siteName : null);
     final systemPrompt = GenerationPromptManager.buildSystemPrompt(
       sourceUrl: resolvedSourceUrl,
       searchSources: searchSources,
@@ -100,6 +106,10 @@ class GeminiCurator implements IContentCurator {
       fanClubName: fanClubName,
       length: length,
       sourceText: GenerationPromptManager.plainTextOf(content),
+      siteName: resolvedSiteName,
+      authorDisplayName: authorDisplayName,
+      candidateOutlet: candidateOutlet,
+      isTwitter: isTwitter,
     );
     final userPrompt = GenerationPromptManager.buildUserPrompt(content);
 
@@ -129,7 +139,9 @@ class GeminiCurator implements IContentCurator {
           "generationConfig": {
             "temperature": 0.7,
             "responseMimeType": "application/json",
-            "responseSchema": GenerationPromptManager.geminiResponseSchema,
+            "responseSchema": GenerationPromptManager.geminiResponseSchema(
+              keepStructure: keepStructure,
+            ),
           },
         },
         apiKey: apiKey,
@@ -171,7 +183,14 @@ class GeminiCurator implements IContentCurator {
     }
 
     final rawText = parts[0]['text'] as String;
-    return _parseCuratedPost(rawText, resolvedSourceUrl);
+    return _parseCuratedPost(
+      rawText,
+      resolvedSourceUrl,
+      siteName: resolvedSiteName,
+      authorDisplayName: authorDisplayName,
+      candidateOutlet: candidateOutlet,
+      isTwitter: isTwitter,
+    );
   }
 
   @override
@@ -217,7 +236,9 @@ class GeminiCurator implements IContentCurator {
           "generationConfig": {
             "temperature": 0.7,
             "responseMimeType": "application/json",
-            "responseSchema": GenerationPromptManager.geminiResponseSchema,
+            "responseSchema": GenerationPromptManager.geminiResponseSchema(
+              keepStructure: keepStructure,
+            ),
           },
         },
         apiKey: apiKey,
@@ -260,30 +281,52 @@ class GeminiCurator implements IContentCurator {
 
   Future<CuratedPost> _parseCuratedPost(
     String rawText,
-    String? sourceUrl,
-  ) async {
+    String? sourceUrl, {
+    String? siteName,
+    String? authorDisplayName,
+    String? candidateOutlet,
+    bool isTwitter = false,
+  }) async {
     try {
       final jsonMap = await JsonCleaner.decodeIsolate(rawText);
-      // Ensure source url/domain
+      // Backfill source.url for internal use only. NEVER derive
+      // source.label from the URL/domain — leave it "" when the LLM
+      // provides no content-based outlet (CuratedPost sanitizer enforces).
       if (jsonMap['source'] is Map) {
         final sm = jsonMap['source'] as Map<String, dynamic>;
-        if ((sm['url'] == null || (sm['url'] as String).isEmpty) &&
+        if ((sm['url'] == null ||
+                (sm['url'] is String && (sm['url'] as String).isEmpty)) &&
             sourceUrl != null &&
             sourceUrl.isNotEmpty) {
           sm['url'] = sourceUrl;
           sm['domain'] = Uri.tryParse(sourceUrl)?.host;
-          if ((sm['label'] as String?)?.isEmpty ?? true) {
-            sm['label'] = Uri.tryParse(sourceUrl)?.host ?? '';
-          }
+        }
+        // Seed label from content-based candidates only (never host).
+        final currentLabel = (sm['label'] as String?) ?? '';
+        if (currentLabel.trim().isEmpty) {
+          final seed = _seedLabel(
+            siteName: siteName,
+            authorDisplayName: authorDisplayName,
+            candidateOutlet: candidateOutlet,
+            isTwitter: isTwitter,
+          );
+          if (seed != null && seed.isNotEmpty) sm['label'] = seed;
         }
       }
       return CuratedPost.fromJson(jsonMap);
     } catch (_) {
       // Fallback: clean markdown chatter then treat as markdown.
+      // Label stays "" (never host); url preserved for internal use.
       SourceAttribution? src;
       if (sourceUrl != null && sourceUrl.isNotEmpty) {
+        final seed = _seedLabel(
+          siteName: siteName,
+          authorDisplayName: authorDisplayName,
+          candidateOutlet: candidateOutlet,
+          isTwitter: isTwitter,
+        );
         src = SourceAttribution(
-          label: Uri.tryParse(sourceUrl)?.host ?? sourceUrl,
+          label: seed ?? '',
           url: sourceUrl,
           domain: Uri.tryParse(sourceUrl)?.host,
         );
@@ -293,6 +336,27 @@ class GeminiCurator implements IContentCurator {
         source: src,
       );
     }
+  }
+
+  /// Content-based label seed only. Returns null when no outlet is known
+  /// so the label stays blank instead of falling back to URL/host.
+  String? _seedLabel({
+    String? siteName,
+    String? authorDisplayName,
+    String? candidateOutlet,
+    bool isTwitter = false,
+  }) {
+    final outlet = (candidateOutlet ?? '').trim();
+    final site = (siteName ?? '').trim();
+    final author = (authorDisplayName ?? '').trim();
+    if (isTwitter) {
+      if (outlet.isNotEmpty && author.isNotEmpty) return '$outlet via $author';
+      // No confirmed outlet in content → blank (never handle/URL alone).
+      return null;
+    }
+    if (site.isNotEmpty) return site;
+    if (outlet.isNotEmpty) return outlet;
+    return null;
   }
 
   @override

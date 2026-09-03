@@ -18,6 +18,8 @@ class SettingsState {
   final String? tavilyApiKey;
   final bool isFanModeEnabled;
   final String fanClubName;
+  final bool? lastTestOk;
+  final DateTime? lastTestedAt;
 
   const SettingsState({
     this.isInitialized = false,
@@ -34,6 +36,8 @@ class SettingsState {
     this.tavilyApiKey,
     this.isFanModeEnabled = false,
     this.fanClubName = '',
+    this.lastTestOk,
+    this.lastTestedAt,
   });
 
   SettingsState copyWith({
@@ -54,6 +58,9 @@ class SettingsState {
     bool clearTavilyKey = false,
     bool? isFanModeEnabled,
     String? fanClubName,
+    bool? lastTestOk,
+    DateTime? lastTestedAt,
+    bool clearLastTest = false,
   }) {
     return SettingsState(
       isInitialized: isInitialized ?? this.isInitialized,
@@ -70,6 +77,8 @@ class SettingsState {
       tavilyApiKey: clearTavilyKey ? null : (tavilyApiKey ?? this.tavilyApiKey),
       isFanModeEnabled: isFanModeEnabled ?? this.isFanModeEnabled,
       fanClubName: fanClubName ?? this.fanClubName,
+      lastTestOk: clearLastTest ? null : (lastTestOk ?? this.lastTestOk),
+      lastTestedAt: clearLastTest ? null : (lastTestedAt ?? this.lastTestedAt),
     );
   }
 }

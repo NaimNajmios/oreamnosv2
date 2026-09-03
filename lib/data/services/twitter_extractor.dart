@@ -3,6 +3,7 @@ import 'package:flutter/foundation.dart';
 import 'package:oreamnos/core/di/injection.dart';
 import 'package:oreamnos/core/network/api_client.dart';
 import 'package:oreamnos/core/utils/url_detector.dart';
+import 'package:oreamnos/domain/services/source_policy.dart';
 
 class TwitterExtractor {
   static final RegExp _xUrlPattern = RegExp(
@@ -72,6 +73,7 @@ class TwitterExtractor {
         text: text,
         authorName: authorName,
         authorHandle: '@$authorHandle',
+        candidateOutlet: SourcePolicy.extractOutletFromTweet(text),
         likes: metrics?['likes'] as int? ?? 0,
         retweets: metrics?['retweets'] as int? ?? 0,
         replies: metrics?['replies'] as int? ?? 0,
@@ -85,18 +87,34 @@ class TwitterExtractor {
     }
   }
 
-  /// Formats tweet content into a rich text block for the AI prompt
+  /// Formats tweet content into a structured block for the AI prompt.
+  ///
+  /// The handle/URL are metadata only and must NEVER be used as
+  /// `source.label`. The label must come from POST CONTENT (see
+  /// [TweetContent.candidateOutlet]) formatted as
+  /// "[Outlet] via [Author Display Name]".
   static String formatForAiPrompt(TweetContent tweet) {
     final sb = StringBuffer();
-    sb.writeln('SOURCE: X/Twitter Post');
-    sb.writeln('AUTHOR: ${tweet.authorName} (${tweet.authorHandle})');
-    sb.writeln('DATE: ${tweet.createdAt}');
+    sb.writeln('TYPE: social_post');
+    sb.writeln('AUTHOR_DISPLAY_NAME: ${tweet.authorDisplayName}');
     sb.writeln(
-      'ENGAGEMENT: ${tweet.likes} likes, ${tweet.retweets} retweets, ${tweet.views} views',
+      'AUTHOR_HANDLE (metadata only, never use as source): '
+      '${tweet.authorHandle}',
     );
+    sb.writeln('DATE: ${tweet.createdAt}');
     sb.writeln('');
     sb.writeln('POST CONTENT:');
     sb.writeln(tweet.text);
+    sb.writeln('');
+    sb.writeln(
+      'CANDIDATE_OUTLET (heuristic, may be empty): '
+      '${tweet.candidateOutlet ?? ''}',
+    );
+    sb.writeln(
+      'SOURCE RULE: Derive source.label ONLY from POST CONTENT / '
+      'CANDIDATE_OUTLET. Never use a URL, domain, platform name '
+      '(X/Twitter/x.com) or handle-alone.',
+    );
     return sb.toString();
   }
 }
@@ -111,6 +129,7 @@ class TweetContent {
   final int views;
   final String createdAt;
   final String sourceUrl;
+  final String? candidateOutlet;
 
   TweetContent({
     required this.text,
@@ -122,7 +141,24 @@ class TweetContent {
     this.views = 0,
     this.createdAt = '',
     this.sourceUrl = '',
+    this.candidateOutlet,
   });
+
+  /// Display name for "Outlet via Display Name" formatting.
+  /// Falls back to the handle without "@" when the name is empty.
+  String get authorDisplayName {
+    final name = authorName.trim();
+    if (name.isNotEmpty) return name;
+    final handle = authorHandle.trim();
+    if (handle.startsWith('@') && handle.length > 1) {
+      return handle.substring(1);
+    }
+    return handle;
+  }
+
+  /// Heuristic outlet extracted from the post content (never from URL).
+  String? get resolvedCandidateOutlet =>
+      candidateOutlet ?? SourcePolicy.extractOutletFromTweet(text);
 
   bool get isValid => text.isNotEmpty;
 }

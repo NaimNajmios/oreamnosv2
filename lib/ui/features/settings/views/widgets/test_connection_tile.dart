@@ -19,28 +19,42 @@ class TestConnectionTile extends ConsumerStatefulWidget {
 
 class _TestConnectionTileState extends ConsumerState<TestConnectionTile> {
   bool _testing = false;
-  bool? _lastResult;
+
+  static String _relativeTime(DateTime? at) {
+    if (at == null) return '';
+    final diff = DateTime.now().difference(at);
+    if (diff.inSeconds < 60) return 'just now';
+    if (diff.inMinutes < 60) return '${diff.inMinutes}m ago';
+    if (diff.inHours < 24) return '${diff.inHours}h ago';
+    return '${diff.inDays}d ago';
+  }
 
   Future<void> _test() async {
     if (_testing) return;
-    setState(() {
-      _testing = true;
-      _lastResult = null;
-    });
+    final notifier = ref.read(settingsViewModelProvider.notifier);
+    final provider = ref.read(settingsViewModelProvider).selectedProvider;
+    final apiKey = await notifier.getApiKeyForProvider(provider);
+    if ((apiKey ?? '').isEmpty) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Add an API key first, then test the connection'),
+        ),
+      );
+      return;
+    }
+    setState(() => _testing = true);
     Haptics.selectionClick();
     try {
-      final settings = ref.read(settingsViewModelProvider);
-      final provider = settings.selectedProvider;
-      final apiKey = await ref
-          .read(settingsViewModelProvider.notifier)
-          .getApiKeyForProvider(provider);
       final ok = await getIt<ProviderApiService>().testConnection(
         provider,
         apiKey ?? '',
       );
+      await notifier.setLastTestResult(ok);
       if (!mounted) return;
-      setState(() => _lastResult = ok);
-      Haptics.success();
+      if (ok) {
+        Haptics.success();
+      }
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text(
@@ -51,8 +65,7 @@ class _TestConnectionTileState extends ConsumerState<TestConnectionTile> {
         ),
       );
     } catch (_) {
-      if (!mounted) return;
-      setState(() => _lastResult = false);
+      await notifier.setLastTestResult(false);
     } finally {
       if (mounted) setState(() => _testing = false);
     }
@@ -61,13 +74,18 @@ class _TestConnectionTileState extends ConsumerState<TestConnectionTile> {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final settings = ref.watch(settingsViewModelProvider);
+    final lastResult = settings.lastTestOk;
     final subtitle = _testing
         ? 'Testing…'
-        : _lastResult == true
-        ? 'Connected ✓'
-        : _lastResult == false
+        : lastResult == true
+        ? 'Connected · ${_relativeTime(settings.lastTestedAt)}'
+        : lastResult == false
         ? 'Failed — tap to retry'
-        : 'Verify your API key works';
+        : 'Check connection';
+    final successColor = theme.brightness == Brightness.dark
+        ? Colors.green.shade400
+        : Colors.green.shade700;
     return SettingsTile(
       leadingIcon: Icons.wifi_find_rounded,
       title: 'Test Connection',
@@ -81,9 +99,9 @@ class _TestConnectionTileState extends ConsumerState<TestConnectionTile> {
                 color: theme.colorScheme.primary,
               ),
             )
-          : _lastResult == true
-          ? Icon(Icons.check_circle_rounded, color: Colors.green.shade600)
-          : _lastResult == false
+          : lastResult == true
+          ? Icon(Icons.check_circle_rounded, color: successColor)
+          : lastResult == false
           ? Icon(Icons.error_rounded, color: theme.colorScheme.error)
           : null,
       onTap: _test,

@@ -12,7 +12,10 @@ import 'package:oreamnos/ui/core/utils/haptics.dart';
 import 'package:oreamnos/ui/core/widgets/app_input.dart';
 import 'package:oreamnos/ui/core/widgets/error_state.dart';
 import 'package:oreamnos/ui/core/widgets/kickoff_loading_indicator.dart';
+import 'package:oreamnos/ui/core/widgets/skeleton_loader.dart';
 import 'package:oreamnos/ui/features/settings/view_models/settings_view_model.dart';
+
+import 'api_key_dialog.dart';
 
 /// Dialog to dynamically fetch, filter, and select a model for the given provider.
 class ModelSelectionDialog extends ConsumerStatefulWidget {
@@ -38,6 +41,7 @@ class _ModelSelectionDialogState extends ConsumerState<ModelSelectionDialog> {
   List<AiModel>? _models;
   String? _error;
   bool _isLoading = true;
+  bool _needsKey = false;
   String _filter = '';
 
   @override
@@ -63,9 +67,13 @@ class _ModelSelectionDialogState extends ConsumerState<ModelSelectionDialog> {
       final apiKey = await viewModel.getApiKeyForProvider(widget.provider);
 
       if (apiKey == null || apiKey.isEmpty) {
-        throw ProviderApiException(
-          'Please configure your API key first in Settings.',
-        );
+        if (mounted) {
+          setState(() {
+            _needsKey = true;
+            _isLoading = false;
+          });
+        }
+        return;
       }
 
       final models = await _apiService.fetchModels(widget.provider, apiKey);
@@ -91,9 +99,8 @@ class _ModelSelectionDialogState extends ConsumerState<ModelSelectionDialog> {
     final state = ref.watch(settingsViewModelProvider);
 
     return Dialog(
-      shape: RoundedRectangleBorder(
+      shape: const RoundedRectangleBorder(
         borderRadius: AppSpacing.borderRadiusLg,
-        side: BorderSide(color: theme.colorScheme.outline),
       ),
       backgroundColor: theme.colorScheme.surface,
       child: ConstrainedBox(
@@ -113,7 +120,7 @@ class _ModelSelectionDialogState extends ConsumerState<ModelSelectionDialog> {
               Text(
                 'Select the model configuration for inference.',
                 style: theme.textTheme.bodySmall?.copyWith(
-                  color: theme.colorScheme.onSurface.withValues(alpha: 0.6),
+                  color: theme.colorScheme.onSurfaceVariant,
                 ),
               ),
               const SizedBox(height: AppSpacing.md),
@@ -145,21 +152,71 @@ class _ModelSelectionDialogState extends ConsumerState<ModelSelectionDialog> {
   }
 
   Widget _buildContent(ThemeData theme, SettingsState state) {
-    if (_isLoading) {
+    if (_needsKey) {
       return Center(
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            SizedBox(child: KickoffLoadingIndicator(size: 24)),
-            const SizedBox(height: AppSpacing.md),
-            Text(
-              'Fetching models from ${widget.provider.displayName}...',
-              style: theme.textTheme.bodySmall?.copyWith(
-                color: theme.colorScheme.onSurface.withValues(alpha: 0.6),
+            Container(
+              padding: const EdgeInsets.all(20),
+              decoration: BoxDecoration(
+                color: theme.colorScheme.primaryContainer.withValues(
+                  alpha: 0.35,
+                ),
+                shape: BoxShape.circle,
               ),
+              child: Icon(
+                Icons.key_outlined,
+                size: 32,
+                color: theme.colorScheme.primary,
+              ),
+            ),
+            const SizedBox(height: AppSpacing.base),
+            Text(
+              'API key required',
+              style: theme.textTheme.titleSmall?.copyWith(
+                fontWeight: FontWeight.w700,
+              ),
+            ),
+            const SizedBox(height: AppSpacing.xs),
+            Text(
+              'Add your ${widget.provider.displayName} key to load models.',
+              textAlign: TextAlign.center,
+              style: theme.textTheme.bodySmall?.copyWith(
+                color: theme.colorScheme.onSurfaceVariant,
+              ),
+            ),
+            const SizedBox(height: AppSpacing.base),
+            FilledButton(
+              onPressed: () {
+                Navigator.of(context).pop();
+                ApiKeyDialog.show(context, widget.provider);
+              },
+              child: const Text('Add key'),
             ),
           ],
         ),
+      );
+    }
+    if (_isLoading) {
+      return Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          SkeletonLoader.textLine(context),
+          const SizedBox(height: AppSpacing.sm),
+          SkeletonLoader.textLine(context, width: 220),
+          const SizedBox(height: AppSpacing.base),
+          const Center(child: KickoffLoadingIndicator(size: 24)),
+          const SizedBox(height: AppSpacing.md),
+          Center(
+            child: Text(
+              'Fetching models from ${widget.provider.displayName}...',
+              style: theme.textTheme.bodySmall?.copyWith(
+                color: theme.colorScheme.onSurfaceVariant,
+              ),
+            ),
+          ),
+        ],
       );
     }
 
@@ -172,6 +229,7 @@ class _ModelSelectionDialogState extends ConsumerState<ModelSelectionDialog> {
           setState(() {
             _isLoading = true;
             _error = null;
+            _needsKey = false;
           });
           _fetchModels();
         },
@@ -183,7 +241,7 @@ class _ModelSelectionDialogState extends ConsumerState<ModelSelectionDialog> {
         child: Text(
           'No models found.',
           style: theme.textTheme.bodyMedium?.copyWith(
-            color: theme.colorScheme.onSurface.withValues(alpha: 0.6),
+            color: theme.colorScheme.onSurfaceVariant,
           ),
         ),
       );
@@ -198,7 +256,7 @@ class _ModelSelectionDialogState extends ConsumerState<ModelSelectionDialog> {
         child: Text(
           'No models matching "$_filter"',
           style: theme.textTheme.bodyMedium?.copyWith(
-            color: theme.colorScheme.onSurface.withValues(alpha: 0.6),
+            color: theme.colorScheme.onSurfaceVariant,
           ),
         ),
       );

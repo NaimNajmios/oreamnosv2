@@ -23,9 +23,8 @@ class ProviderSelectionDialog extends ConsumerWidget {
     final currentProvider = state.selectedProvider;
 
     return Dialog(
-      shape: RoundedRectangleBorder(
+      shape: const RoundedRectangleBorder(
         borderRadius: AppSpacing.borderRadiusLg,
-        side: BorderSide(color: theme.colorScheme.outline),
       ),
       backgroundColor: theme.colorScheme.surface,
       child: ConstrainedBox(
@@ -49,7 +48,7 @@ class ProviderSelectionDialog extends ConsumerWidget {
               Text(
                 'Choose the active inference engine for content curation.',
                 style: theme.textTheme.bodySmall?.copyWith(
-                  color: theme.colorScheme.onSurface.withValues(alpha: 0.6),
+                  color: theme.colorScheme.onSurfaceVariant,
                 ),
               ),
               const SizedBox(height: AppSpacing.md),
@@ -85,9 +84,7 @@ class ProviderSelectionDialog extends ConsumerWidget {
                               size: 16,
                               color: isSelected
                                   ? theme.colorScheme.primary
-                                  : theme.colorScheme.onSurface.withValues(
-                                      alpha: 0.7,
-                                    ),
+                                  : theme.colorScheme.onSurfaceVariant,
                             ),
                           ),
                           const SizedBox(width: AppSpacing.md),

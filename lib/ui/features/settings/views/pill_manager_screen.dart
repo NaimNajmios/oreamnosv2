@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import 'package:oreamnos/config/theme/app_colors.dart';
 import 'package:oreamnos/config/theme/app_spacing.dart';
 import 'package:oreamnos/ui/core/utils/haptics.dart';
 import 'package:oreamnos/ui/core/widgets/app_card.dart';
@@ -90,23 +89,62 @@ class PillManagerScreen extends ConsumerWidget {
                                   maxLines: 2,
                                   overflow: TextOverflow.ellipsis,
                                   style: theme.textTheme.bodySmall?.copyWith(
-                                    color: theme.colorScheme.onSurface
-                                        .withValues(alpha: 0.6),
+                                    color: theme.colorScheme.onSurfaceVariant,
                                   ),
                                 ),
                               ],
                             ),
                           ),
                           IconButton(
-                            icon: const Icon(
+                            icon: Icon(
                               Icons.delete_outline_rounded,
-                              color: AppColors.error,
+                              color: theme.colorScheme.error,
                               size: 20,
                             ),
                             tooltip: 'Delete Pill',
-                            onPressed: () {
+                            onPressed: () async {
+                              final confirm = await showDialog<bool>(
+                                context: context,
+                                builder: (context) => AlertDialog(
+                                  title: Text('Delete "${pill.label}"?'),
+                                  content: const Text(
+                                    'This custom pill will be removed permanently.',
+                                  ),
+                                  actions: [
+                                    TextButton(
+                                      onPressed: () =>
+                                          Navigator.of(context).pop(false),
+                                      child: const Text('Cancel'),
+                                    ),
+                                    TextButton(
+                                      onPressed: () =>
+                                          Navigator.of(context).pop(true),
+                                      style: TextButton.styleFrom(
+                                        foregroundColor:
+                                            theme.colorScheme.error,
+                                      ),
+                                      child: const Text('Delete'),
+                                    ),
+                                  ],
+                                ),
+                              );
+                              if (confirm != true) return;
                               Haptics.heavyImpact();
-                              notifier.removeCustomPill(pill);
+                              await notifier.removeCustomPill(pill);
+                              if (!context.mounted) return;
+                              ScaffoldMessenger.of(context)
+                                ..clearSnackBars()
+                                ..showSnackBar(
+                                  SnackBar(
+                                    content: const Text('Pill deleted'),
+                                    action: SnackBarAction(
+                                      label: 'Undo',
+                                      onPressed: () =>
+                                          notifier.addCustomPill(pill),
+                                    ),
+                                    duration: const Duration(seconds: 5),
+                                  ),
+                                );
                             },
                           ),
                         ],

@@ -14,6 +14,10 @@ abstract class IContentCurator {
   });
 
   /// Structured generation — returns CuratedPost with separate title/body/hashtags/source.
+  ///
+  /// [siteName]/[candidateOutlet]/[authorDisplayName]/[isTwitter] guide
+  /// content-first source attribution. [sourceUrl] is stored internally only
+  /// and must never be used to derive `source.label` (see [SourcePolicy]).
   Future<CuratedPost> generateStructuredPost({
     required dynamic content, // String or ExtractedArticle
     required String modelId,
@@ -24,6 +28,10 @@ abstract class IContentCurator {
     bool isFanModeEnabled = false,
     String fanClubName = '',
     String length = 'medium',
+    String? siteName,
+    String? authorDisplayName,
+    String? candidateOutlet,
+    bool isTwitter = false,
   });
 
   /// Full refinement pipeline (Android `refinePost` parity): applies a list

@@ -86,7 +86,7 @@ class _AddHashtagGroupDialogState extends ConsumerState<AddHashtagGroupDialog> {
               Text(
                 'Define a named set of hashtags to append to generated posts.',
                 style: theme.textTheme.bodySmall?.copyWith(
-                  color: theme.colorScheme.onSurface.withValues(alpha: 0.6),
+                  color: theme.colorScheme.onSurfaceVariant,
                 ),
               ),
               const SizedBox(height: AppSpacing.lg),

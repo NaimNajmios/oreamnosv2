@@ -94,7 +94,7 @@ class GenerateViewModel extends Notifier<GenerateUiState>
   String? get formattedContent {
     final cp = state.curatedPost;
     if (cp == null) return null;
-    return cp.toMarkdownFiltered(
+    return cp.toPlainTextFiltered(
       showTitle: state.showTitle,
       showHashtags: state.showHashtags,
       showSource: state.showSource,
@@ -288,6 +288,10 @@ class GenerateViewModel extends Notifier<GenerateUiState>
     try {
       dynamic contentToCurate = state.pendingInput!.trim();
       String? sourceUrl;
+      String? siteName;
+      String? authorDisplayName;
+      String? candidateOutlet;
+      bool isTwitter = false;
 
       if (state.isResearchModeEnabled) {
         state = state.copyWith(status: GenerateState.researching);
@@ -316,6 +320,7 @@ class GenerateViewModel extends Notifier<GenerateUiState>
           state = state.copyWith(generatingStep: GeneratingStep.scraping);
 
           sourceUrl = contentToCurate;
+          isTwitter = true;
 
           TweetContent? tweet;
 
@@ -326,6 +331,8 @@ class GenerateViewModel extends Notifier<GenerateUiState>
           }
 
           if (tweet != null && tweet.isValid) {
+            authorDisplayName = tweet.authorDisplayName;
+            candidateOutlet = tweet.resolvedCandidateOutlet;
             contentToCurate = TwitterExtractor.formatForAiPrompt(tweet);
           } else {
             try {
@@ -347,6 +354,7 @@ class GenerateViewModel extends Notifier<GenerateUiState>
             ).timeout(const Duration(seconds: 10));
             contentToCurate = article;
             sourceUrl = article.url;
+            siteName = article.siteName;
             if (article.text.trim().isEmpty) {
               getIt<LogService>().warning(
                 'Scrape returned empty, falling back to raw input',
@@ -377,14 +385,15 @@ class GenerateViewModel extends Notifier<GenerateUiState>
 
       if (!state.keepStructure) {
         if (contentToCurate is ExtractedArticle) {
+          final article = contentToCurate;
           contentToCurate = ExtractedArticle(
-            text:
-                '${contentToCurate.text}\n\nLENGTH REQUIREMENT: $_lengthInstruction',
-            url: contentToCurate.url,
-            domain: contentToCurate.domain,
-            pageTitle: contentToCurate.pageTitle,
-            description: contentToCurate.description,
-            faviconUrl: contentToCurate.faviconUrl,
+            text: '${article.text}\n\nLENGTH REQUIREMENT: $_lengthInstruction',
+            url: article.url,
+            domain: article.domain,
+            pageTitle: article.pageTitle,
+            description: article.description,
+            faviconUrl: article.faviconUrl,
+            siteName: article.siteName,
           );
         } else {
           contentToCurate =
@@ -406,6 +415,10 @@ class GenerateViewModel extends Notifier<GenerateUiState>
             isFanModeEnabled: settings.isFanModeEnabled,
             fanClubName: settings.fanClubName,
             length: state.promptLength.name,
+            siteName: siteName,
+            authorDisplayName: authorDisplayName,
+            candidateOutlet: candidateOutlet,
+            isTwitter: isTwitter,
           )
           .timeout(
             const Duration(seconds: 30),

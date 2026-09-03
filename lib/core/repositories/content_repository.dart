@@ -22,6 +22,10 @@ abstract class IContentRepository {
     bool isFanModeEnabled = false,
     String fanClubName = '',
     String length = 'medium',
+    String? siteName,
+    String? authorDisplayName,
+    String? candidateOutlet,
+    bool isTwitter = false,
   });
 
   Future<Result<CuratedPost>> refinePost({
@@ -98,6 +102,10 @@ class ContentRepository implements IContentRepository {
     bool isFanModeEnabled = false,
     String fanClubName = '',
     String length = 'medium',
+    String? siteName,
+    String? authorDisplayName,
+    String? candidateOutlet,
+    bool isTwitter = false,
   }) async {
     try {
       final curator = CuratorFactory.getCurator(provider);
@@ -111,6 +119,10 @@ class ContentRepository implements IContentRepository {
         isFanModeEnabled: isFanModeEnabled,
         fanClubName: fanClubName,
         length: length,
+        siteName: siteName,
+        authorDisplayName: authorDisplayName,
+        candidateOutlet: candidateOutlet,
+        isTwitter: isTwitter,
       );
       return ResultSuccess(res);
     } catch (e, st) {

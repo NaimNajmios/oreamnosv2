@@ -80,28 +80,28 @@ void main() {
       await tester.tap(find.text('Settings'));
       await tester.pumpAndSettle();
 
-      // Verify Settings screen sections
-      expect(find.text('Appearance'), findsOneWidget);
-      expect(find.text('AI Provider'), findsOneWidget);
+      // Verify Settings screen sections (SectionHeader renders uppercase)
+      expect(find.text('APPEARANCE'), findsOneWidget);
+      expect(find.text('AI PROVIDER'), findsOneWidget);
 
       // Scroll until Post Settings section is visible
       await tester.scrollUntilVisible(
-        find.text('Post Settings'),
+        find.text('POST SETTINGS'),
         200,
         scrollable: find.byType(Scrollable).first,
       );
       await tester.pumpAndSettle();
-      expect(find.text('Post Settings'), findsOneWidget);
+      expect(find.text('POST SETTINGS'), findsOneWidget);
 
       // Scroll until Advanced section is visible
       await tester.scrollUntilVisible(
-        find.text('Advanced'),
+        find.text('ADVANCED'),
         200,
         scrollable: find.byType(Scrollable).first,
       );
       await tester.pumpAndSettle();
 
-      expect(find.text('Advanced'), findsOneWidget);
+      expect(find.text('ADVANCED'), findsOneWidget);
     },
   );
 

@@ -75,6 +75,7 @@ class WebScraperService {
           url: trimmed,
           domain: 'x.com',
           pageTitle: 'X/Twitter Post',
+          siteName: null,
         );
       }
       // Fall through to normal scraping if both fail
@@ -143,6 +144,11 @@ class WebScraperService {
         faviconUrl = _resolveFavicon(document, trimmed, domain);
       } catch (_) {}
 
+      String? siteName;
+      try {
+        siteName = _resolveSiteName(document, pageTitle, domain);
+      } catch (_) {}
+
       String text;
       final articleElements = document.getElementsByTagName('article');
       if (articleElements.isNotEmpty) {
@@ -177,10 +183,58 @@ class WebScraperService {
         pageTitle: pageTitle,
         description: description,
         faviconUrl: faviconUrl,
+        siteName: siteName,
       );
     } catch (e) {
       throw Exception('Failed to extract content from URL: $e');
     }
+  }
+
+  /// Resolves the portal/outlet name for source.label (never a URL/domain).
+  /// Priority: og:site_name → application-name → author → title suffix.
+  static String? _resolveSiteName(
+    dynamic document,
+    String? pageTitle,
+    String domain,
+  ) {
+    String? candidate;
+    try {
+      candidate = document
+          .querySelector('meta[property="og:site_name"]')
+          ?.attributes['content']
+          ?.trim();
+      if (candidate != null && candidate.isEmpty) candidate = null;
+      candidate ??= document
+          .querySelector('meta[name="application-name"]')
+          ?.attributes['content']
+          ?.trim();
+      if (candidate != null && candidate.isEmpty) candidate = null;
+      candidate ??= document
+          .querySelector('meta[name="author"]')
+          ?.attributes['content']
+          ?.trim();
+      if (candidate != null && candidate.isEmpty) candidate = null;
+    } catch (_) {}
+    if (candidate != null && candidate.isNotEmpty) {
+      if (candidate.length > 60) candidate = candidate.substring(0, 60).trim();
+      return candidate;
+    }
+    // Title suffix fallback: "Headline | BBC Sport" → "BBC Sport".
+    if (pageTitle != null && pageTitle.isNotEmpty) {
+      for (final sep in [' | ', ' – ', ' — ', ' - ', ' :: ']) {
+        if (pageTitle.contains(sep)) {
+          final parts = pageTitle.split(sep);
+          final last = parts.last.trim();
+          if (last.isNotEmpty &&
+              last.length <= 40 &&
+              !last.contains('.') &&
+              last != domain) {
+            return last;
+          }
+        }
+      }
+    }
+    return null;
   }
 
   String? _resolveFavicon(dynamic document, String baseUrl, String domain) {

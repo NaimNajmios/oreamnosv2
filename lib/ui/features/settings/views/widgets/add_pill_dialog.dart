@@ -102,7 +102,7 @@ class _AddPillDialogState extends ConsumerState<AddPillDialog> {
               Text(
                 'Define a quick AI refinement prompt for your generated posts.',
                 style: theme.textTheme.bodySmall?.copyWith(
-                  color: theme.colorScheme.onSurface.withValues(alpha: 0.6),
+                  color: theme.colorScheme.onSurfaceVariant,
                 ),
               ),
               const SizedBox(height: AppSpacing.lg),

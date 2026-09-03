@@ -30,6 +30,10 @@ class _MockContentRepository implements IContentRepository {
     bool isFanModeEnabled = false,
     String fanClubName = '',
     String length = 'medium',
+    String? siteName,
+    String? authorDisplayName,
+    String? candidateOutlet,
+    bool isTwitter = false,
   }) async {
     callCount++;
     lastProvider = provider;

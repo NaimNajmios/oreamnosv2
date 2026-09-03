@@ -61,9 +61,15 @@ class OpenAICompatibleCurator implements IContentCurator {
     bool isFanModeEnabled = false,
     String fanClubName = '',
     String length = 'medium',
+    String? siteName,
+    String? authorDisplayName,
+    String? candidateOutlet,
+    bool isTwitter = false,
   }) async {
     final resolvedSourceUrl =
         sourceUrl ?? (content is ExtractedArticle ? content.url : null);
+    final resolvedSiteName =
+        siteName ?? (content is ExtractedArticle ? content.siteName : null);
     final systemPrompt = GenerationPromptManager.buildSystemPrompt(
       sourceUrl: resolvedSourceUrl,
       searchSources: searchSources,
@@ -72,6 +78,10 @@ class OpenAICompatibleCurator implements IContentCurator {
       fanClubName: fanClubName,
       length: length,
       sourceText: GenerationPromptManager.plainTextOf(content),
+      siteName: resolvedSiteName,
+      authorDisplayName: authorDisplayName,
+      candidateOutlet: candidateOutlet,
+      isTwitter: isTwitter,
     );
     final userPrompt = GenerationPromptManager.buildUserPrompt(content);
 
@@ -94,7 +104,9 @@ class OpenAICompatibleCurator implements IContentCurator {
             "json_schema": {
               "name": "curated_post",
               "strict": true,
-              "schema": GenerationPromptManager.jsonSchema,
+              "schema": GenerationPromptManager.jsonSchema(
+                keepStructure: keepStructure,
+              ),
             },
           },
         },
@@ -137,33 +149,58 @@ class OpenAICompatibleCurator implements IContentCurator {
 
     final message = choices[0]['message'];
     final rawText = message['content'] as String;
-    return _parseCuratedPost(rawText, resolvedSourceUrl);
+    return _parseCuratedPost(
+      rawText,
+      resolvedSourceUrl,
+      siteName: resolvedSiteName,
+      authorDisplayName: authorDisplayName,
+      candidateOutlet: candidateOutlet,
+      isTwitter: isTwitter,
+    );
   }
 
   Future<CuratedPost> _parseCuratedPost(
     String rawText,
-    String? sourceUrl,
-  ) async {
+    String? sourceUrl, {
+    String? siteName,
+    String? authorDisplayName,
+    String? candidateOutlet,
+    bool isTwitter = false,
+  }) async {
     try {
       final jsonMap = await JsonCleaner.decodeIsolate(rawText);
       if (jsonMap['source'] is Map) {
         final sm = jsonMap['source'] as Map<String, dynamic>;
-        if ((sm['url'] == null || (sm['url'] as String).isEmpty) &&
+        if ((sm['url'] == null ||
+                (sm['url'] is String && (sm['url'] as String).isEmpty)) &&
             sourceUrl != null &&
             sourceUrl.isNotEmpty) {
           sm['url'] = sourceUrl;
           sm['domain'] = Uri.tryParse(sourceUrl)?.host;
-          if ((sm['label'] as String?)?.isEmpty ?? true) {
-            sm['label'] = Uri.tryParse(sourceUrl)?.host ?? '';
-          }
+        }
+        final currentLabel = (sm['label'] as String?) ?? '';
+        if (currentLabel.trim().isEmpty) {
+          final seed = _seedLabel(
+            siteName: siteName,
+            authorDisplayName: authorDisplayName,
+            candidateOutlet: candidateOutlet,
+            isTwitter: isTwitter,
+          );
+          if (seed != null && seed.isNotEmpty) sm['label'] = seed;
         }
       }
       return CuratedPost.fromJson(jsonMap);
     } catch (_) {
       SourceAttribution? src;
       if (sourceUrl != null && sourceUrl.isNotEmpty) {
+        final seed = _seedLabel(
+          siteName: siteName,
+          authorDisplayName: authorDisplayName,
+          candidateOutlet: candidateOutlet,
+          isTwitter: isTwitter,
+        );
         src = SourceAttribution(
-          label: Uri.tryParse(sourceUrl)?.host ?? sourceUrl,
+          label: seed ?? '',
           url: sourceUrl,
           domain: Uri.tryParse(sourceUrl)?.host,
         );
@@ -173,6 +210,24 @@ class OpenAICompatibleCurator implements IContentCurator {
         source: src,
       );
     }
+  }
+
+  String? _seedLabel({
+    String? siteName,
+    String? authorDisplayName,
+    String? candidateOutlet,
+    bool isTwitter = false,
+  }) {
+    final outlet = (candidateOutlet ?? '').trim();
+    final site = (siteName ?? '').trim();
+    final author = (authorDisplayName ?? '').trim();
+    if (isTwitter) {
+      if (outlet.isNotEmpty && author.isNotEmpty) return '$outlet via $author';
+      return null;
+    }
+    if (site.isNotEmpty) return site;
+    if (outlet.isNotEmpty) return outlet;
+    return null;
   }
 
   @override
@@ -272,7 +327,9 @@ class OpenAICompatibleCurator implements IContentCurator {
             "json_schema": {
               "name": "curated_post",
               "strict": true,
-              "schema": GenerationPromptManager.jsonSchema,
+              "schema": GenerationPromptManager.jsonSchema(
+                keepStructure: keepStructure,
+              ),
             },
           },
         },

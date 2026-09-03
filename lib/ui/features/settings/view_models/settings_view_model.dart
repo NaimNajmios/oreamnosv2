@@ -72,6 +72,7 @@ class SettingsNotifier extends Notifier<SettingsState> {
       clearModel: model == null,
       currentApiKey: key,
       clearApiKey: key == null,
+      clearLastTest: true,
     );
   }
 
@@ -86,6 +87,10 @@ class SettingsNotifier extends Notifier<SettingsState> {
     if (state.selectedProvider == provider) {
       state = state.copyWith(currentApiKey: key);
     }
+  }
+
+  Future<void> setLastTestResult(bool ok) async {
+    state = state.copyWith(lastTestOk: ok, lastTestedAt: DateTime.now());
   }
 
   Future<String?> getApiKeyForProvider(AiProvider provider) async {
