@@ -45,7 +45,22 @@ class ParseFailure extends Failure {
 }
 
 class RateLimitFailure extends Failure {
-  const RateLimitFailure(super.message);
+  const RateLimitFailure(super.message, {this.retryDelayMs, this.providerName});
+
+  /// Milliseconds the provider asked us to wait (Gemini
+  /// `error.details.retryDelay` or `Retry-After` header). Null if unknown.
+  final int? retryDelayMs;
+
+  /// Provider that rate-limited us (e.g. `gemini`), for fallback messaging.
+  final String? providerName;
+
+  /// Human wait-time message, e.g. "Retry in 34s" or "Retry shortly".
+  String get waitTimeMessage {
+    if (retryDelayMs == null) return 'Retry shortly';
+    final s = (retryDelayMs! / 1000).ceil();
+    if (s < 60) return 'Retry in ${s}s';
+    return 'Retry in ${s ~/ 60}m ${s % 60}s';
+  }
 }
 
 class AuthFailure extends Failure {

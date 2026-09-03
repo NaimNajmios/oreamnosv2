@@ -19,7 +19,9 @@ void main() {
       expect(WebScraperService.isUrl('http://example.com/path?q=1'), isTrue);
       expect(WebScraperService.isUrl('just some news text'), isFalse);
       expect(WebScraperService.isUrl(''), isFalse);
-      expect(WebScraperService.isUrl('www.example.com'), isFalse);
+      // Android parity: www. + bare domains count as URLs (normalized later).
+      expect(WebScraperService.isUrl('www.example.com'), isTrue);
+      expect(WebScraperService.isUrl('example.com/news'), isTrue);
     });
   });
 
@@ -76,6 +78,16 @@ void main() {
       // We test public recentInputs after manually calling generate with mocked failure (will still add)
       vm.generatePost(''); // empty -> not added
       expect(vm.recentInputs.length, 0);
+    });
+
+    test('edit mode toggles and save without post is a no-op', () {
+      expect(container.read(generateViewModelProvider).isEditMode, isFalse);
+      vm.toggleEditMode();
+      expect(container.read(generateViewModelProvider).isEditMode, isTrue);
+      vm.saveEditedPost(title: 'x', body: 'y'); // no post -> no-op
+      expect(container.read(generateViewModelProvider).curatedPost, isNull);
+      vm.toggleEditMode();
+      expect(container.read(generateViewModelProvider).isEditMode, isFalse);
     });
   });
 }

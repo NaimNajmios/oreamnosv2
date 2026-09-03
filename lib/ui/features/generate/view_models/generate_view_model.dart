@@ -151,6 +151,22 @@ class GenerateViewModel extends Notifier<GenerateUiState>
     state = state.copyWith(showSource: !state.showSource);
   }
 
+  /// Output edit mode (Android `isEditMode` / `FluidEditButton` parity).
+  void toggleEditMode() {
+    state = state.copyWith(isEditMode: !state.isEditMode);
+  }
+
+  /// Persists hand-edited title/body into the current post (undoable).
+  void saveEditedPost({String? title, String? body}) {
+    final cp = state.curatedPost;
+    if (cp == null) return;
+    _pushHistory(cp);
+    state = state.copyWith(
+      curatedPost: cp.copyWith(title: title, bodyMarkdown: body),
+      isEditMode: false,
+    );
+  }
+
   ValidationResult validateForGenerate(String input) {
     final trimmed = input.trim();
     if (trimmed.isEmpty) {
@@ -161,8 +177,11 @@ class GenerateViewModel extends Notifier<GenerateUiState>
         'Input too long (max 8000 characters). Please shorten or paste a URL.',
       );
     }
-    final modelId = ref.read(settingsViewModelProvider).selectedModel;
-    if (modelId == null || modelId.isEmpty) {
+    // Offline fallback: provider default model id (Android ModelRegistry parity).
+    final settings = ref.read(settingsViewModelProvider);
+    final modelId = settings.selectedModel;
+    if ((modelId == null || modelId.isEmpty) &&
+        settings.selectedProvider.defaultModelId.isEmpty) {
       return ValidationResult.invalid(
         'No model selected for $providerDisplayName. Go to Settings → Model.',
       );
@@ -258,6 +277,7 @@ class GenerateViewModel extends Notifier<GenerateUiState>
       errorMessage: null,
       validationMessage: null,
       suggestedFallbackProvider: null,
+      rateLimitWaitMessage: null,
       twitterExtractionUrl: null,
       pendingInput: trimmedInput,
     );
@@ -343,12 +363,10 @@ class GenerateViewModel extends Notifier<GenerateUiState>
         }
       }
 
-      final modelId = ref.read(settingsViewModelProvider).selectedModel;
-      if (modelId == null || modelId.isEmpty) {
-        throw Exception(
-          'No model selected. Please go to Settings to select a model.',
-        );
-      }
+      final settings = ref.read(settingsViewModelProvider);
+      final modelId = (settings.selectedModel?.isNotEmpty ?? false)
+          ? settings.selectedModel!
+          : provider.defaultModelId;
 
       final apiKey = await ref
           .read(settingsViewModelProvider.notifier)
@@ -375,7 +393,6 @@ class GenerateViewModel extends Notifier<GenerateUiState>
       }
       // API resilience: via pooled IContentRepository + Result fold + 30s timeout
       final repo = ref.read(contentRepositoryProvider);
-      final settings = ref.read(settingsViewModelProvider);
 
       final repoResult = await repo
           .generateStructuredPost(
@@ -388,6 +405,7 @@ class GenerateViewModel extends Notifier<GenerateUiState>
             keepStructure: state.keepStructure,
             isFanModeEnabled: settings.isFanModeEnabled,
             fanClubName: settings.fanClubName,
+            length: state.promptLength.name,
           )
           .timeout(
             const Duration(seconds: 30),
@@ -414,8 +432,9 @@ class GenerateViewModel extends Notifier<GenerateUiState>
         if (failure is RateLimitFailure) {
           state = state.copyWith(
             errorMessage:
-                'Rate limit exceeded for ${provider.displayName}. Try another provider.',
+                'Rate limit exceeded for ${provider.displayName}. Try another provider. ${failure.waitTimeMessage}',
             suggestedFallbackProvider: _getNextProvider(provider),
+            rateLimitWaitMessage: failure.waitTimeMessage,
             status: GenerateState.rateLimited,
             generatingStep: GeneratingStep.idle,
           );
@@ -571,12 +590,10 @@ class GenerateViewModel extends Notifier<GenerateUiState>
     final provider = ref.read(settingsViewModelProvider).selectedProvider;
 
     try {
-      final modelId = ref.read(settingsViewModelProvider).selectedModel;
-      if (modelId == null || modelId.isEmpty) {
-        throw Exception(
-          'No model selected. Please go to Settings to select a model.',
-        );
-      }
+      final settings = ref.read(settingsViewModelProvider);
+      final modelId = (settings.selectedModel?.isNotEmpty ?? false)
+          ? settings.selectedModel!
+          : provider.defaultModelId;
 
       final apiKey = await ref
           .read(settingsViewModelProvider.notifier)
@@ -585,26 +602,20 @@ class GenerateViewModel extends Notifier<GenerateUiState>
         throw Exception('API key not configured for ${provider.displayName}.');
       }
 
-      final currentJson = jsonEncode(cp.toJson());
-      final refinementContent =
-          'Arahan penambahbaikan: "$instruction".\n'
-          'Kekalkan sumber yang sama (${cp.source.url ?? cp.source.label}).\n'
-          'JSON semasa:\n$currentJson\n\n'
-          'Kembalikan JSON dengan struktur yang sama (title, body, source) — perbaiki title/body mengikut arahan, jangan ubah source.url.';
-
+      // Full refinement pipeline: instruction routed through
+      // GenerationPromptManager.buildRefinementPrompt (rephrase /
+      // recheck_flow / recheck_wording keys + free-text custom pills).
       final repo = ref.read(contentRepositoryProvider);
-      final settings = ref.read(settingsViewModelProvider);
 
       final repoResult = await repo
-          .generateStructuredPost(
-            content: refinementContent,
+          .refinePost(
+            original: cp,
+            refinements: [instruction],
             modelId: modelId,
             apiKey: apiKey,
-            sourceUrl: cp.source.url,
             provider: provider,
+            includeSource: state.showSource,
             keepStructure: state.keepStructure,
-            isFanModeEnabled: settings.isFanModeEnabled,
-            fanClubName: settings.fanClubName,
           )
           .timeout(
             const Duration(seconds: 30),
@@ -634,7 +645,10 @@ class GenerateViewModel extends Notifier<GenerateUiState>
 
       stopwatch.stop();
       int estimatedTokens =
-          ((refinementContent.length + (merged.rawMarkdown.length)) / 4)
+          ((instruction.length +
+                      cp.rawMarkdown.length +
+                      (merged.rawMarkdown.length)) /
+                  4)
               .round();
       try {
         if (getIt.isRegistered<TokenUsageSideChannel>()) {
@@ -688,8 +702,10 @@ class GenerateViewModel extends Notifier<GenerateUiState>
 
       if (e is RateLimitFailure) {
         state = state.copyWith(
-          errorMessage: 'Rate limit exceeded for ${provider.displayName}.',
+          errorMessage:
+              'Rate limit exceeded for ${provider.displayName}. ${e.waitTimeMessage}',
           suggestedFallbackProvider: _getNextProvider(provider),
+          rateLimitWaitMessage: e.waitTimeMessage,
           status: GenerateState.rateLimited,
           generatingStep: GeneratingStep.idle,
         );
@@ -740,6 +756,7 @@ class GenerateViewModel extends Notifier<GenerateUiState>
       errorMessage: null,
       validationMessage: null,
       suggestedFallbackProvider: null,
+      rateLimitWaitMessage: null,
     );
   }
 

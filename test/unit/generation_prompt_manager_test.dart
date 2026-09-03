@@ -53,5 +53,31 @@ void main() {
       final p = GenerationPromptManager.buildUserPrompt(article);
       expect(p, contains('Article text'));
     });
+
+    test('geminiResponseSchema strips additionalProperties recursively', () {
+      final schema = GenerationPromptManager.geminiResponseSchema;
+      bool hasAdditional(dynamic node) {
+        if (node is Map) {
+          if (node.containsKey('additionalProperties')) return true;
+          return node.values.any(hasAdditional);
+        }
+        if (node is List) return node.any(hasAdditional);
+        return false;
+      }
+
+      expect(hasAdditional(schema), isFalse);
+      // Structure retained for Gemini structured output.
+      expect(schema['type'], 'object');
+      final props = schema['properties'] as Map;
+      expect(props.keys, containsAll(['title', 'body', 'source']));
+      expect(schema['required'], containsAll(['title', 'body', 'source']));
+      final source = props['source'] as Map;
+      expect((source['properties'] as Map).keys, containsAll(['label', 'url']));
+    });
+
+    test('jsonSchema keeps additionalProperties for OpenAI strict mode', () {
+      final schema = GenerationPromptManager.jsonSchema;
+      expect(schema['additionalProperties'], isFalse);
+    });
   });
 }

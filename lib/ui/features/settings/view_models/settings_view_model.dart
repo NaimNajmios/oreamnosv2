@@ -127,9 +127,7 @@ class SettingsNotifier extends Notifier<SettingsState> {
 
   Future<void> removeCustomPill(CustomPill pill) async {
     final pills = List<CustomPill>.of(state.customPills)
-      ..removeWhere(
-        (p) => p.label == pill.label && p.instruction == pill.instruction,
-      );
+      ..removeWhere((p) => p.id == pill.id);
     await _preferencesService.setCustomPills(pills);
     state = state.copyWith(customPills: pills);
   }

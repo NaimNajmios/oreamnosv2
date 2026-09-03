@@ -9,6 +9,7 @@ import 'package:oreamnos/domain/services/content_curator.dart';
 import 'package:oreamnos/domain/services/card_prompt_manager.dart';
 import 'package:oreamnos/domain/services/generation_prompt_manager.dart';
 import 'package:oreamnos/domain/services/json_cleaner.dart';
+import 'package:oreamnos/domain/services/response_cleanup.dart';
 import 'package:oreamnos/domain/models/card_brief.dart';
 import 'package:oreamnos/domain/models/card_template.dart';
 import 'package:oreamnos/domain/models/curated_post.dart';
@@ -20,6 +21,17 @@ class OpenAICompatibleCurator implements IContentCurator {
 
   final String baseUrl;
   final ApiClient _client;
+
+  /// OpenRouter requires ranking headers (Android parity).
+  bool get isOpenRouter => baseUrl.contains('openrouter');
+
+  Map<String, String> get _providerHeaders => {
+    'Content-Type': 'application/json',
+    if (isOpenRouter) ...{
+      'HTTP-Referer': 'https://github.com/NaimNajmios/Oreamnos',
+      'X-Title': 'Oreamnos',
+    },
+  };
 
   @override
   Future<String> generatePost({
@@ -48,6 +60,7 @@ class OpenAICompatibleCurator implements IContentCurator {
     bool keepStructure = false,
     bool isFanModeEnabled = false,
     String fanClubName = '',
+    String length = 'medium',
   }) async {
     final resolvedSourceUrl =
         sourceUrl ?? (content is ExtractedArticle ? content.url : null);
@@ -57,6 +70,8 @@ class OpenAICompatibleCurator implements IContentCurator {
       keepStructure: keepStructure,
       isFanModeEnabled: isFanModeEnabled,
       fanClubName: fanClubName,
+      length: length,
+      sourceText: GenerationPromptManager.plainTextOf(content),
     );
     final userPrompt = GenerationPromptManager.buildUserPrompt(content);
 
@@ -73,6 +88,7 @@ class OpenAICompatibleCurator implements IContentCurator {
             {"role": "user", "content": userPrompt},
           ],
           "temperature": 0.7,
+          "max_tokens": 2048,
           "response_format": {
             "type": "json_schema",
             "json_schema": {
@@ -82,7 +98,13 @@ class OpenAICompatibleCurator implements IContentCurator {
             },
           },
         },
-        options: Options(extra: {'apiKey': apiKey, 'provider': 'openai'}),
+        options: Options(
+          extra: {'apiKey': apiKey, 'provider': 'openai'},
+          headers: _providerHeaders,
+          // Android OpenAI-path parity: connect 30s / read 60s.
+          connectTimeout: const Duration(seconds: 30),
+          receiveTimeout: const Duration(seconds: 60),
+        ),
       );
     } on DioException catch (e) {
       if (e.requestOptions.extra.containsKey('failure')) {
@@ -146,7 +168,10 @@ class OpenAICompatibleCurator implements IContentCurator {
           domain: Uri.tryParse(sourceUrl)?.host,
         );
       }
-      return CuratedPost.fromMarkdownFallback(rawText, source: src);
+      return CuratedPost.fromMarkdownFallback(
+        ResponseCleanup.cleanUpResponseWithMarkdown(rawText),
+        source: src,
+      );
     }
   }
 
@@ -180,7 +205,10 @@ class OpenAICompatibleCurator implements IContentCurator {
           "temperature": 0.3,
           "response_format": {"type": "json_object"},
         },
-        options: Options(extra: {'apiKey': apiKey, 'provider': 'openai'}),
+        options: Options(
+          extra: {'apiKey': apiKey, 'provider': 'openai'},
+          headers: _providerHeaders,
+        ),
       );
     } on DioException catch (e) {
       if (e.requestOptions.extra.containsKey('failure')) {
@@ -209,6 +237,84 @@ class OpenAICompatibleCurator implements IContentCurator {
   }
 
   @override
+  Future<CuratedPost> refinePost({
+    required CuratedPost original,
+    required List<String> refinements,
+    required String modelId,
+    required String apiKey,
+    bool includeSource = true,
+    bool keepStructure = false,
+  }) async {
+    final systemPrompt = GenerationPromptManager.buildSystemPrompt(
+      sourceUrl: original.source.url,
+      keepStructure: keepStructure,
+      sourceText: original.rawMarkdown,
+    );
+    final userPrompt =
+        '${GenerationPromptManager.buildRefinementPrompt(originalPost: original.rawMarkdown, refinements: refinements, includeSource: includeSource)}\n\nReturn ONLY the JSON object per the schema.';
+
+    final path = '$baseUrl/chat/completions';
+
+    Response response;
+    try {
+      response = await _client.post(
+        path,
+        data: {
+          "model": modelId,
+          "messages": [
+            {"role": "system", "content": systemPrompt},
+            {"role": "user", "content": userPrompt},
+          ],
+          "temperature": 0.7,
+          "max_tokens": 2048,
+          "response_format": {
+            "type": "json_schema",
+            "json_schema": {
+              "name": "curated_post",
+              "strict": true,
+              "schema": GenerationPromptManager.jsonSchema,
+            },
+          },
+        },
+        options: Options(
+          extra: {'apiKey': apiKey, 'provider': 'openai'},
+          headers: _providerHeaders,
+          connectTimeout: const Duration(seconds: 30),
+          receiveTimeout: const Duration(seconds: 60),
+        ),
+      );
+    } on DioException catch (e) {
+      if (e.requestOptions.extra.containsKey('failure')) {
+        throw e.requestOptions.extra['failure'] as Failure;
+      }
+      rethrow;
+    }
+
+    if (response.statusCode != 200) {
+      throw Exception('API Error: ${response.statusCode} - ${response.data}');
+    }
+
+    final data = response.data is Map<String, dynamic>
+        ? response.data as Map<String, dynamic>
+        : (response.data is String
+              ? jsonDecode(response.data as String) as Map<String, dynamic>
+              : (response.data as Map).cast<String, dynamic>());
+
+    try {
+      if (getIt.isRegistered<TokenUsageSideChannel>()) {
+        getIt<TokenUsageSideChannel>().storeOpenAi(data, baseUrl);
+      }
+    } catch (_) {}
+
+    final choices = data['choices'] as List<dynamic>? ?? [];
+    if (choices.isEmpty) {
+      throw Exception('API returned empty response');
+    }
+    final message = choices[0]['message'];
+    return _parseCuratedPost(message['content'] as String, original.source.url);
+  }
+
+  @override
   Future<String> rewriteField({
     required String text,
     required String fieldName,
@@ -221,7 +327,10 @@ class OpenAICompatibleCurator implements IContentCurator {
           .replaceAll('<<<END>>>', '[END]');
       final response = await _client.post(
         '$baseUrl/chat/completions',
-        options: Options(extra: {'apiKey': apiKey, 'provider': 'openai'}),
+        options: Options(
+          extra: {'apiKey': apiKey, 'provider': 'openai'},
+          headers: _providerHeaders,
+        ),
         data: {
           "model": modelId,
           "messages": [

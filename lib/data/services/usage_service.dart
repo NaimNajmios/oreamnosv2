@@ -111,4 +111,33 @@ class UsageService {
     }
     return map;
   }
+
+  /// Average response latency in ms for a provider (Android
+  /// `getAverageResponseTimeByProvider` parity). Returns 0 when no logs.
+  double getAverageResponseTimeByProvider(String providerId) {
+    final providerLogs = _logs
+        .where((l) => l.providerId.toLowerCase() == providerId.toLowerCase())
+        .toList();
+    if (providerLogs.isEmpty) return 0.0;
+    final total = providerLogs.fold<int>(0, (sum, l) => sum + l.latencyMs);
+    return total / providerLogs.length;
+  }
+
+  /// Fastest recorded latency in ms for a provider, or null when no logs.
+  int? getFastestResponseTimeByProvider(String providerId) {
+    final providerLogs = _logs
+        .where((l) => l.providerId.toLowerCase() == providerId.toLowerCase())
+        .toList();
+    if (providerLogs.isEmpty) return null;
+    return providerLogs.map((l) => l.latencyMs).reduce((a, b) => a < b ? a : b);
+  }
+
+  /// Slowest recorded latency in ms for a provider, or null when no logs.
+  int? getSlowestResponseTimeByProvider(String providerId) {
+    final providerLogs = _logs
+        .where((l) => l.providerId.toLowerCase() == providerId.toLowerCase())
+        .toList();
+    if (providerLogs.isEmpty) return null;
+    return providerLogs.map((l) => l.latencyMs).reduce((a, b) => a > b ? a : b);
+  }
 }

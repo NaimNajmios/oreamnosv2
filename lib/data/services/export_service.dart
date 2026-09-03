@@ -36,10 +36,13 @@ class ExportService {
     return byteData.buffer.asUint8List();
   }
 
-  /// Saves the captured PNG bytes to the device's gallery.
+  /// Saves the captured PNG bytes to the device's gallery (Oreamnos album).
+  /// PNG is lossless — preferred over JPEG95 for flat graphics/text cards.
+  /// Capture at pixelRatio 3.0 yields ~1080px+ output (Android exact-px parity).
   Future<bool> saveToGallery(
     List<int> pngBytes, {
     String filename = 'oreamnos_card.png',
+    String album = 'Oreamnos',
   }) async {
     try {
       final hasAccess = await Gal.hasAccess(toAlbum: true);
@@ -52,7 +55,7 @@ class ExportService {
       final file = File('${tempDir.path}/$filename');
       await file.writeAsBytes(pngBytes);
 
-      await Gal.putImage(file.path);
+      await Gal.putImage(file.path, album: album);
       return true;
     } catch (e) {
       throw Exception('Failed to save to gallery: $e');

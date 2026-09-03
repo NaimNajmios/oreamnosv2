@@ -132,10 +132,17 @@ class _AppButtonState extends State<AppButton>
                           Icon(widget.icon, size: 20, color: fgColor),
                           const SizedBox(width: 12),
                         ],
-                        Text(
-                          widget.label,
-                          style: theme.textTheme.labelLarge?.copyWith(
-                            color: fgColor,
+                        // Flexible + ellipsis: fixed side padding starves
+                        // the label in narrow parents (e.g. dialogs).
+                        Flexible(
+                          child: Text(
+                            widget.label,
+                            style: theme.textTheme.labelLarge?.copyWith(
+                              color: fgColor,
+                            ),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            textAlign: TextAlign.center,
                           ),
                         ),
                       ],

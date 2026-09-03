@@ -3,12 +3,44 @@ import 'package:oreamnos/domain/models/curated_post.dart';
 import 'football_lexicon.dart';
 
 class GenerationPromptManager {
+  /// Tactical keywords for [isLongTechnicalContent] (Android parity, lowercase).
+  static const List<String> tacticalKeywords = [
+    'formation',
+    'tactical',
+    'pressing',
+    'possession',
+    'xg',
+    'expected goals',
+    'pass completion',
+    'progressive passes',
+    'defensive line',
+    'build-up',
+    'counter-attack',
+    'high press',
+    'low block',
+    'transition',
+    'shape',
+    'midfielder',
+    'forward',
+    'defender',
+    'fullback',
+    'winger',
+    '4-3-3',
+    '4-4-2',
+    '3-5-2',
+    '4-2-3-1',
+    '5-3-2',
+    '3-4-3',
+  ];
+
   static String buildSystemPrompt({
     String? sourceUrl,
     List<String> searchSources = const [],
     bool keepStructure = false,
     bool isFanModeEnabled = false,
     String fanClubName = '',
+    String length = 'medium',
+    String? sourceText,
   }) {
     final buf = StringBuffer();
     // Role & task — English instructions, BM output (user requested switch)
@@ -74,6 +106,47 @@ class GenerationPromptManager {
     buf.writeln(
       '- Maintain a strictly objective, journalistic tone at all times.',
     );
+    buf.writeln('');
+
+    // Length + structure adaptation (Android PromptManager parity).
+    final text = sourceText ?? '';
+    final hasBullets = containsBulletPoints(text);
+    final isTechnical = isLongTechnicalContent(text);
+    final range = lengthRange(text.isEmpty ? 600 : text.length, length);
+    if (keepStructure) {
+      buf.writeln(
+        'LENGTH: STRICTLY PRESERVE the original formatting, bullet points, lists, and structure. Do NOT summarize into paragraphs if the original used a list format. Translate line-by-line keeping the visual layout exactly the same.',
+      );
+    } else {
+      buf.writeln(
+        'LENGTH: Output MUST be ${range.descriptor} (approximately ${range.pctMin}-${range.pctMax}% of original, target: ${range.minChars}-${range.maxChars} characters).',
+      );
+    }
+    if (isTechnical && !keepStructure) {
+      buf.writeln(
+        'STRUCTURE FOR TECHNICAL ANALYSIS: Start with a clear, engaging Headline. Then organize content focusing on: Key Stats (important statistics and numbers), Formations (tactical setups and player positions), Tactical Shifts (strategic changes and their impact). Separate sections with blank lines.',
+      );
+    } else if (!keepStructure) {
+      buf.writeln(
+        'STRUCTURE: Start with a clear, engaging Headline. Separate paragraphs with a blank line.',
+      );
+    }
+    if (hasBullets) {
+      buf.writeln(
+        'LISTS: The source contains bullet points/lists — preserve this format using the • character only.',
+      );
+    } else {
+      buf.writeln(
+        'LISTS: Do NOT use bullet points or lists. Write in flowing paragraph format only.',
+      );
+    }
+    buf.writeln('FORBIDDEN:');
+    buf.writeln(
+      '- Do not use personal commentary phrases like "Saya cuba", "Saya rasa", "Pada pendapat saya".',
+    );
+    buf.writeln('- Do not use em-dashes (—) anywhere in the output.');
+    buf.writeln('- Do NOT include any hashtags in the body.');
+    buf.writeln('- Do NOT include any emojis in the output.');
     buf.writeln('');
     buf.writeln('QUOTE HANDLING:');
     buf.writeln(
@@ -191,7 +264,30 @@ class GenerationPromptManager {
     return content.toString();
   }
 
-  /// JSON schema for API-level structured output (Gemini responseSchema / OpenAI json_schema)
+  /// JSON schema for API-level structured output (Gemini responseSchema / OpenAI json_schema).
+  ///
+  /// Gemini's `responseSchema` subset rejects unknown fields such as
+  /// `additionalProperties` (HTTP 400 `Invalid JSON payload received`), while
+  /// OpenAI strict mode *requires* it. Use [geminiResponseSchema] for Gemini
+  /// calls and keep this map for OpenAI-compatible `json_schema` payloads.
+  static Map<String, dynamic> get geminiResponseSchema =>
+      _stripAdditionalProperties(jsonSchema) as Map<String, dynamic>;
+
+  static dynamic _stripAdditionalProperties(dynamic node) {
+    if (node is Map<String, dynamic>) {
+      final out = <String, dynamic>{};
+      node.forEach((key, value) {
+        if (key == 'additionalProperties') return;
+        out[key] = _stripAdditionalProperties(value);
+      });
+      return out;
+    }
+    if (node is List) {
+      return [for (final item in node) _stripAdditionalProperties(item)];
+    }
+    return node;
+  }
+
   static Map<String, dynamic> get jsonSchema => {
     'type': 'object',
     'additionalProperties': false,
@@ -237,7 +333,137 @@ class GenerationPromptManager {
     return buf.toString();
   }
 
+  /// Builds a refinement prompt from a list of refinement keys and/or
+  /// free-text custom instructions (Android `buildRefinementPrompt` parity).
+  /// Known keys: `rephrase`, `recheck_flow`, `recheck_wording`. Anything else
+  /// is treated as a custom instruction (user-defined pills).
+  static String buildRefinementPrompt({
+    required String originalPost,
+    required List<String> refinements,
+    required bool includeSource,
+  }) {
+    final buf = StringBuffer();
+    buf.writeln(
+      'You are refining a Malaysian Malay (Bahasa Malaysia) social media post about football. Apply the following improvements to the post:',
+    );
+    buf.writeln('');
+    for (final r in refinements) {
+      switch (r.trim().toLowerCase()) {
+        case 'rephrase':
+          buf.writeln(
+            '- Rephrase: Rewrite the post with different wording while maintaining the same meaning and facts',
+          );
+        case 'recheck_flow':
+        case 'check flow':
+        case 'check_flow':
+          buf.writeln(
+            '- Recheck Flow: Improve the logical flow and structure of ideas',
+          );
+        case 'recheck_wording':
+        case 'check wording':
+        case 'check_wording':
+          buf.writeln(
+            '- Recheck Wording: Improve word choice and phrasing for better clarity',
+          );
+        default:
+          if (r.trim().isNotEmpty) {
+            buf.writeln('- Custom Instruction: ${r.trim()}');
+          }
+      }
+    }
+    buf.writeln('');
+    buf.writeln('ORIGINAL POST:');
+    buf.writeln('---');
+    buf.writeln(originalPost);
+    buf.writeln('---');
+    buf.writeln('');
+    buf.writeln(
+      "Provide ONLY the refined Bahasa Malaysia post, BUT ALWAYS use natural English football terminology where appropriate (e.g., 'Offside', 'Clean Sheet', 'Hat-trick'). Maintain the same length and structure. If there are bullet points, use • character only. Do NOT include any hashtags or explanations. Do NOT include any emojis in the output.",
+    );
+    if (includeSource) {
+      buf.writeln(
+        "Ensure the post ends with 'Sumber: [Source Name]' if the original post had one or if the source is known.",
+      );
+    } else {
+      buf.writeln(
+        "Do NOT include any 'Sumber:' citation in the output. Do NOT mention the source name, publication, or author anywhere in the post.",
+      );
+    }
+    return buf.toString();
+  }
+
+  /// Builds a curation prompt for OCR-extracted screenshot text (text-only
+  /// path; on-device vision models remain excluded per verdict).
+  static String buildPromptFromOcr(String ocrText, String hashtags) {
+    final buf = StringBuffer();
+    buf.writeln(
+      'You are a professional social media content writer for a Malaysian football club. The following text was extracted via OCR from a matchday/stats screenshot. Interpret this technical data and generate an engaging professional social media post in Malaysian Malay (Bahasa Malaysia) for our fans.',
+    );
+    buf.writeln('');
+    buf.writeln('STRICT REQUIREMENTS:');
+    buf.writeln('1. Write in Bahasa Malaysia (Malaysian Malay).');
+    buf.writeln(
+      "2. Use standard English football terms for technical actions (e.g., 'Clean Sheet', 'Hat-trick', 'Assist', 'Tackle').",
+    );
+    buf.writeln(
+      '3. Present the stats or match result in a clear, exciting way.',
+    );
+    buf.writeln('4. Do NOT use em-dashes (—).');
+    buf.writeln('5. Do NOT include any hashtags in the body.');
+    buf.writeln('');
+    buf.writeln('EXTRACTED OCR DATA:');
+    buf.writeln('---');
+    buf.writeln(ocrText);
+    buf.writeln('---');
+    buf.writeln('');
+    buf.writeln(
+      'Provide ONLY the Bahasa Malaysia post. Do NOT use markdown formatting.',
+    );
+    if (hashtags.isNotEmpty) {
+      buf.writeln(
+        'After the post, add a double newline and append these hashtags: $hashtags',
+      );
+    }
+    return buf.toString();
+  }
+
+  /// Plain text of a curator content payload (String or ExtractedArticle).
+  static String plainTextOf(dynamic content) {
+    if (content is ExtractedArticle) return content.text;
+    if (content is String) return content;
+    return content.toString();
+  }
+
   // --- Detection helpers (parity with PromptManager.kt) ---
+  static bool containsQuotes(String? text) {
+    if (text == null || text.isEmpty) return false;
+    for (var i = 0; i < text.length; i++) {
+      final c = text[i];
+      if (c == '"' ||
+          c == '\u201C' ||
+          c == '\u201D' ||
+          c == "'" ||
+          c == '\u2018' ||
+          c == '\u2019') {
+        return true;
+      }
+    }
+    return false;
+  }
+
+  static bool isLongTechnicalContent(String? text) {
+    if (text == null || text.length < 2000) return false;
+    final lower = text.toLowerCase();
+    var count = 0;
+    for (final keyword in tacticalKeywords) {
+      if (lower.contains(keyword)) {
+        count++;
+        if (count >= 5) return true;
+      }
+    }
+    return false;
+  }
+
   static bool containsBulletPoints(String? text) {
     if (text == null || text.isEmpty) return false;
     final lines = text.split('\n');
@@ -260,4 +486,49 @@ class GenerationPromptManager {
     }
     return false;
   }
+}
+
+/// Length target derived from Android `PromptManager` multipliers.
+class PromptLengthRange {
+  const PromptLengthRange({
+    required this.minChars,
+    required this.maxChars,
+    required this.pctMin,
+    required this.pctMax,
+    required this.descriptor,
+  });
+  final int minChars;
+  final int maxChars;
+  final int pctMin;
+  final int pctMax;
+  final String descriptor;
+}
+
+PromptLengthRange lengthRange(int sourceLength, String length) {
+  final double lo;
+  final double hi;
+  final String descriptor;
+  switch (length.toLowerCase()) {
+    case 'short':
+      lo = 0.2;
+      hi = 0.3;
+      descriptor = 'concise and brief';
+    case 'long':
+      lo = 0.7;
+      hi = 0.9;
+      descriptor = 'detailed and comprehensive';
+    default:
+      lo = 0.4;
+      hi = 0.6;
+      descriptor = 'moderate in length';
+  }
+  final minChars = (sourceLength * lo).toInt().clamp(50, 1 << 30);
+  final maxChars = (sourceLength * hi).toInt().clamp(100, 1 << 30);
+  return PromptLengthRange(
+    minChars: minChars,
+    maxChars: maxChars,
+    pctMin: (lo * 100).toInt(),
+    pctMax: (hi * 100).toInt(),
+    descriptor: descriptor,
+  );
 }

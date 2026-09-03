@@ -29,6 +29,7 @@ class _MockContentRepository implements IContentRepository {
     bool keepStructure = false,
     bool isFanModeEnabled = false,
     String fanClubName = '',
+    String length = 'medium',
   }) async {
     callCount++;
     lastProvider = provider;
@@ -44,6 +45,24 @@ class _MockContentRepository implements IContentRepository {
         rawMarkdown: 'Test Raw Markdown',
       ),
     );
+  }
+
+  @override
+  Future<Result<CuratedPost>> refinePost({
+    required CuratedPost original,
+    required List<String> refinements,
+    required String modelId,
+    required String apiKey,
+    required AiProvider provider,
+    bool includeSource = true,
+    bool keepStructure = false,
+  }) async {
+    callCount++;
+    lastProvider = provider;
+    if (failureToReturn != null) {
+      return ResultError(failureToReturn!);
+    }
+    return ResultSuccess(original);
   }
 
   @override

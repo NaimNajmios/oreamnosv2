@@ -526,7 +526,7 @@ class CardDataExtractor {
               points: _i(j, 'points'),
               form: _s(j, 'form'),
             ),
-          ),
+          ).take(5).toList(),
           highlightedTeam: _s(json, 'highlightedTeam'),
           promotionZone: _i(json, 'promotionZone', 4),
           relegationZone: _i(json, 'relegationZone', 18),

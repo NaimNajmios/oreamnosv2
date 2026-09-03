@@ -5,7 +5,6 @@ import 'package:oreamnos/config/theme/app_spacing.dart';
 import 'package:oreamnos/core/di/injection.dart';
 import 'package:oreamnos/data/services/preferences_service.dart';
 import 'package:image_picker/image_picker.dart';
-import 'package:oreamnos/domain/models/card_template.dart';
 import 'package:oreamnos/domain/models/card_config.dart';
 import 'package:oreamnos/domain/models/card_field.dart';
 import 'package:oreamnos/domain/models/card_field_registry.dart';
@@ -17,6 +16,7 @@ import 'package:oreamnos/ui/features/card_generator/view_models/card_generator_s
 
 import 'background_picker.dart';
 import 'ratio_selector.dart';
+import 'template_picker_grid.dart';
 
 enum PicsartPanel { templates, ratio, background, typography, text, branding }
 
@@ -260,66 +260,34 @@ class _PicsartToolDockState extends ConsumerState<PicsartToolDock> {
   Widget _buildTemplatesPanel(ThemeData theme) {
     final state = ref.watch(cardGeneratorViewModelProvider);
     final notifier = ref.read(cardGeneratorViewModelProvider.notifier);
-    return SizedBox(
-      height: 48,
-      child: SingleChildScrollView(
-        scrollDirection: Axis.horizontal,
-        physics: const BouncingScrollPhysics(),
-        padding: const EdgeInsets.symmetric(horizontal: AppSpacing.sm),
-        child: Row(
-          children: [
-            for (final t in CardTemplate.all) ...[
-              _TemplateChip(
-                label: t.displayName,
-                icon: _iconFor(t),
-                selected: state.selectedTemplate == t,
-                onTap: () => notifier.setTemplate(t),
-              ),
-              const SizedBox(width: AppSpacing.sm),
-            ],
-          ],
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        TemplatePickerGrid(
+          selected: state.selectedTemplate,
+          onSelect: (t) {
+            Haptics.selectionClick();
+            notifier.setTemplate(t);
+          },
         ),
-      ),
+        const SizedBox(height: AppSpacing.md),
+        OutlinedButton.icon(
+          icon: const Icon(Icons.shuffle_rounded, size: 18),
+          label: const Text('Surprise Me'),
+          onPressed: () {
+            Haptics.mediumImpact();
+            notifier.shuffleDesign();
+          },
+          style: OutlinedButton.styleFrom(
+            padding: const EdgeInsets.symmetric(vertical: 12),
+            shape: RoundedRectangleBorder(
+              borderRadius: AppSpacing.borderRadiusSm,
+            ),
+          ),
+        ),
+      ],
     );
-  }
-
-  IconData _iconFor(CardTemplate t) {
-    switch (t) {
-      case CardTemplate.playerSpotlight:
-        return Icons.person_outline_rounded;
-      case CardTemplate.headlineQuote:
-        return Icons.format_quote_rounded;
-      case CardTemplate.topStats:
-        return Icons.bar_chart_rounded;
-      case CardTemplate.transferNews:
-        return Icons.swap_horiz_rounded;
-      case CardTemplate.breakingNews:
-        return Icons.emergency_rounded;
-      case CardTemplate.matchPreview:
-        return Icons.sports_soccer_rounded;
-      case CardTemplate.detailedScoreboard:
-        return Icons.scoreboard_rounded;
-      case CardTemplate.onThisDay:
-        return Icons.history_rounded;
-      case CardTemplate.startingXI:
-        return Icons.groups_rounded;
-      case CardTemplate.matchStatsComparison:
-        return Icons.compare_rounded;
-      case CardTemplate.socialPost:
-        return Icons.share_rounded;
-      case CardTemplate.rivalry:
-        return Icons.people_rounded;
-      case CardTemplate.tableStandings:
-        return Icons.leaderboard_rounded;
-      case CardTemplate.injuryReport:
-        return Icons.healing_rounded;
-      case CardTemplate.contractExpiry:
-        return Icons.description_rounded;
-      case CardTemplate.awardNominee:
-        return Icons.military_tech_rounded;
-      case CardTemplate.freeform:
-        return Icons.format_shapes_rounded;
-    }
   }
 
   Widget _buildRatioPanel(ThemeData theme) {
@@ -881,72 +849,6 @@ class _ToolItem extends StatelessWidget {
               overflow: TextOverflow.ellipsis,
             ),
           ],
-        ),
-      ),
-    );
-  }
-}
-
-class _TemplateChip extends StatelessWidget {
-  final String label;
-  final IconData icon;
-  final bool selected;
-  final VoidCallback onTap;
-
-  const _TemplateChip({
-    required this.label,
-    required this.icon,
-    required this.selected,
-    required this.onTap,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    return Material(
-      color: Colors.transparent,
-      child: InkWell(
-        onTap: () {
-          Haptics.selectionClick();
-          onTap();
-        },
-        borderRadius: AppSpacing.borderRadiusPill,
-        child: Container(
-          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-          decoration: BoxDecoration(
-            color: selected
-                ? theme.colorScheme.primaryContainer
-                : theme.colorScheme.surface,
-            borderRadius: AppSpacing.borderRadiusPill,
-            border: Border.all(
-              color: selected
-                  ? theme.colorScheme.primary
-                  : theme.colorScheme.outline,
-              width: selected ? 1.5 : 1,
-            ),
-          ),
-          child: Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Icon(
-                icon,
-                size: 18,
-                color: selected
-                    ? theme.colorScheme.primary
-                    : theme.colorScheme.onSurface.withValues(alpha: 0.8),
-              ),
-              const SizedBox(width: 8),
-              Text(
-                label,
-                style: theme.textTheme.labelMedium?.copyWith(
-                  color: selected
-                      ? theme.colorScheme.primary
-                      : theme.colorScheme.onSurface,
-                  fontWeight: selected ? FontWeight.w600 : FontWeight.w500,
-                ),
-              ),
-            ],
-          ),
         ),
       ),
     );

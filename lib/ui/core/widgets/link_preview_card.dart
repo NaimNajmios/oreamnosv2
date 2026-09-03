@@ -15,6 +15,7 @@ class LinkPreviewCard extends StatelessWidget {
     this.description,
     this.faviconUrl,
     this.onExtract,
+    this.onDismiss,
     this.isLoading = false,
   });
 
@@ -23,6 +24,9 @@ class LinkPreviewCard extends StatelessWidget {
   final String? description;
   final String? faviconUrl;
   final VoidCallback? onExtract;
+
+  /// 48dp dismiss affordance (Android `LinkPreviewSection` parity).
+  final VoidCallback? onDismiss;
   final bool isLoading;
 
   String _getDomain(String urlStr) {
@@ -163,6 +167,18 @@ class LinkPreviewCard extends StatelessWidget {
                   height: 32,
                   isLoading: isLoading,
                   onPressed: onExtract,
+                ),
+              ],
+              if (onDismiss != null) ...[
+                const SizedBox(width: 4),
+                SizedBox(
+                  width: 48,
+                  height: 48,
+                  child: IconButton(
+                    tooltip: 'Dismiss preview',
+                    onPressed: onDismiss,
+                    icon: const Icon(Icons.close_rounded, size: 20),
+                  ),
                 ),
               ],
             ],

@@ -23,6 +23,19 @@ abstract class IContentCurator {
     bool keepStructure = false,
     bool isFanModeEnabled = false,
     String fanClubName = '',
+    String length = 'medium',
+  });
+
+  /// Full refinement pipeline (Android `refinePost` parity): applies a list
+  /// of refinement keys (`rephrase`, `recheck_flow`, `recheck_wording`) and/or
+  /// free-text custom instructions (user pills) to [original] in one pass.
+  Future<CuratedPost> refinePost({
+    required CuratedPost original,
+    required List<String> refinements,
+    required String modelId,
+    required String apiKey,
+    bool includeSource = true,
+    bool keepStructure = false,
   });
 
   /// Extracts structured JSON data from a generated post to be used for the Card Generator.

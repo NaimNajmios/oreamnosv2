@@ -57,7 +57,11 @@ class _AddPillDialogState extends ConsumerState<AddPillDialog> {
       return;
     }
 
-    final pill = CustomPill(label: label, instruction: instruction);
+    final pill = CustomPill(
+      id: widget.existingPill?.id,
+      label: label,
+      instruction: instruction,
+    );
     final viewModel = ref.read(settingsViewModelProvider.notifier);
 
     if (widget.existingPill != null) {

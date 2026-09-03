@@ -9,7 +9,7 @@ import 'package:oreamnos/domain/models/card_brief.dart';
 import 'package:oreamnos/ui/core/utils/haptics.dart';
 import 'package:oreamnos/ui/core/widgets/error_state.dart';
 import 'package:oreamnos/ui/core/widgets/empty_state.dart';
-import 'package:oreamnos/ui/core/widgets/kickoff_loading_indicator.dart';
+import 'package:oreamnos/ui/core/widgets/enhanced_loading_card.dart';
 import 'package:oreamnos/ui/features/settings/view_models/settings_view_model.dart';
 
 import '../../generate/view_models/generate_view_model.dart';
@@ -22,6 +22,7 @@ import 'package:oreamnos/domain/models/card_config.dart';
 
 import '../widgets/picsart_tool_dock.dart';
 import '../widgets/export_bottom_sheet.dart';
+import '../widgets/studio_deck_sheet.dart';
 
 /// Card Studio — now Riverpod Consumer + legacy ViewModel hybrid (incremental).
 /// Supports sealed 16-variant CardData via new dispatcher when available.
@@ -59,14 +60,15 @@ class _CardGeneratorScreenState extends ConsumerState<CardGeneratorScreen> {
         final generateVm = ref.read(generateViewModelProvider.notifier);
         if (generateVm.curatedPost != null) {
           final settings = ref.read(settingsViewModelProvider);
-          if (settings.selectedModel != null) {
-            _activeBrief = CardBrief.fromPost(
-              title: generateVm.curatedPost!.title,
-              bodyMarkdown: generateVm.curatedPost!.bodyMarkdown,
-              provider: settings.selectedProvider,
-              modelId: settings.selectedModel!,
-            );
-          }
+          final fallbackModel = settings.selectedModel?.isNotEmpty ?? false
+              ? settings.selectedModel!
+              : settings.selectedProvider.defaultModelId;
+          _activeBrief = CardBrief.fromPost(
+            title: generateVm.curatedPost!.title,
+            bodyMarkdown: generateVm.curatedPost!.bodyMarkdown,
+            provider: settings.selectedProvider,
+            modelId: fallbackModel,
+          );
         }
       }
 
@@ -217,34 +219,14 @@ class _CardGeneratorScreenState extends ConsumerState<CardGeneratorScreen> {
     ThemeData theme,
     bool hasData,
   ) {
-    // Extracting skeleton — keep stage visible with seeded data if available
+    // Extracting — keep stage visible with seeded data if available
     if (state.isExtracting && !hasData) {
-      return Center(
+      return const Center(
         child: Padding(
-          padding: const EdgeInsets.all(AppSpacing.xxl),
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              SizedBox(
-                width: 48,
-                height: 48,
-                child: KickoffLoadingIndicator(size: 48),
-              ),
-              const SizedBox(height: AppSpacing.lg),
-              Text(
-                'Polishing card…',
-                style: theme.textTheme.titleSmall?.copyWith(
-                  fontWeight: FontWeight.w600,
-                ),
-              ),
-              const SizedBox(height: 4),
-              Text(
-                'AI is tightening the headline for visual punch',
-                style: theme.textTheme.bodySmall?.copyWith(
-                  color: theme.colorScheme.onSurface.withValues(alpha: 0.6),
-                ),
-              ),
-            ],
+          padding: EdgeInsets.all(AppSpacing.xxl),
+          child: EnhancedLoadingCard(
+            type: LoadingType.extracting,
+            customMessage: 'Polishing card…',
           ),
         ),
       );
@@ -384,24 +366,13 @@ class _CardGeneratorScreenState extends ConsumerState<CardGeneratorScreen> {
                     Positioned.fill(
                       child: Container(
                         color: Colors.black.withValues(alpha: 0.6),
-                        child: Center(
-                          child: Column(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              SizedBox(
-                                width: 48,
-                                height: 48,
-                                child: KickoffLoadingIndicator(size: 48),
-                              ),
-                              const SizedBox(height: 16),
-                              Text(
-                                'AI Reprocessing...',
-                                style: theme.textTheme.titleMedium?.copyWith(
-                                  color: Colors.white,
-                                  fontWeight: FontWeight.w600,
-                                ),
-                              ),
-                            ],
+                        child: const Center(
+                          child: Padding(
+                            padding: EdgeInsets.all(AppSpacing.xl),
+                            child: EnhancedLoadingCard(
+                              type: LoadingType.extracting,
+                              customMessage: 'AI Reprocessing…',
+                            ),
                           ),
                         ),
                       ),
@@ -431,6 +402,18 @@ class _CardGeneratorScreenState extends ConsumerState<CardGeneratorScreen> {
           child: Row(
             mainAxisAlignment: MainAxisAlignment.end,
             children: [
+              FilledButton.tonalIcon(
+                icon: const Icon(Icons.tune_rounded, size: 18),
+                label: Text(
+                  state.missingFields.isEmpty
+                      ? 'Studio Deck'
+                      : 'Deck (${state.missingFields.length})',
+                ),
+                onPressed: !hasData
+                    ? null
+                    : () => StudioDeckSheet.show(context),
+              ),
+              const SizedBox(width: AppSpacing.sm),
               IconButton.filledTonal(
                 icon: const Icon(Icons.undo_rounded, size: 20),
                 tooltip: 'Undo',

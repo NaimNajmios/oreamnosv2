@@ -1,4 +1,5 @@
 import 'dart:io';
+import 'dart:math';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -385,6 +386,29 @@ class CardGeneratorViewModel extends Notifier<CardGeneratorState> {
 
   void saveDragSnapshot() => _saveSnapshot();
 
+  /// Surprise-Me: randomizes the visual design (Android `shuffleDesign`
+  /// parity). Content (`cardData`) is untouched; the change is undoable.
+  void shuffleDesign() {
+    _saveSnapshot();
+    final random = Random();
+    final positions = ImagePosition.values;
+    final filters = PhotoFilter.values;
+    final presets = PresetBackground.values;
+    state = state.copyWith(
+      imagePosition: positions[random.nextInt(positions.length)],
+      photoFilter: filters[random.nextInt(filters.length)],
+      presetBackground: presets[random.nextInt(presets.length)],
+      backgroundType: BackgroundType.preset,
+      scrimOpacity: 0.3 + random.nextDouble() * 0.45,
+      useVignette: random.nextBool(),
+      headlineScale: 0.85 + random.nextDouble() * 0.3,
+      isGlowEnabled: random.nextBool(),
+      backgroundBlurRadius: random.nextBool()
+          ? random.nextDouble() * 12.0
+          : 0.0,
+    );
+  }
+
   void updateElementOffset(String field, Offset offset) {
     final clamped = Offset(
       offset.dx.clamp(0.05, 0.95),
@@ -443,6 +467,108 @@ class CardGeneratorViewModel extends Notifier<CardGeneratorState> {
         ),
       );
     }
+  }
+
+  /// Numeric JSON keys coerced from editor strings (Android extractor
+  /// `optInt/optFloat` parity for Deck list editing).
+  static const _deckIntKeys = {
+    'position',
+    'played',
+    'won',
+    'drawn',
+    'lost',
+    'points',
+    'promotionZone',
+    'relegationZone',
+    'yearsAgo',
+    'homeScore',
+    'awayScore',
+    'goals',
+    'assists',
+    'minutesPlayed',
+    'appearances',
+    'cleanSheets',
+    'passes',
+    'tackles',
+    'totalNominees',
+    'impactRating',
+  };
+  static const _deckDoubleKeys = {'rating'};
+  static const _deckBoolKeys = {
+    'verified',
+    'isEdited',
+    'medicalCompleted',
+    'workPermit',
+    'isFavorite',
+    'previousWinner',
+    'isLongTerm',
+    'surgeryRequired',
+  };
+
+  static dynamic _coerceDeckValue(String key, dynamic value) {
+    if (value is! String) return value;
+    if (_deckIntKeys.contains(key)) return int.tryParse(value.trim()) ?? 0;
+    if (_deckDoubleKeys.contains(key)) {
+      return double.tryParse(value.trim()) ?? 0.0;
+    }
+    if (_deckBoolKeys.contains(key)) {
+      final t = value.trim().toLowerCase();
+      return t == 'true' || t == '1' || t == 'yes';
+    }
+    return value;
+  }
+
+  /// Freezed union discriminator for the selected template (factory names
+  /// match `CardTemplate.name`; freeform edits the sparse fallback).
+  static String _unionFor(CardTemplate template) =>
+      template == CardTemplate.freeform ? 'sparse' : template.name;
+
+  /// Replaces a list field (lineups, stats, standings, injuries, nominees)
+  /// from Deck editor rows. Numbers/bools are coerced from strings. Seeds a
+  /// fresh variant when no card data exists yet (pre-extraction editing).
+  void updateCardListField(String key, List<Map<String, dynamic>> rows) {
+    _saveSnapshot();
+
+    final json =
+        state.cardData?.toJson() ??
+        {'runtimeType': _unionFor(state.selectedTemplate)};
+    json[key] = rows
+        .map((r) => r.map((k, v) => MapEntry(k, _coerceDeckValue(k, v))))
+        .toList();
+
+    try {
+      final updatedData = CardData.fromJson(json);
+      final normalized = CardDataNormalizer.normalize(
+        state.selectedTemplate,
+        json,
+      );
+      state = state.copyWith(
+        cardData: updatedData,
+        missingFields: normalized.missingKeys,
+      );
+    } catch (_) {}
+  }
+
+  /// Sets a top-level bool field (verified, medical flags) from Deck switches.
+  void setCardBoolField(String key, bool value) {
+    _saveSnapshot();
+
+    final json =
+        state.cardData?.toJson() ??
+        {'runtimeType': _unionFor(state.selectedTemplate)};
+    json[key] = value;
+
+    try {
+      final updatedData = CardData.fromJson(json);
+      final normalized = CardDataNormalizer.normalize(
+        state.selectedTemplate,
+        json,
+      );
+      state = state.copyWith(
+        cardData: updatedData,
+        missingFields: normalized.missingKeys,
+      );
+    } catch (_) {}
   }
 
   void updateCardField(String key, String value) {

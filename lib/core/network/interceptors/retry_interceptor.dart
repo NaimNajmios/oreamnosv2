@@ -8,7 +8,7 @@ import 'package:dio/dio.dart';
 /// Parity with Android `GeminiService.java:840`:
 ///   MAX_RETRIES=5, INITIAL=1000ms, MAX=32000ms, multiplier 2.0
 /// Flutter adaptation per Phase A spec: MAX_RETRIES=4, BASE 500ms, CAP 60s.
-class RetryInterceptor extends QueuedInterceptor {
+class RetryInterceptor extends Interceptor {
   RetryInterceptor({
     this.dio,
     this.maxRetries = 4,

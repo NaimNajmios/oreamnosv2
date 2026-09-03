@@ -10,7 +10,7 @@
 | Jetpack Compose + BOM 2024.02 + Material3 | Flutter 3.47.1 + `useMaterial3` `lib/config/theme/app_theme.dart:191` + `DynamicColorBuilder` `lib/app.dart:80` |  |
 | OkHttp 4.12 + Gson 2.10 | `dio 5.11.0` pooled `ApiClient` `lib/core/network/api_client.dart:13` + `freezed`/`json_serializable` `lib/domain/models/card_data.dart:5` |  |
 | ViewModel + LiveData + Hilt | `flutter_riverpod 2.6.1` `ProviderScope` `lib/main.dart:26` + `get_it`/`injectable` `lib/core/di/injection.config.dart:28` |  |
-| `GeminiService.java:840` retry `Queued` | `RetryInterceptor:11` `QueuedInterceptor` 4× `base 500 cap 60s mult 2.0 jitter ±15%` + `Retry-After` `lib/core/network/interceptors/retry_interceptor.dart:91` |  |
+| `GeminiService.java:840` retry | `RetryInterceptor:11` `Interceptor` (plain, not queued — same-Dio refetch deadlocks under `QueuedInterceptor`) 4× `base 500 cap 60s mult 2.0 jitter ±15%` + `Retry-After` `lib/core/network/interceptors/retry_interceptor.dart:91` |  |
 | `RateLimitException` + `showRateLimitDialog` | `ErrorMappingInterceptor:15` `429→RateLimitFailure` `lib/core/error/failures.dart:47` + `GenerateViewModel.suggestedFallbackProvider:124` `nextFallback:21` + `RateLimitDialog:3` modal + inline `ErrorState:693` |  |
 | `CardData sealed 16` `CardData.kt` | `CardData sealed 17` (16 + `SparseCard`) `lib/domain/models/card_data.dart:104` `freezed` + `CardTemplate 16` `lib/domain/models/card_template.dart:3` |  |
 | `CardPromptManager.kt` 16 schemas + `CRITICAL RULE 3 N/A` | `CardPromptManager:6` `CRITICAL RULE 3 N/A:14` + 16 `_schemaFor` `card_prompt_manager.dart:47` |  |

@@ -9,6 +9,7 @@ import 'package:oreamnos/domain/services/content_curator.dart';
 import 'package:oreamnos/domain/services/card_prompt_manager.dart';
 import 'package:oreamnos/domain/services/generation_prompt_manager.dart';
 import 'package:oreamnos/domain/services/json_cleaner.dart';
+import 'package:oreamnos/domain/services/response_cleanup.dart';
 import 'package:oreamnos/domain/models/card_brief.dart';
 import 'package:oreamnos/domain/models/card_template.dart';
 import 'package:oreamnos/domain/models/curated_post.dart';
@@ -18,6 +19,46 @@ class GeminiCurator implements IContentCurator {
   GeminiCurator({ApiClient? apiClient}) : _client = apiClient ?? ApiClient();
 
   final ApiClient _client;
+
+  /// POSTs a generateContent payload. If Gemini hard-rejects the
+  /// `responseSchema` (HTTP 400 naming `response_schema`), retries once
+  /// without it — the schema stays in the prompt text and `JsonCleaner`
+  /// still parses the output.
+  Future<Response> _postGenerate({
+    required String path,
+    required Map<String, dynamic> data,
+    required String apiKey,
+  }) async {
+    try {
+      return await _client.post(
+        path,
+        data: data,
+        options: Options(extra: {'apiKey': apiKey, 'provider': 'gemini'}),
+      );
+    } on DioException catch (e) {
+      final config = data['generationConfig'];
+      if (config is Map<String, dynamic> &&
+          config.containsKey('responseSchema') &&
+          _isSchemaRejection(e)) {
+        final retryConfig = Map<String, dynamic>.from(config)
+          ..remove('responseSchema');
+        final retryData = Map<String, dynamic>.from(data)
+          ..['generationConfig'] = retryConfig;
+        return await _client.post(
+          path,
+          data: retryData,
+          options: Options(extra: {'apiKey': apiKey, 'provider': 'gemini'}),
+        );
+      }
+      rethrow;
+    }
+  }
+
+  static bool _isSchemaRejection(DioException e) {
+    if (e.response?.statusCode != 400) return false;
+    final body = e.response?.data?.toString().toLowerCase() ?? '';
+    return body.contains('response_schema') || body.contains('responseschema');
+  }
 
   @override
   Future<String> generatePost({
@@ -47,6 +88,7 @@ class GeminiCurator implements IContentCurator {
     bool keepStructure = false,
     bool isFanModeEnabled = false,
     String fanClubName = '',
+    String length = 'medium',
   }) async {
     final resolvedSourceUrl =
         sourceUrl ?? (content is ExtractedArticle ? content.url : null);
@@ -56,6 +98,8 @@ class GeminiCurator implements IContentCurator {
       keepStructure: keepStructure,
       isFanModeEnabled: isFanModeEnabled,
       fanClubName: fanClubName,
+      length: length,
+      sourceText: GenerationPromptManager.plainTextOf(content),
     );
     final userPrompt = GenerationPromptManager.buildUserPrompt(content);
 
@@ -67,8 +111,8 @@ class GeminiCurator implements IContentCurator {
 
     Response response;
     try {
-      response = await _client.post(
-        path,
+      response = await _postGenerate(
+        path: path,
         data: {
           "system_instruction": {
             "parts": [
@@ -85,10 +129,10 @@ class GeminiCurator implements IContentCurator {
           "generationConfig": {
             "temperature": 0.7,
             "responseMimeType": "application/json",
-            "responseSchema": GenerationPromptManager.jsonSchema,
+            "responseSchema": GenerationPromptManager.geminiResponseSchema,
           },
         },
-        options: Options(extra: {'apiKey': apiKey, 'provider': 'gemini'}),
+        apiKey: apiKey,
       );
     } on DioException catch (e) {
       if (e.requestOptions.extra.containsKey('failure')) {
@@ -130,6 +174,90 @@ class GeminiCurator implements IContentCurator {
     return _parseCuratedPost(rawText, resolvedSourceUrl);
   }
 
+  @override
+  Future<CuratedPost> refinePost({
+    required CuratedPost original,
+    required List<String> refinements,
+    required String modelId,
+    required String apiKey,
+    bool includeSource = true,
+    bool keepStructure = false,
+  }) async {
+    final systemPrompt = GenerationPromptManager.buildSystemPrompt(
+      sourceUrl: original.source.url,
+      keepStructure: keepStructure,
+      sourceText: original.rawMarkdown,
+    );
+    final userPrompt =
+        '${GenerationPromptManager.buildRefinementPrompt(originalPost: original.rawMarkdown, refinements: refinements, includeSource: includeSource)}\n\nReturn ONLY the JSON object per the schema.';
+
+    final actualModelId = modelId.startsWith('models/')
+        ? modelId
+        : 'models/$modelId';
+    final path =
+        'https://generativelanguage.googleapis.com/v1beta/$actualModelId:generateContent';
+
+    Response response;
+    try {
+      response = await _postGenerate(
+        path: path,
+        data: {
+          "system_instruction": {
+            "parts": [
+              {"text": systemPrompt},
+            ],
+          },
+          "contents": [
+            {
+              "parts": [
+                {"text": userPrompt},
+              ],
+            },
+          ],
+          "generationConfig": {
+            "temperature": 0.7,
+            "responseMimeType": "application/json",
+            "responseSchema": GenerationPromptManager.geminiResponseSchema,
+          },
+        },
+        apiKey: apiKey,
+      );
+    } on DioException catch (e) {
+      if (e.requestOptions.extra.containsKey('failure')) {
+        throw e.requestOptions.extra['failure'] as Failure;
+      }
+      rethrow;
+    }
+
+    if (response.statusCode != 200) {
+      throw Exception(
+        'Gemini API Error: ${response.statusCode} - ${response.data}',
+      );
+    }
+
+    final data = response.data is Map<String, dynamic>
+        ? response.data as Map<String, dynamic>
+        : (response.data is String
+              ? jsonDecode(response.data as String) as Map<String, dynamic>
+              : (response.data as Map).cast<String, dynamic>());
+
+    try {
+      if (getIt.isRegistered<TokenUsageSideChannel>()) {
+        getIt<TokenUsageSideChannel>().storeGemini(data, 'gemini');
+      }
+    } catch (_) {}
+
+    final candidates = data['candidates'] as List<dynamic>? ?? [];
+    if (candidates.isEmpty) {
+      throw Exception('Gemini returned empty response');
+    }
+    final parts = candidates[0]['content']?['parts'] as List<dynamic>? ?? [];
+    if (parts.isEmpty) {
+      throw Exception('Gemini returned empty text parts');
+    }
+    return _parseCuratedPost(parts[0]['text'] as String, original.source.url);
+  }
+
   Future<CuratedPost> _parseCuratedPost(
     String rawText,
     String? sourceUrl,
@@ -151,7 +279,7 @@ class GeminiCurator implements IContentCurator {
       }
       return CuratedPost.fromJson(jsonMap);
     } catch (_) {
-      // Fallback: treat as markdown
+      // Fallback: clean markdown chatter then treat as markdown.
       SourceAttribution? src;
       if (sourceUrl != null && sourceUrl.isNotEmpty) {
         src = SourceAttribution(
@@ -160,7 +288,10 @@ class GeminiCurator implements IContentCurator {
           domain: Uri.tryParse(sourceUrl)?.host,
         );
       }
-      return CuratedPost.fromMarkdownFallback(rawText, source: src);
+      return CuratedPost.fromMarkdownFallback(
+        ResponseCleanup.cleanUpResponseWithMarkdown(rawText),
+        source: src,
+      );
     }
   }
 

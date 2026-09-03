@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../../domain/models/card_config.dart';
 
+/// Exact port of Android `GradientBuilder` scrim stop math.
 class GradientBuilder {
   static LinearGradient vertical(List<Color> colors) {
     return LinearGradient(
@@ -27,58 +28,76 @@ class GradientBuilder {
     );
   }
 
-  static LinearGradient darkScrim(double opacity) {
+  static LinearGradient darkScrim(double baseOpacity) {
+    final o = baseOpacity;
     return LinearGradient(
       begin: Alignment.topCenter,
       end: Alignment.bottomCenter,
-      stops: const [0.0, 0.4, 1.0],
-      colors: [
-        Colors.black.withValues(alpha: opacity * 0.25),
-        Colors.black.withValues(alpha: opacity * 0.55),
-        Colors.black.withValues(alpha: opacity),
-      ],
-    );
-  }
-
-  static LinearGradient lightScrim(double opacity) {
-    return LinearGradient(
-      begin: Alignment.topCenter,
-      end: Alignment.bottomCenter,
-      colors: [
-        Colors.white.withValues(alpha: opacity * 0.2),
-        Colors.black.withValues(alpha: opacity * 0.5),
-      ],
-    );
-  }
-
-  static LinearGradient minimalScrim(double opacity) {
-    return LinearGradient(
-      begin: Alignment.center,
-      end: Alignment.bottomCenter,
+      stops: const [0.0, 0.45, 0.65, 1.0],
       colors: [
         Colors.transparent,
-        Colors.black.withValues(alpha: opacity * 0.6),
+        Colors.transparent,
+        Colors.black.withValues(alpha: (o * 0.8).clamp(0.0, 1.0)),
+        Colors.black.withValues(alpha: (o * 1.5).clamp(0.0, 1.0)),
       ],
     );
   }
 
-  static LinearGradient horizontalScrim(double opacity) {
+  static LinearGradient lightScrim(double baseOpacity) {
+    final o = baseOpacity;
+    return LinearGradient(
+      begin: Alignment.topCenter,
+      end: Alignment.bottomCenter,
+      stops: const [0.0, 0.6, 0.8, 1.0],
+      colors: [
+        Colors.transparent,
+        Colors.transparent,
+        Colors.black.withValues(alpha: (o * 0.6).clamp(0.0, 1.0)),
+        Colors.black.withValues(alpha: (o * 1.1).clamp(0.0, 1.0)),
+      ],
+    );
+  }
+
+  static LinearGradient minimalScrim(double baseOpacity) {
+    final o = baseOpacity;
+    return LinearGradient(
+      begin: Alignment.topCenter,
+      end: Alignment.bottomCenter,
+      stops: const [0.0, 0.7, 0.9, 1.0],
+      colors: [
+        Colors.transparent,
+        Colors.transparent,
+        Colors.black.withValues(alpha: (o * 0.4).clamp(0.0, 1.0)),
+        Colors.black.withValues(alpha: (o * 0.75).clamp(0.0, 1.0)),
+      ],
+    );
+  }
+
+  static LinearGradient horizontalScrim(double baseOpacity) {
+    final o = baseOpacity;
     return LinearGradient(
       begin: Alignment.centerLeft,
       end: Alignment.centerRight,
+      stops: const [0.0, 0.5, 0.75, 1.0],
       colors: [
-        Colors.black.withValues(alpha: opacity),
         Colors.transparent,
+        Colors.transparent,
+        Colors.black.withValues(alpha: (o * 0.8).clamp(0.0, 1.0)),
+        Colors.black.withValues(alpha: (o * 1.4).clamp(0.0, 1.0)),
       ],
     );
   }
 
-  static LinearGradient reverseHorizontalScrim(double opacity) {
+  static LinearGradient reverseHorizontalScrim(double baseOpacity) {
+    final o = baseOpacity;
     return LinearGradient(
-      begin: Alignment.centerRight,
-      end: Alignment.centerLeft,
+      begin: Alignment.centerLeft,
+      end: Alignment.centerRight,
+      stops: const [0.0, 0.25, 0.5, 1.0],
       colors: [
-        Colors.black.withValues(alpha: opacity),
+        Colors.black.withValues(alpha: (o * 1.4).clamp(0.0, 1.0)),
+        Colors.black.withValues(alpha: (o * 0.8).clamp(0.0, 1.0)),
+        Colors.transparent,
         Colors.transparent,
       ],
     );

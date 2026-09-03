@@ -120,5 +120,36 @@ void main() {
       final state = container.read(cardGeneratorViewModelProvider);
       expect(state.cardData, isNotNull);
     });
+
+    test('shuffleDesign randomizes visuals, keeps content, stays undoable', () {
+      vm.updateHeadline('Keep me');
+      final before = container.read(cardGeneratorViewModelProvider);
+      vm.shuffleDesign();
+      final after = container.read(cardGeneratorViewModelProvider);
+      expect(after.cardData?.headline, before.cardData?.headline);
+      expect(after.canUndo, isTrue);
+      expect(after.backgroundType, BackgroundType.preset);
+    });
+
+    test('updateCardListField writes lineup rows with undo', () {
+      vm.setTemplate(CardTemplate.startingXI);
+      vm.updateCardListField('starters', [
+        {'number': '1', 'name': 'Alisson'},
+        {'number': '4', 'name': 'Van Dijk'},
+      ]);
+      final state = container.read(cardGeneratorViewModelProvider);
+      final data = state.cardData;
+      expect(data, isA<StartingXI>());
+      expect((data as StartingXI).starters.length, 2);
+      expect(data.starters.first.name, 'Alisson');
+      expect(state.canUndo, isTrue);
+    });
+
+    test('setCardBoolField toggles verification flags', () {
+      vm.setTemplate(CardTemplate.socialPost);
+      vm.setCardBoolField('verified', true);
+      final state = container.read(cardGeneratorViewModelProvider);
+      expect((state.cardData as SocialPost).verified, isTrue);
+    });
   });
 }

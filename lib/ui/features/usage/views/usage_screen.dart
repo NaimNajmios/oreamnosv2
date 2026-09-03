@@ -17,6 +17,7 @@ import '../../../core/widgets/empty_state.dart';
 import '../../../core/widgets/section_header.dart';
 import '../../../core/widgets/stat_card.dart';
 import '../../../core/widgets/app_chip.dart';
+import 'widgets/provider_charts.dart';
 import 'widgets/usage_chart.dart';
 
 /// Serene Editorial Usage & Analytics screen — grouped, filtered, responsive.
@@ -30,6 +31,7 @@ class UsageScreen extends ConsumerStatefulWidget {
 class _UsageScreenState extends ConsumerState<UsageScreen> {
   String _filter = 'all';
   int _displayLimit = 10;
+  int _rangeDays = 0; // 0 = all time, else 7 / 30 / 90
 
   @override
   Widget build(BuildContext context) {
@@ -255,7 +257,68 @@ class _UsageScreenState extends ConsumerState<UsageScreen> {
                               ],
                             ),
                             const SizedBox(height: AppSpacing.md),
-                            UsageChart(logs: logs),
+                            Row(
+                              children: [
+                                for (final days in [0, 7, 30, 90]) ...[
+                                  AppChip(
+                                    label: days == 0 ? 'All' : '${days}d',
+                                    selected: _rangeDays == days,
+                                    onTap: () => setState(() {
+                                      _rangeDays = days;
+                                    }),
+                                  ),
+                                  const SizedBox(width: AppSpacing.xs),
+                                ],
+                              ],
+                            ),
+                            const SizedBox(height: AppSpacing.sm),
+                            UsageChart(logs: _rangedLogs(logsAll)),
+                          ],
+                        ),
+                      ),
+                      const SizedBox(height: AppSpacing.base),
+
+                      // Success Rate — donut + per-provider breakdown
+                      AppCard(
+                        padding: const EdgeInsets.all(AppSpacing.base),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              'SUCCESS RATE',
+                              style: theme.textTheme.labelSmall?.copyWith(
+                                letterSpacing: 0.8,
+                                fontWeight: FontWeight.w700,
+                                color: theme.colorScheme.onSurface.withValues(
+                                  alpha: 0.6,
+                                ),
+                              ),
+                            ),
+                            const SizedBox(height: AppSpacing.md),
+                            SuccessRateDonut(logs: _rangedLogs(logsAll)),
+                          ],
+                        ),
+                      ),
+                      const SizedBox(height: AppSpacing.base),
+
+                      // Response Time — per-provider averages + badges
+                      AppCard(
+                        padding: const EdgeInsets.all(AppSpacing.base),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              'RESPONSE TIME',
+                              style: theme.textTheme.labelSmall?.copyWith(
+                                letterSpacing: 0.8,
+                                fontWeight: FontWeight.w700,
+                                color: theme.colorScheme.onSurface.withValues(
+                                  alpha: 0.6,
+                                ),
+                              ),
+                            ),
+                            const SizedBox(height: AppSpacing.md),
+                            ResponseTimeBars(logs: _rangedLogs(logsAll)),
                           ],
                         ),
                       ),
@@ -400,6 +463,12 @@ class _UsageScreenState extends ConsumerState<UsageScreen> {
               ),
             ),
     );
+  }
+
+  List<UsageLog> _rangedLogs(List<UsageLog> all) {
+    if (_rangeDays <= 0) return all;
+    final cutoff = DateTime.now().subtract(Duration(days: _rangeDays));
+    return all.where((l) => l.timestamp.isAfter(cutoff)).toList();
   }
 
   Widget _buildLogCard(BuildContext context, UsageLog log) {

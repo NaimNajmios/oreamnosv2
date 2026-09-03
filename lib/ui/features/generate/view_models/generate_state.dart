@@ -19,6 +19,7 @@ abstract class GenerateUiState with _$GenerateUiState {
     @Default([]) List<String> recentInputs,
     String? errorMessage,
     AiProvider? suggestedFallbackProvider,
+    String? rateLimitWaitMessage,
     String? validationMessage,
     String? pendingInput,
     @Default(false) bool isResearchModeEnabled,
@@ -29,6 +30,7 @@ abstract class GenerateUiState with _$GenerateUiState {
     String? twitterExtractionUrl,
     @Default(false) bool isExtractingImage,
     @Default(false) bool keepStructure,
+    @Default(false) bool isEditMode,
   }) = _GenerateUiState;
 
   bool get canUndo => historyStack.isNotEmpty;

@@ -30,46 +30,51 @@ class ErrorState extends StatelessWidget {
       padding: const EdgeInsets.all(AppSpacing.xl),
       borderColor: AppColors.error,
       backgroundColor: theme.colorScheme.surface,
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        crossAxisAlignment: CrossAxisAlignment.center,
-        children: [
-          Container(
-            padding: const EdgeInsets.all(16),
-            decoration: const BoxDecoration(
-              color: AppColors.errorSoft,
-              shape: BoxShape.circle,
+      // Whole card scrolls: icon + title + message + button together can
+      // exceed short fixed-height parents (e.g. the model dialog), and a
+      // scroll view is safe in both bounded and unbounded parents.
+      child: SingleChildScrollView(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.center,
+          children: [
+            Container(
+              padding: const EdgeInsets.all(16),
+              decoration: const BoxDecoration(
+                color: AppColors.errorSoft,
+                shape: BoxShape.circle,
+              ),
+              child: Icon(icon, color: AppColors.error, size: 24),
             ),
-            child: Icon(icon, color: AppColors.error, size: 24),
-          ),
-          const SizedBox(height: AppSpacing.lg),
-          Text(
-            title,
-            style: theme.textTheme.titleMedium?.copyWith(
-              fontWeight: FontWeight.w600,
-              color: AppColors.error,
+            const SizedBox(height: AppSpacing.lg),
+            Text(
+              title,
+              style: theme.textTheme.titleMedium?.copyWith(
+                fontWeight: FontWeight.w600,
+                color: AppColors.error,
+              ),
+              textAlign: TextAlign.center,
             ),
-            textAlign: TextAlign.center,
-          ),
-          const SizedBox(height: AppSpacing.sm),
-          Text(
-            message,
-            style: theme.textTheme.bodyMedium?.copyWith(
-              color: theme.colorScheme.onSurface,
+            const SizedBox(height: AppSpacing.sm),
+            Text(
+              message,
+              style: theme.textTheme.bodyMedium?.copyWith(
+                color: theme.colorScheme.onSurface,
+              ),
+              textAlign: TextAlign.center,
             ),
-            textAlign: TextAlign.center,
-          ),
-          if (onRetry != null) ...[
-            const SizedBox(height: AppSpacing.xl),
-            AppButton(
-              label: retryLabel,
-              height: 48,
-              backgroundColor: AppColors.error,
-              foregroundColor: Colors.white,
-              onPressed: onRetry,
-            ),
+            if (onRetry != null) ...[
+              const SizedBox(height: AppSpacing.xl),
+              AppButton(
+                label: retryLabel,
+                height: 48,
+                backgroundColor: AppColors.error,
+                foregroundColor: Colors.white,
+                onPressed: onRetry,
+              ),
+            ],
           ],
-        ],
+        ),
       ),
     );
   }

@@ -21,6 +21,17 @@ abstract class IContentRepository {
     bool keepStructure = false,
     bool isFanModeEnabled = false,
     String fanClubName = '',
+    String length = 'medium',
+  });
+
+  Future<Result<CuratedPost>> refinePost({
+    required CuratedPost original,
+    required List<String> refinements,
+    required String modelId,
+    required String apiKey,
+    required AiProvider provider,
+    bool includeSource = true,
+    bool keepStructure = false,
   });
 
   Future<Result<String>> generatePost({
@@ -86,6 +97,7 @@ class ContentRepository implements IContentRepository {
     bool keepStructure = false,
     bool isFanModeEnabled = false,
     String fanClubName = '',
+    String length = 'medium',
   }) async {
     try {
       final curator = CuratorFactory.getCurator(provider);
@@ -98,6 +110,33 @@ class ContentRepository implements IContentRepository {
         keepStructure: keepStructure,
         isFanModeEnabled: isFanModeEnabled,
         fanClubName: fanClubName,
+        length: length,
+      );
+      return ResultSuccess(res);
+    } catch (e, st) {
+      return ResultError(_mapError(e, st));
+    }
+  }
+
+  @override
+  Future<Result<CuratedPost>> refinePost({
+    required CuratedPost original,
+    required List<String> refinements,
+    required String modelId,
+    required String apiKey,
+    required AiProvider provider,
+    bool includeSource = true,
+    bool keepStructure = false,
+  }) async {
+    try {
+      final curator = CuratorFactory.getCurator(provider);
+      final res = await curator.refinePost(
+        original: original,
+        refinements: refinements,
+        modelId: modelId,
+        apiKey: apiKey,
+        includeSource: includeSource,
+        keepStructure: keepStructure,
       );
       return ResultSuccess(res);
     } catch (e, st) {

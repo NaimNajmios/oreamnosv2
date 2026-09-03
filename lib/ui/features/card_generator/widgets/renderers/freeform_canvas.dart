@@ -5,6 +5,7 @@ import 'package:oreamnos/domain/models/card_data.dart';
 import 'package:oreamnos/data/services/gradient_builder.dart';
 import 'package:oreamnos/ui/features/card_generator/view_models/card_generator_view_model.dart';
 
+import '../draggable_canvas_element.dart';
 import '../editable_canvas_text.dart';
 
 class FreeformCanvas extends ConsumerWidget {
@@ -43,8 +44,7 @@ class FreeformCanvas extends ConsumerWidget {
             ),
 
           if (headline.isNotEmpty)
-            _DraggableElement(
-              fieldKey: 'headline',
+            DraggableCanvasElement(
               offset: state.headlineOffset,
               onDragStart: notifier.saveDragSnapshot,
               onOffsetChanged: (o) =>
@@ -58,8 +58,7 @@ class FreeformCanvas extends ConsumerWidget {
             ),
 
           if (subtext.isNotEmpty)
-            _DraggableElement(
-              fieldKey: 'subtext',
+            DraggableCanvasElement(
               offset: state.subtextOffset,
               onDragStart: notifier.saveDragSnapshot,
               onOffsetChanged: (o) =>
@@ -77,8 +76,7 @@ class FreeformCanvas extends ConsumerWidget {
             ),
 
           if (microStat.isNotEmpty)
-            _DraggableElement(
-              fieldKey: 'microStat',
+            DraggableCanvasElement(
               offset: state.microStatOffset,
               onDragStart: notifier.saveDragSnapshot,
               onOffsetChanged: (o) =>
@@ -91,59 +89,6 @@ class FreeformCanvas extends ConsumerWidget {
               ),
             ),
         ],
-      ),
-    );
-  }
-}
-
-class _DraggableElement extends StatelessWidget {
-  final String fieldKey;
-  final Offset offset;
-  final ValueChanged<Offset> onOffsetChanged;
-  final VoidCallback? onDragStart;
-  final Widget child;
-
-  const _DraggableElement({
-    required this.fieldKey,
-    required this.offset,
-    required this.onOffsetChanged,
-    this.onDragStart,
-    required this.child,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return Positioned(
-      left: 0,
-      right: 0,
-      top: 0,
-      bottom: 0,
-      child: LayoutBuilder(
-        builder: (context, constraints) {
-          final x = offset.dx * constraints.maxWidth;
-          final y = offset.dy * constraints.maxHeight;
-
-          return Stack(
-            children: [
-              Positioned(
-                left: x,
-                top: y,
-                child: GestureDetector(
-                  onPanStart: (_) => onDragStart?.call(),
-                  onPanUpdate: (details) {
-                    final newX = (x + details.delta.dx) / constraints.maxWidth;
-                    final newY = (y + details.delta.dy) / constraints.maxHeight;
-                    onOffsetChanged(Offset(newX, newY));
-                  },
-                  child: FractionalTranslation(
-                    translation: const Offset(-0.5, -0.5),
-                    child: child,
-                  ),
-                ),
-              ),
-            ],
-          );
-        },
       ),
     );
   }

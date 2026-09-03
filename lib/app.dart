@@ -10,6 +10,7 @@ import 'config/constants.dart';
 import 'config/routes/app_router.dart';
 import 'config/theme/app_theme.dart';
 import 'domain/models/app_theme_mode.dart';
+import 'domain/models/card_brief.dart';
 import 'domain/models/curated_post.dart';
 
 import 'ui/features/settings/view_models/settings_view_model.dart';
@@ -82,6 +83,31 @@ class _OreamnosAppState extends ConsumerState<OreamnosApp> {
 
     ShareIntentService().onSharedTextReceived = (text) async {
       if (!mounted) return;
+
+      // Route-to-card alias (Android `ShareRouterActivity` parity): shared
+      // text starting with `card:` opens Card Studio directly with the
+      // remainder as the headline. Everything else auto-generates.
+      final trimmed = text.trim();
+      final lower = trimmed.toLowerCase();
+      if (lower.startsWith('card:') || lower.startsWith('kad:')) {
+        final headline = trimmed.substring(trimmed.indexOf(':') + 1).trim();
+        if (headline.isNotEmpty) {
+          final settings = ref.read(settingsViewModelProvider);
+          final modelId = (settings.selectedModel?.isNotEmpty ?? false)
+              ? settings.selectedModel!
+              : settings.selectedProvider.defaultModelId;
+          _router.go(
+            RoutePaths.cardGenerator,
+            extra: CardBrief(
+              headline: headline,
+              subtext: '',
+              provider: settings.selectedProvider,
+              modelId: modelId,
+            ),
+          );
+          return;
+        }
+      }
 
       _router.go(RoutePaths.generate);
       ref.read(generateViewModelProvider.notifier).setPendingInput(text);

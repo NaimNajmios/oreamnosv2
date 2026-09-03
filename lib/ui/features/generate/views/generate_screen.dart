@@ -26,6 +26,7 @@ import 'package:oreamnos/ui/core/widgets/app_input.dart';
 import 'package:oreamnos/ui/core/widgets/app_switch.dart';
 import 'package:oreamnos/ui/core/widgets/curated_post_sections.dart';
 import 'package:oreamnos/ui/core/widgets/error_state.dart';
+import 'package:oreamnos/ui/core/widgets/fluid_edit_button.dart';
 import 'package:oreamnos/ui/core/widgets/input_clear_button.dart';
 import 'package:oreamnos/ui/features/generate/widgets/twitter_fallback_dialog.dart';
 import 'package:oreamnos/ui/core/widgets/link_preview_card.dart';
@@ -34,7 +35,7 @@ import 'package:oreamnos/ui/core/widgets/section_header.dart';
 import 'package:oreamnos/ui/core/widgets/source_attribution_card.dart';
 import 'package:oreamnos/ui/core/widgets/success_overlay.dart';
 import 'package:oreamnos/ui/core/widgets/swipeable_output_card.dart';
-import 'package:oreamnos/ui/core/widgets/skeleton_loader.dart';
+import 'package:oreamnos/ui/core/widgets/enhanced_loading_card.dart';
 import 'package:oreamnos/ui/features/settings/view_models/settings_view_model.dart';
 import 'package:oreamnos/ui/features/settings/views/widgets/add_pill_dialog.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -55,10 +56,50 @@ class _GenerateScreenState extends ConsumerState<GenerateScreen> {
   bool _lastSuccessState = false;
   bool _showSettings = false;
 
+  // Link preview metadata (fetched lazily, dismissed per-URL).
+  String _previewFor = '';
+  String? _previewDismissedFor;
+  String? _previewTitle;
+  String? _previewDesc;
+  String? _previewFavicon;
+
+  void _maybeFetchPreview(String url, bool isGenerating) {
+    if (isGenerating || url == _previewFor || url == _previewDismissedFor) {
+      return;
+    }
+    _previewFor = url;
+    WebScraperService.extractArticleFromUrl(url)
+        .then((article) {
+          if (!mounted) return;
+          if (_controller.text.trim() != url) return;
+          setState(() {
+            _previewTitle = article.pageTitle;
+            _previewDesc = article.description;
+            _previewFavicon = article.faviconUrl;
+          });
+        })
+        .catchError((_) {});
+  }
+
   @override
   void initState() {
     super.initState();
     _controller.addListener(_onTextChanged);
+    // Quick Settings tile flow (Android `GenerateTileService` parity): the
+    // tile opens the app; on launch we pick up a URL sitting in the
+    // clipboard into the empty input so one tap generates.
+    WidgetsBinding.instance.addPostFrameCallback((_) => _consumeQsClipboard());
+  }
+
+  Future<void> _consumeQsClipboard() async {
+    if (!mounted || _controller.text.trim().isNotEmpty) return;
+    try {
+      final data = await Clipboard.getData(Clipboard.kTextPlain);
+      final text = data?.text?.trim() ?? '';
+      if (text.isEmpty || !WebScraperService.isUrl(text)) return;
+      if (!mounted || _controller.text.trim().isNotEmpty) return;
+      setState(() => _controller.text = WebScraperService.normalizeUrl(text));
+    } catch (_) {}
   }
 
   @override
@@ -148,6 +189,7 @@ class _GenerateScreenState extends ConsumerState<GenerateScreen> {
             currentProviderName: notifier.providerDisplayName,
             onRetryWithFallback: () =>
                 notifier.retryWithProvider(next.suggestedFallbackProvider!),
+            waitTimeMessage: next.rateLimitWaitMessage,
           );
         });
       } else if (next.status == GenerateState.error &&
@@ -448,21 +490,42 @@ class _GenerateScreenState extends ConsumerState<GenerateScreen> {
             hint: 'Paste football news or article URL...',
             minLines: 3,
             maxLines: 6,
-            onChanged: (_) => setState(() {}),
+            onChanged: (_) => setState(() {
+              final trimmed = _controller.text.trim();
+              if (trimmed != _previewFor) {
+                _previewTitle = null;
+                _previewDesc = null;
+                _previewFavicon = null;
+              }
+            }),
           ),
-          if (isUrl) ...[
+          if (isUrl && _controller.text.trim() != _previewDismissedFor) ...[
             const SizedBox(height: AppSpacing.sm),
-            LinkPreviewCard(
-              url: _controller.text.trim(),
-              isLoading: isGenerating,
-              onExtract: isGenerating
-                  ? null
-                  : () {
-                      FocusScope.of(context).unfocus();
-                      ref
-                          .read(generateViewModelProvider.notifier)
-                          .generatePost(_controller.text);
-                    },
+            Builder(
+              builder: (context) {
+                _maybeFetchPreview(_controller.text.trim(), isGenerating);
+                return LinkPreviewCard(
+                  url: _controller.text.trim(),
+                  title: _previewTitle,
+                  description: _previewDesc,
+                  faviconUrl: _previewFavicon,
+                  isLoading: isGenerating,
+                  onExtract: isGenerating
+                      ? null
+                      : () {
+                          FocusScope.of(context).unfocus();
+                          ref
+                              .read(generateViewModelProvider.notifier)
+                              .generatePost(_controller.text);
+                        },
+                  onDismiss: () => setState(() {
+                    _previewDismissedFor = _controller.text.trim();
+                    _previewTitle = null;
+                    _previewDesc = null;
+                    _previewFavicon = null;
+                  }),
+                );
+              },
             ),
           ],
           const SizedBox(height: AppSpacing.sm),
@@ -799,9 +862,12 @@ class _GenerateScreenState extends ConsumerState<GenerateScreen> {
     bool isGenerating,
   ) {
     if (isGenerating && !hasPost) {
-      return AppCard(
+      final isScraping =
+          viewModel.generatingStep == GeneratingStep.scraping ||
+          viewModel.status == GenerateState.researching;
+      return EnhancedLoadingCard(
         key: const ValueKey('generating'),
-        child: SkeletonLoader.outputCard(context),
+        type: isScraping ? LoadingType.extracting : LoadingType.generating,
       );
     }
 
@@ -913,6 +979,12 @@ class _GenerateScreenState extends ConsumerState<GenerateScreen> {
                     ),
                     Row(
                       children: [
+                        FluidEditButton(
+                          isEditing: viewModel.isEditMode,
+                          onToggle: () => ref
+                              .read(generateViewModelProvider.notifier)
+                              .toggleEditMode(),
+                        ),
                         IconButton(
                           icon: const Icon(Icons.image_outlined, size: 20),
                           tooltip: 'Card Studio',
@@ -920,18 +992,21 @@ class _GenerateScreenState extends ConsumerState<GenerateScreen> {
                             final settingsState = ref.read(
                               settingsViewModelProvider,
                             );
-                            if (settingsState.selectedModel != null) {
-                              final brief = CardBrief.fromPost(
-                                title: post.title,
-                                bodyMarkdown: post.bodyMarkdown,
-                                provider: settingsState.selectedProvider,
-                                modelId: settingsState.selectedModel!,
-                              );
-                              context.push(
-                                RoutePaths.cardGenerator,
-                                extra: brief,
-                              );
-                            }
+                            final cardModelId =
+                                (settingsState.selectedModel?.isNotEmpty ??
+                                    false)
+                                ? settingsState.selectedModel!
+                                : settingsState.selectedProvider.defaultModelId;
+                            final brief = CardBrief.fromPost(
+                              title: post.title,
+                              bodyMarkdown: post.bodyMarkdown,
+                              provider: settingsState.selectedProvider,
+                              modelId: cardModelId,
+                            );
+                            context.push(
+                              RoutePaths.cardGenerator,
+                              extra: brief,
+                            );
                           },
                         ),
                         IconButton(
@@ -989,8 +1064,22 @@ class _GenerateScreenState extends ConsumerState<GenerateScreen> {
                   ),
                 ),
                 const SizedBox(height: AppSpacing.base),
-                TitleBlock(title: post.title, visible: viewModel.showTitle),
-                BodyBlock(bodyMarkdown: post.bodyMarkdown),
+                if (viewModel.isEditMode)
+                  _PostEditor(
+                    key: ValueKey(post.rawMarkdown),
+                    title: post.title,
+                    body: post.bodyMarkdown,
+                    onSave: (title, body) => ref
+                        .read(generateViewModelProvider.notifier)
+                        .saveEditedPost(title: title, body: body),
+                    onCancel: () => ref
+                        .read(generateViewModelProvider.notifier)
+                        .toggleEditMode(),
+                  )
+                else ...[
+                  TitleBlock(title: post.title, visible: viewModel.showTitle),
+                  BodyBlock(bodyMarkdown: post.bodyMarkdown),
+                ],
                 if (viewModel.showHashtags && post.hashtags.isNotEmpty) ...[
                   const SizedBox(height: AppSpacing.base),
                   HashtagChips(hashtags: post.hashtags, visible: true),
@@ -1216,5 +1305,80 @@ class _GenerateScreenState extends ConsumerState<GenerateScreen> {
 
     // Should not be reached because this method is only called when status != idle.
     return const SizedBox.shrink();
+  }
+}
+
+/// Inline title/body editor shown when output edit mode is on.
+class _PostEditor extends StatefulWidget {
+  const _PostEditor({
+    super.key,
+    required this.title,
+    required this.body,
+    required this.onSave,
+    required this.onCancel,
+  });
+
+  final String title;
+  final String body;
+  final void Function(String title, String body) onSave;
+  final VoidCallback onCancel;
+
+  @override
+  State<_PostEditor> createState() => _PostEditorState();
+}
+
+class _PostEditorState extends State<_PostEditor> {
+  late final TextEditingController _titleCtrl;
+  late final TextEditingController _bodyCtrl;
+
+  @override
+  void initState() {
+    super.initState();
+    _titleCtrl = TextEditingController(text: widget.title);
+    _bodyCtrl = TextEditingController(text: widget.body);
+  }
+
+  @override
+  void dispose() {
+    _titleCtrl.dispose();
+    _bodyCtrl.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        AppInput(
+          controller: _titleCtrl,
+          label: 'Title',
+          hint: 'Post headline',
+          maxLines: 2,
+        ),
+        const SizedBox(height: AppSpacing.md),
+        AppInput(
+          controller: _bodyCtrl,
+          label: 'Body',
+          hint: 'Post body',
+          minLines: 6,
+          maxLines: 12,
+        ),
+        const SizedBox(height: AppSpacing.md),
+        Row(
+          mainAxisAlignment: MainAxisAlignment.end,
+          children: [
+            TextButton(onPressed: widget.onCancel, child: const Text('Cancel')),
+            const SizedBox(width: AppSpacing.sm),
+            AppButton(
+              label: 'Save',
+              height: 44,
+              onPressed: () =>
+                  widget.onSave(_titleCtrl.text.trim(), _bodyCtrl.text.trim()),
+            ),
+          ],
+        ),
+      ],
+    );
   }
 }

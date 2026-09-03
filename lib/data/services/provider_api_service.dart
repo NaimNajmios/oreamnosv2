@@ -3,6 +3,7 @@ import 'dart:convert';
 import 'package:dio/dio.dart';
 import 'package:injectable/injectable.dart';
 import 'package:oreamnos/core/di/injection.dart';
+import 'package:oreamnos/core/error/failures.dart';
 import 'package:oreamnos/core/network/api_client.dart';
 
 import '../models/ai_model.dart';
@@ -21,6 +22,21 @@ class ProviderApiService {
     : _client = client ?? getIt<ApiClient>();
 
   final ApiClient _client;
+
+  /// Lightweight key check mirroring Android `DefaultConnectionTester`:
+  /// sends a tiny probe generation and returns true when the provider
+  /// answers without auth/rate-limit errors.
+  Future<bool> testConnection(AiProvider provider, String apiKey) async {
+    if (apiKey.isEmpty) return false;
+    try {
+      final models = await fetchModels(provider, apiKey);
+      return models.isNotEmpty;
+    } on ProviderApiException {
+      return false;
+    } catch (_) {
+      return false;
+    }
+  }
 
   /// Fetches available models for a given provider and API key.
   /// Throws [ProviderApiException] if the request fails or key is invalid.
@@ -48,10 +64,26 @@ class ProviderApiService {
       };
     } catch (e) {
       if (e is ProviderApiException) rethrow;
-      throw ProviderApiException(
-        'Failed to connect to ${provider.displayName}: $e',
-      );
+      throw ProviderApiException(_friendlyConnectMessage(provider, e));
     }
+  }
+
+  /// Prefers the already-mapped `Failure` message attached by
+  /// `ErrorMappingInterceptor` over the raw `DioException` dump, so dialogs
+  /// show human text instead of `DioException [bad response]: …`.
+  static String _friendlyConnectMessage(AiProvider provider, Object e) {
+    if (e is DioException) {
+      final failure = e.requestOptions.extra['failure'];
+      if (failure is Failure) return failure.message;
+      if (e.type == DioExceptionType.connectionTimeout ||
+          e.type == DioExceptionType.receiveTimeout ||
+          e.type == DioExceptionType.connectionError) {
+        return 'Could not reach ${provider.displayName}. Check your connection and try again.';
+      }
+    }
+    final flat = e.toString().replaceAll(RegExp(r'\s+'), ' ').trim();
+    final short = flat.length <= 220 ? flat : '${flat.substring(0, 220)}…';
+    return 'Failed to connect to ${provider.displayName}: $short';
   }
 
   Future<List<AiModel>> _fetchGeminiModels(String apiKey) async {

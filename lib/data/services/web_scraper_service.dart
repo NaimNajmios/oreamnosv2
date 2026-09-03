@@ -14,10 +14,38 @@ class WebScraperService {
 
   final ApiClient _client;
 
-  /// Checks if the input is a valid URL.
+  /// Checks if the input is a valid URL (Android `WebContentExtractor.isUrl`
+  /// parity: allocation-free prefix scan + scheme/ www./bare-domain forms).
   static bool isUrl(String text) {
-    final uri = Uri.tryParse(text.trim());
-    return uri != null && (uri.isScheme('http') || uri.isScheme('https'));
+    final t = text.trim();
+    if (t.length <= 5) return false;
+    if (t.contains(' ')) return false;
+    final lower = t.toLowerCase();
+    if (lower.startsWith('http://') || lower.startsWith('https://')) {
+      return true;
+    }
+    if (lower.startsWith('www.') && t.contains('.')) return true;
+    // Bare domain: contains a dot, no spaces, suffix looks like a TLD.
+    if (!t.contains('.')) return false;
+    if (t.contains('@') && !t.contains('/')) return false;
+    final uri = Uri.tryParse(t);
+    if (uri == null) return false;
+    if (uri.isScheme('http') || uri.isScheme('https')) return true;
+    // No scheme — accept host-like strings (caller normalizes with https://).
+    final host = t.split('/').first;
+    if (!host.contains('.')) return false;
+    final tld = host.split('.').last.toLowerCase();
+    if (tld.length < 2 || tld.length > 6) return false;
+    if (RegExp(r'[^a-z]').hasMatch(tld)) return false;
+    return true;
+  }
+
+  /// Normalizes user input into a fetchable URL (adds https:// when missing).
+  static String normalizeUrl(String text) {
+    final t = text.trim();
+    final lower = t.toLowerCase();
+    if (lower.startsWith('http://') || lower.startsWith('https://')) return t;
+    return 'https://$t';
   }
 
   /// Legacy string-only extraction (kept for compat). Delegates to structured version.
@@ -33,7 +61,7 @@ class WebScraperService {
 
   /// Instance extraction via pooled Dio (with interceptors, timeout, retry).
   Future<ExtractedArticle> extractArticleFromUrlInternal(String url) async {
-    final trimmed = url.trim();
+    final trimmed = normalizeUrl(url);
 
     // Intercept Twitter/X URLs
     if (TwitterExtractor.isTwitterUrl(trimmed)) {
@@ -85,6 +113,9 @@ class WebScraperService {
       final htmlBody = response.data ?? '';
       final document = parse(htmlBody);
 
+      // Strip chrome/ads/nav before extraction (Android parity).
+      _removeUnwantedElements(document);
+
       // Extract metadata
       String? pageTitle;
       String? description;
@@ -115,7 +146,7 @@ class WebScraperService {
       String text;
       final articleElements = document.getElementsByTagName('article');
       if (articleElements.isNotEmpty) {
-        text = _cleanTextPreserveParagraphs(articleElements.first.text);
+        text = cleanTextPreserveParagraphs(articleElements.first.text);
       } else {
         final pElements = document.getElementsByTagName('p');
         if (pElements.isNotEmpty) {
@@ -127,9 +158,9 @@ class WebScraperService {
               buffer.writeln(t);
             }
           }
-          text = _cleanTextPreserveParagraphs(buffer.toString());
+          text = cleanTextPreserveParagraphs(buffer.toString());
         } else {
-          text = _cleanTextPreserveParagraphs(
+          text = cleanTextPreserveParagraphs(
             document.body?.text ?? 'No readable content found on this page.',
           );
         }
@@ -172,22 +203,69 @@ class WebScraperService {
     }
   }
 
+  /// Removes nav/ads/comments/related boilerplate before text extraction.
+  static void _removeUnwantedElements(dynamic document) {
+    try {
+      const selectors = [
+        'script',
+        'style',
+        'nav',
+        'header',
+        'footer',
+        'aside',
+        'form',
+        '.ad',
+        '.ads',
+        '.advertisement',
+        '.social-share',
+        '.share-buttons',
+        '.comments',
+        '.comment-section',
+        '.related-posts',
+        '.related',
+        '.sidebar',
+        '.newsletter',
+        '.popup',
+        '.modal',
+      ];
+      for (final selector in selectors) {
+        try {
+          document.querySelectorAll(selector).forEach((e) => e.remove());
+        } catch (_) {}
+      }
+    } catch (_) {}
+  }
+
   static String _cleanText(String text) {
     return text.replaceAll(RegExp(r'\s+'), ' ').trim();
   }
 
+  /// Promotional/boilerplate line patterns (Android parity).
+  static final List<RegExp> _promoPatterns = [
+    RegExp(r'click here.*', caseSensitive: false),
+    RegExp(r'share this.*', caseSensitive: false),
+    RegExp(r'subscribe.*', caseSensitive: false),
+    RegExp(r'sign up for.*newsletter.*', caseSensitive: false),
+  ];
+
   /// Preserve paragraph breaks (double newline) while collapsing intra-paragraph whitespace.
-  static String _cleanTextPreserveParagraphs(String text) {
+  static String cleanTextPreserveParagraphs(String text) {
     // Normalize line breaks, split into paragraphs, clean each, rejoin with \n\n
     final normalized = text.replaceAll('\r\n', '\n').replaceAll('\r', '\n');
-    final paragraphs = normalized.split(RegExp(r'\n\s*\n'));
+    // Collapse 3+ newline runs (Android multipleNewlines parity).
+    final collapsed = normalized.replaceAll(RegExp(r'\n\s*\n\s*\n+'), '\n\n');
+    final paragraphs = collapsed.split(RegExp(r'\n\s*\n'));
     final cleaned = paragraphs
-        .map(
-          (p) => p
+        .map((p) {
+          var line = p
               .replaceAll(RegExp(r'[ \t]+'), ' ')
               .replaceAll(RegExp(r'\n\s*'), ' ')
-              .trim(),
-        )
+              .trim();
+          for (final pattern in _promoPatterns) {
+            line = line.replaceAll(pattern, '').trim();
+          }
+          return line;
+        })
         .where((p) => p.isNotEmpty)
         .toList();
     if (cleaned.isEmpty) return _cleanText(text);

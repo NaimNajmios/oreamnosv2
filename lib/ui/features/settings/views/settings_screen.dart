@@ -16,6 +16,7 @@ import 'widgets/api_key_dialog.dart';
 import 'widgets/model_selection_dialog.dart';
 import 'widgets/provider_selection_dialog.dart';
 import 'widgets/tavily_api_key_dialog.dart';
+import 'widgets/test_connection_tile.dart';
 import 'widgets/tone_selection_dialog.dart';
 
 /// Minimalist Settings hub.
@@ -156,6 +157,8 @@ class SettingsScreen extends ConsumerWidget {
             : 'Not configured',
         onTap: () => ApiKeyDialog.show(context, state.selectedProvider),
       ),
+      const Divider(),
+      const TestConnectionTile(),
       const Divider(),
       const SizedBox(height: AppSpacing.xxl),
 

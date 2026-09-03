@@ -71,6 +71,59 @@ void main() {
       interceptor.onError(dioEx, _FakeErrorHandler());
       expect(dioEx.requestOptions.extra['failure'], isA<AuthFailure>());
     });
+
+    DioException badRequest(Object? data, {String provider = 'gemini'}) {
+      return DioException(
+        requestOptions: RequestOptions(
+          path: '/',
+          extra: {'provider': provider},
+        ),
+        response: Response(
+          requestOptions: RequestOptions(path: '/'),
+          statusCode: 400,
+          data: data,
+        ),
+        type: DioExceptionType.badResponse,
+      );
+    }
+
+    test('maps 400 invalid-key body to friendly AuthFailure', () {
+      final interceptor = ErrorMappingInterceptor();
+      final dioEx = badRequest({
+        'error': {
+          'code': 400,
+          'message': 'API key not valid. Please pass a valid API key.',
+          'status': 'INVALID_ARGUMENT',
+        },
+      });
+      interceptor.onError(dioEx, _FakeErrorHandler());
+      final failure = dioEx.requestOptions.extra['failure'];
+      expect(failure, isA<AuthFailure>());
+      expect((failure as AuthFailure).message, contains('Settings → API Key'));
+      expect(failure.message, isNot(contains('DioException')));
+    });
+
+    test('maps 400 schema rejection without raw dump', () {
+      final interceptor = ErrorMappingInterceptor();
+      final dioEx = badRequest(
+        '{error: {code: 400, message: Invalid JSON payload received. '
+        'Unknown name "additionalProperties" at '
+        "'generation_config.response_schema': Cannot find field.}}",
+      );
+      interceptor.onError(dioEx, _FakeErrorHandler());
+      final failure = dioEx.requestOptions.extra['failure'];
+      expect(failure, isA<UnknownFailure>());
+      expect(failure.message, contains('request format'));
+    });
+
+    test('truncates long 400 bodies', () {
+      final interceptor = ErrorMappingInterceptor();
+      final dioEx = badRequest('x' * 2000);
+      interceptor.onError(dioEx, _FakeErrorHandler());
+      final failure = dioEx.requestOptions.extra['failure'] as UnknownFailure;
+      expect(failure.message.length, lessThan(300));
+      expect(failure.message, contains('…'));
+    });
   });
 
   group('RetryInterceptor', () {
