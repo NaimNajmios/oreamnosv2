@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:oreamnos/config/theme/app_colors.dart';
 import 'package:oreamnos/ui/core/utils/haptics.dart';
 
+import 'kickoff_mark.dart';
 import 'particles_painter.dart';
 
 /// Serene Editorial success overlay with 25-particle radial explosion and animated checkmark.
@@ -43,12 +44,13 @@ class _SuccessOverlayState extends State<SuccessOverlay>
 
   void _initParticles() {
     final rand = math.Random();
+    // Kickoff language: monochrome burst + success-green accents.
     const colors = [
       AppColors.success,
+      AppColors.success,
+      Color(0xFF737373),
+      Color(0xFFA3A3A3),
       Color(0xFF34D399),
-      Color(0xFF60A5FA),
-      Color(0xFFFBBF24),
-      Color(0xFFA78BFA),
     ];
 
     _particles = List.generate(25, (index) {
@@ -108,28 +110,39 @@ class _SuccessOverlayState extends State<SuccessOverlay>
                           particles: _particles,
                         ),
                       ),
-                      // Central Badge
-                      Container(
-                        width: 110,
-                        height: 110,
-                        decoration: BoxDecoration(
-                          color: theme.colorScheme.surface,
-                          shape: BoxShape.circle,
-                          boxShadow: [
-                            BoxShadow(
-                              color: AppColors.success.withValues(alpha: 0.25),
-                              blurRadius: 28,
-                              spreadRadius: 4,
-                            ),
-                          ],
-                        ),
-                        child: CustomPaint(
-                          painter: AnimatedCheckmarkPainter(
-                            progress: checkProgress,
-                            color: AppColors.success,
-                            strokeWidth: 6,
+                      // Central Badge: kickoff orbit ring behind the check.
+                      Stack(
+                        alignment: Alignment.center,
+                        children: [
+                          const KickoffMark(
+                            size: 150,
+                            highlightedIndex: 4,
                           ),
-                        ),
+                          Container(
+                            width: 110,
+                            height: 110,
+                            decoration: BoxDecoration(
+                              color: theme.colorScheme.surface,
+                              shape: BoxShape.circle,
+                              boxShadow: [
+                                BoxShadow(
+                                  color: AppColors.success.withValues(
+                                    alpha: 0.25,
+                                  ),
+                                  blurRadius: 28,
+                                  spreadRadius: 4,
+                                ),
+                              ],
+                            ),
+                            child: CustomPaint(
+                              painter: AnimatedCheckmarkPainter(
+                                progress: checkProgress,
+                                color: AppColors.success,
+                                strokeWidth: 6,
+                              ),
+                            ),
+                          ),
+                        ],
                       ),
                     ],
                   ),

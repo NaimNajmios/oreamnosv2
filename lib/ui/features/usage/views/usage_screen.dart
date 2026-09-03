@@ -6,8 +6,10 @@ import 'package:intl/intl.dart';
 import '../../../../config/routes/app_router.dart';
 
 import '../../../../config/theme/app_colors.dart';
+import '../../../../config/theme/app_motion.dart';
 import '../../../../config/theme/app_spacing.dart';
 import '../../../../config/theme/app_typography.dart';
+import '../../../core/widgets/staggered_entrance.dart';
 import '../../../../data/services/usage_service.dart';
 import '../../../../domain/models/usage_log.dart';
 import '../../../core/utils/haptics.dart';
@@ -86,13 +88,12 @@ class _UsageScreenState extends ConsumerState<UsageScreen> {
           ? EmptyState(
               icon: Icons.analytics_outlined,
               title: 'No Usage Data Yet',
-              description: 'Generated posts and API latency statistics will appear here.',
-              iconColor: isDark ? AppColors.darkViolet : AppColors.lightViolet,
-              iconBackground:
-                  (isDark
-                          ? AppColors.darkVioletSoft
-                          : AppColors.lightVioletSoft)
-                      .withValues(alpha: 0.35),
+              description:
+                  'Generated posts and API latency statistics will appear here.',
+              illustrationStyle: EmptyIllustrationStyle.kickoff,
+              kickoffAccentIndex: 4,
+              actionLabel: 'Generate first post',
+              onAction: () => context.go(RoutePaths.generate),
             )
           : Center(
               child: ConstrainedBox(
@@ -115,53 +116,98 @@ class _UsageScreenState extends ConsumerState<UsageScreen> {
                       LayoutBuilder(
                         builder: (context, constraints) {
                           final isNarrow = constraints.maxWidth < 380;
-                          final tokensCard = StatCard(
-                            title: 'Tokens',
-                            value: NumberFormat.compact().format(totalTokens),
-                            subtitle: '$totalTokens est.',
-                            icon: Icons.data_usage_rounded,
-                            iconColor: isDark
-                                ? AppColors.darkTeal
-                                : AppColors.lightTeal,
-                            iconBackground:
-                                (isDark
-                                        ? AppColors.darkTealSoft
-                                        : AppColors.lightTealSoft)
-                                    .withValues(alpha: 0.6),
+                          final reduceMotion = AppMotion.shouldReduceMotion(
+                            context,
                           );
-                          final successCard = StatCard(
-                            title: 'Success',
-                            value: '${successRate.toStringAsFixed(0)}%',
-                            subtitle: '$successCount / ${logs.length}',
-                            icon: Icons.check_circle_outline_rounded,
-                            valueColor: successRate >= 90
-                                ? AppColors.success
-                                : theme.colorScheme.primary,
-                            iconColor: successRate >= 90
-                                ? AppColors.success
-                                : (isDark
-                                      ? AppColors.darkViolet
-                                      : AppColors.lightViolet),
-                            iconBackground: successRate >= 90
-                                ? AppColors.successSoft.withValues(alpha: 0.6)
-                                : (isDark
-                                          ? AppColors.darkVioletSoft
-                                          : AppColors.lightVioletSoft)
+                          Widget countUp(
+                            int index,
+                            double target,
+                            String Function(double) format,
+                            StatCard Function(String) build,
+                          ) {
+                            if (reduceMotion) {
+                              return StaggeredEntranceItem(
+                                index: index,
+                                child: build(format(target)),
+                              );
+                            }
+                            return StaggeredEntranceItem(
+                              index: index,
+                              child: TweenAnimationBuilder<double>(
+                                tween: Tween<double>(
+                                  begin: 0,
+                                  end: target,
+                                ),
+                                duration: AppMotion.count,
+                                curve: AppMotion.curveCount,
+                                builder: (context, value, _) =>
+                                    build(format(value)),
+                              ),
+                            );
+                          }
+
+                          final tokensCard = countUp(
+                            0,
+                            totalTokens.toDouble(),
+                            (v) => NumberFormat.compact().format(v.round()),
+                            (value) => StatCard(
+                              title: 'Tokens',
+                              value: value,
+                              subtitle: '$totalTokens est.',
+                              icon: Icons.data_usage_rounded,
+                              iconColor: isDark
+                                  ? AppColors.darkTeal
+                                  : AppColors.lightTeal,
+                              iconBackground:
+                                  (isDark
+                                          ? AppColors.darkTealSoft
+                                          : AppColors.lightTealSoft)
                                       .withValues(alpha: 0.6),
+                            ),
                           );
-                          final latencyCard = StatCard(
-                            title: 'Avg Latency',
-                            value: '${avgLatency}ms',
-                            subtitle: 'Per prompt',
-                            icon: Icons.speed_rounded,
-                            iconColor: isDark
-                                ? AppColors.darkAmber
-                                : AppColors.lightAmber,
-                            iconBackground:
-                                (isDark
-                                        ? AppColors.darkAmberSoft
-                                        : AppColors.lightAmberSoft)
-                                    .withValues(alpha: 0.6),
+                          final successCard = countUp(
+                            1,
+                            successRate,
+                            (v) => '${v.toStringAsFixed(0)}%',
+                            (value) => StatCard(
+                              title: 'Success',
+                              value: value,
+                              subtitle: '$successCount / ${logs.length}',
+                              icon: Icons.check_circle_outline_rounded,
+                              valueColor: successRate >= 90
+                                  ? AppColors.success
+                                  : theme.colorScheme.primary,
+                              iconColor: successRate >= 90
+                                  ? AppColors.success
+                                  : (isDark
+                                        ? AppColors.darkViolet
+                                        : AppColors.lightViolet),
+                              iconBackground: successRate >= 90
+                                  ? AppColors.successSoft.withValues(alpha: 0.6)
+                                  : (isDark
+                                            ? AppColors.darkVioletSoft
+                                            : AppColors.lightVioletSoft)
+                                        .withValues(alpha: 0.6),
+                            ),
+                          );
+                          final latencyCard = countUp(
+                            2,
+                            avgLatency.toDouble(),
+                            (v) => '${v.round()}ms',
+                            (value) => StatCard(
+                              title: 'Avg Latency',
+                              value: value,
+                              subtitle: 'Per prompt',
+                              icon: Icons.speed_rounded,
+                              iconColor: isDark
+                                  ? AppColors.darkAmber
+                                  : AppColors.lightAmber,
+                              iconBackground:
+                                  (isDark
+                                          ? AppColors.darkAmberSoft
+                                          : AppColors.lightAmberSoft)
+                                      .withValues(alpha: 0.6),
+                            ),
                           );
                           if (isNarrow) {
                             return Column(
@@ -272,7 +318,21 @@ class _UsageScreenState extends ConsumerState<UsageScreen> {
                               ],
                             ),
                             const SizedBox(height: AppSpacing.sm),
-                            UsageChart(logs: _rangedLogs(logsAll)),
+                            StaggeredEntranceItem(
+                              index: 3,
+                              child: AnimatedSwitcher(
+                                duration: AppMotion.transitionSpec,
+                                switchInCurve: AppMotion.curveTransition,
+                                child: KeyedSubtree(
+                                  key: ValueKey(
+                                    '${_rangeDays}_${_rangedLogs(logsAll).length}',
+                                  ),
+                                  child: UsageChart(
+                                    logs: _rangedLogs(logsAll),
+                                  ),
+                                ),
+                              ),
+                            ),
                           ],
                         ),
                       ),

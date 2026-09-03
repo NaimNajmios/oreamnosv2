@@ -1,3 +1,5 @@
+import 'dart:io' show Platform;
+
 import 'package:flutter/material.dart';
 
 /// Standardized motion tokens and accessibility helpers from the Sciuro design system.
@@ -38,6 +40,24 @@ abstract final class AppMotion {
   static const Curve curveBase = Curves.easeInOutCubic;
   static const Curve curveSlow = Curves.easeOutQuart;
   static const Curve springMediumBouncy = Cubic(0.34, 1.56, 0.64, 1.0);
+
+  // === Test environment ===
+  /// True under `flutter test` (same FLUTTER_TEST convention as the
+  /// Generate hero spin). Infinite ambient loops (breathing, pulse) must
+  /// consult this so `pumpAndSettle` widget tests can settle.
+  static bool get isTestEnvironment {
+    try {
+      return Platform.environment.containsKey('FLUTTER_TEST');
+    } catch (_) {
+      return false;
+    }
+  }
+
+  /// True when infinite ambient motion should be suppressed: reduced-motion
+  /// is on, or running under widget tests.
+  static bool shouldSuppressAmbient(BuildContext context) {
+    return isTestEnvironment || shouldReduceMotion(context);
+  }
 
   // === Accessibility ===
   /// Centralized check for OS-level 'Reduce Motion' / disableAnimations setting.

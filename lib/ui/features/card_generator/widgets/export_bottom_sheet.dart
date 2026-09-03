@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:oreamnos/config/theme/app_spacing.dart';
 import 'package:oreamnos/ui/core/widgets/app_button.dart';
 import 'package:oreamnos/ui/core/widgets/app_outlined_button.dart';
+import 'package:oreamnos/ui/core/widgets/kickoff_mark.dart';
 
 /// Modal sheet for exporting generated graphic cards.
 class ExportBottomSheet extends StatelessWidget {
@@ -12,12 +13,12 @@ class ExportBottomSheet extends StatelessWidget {
   });
 
   final Future<void> Function() onSaveToGallery;
-  final VoidCallback onShare;
+  final Future<void> Function() onShare;
 
   static Future<void> show(
     BuildContext context, {
     required Future<void> Function() onSaveToGallery,
-    required VoidCallback onShare,
+    required Future<void> Function() onShare,
   }) {
     return showModalBottomSheet(
       context: context,
@@ -91,11 +92,13 @@ class ExportBottomSheet extends StatelessWidget {
           AppOutlinedButton(
             label: 'Share Image',
             icon: Icons.share_rounded,
-            onPressed: () {
+            onPressed: () async {
               Navigator.of(context).pop();
-              onShare();
+              await onShare();
             },
           ),
+          const SizedBox(height: AppSpacing.md),
+          const Center(child: KickoffDotsDivider()),
         ],
       ),
     );

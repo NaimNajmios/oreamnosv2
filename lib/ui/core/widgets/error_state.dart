@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_animate/flutter_animate.dart';
 import 'package:oreamnos/config/theme/app_colors.dart';
+import 'package:oreamnos/config/theme/app_motion.dart';
 import 'package:oreamnos/config/theme/app_spacing.dart';
 
 import 'app_button.dart';
@@ -25,8 +27,9 @@ class ErrorState extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final reduceMotion = AppMotion.shouldReduceMotion(context);
 
-    return AppCard(
+    Widget card = AppCard(
       padding: const EdgeInsets.all(AppSpacing.xl),
       borderColor: AppColors.error,
       backgroundColor: theme.colorScheme.surface,
@@ -40,9 +43,13 @@ class ErrorState extends StatelessWidget {
           children: [
             Container(
               padding: const EdgeInsets.all(16),
-              decoration: const BoxDecoration(
+              decoration: BoxDecoration(
                 color: AppColors.errorSoft,
                 shape: BoxShape.circle,
+                border: Border.all(
+                  color: theme.colorScheme.onSurface.withValues(alpha: 0.2),
+                  width: 1.5,
+                ),
               ),
               child: Icon(icon, color: AppColors.error, size: 24),
             ),
@@ -77,5 +84,18 @@ class ErrorState extends StatelessWidget {
         ),
       ),
     );
+
+    if (reduceMotion) return card;
+    // Entrance fade+slide; icon container gets one shake on mount.
+    return card
+        .animate()
+        .fadeIn(duration: AppMotion.transitionSpec)
+        .slideY(
+          begin: 0.06,
+          end: 0,
+          duration: AppMotion.transitionSpec,
+          curve: AppMotion.curveTransition,
+        )
+        .shake(duration: const Duration(milliseconds: 400));
   }
 }

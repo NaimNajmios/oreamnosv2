@@ -791,7 +791,9 @@ class CardGeneratorViewModel extends Notifier<CardGeneratorState> {
     }
   }
 
-  Future<void> shareCard(GlobalKey boundaryKey) async {
+  /// Shares the card image. Returns true on success, false on failure
+  /// (previously silent via debugPrint only).
+  Future<bool> shareCard(GlobalKey boundaryKey) async {
     try {
       final bytes = await _exportService.capturePng(
         boundaryKey,
@@ -801,8 +803,10 @@ class CardGeneratorViewModel extends Notifier<CardGeneratorState> {
         bytes,
         text: state.cardData?.headline ?? '',
       );
+      return true;
     } catch (e) {
       debugPrint('Share error: $e');
+      return false;
     }
   }
 }

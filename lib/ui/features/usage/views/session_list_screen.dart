@@ -53,6 +53,8 @@ class _SessionListScreenState extends ConsumerState<SessionListScreen> {
               icon: Icons.history_rounded,
               title: 'No Sessions Yet',
               description: 'Your generation sessions will appear here.',
+              illustrationStyle: EmptyIllustrationStyle.kickoff,
+              kickoffAccentIndex: 9,
             )
           : Center(
               child: ConstrainedBox(

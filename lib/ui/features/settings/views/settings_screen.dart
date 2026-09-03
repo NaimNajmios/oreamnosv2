@@ -5,6 +5,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import 'package:oreamnos/config/routes/app_router.dart';
+import 'package:oreamnos/config/theme/app_motion.dart';
 import 'package:oreamnos/config/theme/app_spacing.dart';
 import 'package:oreamnos/config/theme/app_theme.dart';
 import 'package:oreamnos/ui/core/utils/haptics.dart';
@@ -366,11 +367,16 @@ class _SetupProgressBanner extends StatelessWidget {
           const SizedBox(height: AppSpacing.md),
           ClipRRect(
             borderRadius: AppSpacing.borderRadiusPill,
-            child: LinearProgressIndicator(
-              value: completed / 3,
-              minHeight: 6,
-              backgroundColor: theme.colorScheme.surfaceContainerHighest,
-              valueColor: AlwaysStoppedAnimation(theme.colorScheme.primary),
+            child: TweenAnimationBuilder<double>(
+              tween: Tween<double>(begin: 0, end: completed / 3),
+              duration: AppMotion.count,
+              curve: AppMotion.curveCount,
+              builder: (context, value, _) => LinearProgressIndicator(
+                value: value,
+                minHeight: 6,
+                backgroundColor: theme.colorScheme.surfaceContainerHighest,
+                valueColor: AlwaysStoppedAnimation(theme.colorScheme.primary),
+              ),
             ),
           ),
           if (onAction != null) ...[

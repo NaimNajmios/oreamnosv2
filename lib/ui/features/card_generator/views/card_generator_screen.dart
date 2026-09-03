@@ -3,10 +3,13 @@ import 'dart:ui' as dart_ui;
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import 'package:oreamnos/config/theme/app_colors.dart';
+import 'package:go_router/go_router.dart';
+import 'package:oreamnos/config/routes/app_router.dart';
 import 'package:oreamnos/config/theme/app_spacing.dart';
 import 'package:oreamnos/domain/models/card_brief.dart';
 import 'package:oreamnos/ui/core/utils/haptics.dart';
+import 'package:oreamnos/ui/core/widgets/app_snackbar.dart';
+import 'package:oreamnos/ui/core/widgets/kickoff_mark.dart';
 import 'package:oreamnos/ui/core/widgets/error_state.dart';
 import 'package:oreamnos/ui/core/widgets/empty_state.dart';
 import 'package:oreamnos/ui/core/widgets/enhanced_loading_card.dart';
@@ -103,41 +106,21 @@ class _CardGeneratorScreenState extends ConsumerState<CardGeneratorScreen> {
     final success = await vm.saveToGallery(_boundaryKey);
     if (!mounted) return;
     if (success) {
-      Haptics.mediumImpact();
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: const Row(
-            children: [
-              Icon(Icons.check_circle_rounded, color: Colors.white, size: 18),
-              SizedBox(width: 8),
-              Text('Card saved to gallery'),
-            ],
-          ),
-          backgroundColor: AppColors.success,
-          behavior: SnackBarBehavior.floating,
-          shape: RoundedRectangleBorder(
-            borderRadius: AppSpacing.borderRadiusSm,
-          ),
-        ),
-      );
+      AppSnackBar.showSuccess(context, 'Card saved to gallery');
     } else {
-      Haptics.heavyImpact();
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: const Row(
-            children: [
-              Icon(Icons.error_outline_rounded, color: Colors.white, size: 18),
-              SizedBox(width: 8),
-              Text('Failed to save image'),
-            ],
-          ),
-          backgroundColor: AppColors.error,
-          behavior: SnackBarBehavior.floating,
-          shape: RoundedRectangleBorder(
-            borderRadius: AppSpacing.borderRadiusSm,
-          ),
-        ),
-      );
+      AppSnackBar.showError(context, 'Failed to save image');
+    }
+  }
+
+  Future<void> _handleShare() async {
+    final vm = ref.read(cardGeneratorViewModelProvider.notifier);
+    AppSnackBar.show(context, 'Preparing share…', icon: Icons.share_rounded);
+    final success = await vm.shareCard(_boundaryKey);
+    if (!mounted) return;
+    if (success) {
+      AppSnackBar.showSuccess(context, 'Share sheet opened');
+    } else {
+      AppSnackBar.showError(context, 'Failed to share card');
     }
   }
 
@@ -160,10 +143,14 @@ class _CardGeneratorScreenState extends ConsumerState<CardGeneratorScreen> {
                 ),
               ),
             ),
-            body: const EmptyState(
+            body: EmptyState(
               title: 'No card data',
-              description: 'Go to Generate to create a post first. Your card will appear here automatically.',
+              description:
+                  'Go to Generate to create a post first. Your card will appear here automatically.',
               icon: Icons.image_not_supported_rounded,
+              illustrationStyle: EmptyIllustrationStyle.kickoff,
+              actionLabel: 'Go to Generate',
+              onAction: () => context.go(RoutePaths.generate),
             ),
           );
         }
@@ -172,6 +159,10 @@ class _CardGeneratorScreenState extends ConsumerState<CardGeneratorScreen> {
 
         return Scaffold(
           appBar: AppBar(
+            leading: const Padding(
+              padding: EdgeInsets.only(left: 12),
+              child: Center(child: KickoffAppBarMark(size: 28)),
+            ),
             title: Text(
               'Card Studio',
               style: theme.textTheme.titleMedium?.copyWith(
@@ -197,9 +188,7 @@ class _CardGeneratorScreenState extends ConsumerState<CardGeneratorScreen> {
                       ExportBottomSheet.show(
                         context,
                         onSaveToGallery: _handleSaveToGallery,
-                        onShare: () => ref
-                            .read(cardGeneratorViewModelProvider.notifier)
-                            .shareCard(_boundaryKey),
+                        onShare: _handleShare,
                       );
                     },
                   ),
@@ -252,7 +241,15 @@ class _CardGeneratorScreenState extends ConsumerState<CardGeneratorScreen> {
     }
 
     if (!hasData) {
-      return const Center(child: Text('No data.'));
+      return EmptyState(
+        icon: Icons.image_not_supported_rounded,
+        title: 'Nothing to polish yet',
+        description:
+            'Extraction returned no card data. Retry extraction or go back to Generate.',
+        illustrationStyle: EmptyIllustrationStyle.kickoff,
+        actionLabel: 'Back to Generate',
+        onAction: () => context.go(RoutePaths.generate),
+      );
     }
 
     return Column(

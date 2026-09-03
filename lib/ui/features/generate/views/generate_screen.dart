@@ -9,8 +9,8 @@ import 'package:flutter_animate/flutter_animate.dart';
 import 'package:go_router/go_router.dart';
 
 import 'package:oreamnos/config/routes/app_router.dart';
-import 'package:oreamnos/config/theme/app_colors.dart';
 import 'package:oreamnos/ui/core/dialogs/rate_limit_dialog.dart';
+import 'package:oreamnos/ui/core/widgets/app_snackbar.dart';
 import 'package:oreamnos/config/theme/app_spacing.dart';
 import 'package:oreamnos/config/theme/app_typography.dart';
 import 'package:oreamnos/config/constants.dart';
@@ -36,6 +36,7 @@ import 'package:oreamnos/ui/core/widgets/source_attribution_card.dart';
 import 'package:oreamnos/ui/core/widgets/success_overlay.dart';
 import 'package:oreamnos/ui/core/widgets/swipeable_output_card.dart';
 import 'package:oreamnos/ui/core/widgets/enhanced_loading_card.dart';
+import 'package:oreamnos/ui/core/widgets/kickoff_mark.dart';
 import 'package:oreamnos/ui/features/settings/view_models/settings_view_model.dart';
 import 'package:oreamnos/ui/features/settings/views/widgets/add_pill_dialog.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -131,44 +132,40 @@ class _GenerateScreenState extends ConsumerState<GenerateScreen> {
     }
   }
 
+  /// Confirms discarding the current post + refinement history.
+  Future<bool> _confirmDiscardPost(BuildContext context) async {
+    final result = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Start a new entry?'),
+        content: const Text(
+          'This discards the current post and its refinement history.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(false),
+            child: const Text('Keep editing'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.of(context).pop(true),
+            child: const Text('Discard'),
+          ),
+        ],
+      ),
+    );
+    return result ?? false;
+  }
+
   void _handleClear() {
     final prevText = _controller.text;
     _controller.clear();
     setState(() {});
     if (mounted) {
-      ScaffoldMessenger.of(context).hideCurrentSnackBar();
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              const Text('Input text cleared'),
-              InkWell(
-                onTap: () {
-                  ScaffoldMessenger.of(context).hideCurrentSnackBar();
-                  _controller.text = prevText;
-                  setState(() {});
-                },
-                child: const Padding(
-                  padding: EdgeInsets.symmetric(horizontal: 8.0, vertical: 4.0),
-                  child: Text(
-                    'UNDO',
-                    style: TextStyle(
-                      color: AppColors.success,
-                      fontWeight: FontWeight.w600,
-                      letterSpacing: 0.5,
-                    ),
-                  ),
-                ),
-              ),
-            ],
-          ),
-          duration: const Duration(seconds: 2),
-          behavior: SnackBarBehavior.floating,
-          shape: RoundedRectangleBorder(
-            borderRadius: AppSpacing.borderRadiusSm,
-          ),
-        ),
+      AppSnackBar.show(
+        context,
+        'Input text cleared',
+        actionLabel: 'UNDO',
+        onAction: () => setState(() => _controller.text = prevText),
       );
     }
   }
@@ -249,6 +246,10 @@ class _GenerateScreenState extends ConsumerState<GenerateScreen> {
 
     return Scaffold(
       appBar: AppBar(
+        leading: const Padding(
+          padding: EdgeInsets.only(left: 12),
+          child: Center(child: KickoffAppBarMark(size: 28)),
+        ),
         title: Text(
           'Oreamnos',
           style: theme.textTheme.titleMedium?.copyWith(
@@ -414,7 +415,14 @@ class _GenerateScreenState extends ConsumerState<GenerateScreen> {
                                       child: AppOutlinedButton(
                                         label: 'New Entry',
                                         icon: Icons.add_rounded,
-                                        onPressed: () {
+                                        onPressed: () async {
+                                          final discard =
+                                              await _confirmDiscardPost(
+                                                context,
+                                              );
+                                          if (!discard || !context.mounted) {
+                                            return;
+                                          }
                                           _handleClear();
                                           notifier.reset();
                                         },
@@ -1156,13 +1164,7 @@ class _GenerateScreenState extends ConsumerState<GenerateScreen> {
                     ref
                         .read(generateViewModelProvider.notifier)
                         .undoLastRefinement();
-                    Haptics.mediumImpact();
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      SnackBar(
-                        content: const Text('Undid last refinement'),
-                        duration: const Duration(seconds: 2),
-                      ),
-                    );
+                    AppSnackBar.showUndone(context, 'Undid last refinement');
                   },
                   borderRadius: AppSpacing.borderRadiusPill,
                   child: Container(
@@ -1203,6 +1205,7 @@ class _GenerateScreenState extends ConsumerState<GenerateScreen> {
                 RefinementPill(
                       label: 'Rephrase',
                       icon: Icons.refresh_rounded,
+                      isLoading: isGenerating,
                       onTap: () => ref
                           .read(generateViewModelProvider.notifier)
                           .refineContent(
@@ -1219,6 +1222,7 @@ class _GenerateScreenState extends ConsumerState<GenerateScreen> {
                 RefinementPill(
                       label: 'Check Flow',
                       icon: Icons.auto_fix_high_rounded,
+                      isLoading: isGenerating,
                       onTap: () => ref
                           .read(generateViewModelProvider.notifier)
                           .refineContent(
@@ -1235,6 +1239,7 @@ class _GenerateScreenState extends ConsumerState<GenerateScreen> {
                 RefinementPill(
                       label: 'Shorter',
                       icon: Icons.compress_rounded,
+                      isLoading: isGenerating,
                       onTap: () => ref
                           .read(generateViewModelProvider.notifier)
                           .refineContent(
@@ -1258,6 +1263,7 @@ class _GenerateScreenState extends ConsumerState<GenerateScreen> {
                         child:
                             RefinementPill(
                                   label: e.value.label,
+                                  isLoading: isGenerating,
                                   onTap: () => ref
                                       .read(generateViewModelProvider.notifier)
                                       .refineContent(e.value.instruction),

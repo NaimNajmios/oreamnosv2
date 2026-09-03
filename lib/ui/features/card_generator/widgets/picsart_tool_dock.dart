@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import 'package:oreamnos/config/theme/app_motion.dart';
 import 'package:oreamnos/config/theme/app_spacing.dart';
 import 'package:oreamnos/core/di/injection.dart';
 import 'package:oreamnos/data/services/preferences_service.dart';
@@ -126,12 +127,40 @@ class _PicsartToolDockState extends ConsumerState<PicsartToolDock> {
           mainAxisSize: MainAxisSize.min,
           children: [
             AnimatedSize(
-              duration: const Duration(milliseconds: 250),
-              curve: Curves.easeOutCubic,
-              child:
-                  ref.watch(cardGeneratorViewModelProvider).activePanel != null
-                  ? _buildActivePanel(theme)
-                  : const SizedBox.shrink(),
+              duration: AppMotion.transitionSpec,
+              curve: AppMotion.curveTransition,
+              child: AnimatedSwitcher(
+                duration: AppMotion.transitionSpec,
+                switchInCurve: AppMotion.curveTransition,
+                switchOutCurve: AppMotion.curveTransition,
+                transitionBuilder: (child, animation) => FadeTransition(
+                  opacity: animation,
+                  child: SlideTransition(
+                    position: animation.drive(
+                      Tween<Offset>(
+                        begin: const Offset(0, 0.15),
+                        end: Offset.zero,
+                      ),
+                    ),
+                    child: child,
+                  ),
+                ),
+                child: KeyedSubtree(
+                  key: ValueKey(
+                    ref
+                            .watch(cardGeneratorViewModelProvider)
+                            .activePanel ??
+                        'none',
+                  ),
+                  child:
+                      ref
+                              .watch(cardGeneratorViewModelProvider)
+                              .activePanel !=
+                          null
+                      ? _buildActivePanel(theme)
+                      : const SizedBox.shrink(),
+                ),
+              ),
             ),
             _buildMainToolbar(theme),
           ],

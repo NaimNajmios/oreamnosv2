@@ -8,6 +8,7 @@ import 'package:oreamnos/domain/models/card_field.dart';
 import 'package:oreamnos/domain/models/card_field_registry.dart';
 import 'package:oreamnos/domain/models/card_template.dart';
 import 'package:oreamnos/ui/core/utils/haptics.dart';
+import 'package:oreamnos/ui/core/widgets/kickoff_mark.dart';
 import 'package:oreamnos/ui/features/card_generator/view_models/card_generator_view_model.dart';
 
 import 'studio_deck_lists.dart';
@@ -142,6 +143,10 @@ class StudioDeckSheet extends ConsumerWidget {
                 ),
               ],
             ),
+          ),
+          const Padding(
+            padding: EdgeInsets.symmetric(vertical: 4),
+            child: Center(child: KickoffDotsDivider()),
           ),
           // Template switcher (cached re-extraction via setTemplate).
           SizedBox(

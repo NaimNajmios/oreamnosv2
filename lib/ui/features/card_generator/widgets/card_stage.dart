@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:oreamnos/config/theme/app_motion.dart';
 import 'package:oreamnos/config/theme/app_spacing.dart';
 
 class CardStage extends StatelessWidget {
@@ -15,6 +16,7 @@ class CardStage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final reduceMotion = AppMotion.shouldReduceMotion(context);
     return Center(
       child: SingleChildScrollView(
         padding: const EdgeInsets.all(AppSpacing.base),
@@ -29,7 +31,18 @@ class CardStage extends StatelessWidget {
           clipBehavior: Clip.antiAlias,
           child: AspectRatio(
             aspectRatio: aspectRatio,
-            child: RepaintBoundary(key: boundaryKey, child: child),
+            child: reduceMotion
+                ? RepaintBoundary(key: boundaryKey, child: child)
+                : AnimatedSwitcher(
+                    duration: AppMotion.cardMove,
+                    switchInCurve: AppMotion.curveCardMove,
+                    child: RepaintBoundary(
+                      key: ValueKey(
+                        '${boundaryKey.hashCode}-$aspectRatio',
+                      ),
+                      child: child,
+                    ),
+                  ),
           ),
         ),
       ),

@@ -1,11 +1,13 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_animate/flutter_animate.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter/services.dart';
 import 'package:go_router/go_router.dart';
 import 'package:share_plus/share_plus.dart';
 
-import 'package:oreamnos/config/theme/app_colors.dart';
+import 'package:oreamnos/config/theme/app_motion.dart';
 import 'package:oreamnos/config/theme/app_spacing.dart';
+import 'package:oreamnos/ui/core/widgets/app_snackbar.dart';
 import 'package:oreamnos/domain/models/curated_post.dart';
 import 'package:oreamnos/ui/core/utils/haptics.dart';
 import 'package:oreamnos/ui/core/widgets/app_card.dart';
@@ -25,7 +27,8 @@ class ReadingModeScreen extends ConsumerStatefulWidget {
   ConsumerState<ReadingModeScreen> createState() => _ReadingModeScreenState();
 }
 
-class _ReadingModeScreenState extends ConsumerState<ReadingModeScreen> {
+class _ReadingModeScreenState extends ConsumerState<ReadingModeScreen>
+    with SingleTickerProviderStateMixin {
   double _dragOffset = 0;
   double _opacity = 1.0;
 
@@ -41,11 +44,35 @@ class _ReadingModeScreenState extends ConsumerState<ReadingModeScreen> {
     if (_dragOffset > 120) {
       Haptics.lightImpact();
       context.pop();
-    } else {
-      setState(() {
-        _dragOffset = 0;
-        _opacity = 1.0;
+    } else if (_dragOffset > 0) {
+      // Spring snap-back in the kickoff cardMove language.
+      final startOffset = _dragOffset;
+      final startOpacity = _opacity;
+      final reduceMotion = AppMotion.shouldReduceMotion(context);
+      if (reduceMotion) {
+        setState(() {
+          _dragOffset = 0;
+          _opacity = 1.0;
+        });
+        return;
+      }
+      final controller = AnimationController(
+        vsync: this,
+        duration: AppMotion.cardMove,
+      );
+      final curve = CurvedAnimation(
+        parent: controller,
+        curve: AppMotion.curveCardMove,
+      );
+      controller.addListener(() {
+        if (!mounted) return;
+        final t = curve.value;
+        setState(() {
+          _dragOffset = startOffset * (1 - t);
+          _opacity = startOpacity + (1.0 - startOpacity) * t;
+        });
       });
+      controller.forward().then((_) => controller.dispose());
     }
   }
 
@@ -78,46 +105,57 @@ class _ReadingModeScreenState extends ConsumerState<ReadingModeScreen> {
                         constraints: const BoxConstraints(
                           maxWidth: AppSpacing.maxContentWidth,
                         ),
-                        child: SingleChildScrollView(
-                          padding: const EdgeInsets.fromLTRB(
-                            AppSpacing.xl,
-                            AppSpacing.huge + AppSpacing.base,
-                            AppSpacing.xl,
-                            100,
-                          ),
-                          child: widget.curatedPost != null
-                              ? Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    TitleBlock(
-                                      title: widget.curatedPost!.title,
-                                    ),
-                                    BodyBlock(
-                                      bodyMarkdown:
-                                          widget.curatedPost!.bodyMarkdown,
-                                    ),
-                                    if (widget
-                                        .curatedPost!
-                                        .hashtags
-                                        .isNotEmpty) ...[
-                                      const SizedBox(height: AppSpacing.base),
-                                      HashtagChips(
-                                        hashtags: widget.curatedPost!.hashtags,
-                                      ),
-                                    ],
-                                    if (!widget
-                                        .curatedPost!
-                                        .source
-                                        .isEmpty) ...[
-                                      const SizedBox(height: AppSpacing.base),
-                                      SourceAttributionCard(
-                                        source: widget.curatedPost!.source,
-                                      ),
-                                    ],
-                                  ],
-                                )
-                              : TypewriterMarkdown(data: widget.content),
-                        ),
+                        child:
+                            SingleChildScrollView(
+                              padding: const EdgeInsets.fromLTRB(
+                                AppSpacing.xl,
+                                AppSpacing.huge + AppSpacing.base,
+                                AppSpacing.xl,
+                                100,
+                              ),
+                              child: widget.curatedPost != null
+                                  ? Column(
+                                      crossAxisAlignment:
+                                          CrossAxisAlignment.start,
+                                      children: [
+                                        TitleBlock(
+                                          title: widget.curatedPost!.title,
+                                        ),
+                                        BodyBlock(
+                                          bodyMarkdown: widget
+                                              .curatedPost!
+                                              .bodyMarkdown,
+                                        ),
+                                        if (widget
+                                            .curatedPost!
+                                            .hashtags
+                                            .isNotEmpty) ...[
+                                          const SizedBox(
+                                            height: AppSpacing.base,
+                                          ),
+                                          HashtagChips(
+                                            hashtags:
+                                                widget.curatedPost!.hashtags,
+                                          ),
+                                        ],
+                                        if (!widget
+                                            .curatedPost!
+                                            .source
+                                            .isEmpty) ...[
+                                          const SizedBox(
+                                            height: AppSpacing.base,
+                                          ),
+                                          SourceAttributionCard(
+                                            source:
+                                                widget.curatedPost!.source,
+                                          ),
+                                        ],
+                                      ],
+                                    )
+                                  : TypewriterMarkdown(data: widget.content),
+                            )
+                                .animate()
+                                .fadeIn(duration: AppMotion.transitionSpec),
                       ),
                     ),
                   ),
@@ -227,28 +265,10 @@ class _ReadingModeScreenState extends ConsumerState<ReadingModeScreen> {
                                 await Clipboard.setData(
                                   ClipboardData(text: widget.content),
                                 );
-                                Haptics.mediumImpact();
                                 if (context.mounted) {
-                                  ScaffoldMessenger.of(context).showSnackBar(
-                                    SnackBar(
-                                      content: const Row(
-                                        children: [
-                                          Icon(
-                                            Icons.check_circle_rounded,
-                                            color: Colors.white,
-                                            size: 18,
-                                          ),
-                                          SizedBox(width: 8),
-                                          Text('Copied to clipboard'),
-                                        ],
-                                      ),
-                                      backgroundColor: AppColors.success,
-                                      behavior: SnackBarBehavior.floating,
-                                      shape: RoundedRectangleBorder(
-                                        borderRadius: AppSpacing.borderRadiusSm,
-                                      ),
-                                      duration: const Duration(seconds: 2),
-                                    ),
+                                  AppSnackBar.showSuccess(
+                                    context,
+                                    'Copied to clipboard',
                                   );
                                 }
                               },

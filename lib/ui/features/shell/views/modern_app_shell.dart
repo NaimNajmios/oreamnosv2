@@ -38,6 +38,10 @@ class ModernAppShell extends StatelessWidget {
     final currentIndex = _currentIndex(context);
     final onSurface = theme.colorScheme.onSurface;
 
+    // NOTE: tab-switch motion lives in the per-tab CustomTransitionPage
+    // (app_router.dart) — wrapping the shell `child` Navigator in an
+    // AnimatedSwitcher double-mounts it and trips duplicate-GlobalKey
+    // errors, so the shell itself stays a plain pass-through.
     return Scaffold(
       body: child,
       bottomNavigationBar: Container(

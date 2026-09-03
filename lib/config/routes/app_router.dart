@@ -1,5 +1,6 @@
-import 'package:flutter/widgets.dart';
+import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
+import 'package:oreamnos/config/theme/app_motion.dart';
 
 import '../../ui/features/generate/views/generate_screen.dart';
 import '../../ui/features/settings/views/settings_screen.dart';
@@ -31,6 +32,61 @@ abstract final class RoutePaths {
 
 final rootNavigatorKey = GlobalKey<NavigatorState>();
 
+/// Shared fade+slide page transition for shell tabs (280ms).
+///
+/// Kept separate from [_kickoffPage] (fade+scale for full-screen pushes):
+/// the shell Navigator swaps tab pages in place, where a subtle rise reads
+/// better than a scale pop.
+CustomTransitionPage<T> _kickoffTabPage<T>({required Widget child}) {
+  return CustomTransitionPage<T>(
+    child: child,
+    transitionDuration: AppMotion.transitionSpec,
+    reverseTransitionDuration: AppMotion.transitionSpec,
+    transitionsBuilder: (context, animation, secondaryAnimation, child) {
+      if (AppMotion.shouldReduceMotion(context)) return child;
+      final curved = CurvedAnimation(
+        parent: animation,
+        curve: AppMotion.curveTransition,
+      );
+      return FadeTransition(
+        opacity: curved,
+        child: SlideTransition(
+          position: curved.drive(
+            Tween<Offset>(
+              begin: const Offset(0, 0.02),
+              end: Offset.zero,
+            ),
+          ),
+          child: child,
+        ),
+      );
+    },
+  );
+}
+
+/// Shared fade+scale page transition for full-screen routes (280ms).
+CustomTransitionPage<T> _kickoffPage<T>({required Widget child}) {
+  return CustomTransitionPage<T>(
+    child: child,
+    transitionDuration: AppMotion.transitionSpec,
+    reverseTransitionDuration: AppMotion.transitionSpec,
+    transitionsBuilder: (context, animation, secondaryAnimation, child) {
+      if (AppMotion.shouldReduceMotion(context)) return child;
+      final curved = CurvedAnimation(
+        parent: animation,
+        curve: AppMotion.curveTransition,
+      );
+      return FadeTransition(
+        opacity: curved,
+        child: ScaleTransition(
+          scale: Tween<double>(begin: 0.97, end: 1.0).animate(curved),
+          child: child,
+        ),
+      );
+    },
+  );
+}
+
 /// Application router using GoRouter with shell route for 4-tab navigation.
 GoRouter createAppRouter({String? initialLocation}) {
   final defaultRoute =
@@ -51,7 +107,7 @@ GoRouter createAppRouter({String? initialLocation}) {
           GoRoute(
             path: RoutePaths.generate,
             pageBuilder: (context, state) =>
-                const NoTransitionPage(child: GenerateScreen()),
+                _kickoffTabPage(child: const GenerateScreen()),
           ),
           GoRoute(
             path: RoutePaths.cardGenerator,
@@ -97,7 +153,7 @@ GoRouter createAppRouter({String? initialLocation}) {
               // If we navigated to the tab without a brief, we show an empty state instead of an error state.
               // So hasError is only true if they tried to pass an invalid extra that we couldn't parse,
               // but actually let's just default to empty brief if there is no extra.
-              return NoTransitionPage(
+              return _kickoffTabPage(
                 child: CardGeneratorScreen(
                   brief:
                       brief ??
@@ -115,60 +171,72 @@ GoRouter createAppRouter({String? initialLocation}) {
           GoRoute(
             path: RoutePaths.usage,
             pageBuilder: (context, state) =>
-                const NoTransitionPage(child: UsageScreen()),
+                _kickoffTabPage(child: const UsageScreen()),
           ),
           GoRoute(
             path: RoutePaths.settings,
             pageBuilder: (context, state) =>
-                const NoTransitionPage(child: SettingsScreen()),
+                _kickoffTabPage(child: const SettingsScreen()),
           ),
         ],
       ),
       GoRoute(
         path: RoutePaths.readingMode,
-        builder: (context, state) {
+        pageBuilder: (context, state) {
           final extra = state.extra;
+          Widget child;
           if (extra is String) {
-            return ReadingModeScreen(content: extra);
-          }
-          if (extra is Map<String, dynamic> && extra['curatedPost'] != null) {
+            child = ReadingModeScreen(content: extra);
+          } else if (extra is Map<String, dynamic> &&
+              extra['curatedPost'] != null) {
             final cp = extra['curatedPost'];
             if (cp is CuratedPost) {
-              return ReadingModeScreen(
+              child = ReadingModeScreen(
                 content:
                     extra['copyText'] as String? ?? cp.toPlainTextFiltered(),
                 curatedPost: cp,
               );
+            } else {
+              final content =
+                  extra['copyText'] as String? ??
+                  state.uri.queryParameters['content'] ??
+                  '';
+              child = ReadingModeScreen(content: content);
             }
-          }
-          // Fallback for CuratedPost directly
-          if (extra is CuratedPost) {
-            return ReadingModeScreen(
+          } else if (extra is CuratedPost) {
+            // Fallback for CuratedPost directly
+            child = ReadingModeScreen(
               content: extra.toPlainTextFiltered(),
               curatedPost: extra,
             );
+          } else {
+            final content =
+                extra as String? ?? state.uri.queryParameters['content'] ?? '';
+            child = ReadingModeScreen(content: content);
           }
-          final content =
-              extra as String? ?? state.uri.queryParameters['content'] ?? '';
-          return ReadingModeScreen(content: content);
+          return _kickoffPage(child: child);
         },
       ),
       GoRoute(
         path: RoutePaths.pillManager,
-        builder: (context, state) => const PillManagerScreen(),
+        pageBuilder: (context, state) =>
+            _kickoffPage(child: const PillManagerScreen()),
       ),
       GoRoute(
         path: RoutePaths.hashtagManager,
-        builder: (context, state) => const HashtagManagerScreen(),
+        pageBuilder: (context, state) =>
+            _kickoffPage(child: const HashtagManagerScreen()),
       ),
 
       GoRoute(
         path: RoutePaths.debugLogs,
-        builder: (context, state) => const DebugLogScreen(),
+        pageBuilder: (context, state) =>
+            _kickoffPage(child: const DebugLogScreen()),
       ),
       GoRoute(
         path: RoutePaths.sessionHistory,
-        builder: (context, state) => const SessionListScreen(),
+        pageBuilder: (context, state) =>
+            _kickoffPage(child: const SessionListScreen()),
       ),
     ],
   );
