@@ -16,6 +16,7 @@ import 'package:oreamnos/config/theme/app_typography.dart';
 import 'package:oreamnos/config/constants.dart';
 import 'package:oreamnos/data/services/web_scraper_service.dart';
 import 'package:oreamnos/domain/models/card_brief.dart';
+import 'package:oreamnos/domain/models/default_pill.dart';
 import 'package:oreamnos/ui/core/utils/haptics.dart';
 import 'package:oreamnos/ui/core/widgets/app_button.dart';
 import 'package:oreamnos/ui/core/widgets/app_outlined_button.dart';
@@ -1202,81 +1203,74 @@ class _GenerateScreenState extends ConsumerState<GenerateScreen> {
             scrollDirection: Axis.horizontal,
             child: Row(
               children: [
-                RefinementPill(
-                      label: 'Rephrase',
-                      icon: Icons.refresh_rounded,
-                      isLoading: isGenerating,
-                      onTap: () => ref
-                          .read(generateViewModelProvider.notifier)
-                          .refineContent(
-                            'Rephrase the report to be more formal and concise while keeping all facts and a neutral tone.',
-                          ),
-                    )
-                    .animate(delay: const Duration(milliseconds: 0))
-                    .fadeIn(duration: const Duration(milliseconds: 180))
-                    .slideX(
-                      begin: -0.08,
-                      duration: const Duration(milliseconds: 180),
+                ...kDefaultRefinementPills.asMap().entries.map((e) {
+                  final pill = e.value;
+                  final isThisActive = viewModel.activePillId == pill.id;
+                  final isThisLoading = isGenerating && isThisActive;
+                  final isThisDisabled = isGenerating && !isThisActive;
+
+                  return Padding(
+                    padding: EdgeInsets.only(
+                      left: e.key == 0 ? 0 : AppSpacing.sm,
                     ),
-                const SizedBox(width: AppSpacing.sm),
-                RefinementPill(
-                      label: 'Check Flow',
-                      icon: Icons.auto_fix_high_rounded,
-                      isLoading: isGenerating,
-                      onTap: () => ref
-                          .read(generateViewModelProvider.notifier)
-                          .refineContent(
-                            'Improve the flow and clarity of the report without adding new facts.',
-                          ),
-                    )
-                    .animate(delay: AppConstants.staggerDelay)
-                    .fadeIn(duration: const Duration(milliseconds: 180))
-                    .slideX(
-                      begin: -0.08,
-                      duration: const Duration(milliseconds: 180),
-                    ),
-                const SizedBox(width: AppSpacing.sm),
-                RefinementPill(
-                      label: 'Shorter',
-                      icon: Icons.compress_rounded,
-                      isLoading: isGenerating,
-                      onTap: () => ref
-                          .read(generateViewModelProvider.notifier)
-                          .refineContent(
-                            'Make the report shorter, 100-120 words, keeping a formal style.',
-                          ),
-                    )
-                    .animate(delay: AppConstants.staggerDelay * 2)
-                    .fadeIn(duration: const Duration(milliseconds: 180))
-                    .slideX(
-                      begin: -0.08,
-                      duration: const Duration(milliseconds: 180),
-                    ),
+                    child:
+                        RefinementPill(
+                              label: pill.label,
+                              icon: pill.icon,
+                              isLoading: isThisLoading,
+                              isActive: isThisActive,
+                              isDisabled: isThisDisabled,
+                              onTap: () => ref
+                                  .read(generateViewModelProvider.notifier)
+                                  .refineContent(
+                                    pill.instruction,
+                                    pillId: pill.id,
+                                  ),
+                            )
+                            .animate(delay: AppConstants.staggerDelay * e.key)
+                            .fadeIn(duration: const Duration(milliseconds: 180))
+                            .slideX(
+                              begin: -0.08,
+                              duration: const Duration(milliseconds: 180),
+                            ),
+                  );
+                }),
                 ...ref
                     .watch(settingsViewModelProvider)
                     .customPills
                     .asMap()
                     .entries
-                    .map(
-                      (e) => Padding(
+                    .map((e) {
+                      final pill = e.value;
+                      final isThisActive = viewModel.activePillId == pill.id;
+                      final isThisLoading = isGenerating && isThisActive;
+                      final isThisDisabled = isGenerating && !isThisActive;
+
+                      return Padding(
                         padding: const EdgeInsets.only(left: AppSpacing.sm),
                         child:
                             RefinementPill(
-                                  label: e.value.label,
-                                  isLoading: isGenerating,
+                                  label: pill.label,
+                                  isLoading: isThisLoading,
+                                  isActive: isThisActive,
+                                  isDisabled: isThisDisabled,
                                   onTap: () => ref
                                       .read(generateViewModelProvider.notifier)
-                                      .refineContent(e.value.instruction),
+                                      .refineContent(
+                                        pill.instruction,
+                                        pillId: pill.id,
+                                      ),
                                   onLongPress: () {
                                     AddPillDialog.show(
                                       context,
-                                      existingPill: e.value,
+                                      existingPill: pill,
                                     );
                                   },
                                 )
                                 .animate(
                                   delay:
-                                      AppConstants.staggerDelay * (3 + e.key),
+                                      AppConstants.staggerDelay *
+                                      (kDefaultRefinementPills.length + e.key),
                                 )
                                 .fadeIn(
                                   duration: const Duration(milliseconds: 180),
@@ -1285,17 +1279,26 @@ class _GenerateScreenState extends ConsumerState<GenerateScreen> {
                                   begin: -0.08,
                                   duration: const Duration(milliseconds: 180),
                                 ),
-                      ),
-                    ),
+                      );
+                    }),
                 Padding(
                   padding: const EdgeInsets.only(left: AppSpacing.sm),
                   child:
                       RefinementPill(
                             label: 'Add Custom Pill',
                             icon: Icons.add_rounded,
+                            isDisabled: isGenerating,
                             onTap: () => AddPillDialog.show(context),
                           )
-                          .animate(delay: AppConstants.staggerDelay * 4)
+                          .animate(
+                            delay:
+                                AppConstants.staggerDelay *
+                                (kDefaultRefinementPills.length +
+                                    ref
+                                        .watch(settingsViewModelProvider)
+                                        .customPills
+                                        .length),
+                          )
                           .fadeIn(duration: const Duration(milliseconds: 180))
                           .slideX(
                             begin: -0.08,

@@ -43,111 +43,132 @@ class PillManagerScreen extends ConsumerWidget {
                 constraints: const BoxConstraints(
                   maxWidth: AppSpacing.maxContentWidth,
                 ),
-                child: ListView.separated(
+                child: ReorderableListView.builder(
+                  buildDefaultDragHandles: false,
                   padding: const EdgeInsets.symmetric(
                     horizontal: AppSpacing.screenHorizontal,
                     vertical: AppSpacing.base,
                   ),
                   itemCount: pills.length,
-                  separatorBuilder: (context, index) =>
-                      const SizedBox(height: AppSpacing.md),
+                  onReorderItem: (oldIndex, newIndex) {
+                    Haptics.selectionClick();
+                    notifier.reorderCustomPills(oldIndex, newIndex);
+                  },
                   itemBuilder: (context, index) {
                     final pill = pills[index];
 
-                    return AppCard(
-                      onTap: () =>
-                          AddPillDialog.show(context, existingPill: pill),
-                      child: Row(
-                        children: [
-                          Container(
-                            width: 36,
-                            height: 36,
-                            decoration: BoxDecoration(
-                              color: theme.colorScheme.primaryContainer,
-                              borderRadius: AppSpacing.borderRadiusSm,
+                    return Padding(
+                      key: ValueKey(pill.id),
+                      padding: const EdgeInsets.only(bottom: AppSpacing.md),
+                      child: AppCard(
+                        onTap: () =>
+                            AddPillDialog.show(context, existingPill: pill),
+                        child: Row(
+                          children: [
+                            Container(
+                              width: 36,
+                              height: 36,
+                              decoration: BoxDecoration(
+                                color: theme.colorScheme.primaryContainer,
+                                borderRadius: AppSpacing.borderRadiusSm,
+                              ),
+                              child: Icon(
+                                Icons.auto_fix_high_rounded,
+                                size: 18,
+                                color: theme.colorScheme.primary,
+                              ),
                             ),
-                            child: Icon(
-                              Icons.auto_fix_high_rounded,
-                              size: 18,
-                              color: theme.colorScheme.primary,
-                            ),
-                          ),
-                          const SizedBox(width: AppSpacing.md),
-                          Expanded(
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Text(
-                                  pill.label,
-                                  style: theme.textTheme.titleSmall?.copyWith(
-                                    fontWeight: FontWeight.w700,
-                                  ),
-                                ),
-                                const SizedBox(height: 2),
-                                Text(
-                                  pill.instruction,
-                                  maxLines: 2,
-                                  overflow: TextOverflow.ellipsis,
-                                  style: theme.textTheme.bodySmall?.copyWith(
-                                    color: theme.colorScheme.onSurfaceVariant,
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ),
-                          IconButton(
-                            icon: Icon(
-                              Icons.delete_outline_rounded,
-                              color: theme.colorScheme.error,
-                              size: 20,
-                            ),
-                            tooltip: 'Delete Pill',
-                            onPressed: () async {
-                              final confirm = await showDialog<bool>(
-                                context: context,
-                                builder: (context) => AlertDialog(
-                                  title: Text('Delete "${pill.label}"?'),
-                                  content: const Text(
-                                    'This custom pill will be removed permanently.',
-                                  ),
-                                  actions: [
-                                    TextButton(
-                                      onPressed: () =>
-                                          Navigator.of(context).pop(false),
-                                      child: const Text('Cancel'),
+                            const SizedBox(width: AppSpacing.md),
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    pill.label,
+                                    style: theme.textTheme.titleSmall?.copyWith(
+                                      fontWeight: FontWeight.w700,
                                     ),
-                                    TextButton(
-                                      onPressed: () =>
-                                          Navigator.of(context).pop(true),
-                                      style: TextButton.styleFrom(
-                                        foregroundColor:
-                                            theme.colorScheme.error,
+                                  ),
+                                  const SizedBox(height: 2),
+                                  Text(
+                                    pill.instruction,
+                                    maxLines: 2,
+                                    overflow: TextOverflow.ellipsis,
+                                    style: theme.textTheme.bodySmall?.copyWith(
+                                      color: theme.colorScheme.onSurfaceVariant,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                            IconButton(
+                              icon: Icon(
+                                Icons.delete_outline_rounded,
+                                color: theme.colorScheme.error,
+                                size: 20,
+                              ),
+                              tooltip: 'Delete Pill',
+                              onPressed: () async {
+                                final confirm = await showDialog<bool>(
+                                  context: context,
+                                  builder: (context) => AlertDialog(
+                                    title: Text('Delete "${pill.label}"?'),
+                                    content: const Text(
+                                      'This custom pill will be removed permanently.',
+                                    ),
+                                    actions: [
+                                      TextButton(
+                                        onPressed: () =>
+                                            Navigator.of(context).pop(false),
+                                        child: const Text('Cancel'),
                                       ),
-                                      child: const Text('Delete'),
-                                    ),
-                                  ],
-                                ),
-                              );
-                              if (confirm != true) return;
-                              Haptics.heavyImpact();
-                              await notifier.removeCustomPill(pill);
-                              if (!context.mounted) return;
-                              ScaffoldMessenger.of(context)
-                                ..clearSnackBars()
-                                ..showSnackBar(
-                                  SnackBar(
-                                    content: const Text('Pill deleted'),
-                                    action: SnackBarAction(
-                                      label: 'Undo',
-                                      onPressed: () =>
-                                          notifier.addCustomPill(pill),
-                                    ),
-                                    duration: const Duration(seconds: 5),
+                                      TextButton(
+                                        onPressed: () =>
+                                            Navigator.of(context).pop(true),
+                                        style: TextButton.styleFrom(
+                                          foregroundColor:
+                                              theme.colorScheme.error,
+                                        ),
+                                        child: const Text('Delete'),
+                                      ),
+                                    ],
                                   ),
                                 );
-                            },
-                          ),
-                        ],
+                                if (confirm != true) return;
+                                Haptics.heavyImpact();
+                                await notifier.removeCustomPill(pill);
+                                if (!context.mounted) return;
+                                ScaffoldMessenger.of(context)
+                                  ..clearSnackBars()
+                                  ..showSnackBar(
+                                    SnackBar(
+                                      content: const Text('Pill deleted'),
+                                      action: SnackBarAction(
+                                        label: 'Undo',
+                                        onPressed: () =>
+                                            notifier.addCustomPill(pill),
+                                      ),
+                                      duration: const Duration(seconds: 5),
+                                    ),
+                                  );
+                              },
+                            ),
+                            ReorderableDragStartListener(
+                              index: index,
+                              child: Padding(
+                                padding: const EdgeInsets.only(
+                                  left: AppSpacing.xs,
+                                  right: AppSpacing.xs,
+                                ),
+                                child: Icon(
+                                  Icons.drag_handle_rounded,
+                                  color: theme.colorScheme.outline,
+                                  size: 20,
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
                       ),
                     );
                   },

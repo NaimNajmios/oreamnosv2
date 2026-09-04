@@ -633,7 +633,7 @@ class GenerateViewModel extends Notifier<GenerateUiState>
     }
   }
 
-  Future<void> refineContent(String instruction) async {
+  Future<void> refineContent(String instruction, {String? pillId}) async {
     final cp = state.curatedPost;
     if (cp == null) return;
 
@@ -643,6 +643,7 @@ class GenerateViewModel extends Notifier<GenerateUiState>
     state = state.copyWith(
       status: GenerateState.generating,
       generatingStep: GeneratingStep.prompting,
+      activePillId: pillId,
       errorMessage: null,
       validationMessage: null,
     );
@@ -742,6 +743,7 @@ class GenerateViewModel extends Notifier<GenerateUiState>
         curatedPost: merged,
         status: GenerateState.success,
         generatingStep: GeneratingStep.idle,
+        activePillId: null,
       );
 
       if (_isBackgrounded) {
@@ -775,6 +777,7 @@ class GenerateViewModel extends Notifier<GenerateUiState>
           rateLimitWaitMessage: e.waitTimeMessage,
           status: GenerateState.rateLimited,
           generatingStep: GeneratingStep.idle,
+          activePillId: null,
         );
       } else if (e is AuthFailure) {
         state = state.copyWith(
@@ -782,6 +785,7 @@ class GenerateViewModel extends Notifier<GenerateUiState>
               'Authentication failed for ${provider.displayName}. Check your API key in Settings.',
           status: GenerateState.error,
           generatingStep: GeneratingStep.idle,
+          activePillId: null,
         );
       } else if (e is NetworkFailure) {
         state = state.copyWith(
@@ -789,6 +793,7 @@ class GenerateViewModel extends Notifier<GenerateUiState>
               'Network error. Please check your connection and try again.',
           status: GenerateState.error,
           generatingStep: GeneratingStep.idle,
+          activePillId: null,
         );
       } else {
         final raw = e.toString();
@@ -800,6 +805,7 @@ class GenerateViewModel extends Notifier<GenerateUiState>
           errorMessage: msg,
           status: GenerateState.error,
           generatingStep: GeneratingStep.idle,
+          activePillId: null,
         );
       }
 

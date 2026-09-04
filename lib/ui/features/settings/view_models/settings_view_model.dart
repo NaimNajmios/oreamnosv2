@@ -140,6 +140,18 @@ class SettingsNotifier extends Notifier<SettingsState> {
     state = state.copyWith(customPills: pills);
   }
 
+  Future<void> reorderCustomPills(int oldIndex, int newIndex) async {
+    final pills = List<CustomPill>.of(state.customPills);
+    if (oldIndex < 0 || oldIndex >= pills.length) {
+      return;
+    }
+    final item = pills.removeAt(oldIndex);
+    final targetIndex = newIndex.clamp(0, pills.length);
+    pills.insert(targetIndex, item);
+    await _preferencesService.setCustomPills(pills);
+    state = state.copyWith(customPills: pills);
+  }
+
   Future<void> addHashtagGroup(HashtagGroup group) async {
     final isFirst = state.hashtagGroups.isEmpty;
     final newGroup = isFirst ? group.copyWith(isDefault: true) : group;

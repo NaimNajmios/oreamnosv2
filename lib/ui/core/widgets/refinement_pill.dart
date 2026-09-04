@@ -10,6 +10,8 @@ class RefinementPill extends StatelessWidget {
     required this.label,
     this.icon,
     this.isLoading = false,
+    this.isActive = false,
+    this.isDisabled = false,
     this.onTap,
     this.onLongPress,
   });
@@ -17,58 +19,89 @@ class RefinementPill extends StatelessWidget {
   final String label;
   final IconData? icon;
   final bool isLoading;
+  final bool isActive;
+  final bool isDisabled;
   final VoidCallback? onTap;
   final VoidCallback? onLongPress;
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final canInteract = !isLoading && !isDisabled;
 
-    return Material(
-      color: Colors.transparent,
-      child: InkWell(
-        onTap: isLoading
-            ? null
-            : () {
-                Haptics.lightImpact();
-                onTap?.call();
-              },
-        onLongPress: onLongPress == null
-            ? null
-            : () {
-                Haptics.mediumImpact();
-                onLongPress?.call();
-              },
-        borderRadius: AppSpacing.borderRadiusPill,
-        child: Container(
-          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
-          decoration: BoxDecoration(
-            color: theme.colorScheme.surface,
+    final backgroundColor = isActive
+        ? theme.colorScheme.primaryContainer.withValues(alpha: 0.7)
+        : theme.colorScheme.surface;
+
+    final borderColor = isActive
+        ? theme.colorScheme.primary
+        : theme.colorScheme.outline;
+
+    final textColor = isActive
+        ? theme.colorScheme.onPrimaryContainer
+        : theme.colorScheme.onSurface;
+
+    final iconColor = isActive
+        ? theme.colorScheme.primary
+        : theme.colorScheme.primary;
+
+    return Semantics(
+      button: true,
+      enabled: canInteract,
+      label: label,
+      onTapHint: 'Apply refinement',
+      onLongPressHint: onLongPress != null ? 'Edit custom pill' : null,
+      child: AnimatedOpacity(
+        opacity: isDisabled ? 0.45 : 1.0,
+        duration: const Duration(milliseconds: 200),
+        child: Material(
+          color: Colors.transparent,
+          child: InkWell(
+            onTap: canInteract
+                ? () {
+                    Haptics.lightImpact();
+                    onTap?.call();
+                  }
+                : null,
+            onLongPress: canInteract && onLongPress != null
+                ? () {
+                    Haptics.mediumImpact();
+                    onLongPress?.call();
+                  }
+                : null,
             borderRadius: AppSpacing.borderRadiusPill,
-            border: Border.all(color: theme.colorScheme.outline, width: 1),
-          ),
-          child: Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              if (isLoading) ...[
-                SizedBox(
-                  width: 12,
-                  height: 12,
-                  child: KickoffLoadingIndicator(size: 12),
-                ),
-                const SizedBox(width: 6),
-              ] else if (icon != null) ...[
-                Icon(icon, size: 14, color: theme.colorScheme.primary),
-                const SizedBox(width: 6),
-              ],
-              Text(
-                label,
-                style: theme.textTheme.labelMedium?.copyWith(
-                  fontWeight: FontWeight.w500,
-                  color: theme.colorScheme.onSurface,
-                ),
+            child: AnimatedContainer(
+              duration: const Duration(milliseconds: 200),
+              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+              decoration: BoxDecoration(
+                color: backgroundColor,
+                borderRadius: AppSpacing.borderRadiusPill,
+                border: Border.all(color: borderColor, width: 1),
               ),
-            ],
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  if (isLoading) ...[
+                    const SizedBox(
+                      width: 12,
+                      height: 12,
+                      child: KickoffLoadingIndicator(size: 12),
+                    ),
+                    const SizedBox(width: 6),
+                  ] else if (icon != null) ...[
+                    Icon(icon, size: 14, color: iconColor),
+                    const SizedBox(width: 6),
+                  ],
+                  Text(
+                    label,
+                    style: theme.textTheme.labelMedium?.copyWith(
+                      fontWeight: isActive ? FontWeight.w700 : FontWeight.w500,
+                      color: textColor,
+                    ),
+                  ),
+                ],
+              ),
+            ),
           ),
         ),
       ),
