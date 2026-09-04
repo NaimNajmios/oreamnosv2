@@ -10,6 +10,7 @@ class RefinementPill extends StatelessWidget {
     required this.label,
     this.icon,
     this.isLoading = false,
+    this.isSelected = false,
     this.isActive = false,
     this.isDisabled = false,
     this.onTap,
@@ -19,37 +20,39 @@ class RefinementPill extends StatelessWidget {
   final String label;
   final IconData? icon;
   final bool isLoading;
+  final bool isSelected;
   final bool isActive;
   final bool isDisabled;
   final VoidCallback? onTap;
   final VoidCallback? onLongPress;
+
+  bool get _selected => isSelected || isActive;
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final canInteract = !isLoading && !isDisabled;
 
-    final backgroundColor = isActive
+    final backgroundColor = _selected
         ? theme.colorScheme.primaryContainer.withValues(alpha: 0.7)
         : theme.colorScheme.surface;
 
-    final borderColor = isActive
+    final borderColor = _selected
         ? theme.colorScheme.primary
         : theme.colorScheme.outline;
 
-    final textColor = isActive
+    final textColor = _selected
         ? theme.colorScheme.onPrimaryContainer
         : theme.colorScheme.onSurface;
 
-    final iconColor = isActive
-        ? theme.colorScheme.primary
-        : theme.colorScheme.primary;
+    final iconColor = theme.colorScheme.primary;
 
     return Semantics(
       button: true,
+      selected: _selected,
       enabled: canInteract,
       label: label,
-      onTapHint: 'Apply refinement',
+      onTapHint: _selected ? 'Deselect refinement' : 'Select refinement',
       onLongPressHint: onLongPress != null ? 'Edit custom pill' : null,
       child: AnimatedOpacity(
         opacity: isDisabled ? 0.45 : 1.0,
@@ -88,6 +91,9 @@ class RefinementPill extends StatelessWidget {
                       child: KickoffLoadingIndicator(size: 12),
                     ),
                     const SizedBox(width: 6),
+                  ] else if (_selected) ...[
+                    Icon(Icons.check_rounded, size: 14, color: iconColor),
+                    const SizedBox(width: 6),
                   ] else if (icon != null) ...[
                     Icon(icon, size: 14, color: iconColor),
                     const SizedBox(width: 6),
@@ -95,7 +101,7 @@ class RefinementPill extends StatelessWidget {
                   Text(
                     label,
                     style: theme.textTheme.labelMedium?.copyWith(
-                      fontWeight: isActive ? FontWeight.w700 : FontWeight.w500,
+                      fontWeight: _selected ? FontWeight.w700 : FontWeight.w500,
                       color: textColor,
                     ),
                   ),

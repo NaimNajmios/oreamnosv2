@@ -416,6 +416,9 @@ class _GenerateScreenState extends ConsumerState<GenerateScreen> {
                                       child: AppOutlinedButton(
                                         label: 'New Entry',
                                         icon: Icons.add_rounded,
+                                        padding: const EdgeInsets.symmetric(
+                                          horizontal: 12,
+                                        ),
                                         onPressed: () async {
                                           final discard =
                                               await _confirmDiscardPost(
@@ -432,15 +435,41 @@ class _GenerateScreenState extends ConsumerState<GenerateScreen> {
                                     const SizedBox(width: AppSpacing.sm),
                                     Expanded(
                                       child: AppButton(
-                                        label: 'Regenerate',
+                                        label:
+                                            uiState.selectedPillIds.isNotEmpty
+                                            ? 'Regenerate (${uiState.selectedPillIds.length})'
+                                            : 'Regenerate',
                                         icon: Icons.refresh_rounded,
+                                        padding: const EdgeInsets.symmetric(
+                                          horizontal: 12,
+                                        ),
                                         isLoading: isGenerating,
                                         onPressed: isGenerating
                                             ? null
                                             : () {
-                                                notifier.generatePost(
-                                                  _controller.text,
-                                                );
+                                                if (uiState
+                                                    .selectedPillIds
+                                                    .isNotEmpty) {
+                                                  final customPills = ref
+                                                      .read(
+                                                        settingsViewModelProvider,
+                                                      )
+                                                      .customPills;
+                                                  final pillInstructionMap = {
+                                                    for (final p
+                                                        in kDefaultRefinementPills)
+                                                      p.id: p.instruction,
+                                                    for (final p in customPills)
+                                                      p.id: p.instruction,
+                                                  };
+                                                  notifier.refineSelectedPills(
+                                                    pillInstructionMap,
+                                                  );
+                                                } else {
+                                                  notifier.generatePost(
+                                                    _controller.text,
+                                                  );
+                                                }
                                               },
                                       ),
                                     ),
@@ -1205,9 +1234,9 @@ class _GenerateScreenState extends ConsumerState<GenerateScreen> {
               children: [
                 ...kDefaultRefinementPills.asMap().entries.map((e) {
                   final pill = e.value;
-                  final isThisActive = viewModel.activePillId == pill.id;
-                  final isThisLoading = isGenerating && isThisActive;
-                  final isThisDisabled = isGenerating && !isThisActive;
+                  final isSelected = viewModel.selectedPillIds.contains(
+                    pill.id,
+                  );
 
                   return Padding(
                     padding: EdgeInsets.only(
@@ -1217,15 +1246,11 @@ class _GenerateScreenState extends ConsumerState<GenerateScreen> {
                         RefinementPill(
                               label: pill.label,
                               icon: pill.icon,
-                              isLoading: isThisLoading,
-                              isActive: isThisActive,
-                              isDisabled: isThisDisabled,
+                              isSelected: isSelected,
+                              isDisabled: isGenerating,
                               onTap: () => ref
                                   .read(generateViewModelProvider.notifier)
-                                  .refineContent(
-                                    pill.instruction,
-                                    pillId: pill.id,
-                                  ),
+                                  .togglePillSelection(pill.id),
                             )
                             .animate(delay: AppConstants.staggerDelay * e.key)
                             .fadeIn(duration: const Duration(milliseconds: 180))
@@ -1242,24 +1267,20 @@ class _GenerateScreenState extends ConsumerState<GenerateScreen> {
                     .entries
                     .map((e) {
                       final pill = e.value;
-                      final isThisActive = viewModel.activePillId == pill.id;
-                      final isThisLoading = isGenerating && isThisActive;
-                      final isThisDisabled = isGenerating && !isThisActive;
+                      final isSelected = viewModel.selectedPillIds.contains(
+                        pill.id,
+                      );
 
                       return Padding(
                         padding: const EdgeInsets.only(left: AppSpacing.sm),
                         child:
                             RefinementPill(
                                   label: pill.label,
-                                  isLoading: isThisLoading,
-                                  isActive: isThisActive,
-                                  isDisabled: isThisDisabled,
+                                  isSelected: isSelected,
+                                  isDisabled: isGenerating,
                                   onTap: () => ref
                                       .read(generateViewModelProvider.notifier)
-                                      .refineContent(
-                                        pill.instruction,
-                                        pillId: pill.id,
-                                      ),
+                                      .togglePillSelection(pill.id),
                                   onLongPress: () {
                                     AddPillDialog.show(
                                       context,

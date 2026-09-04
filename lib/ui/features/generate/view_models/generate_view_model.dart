@@ -633,9 +633,23 @@ class GenerateViewModel extends Notifier<GenerateUiState>
     }
   }
 
-  Future<void> refineContent(String instruction, {String? pillId}) async {
+  void togglePillSelection(String pillId) {
+    final current = Set<String>.from(state.selectedPillIds);
+    if (current.contains(pillId)) {
+      current.remove(pillId);
+    } else {
+      current.add(pillId);
+    }
+    state = state.copyWith(selectedPillIds: current);
+  }
+
+  void clearPillSelection() {
+    state = state.copyWith(selectedPillIds: const {});
+  }
+
+  Future<void> refineContent(List<String> instructions) async {
     final cp = state.curatedPost;
-    if (cp == null) return;
+    if (cp == null || instructions.isEmpty) return;
 
     final sessionId = ++_generationSessionId;
 
@@ -643,7 +657,6 @@ class GenerateViewModel extends Notifier<GenerateUiState>
     state = state.copyWith(
       status: GenerateState.generating,
       generatingStep: GeneratingStep.prompting,
-      activePillId: pillId,
       errorMessage: null,
       validationMessage: null,
     );
@@ -664,7 +677,7 @@ class GenerateViewModel extends Notifier<GenerateUiState>
         throw Exception('API key not configured for ${provider.displayName}.');
       }
 
-      // Full refinement pipeline: instruction routed through
+      // Full refinement pipeline: instructions routed through
       // GenerationPromptManager.buildRefinementPrompt (rephrase /
       // recheck_flow / recheck_wording keys + free-text custom pills).
       final repo = ref.read(contentRepositoryProvider);
@@ -672,7 +685,7 @@ class GenerateViewModel extends Notifier<GenerateUiState>
       final repoResult = await repo
           .refinePost(
             original: cp,
-            refinements: [instruction],
+            refinements: instructions,
             modelId: modelId,
             apiKey: apiKey,
             provider: provider,
@@ -709,8 +722,12 @@ class GenerateViewModel extends Notifier<GenerateUiState>
       });
 
       stopwatch.stop();
+      final combinedLength = instructions.fold<int>(
+        0,
+        (sum, i) => sum + i.length,
+      );
       int estimatedTokens =
-          ((instruction.length +
+          ((combinedLength +
                       cp.rawMarkdown.length +
                       (merged.rawMarkdown.length)) /
                   4)
@@ -743,7 +760,7 @@ class GenerateViewModel extends Notifier<GenerateUiState>
         curatedPost: merged,
         status: GenerateState.success,
         generatingStep: GeneratingStep.idle,
-        activePillId: null,
+        selectedPillIds: const {},
       );
 
       if (_isBackgrounded) {
@@ -777,7 +794,6 @@ class GenerateViewModel extends Notifier<GenerateUiState>
           rateLimitWaitMessage: e.waitTimeMessage,
           status: GenerateState.rateLimited,
           generatingStep: GeneratingStep.idle,
-          activePillId: null,
         );
       } else if (e is AuthFailure) {
         state = state.copyWith(
@@ -785,7 +801,6 @@ class GenerateViewModel extends Notifier<GenerateUiState>
               'Authentication failed for ${provider.displayName}. Check your API key in Settings.',
           status: GenerateState.error,
           generatingStep: GeneratingStep.idle,
-          activePillId: null,
         );
       } else if (e is NetworkFailure) {
         state = state.copyWith(
@@ -793,7 +808,6 @@ class GenerateViewModel extends Notifier<GenerateUiState>
               'Network error. Please check your connection and try again.',
           status: GenerateState.error,
           generatingStep: GeneratingStep.idle,
-          activePillId: null,
         );
       } else {
         final raw = e.toString();
@@ -805,7 +819,6 @@ class GenerateViewModel extends Notifier<GenerateUiState>
           errorMessage: msg,
           status: GenerateState.error,
           generatingStep: GeneratingStep.idle,
-          activePillId: null,
         );
       }
 
@@ -818,6 +831,21 @@ class GenerateViewModel extends Notifier<GenerateUiState>
       if (state.status != GenerateState.generating) {
         state = state.copyWith(generatingStep: GeneratingStep.idle);
       }
+    }
+  }
+
+  Future<void> refineSelectedPills(
+    Map<String, String> pillInstructionMap,
+  ) async {
+    final instructions = <String>[];
+    for (final id in state.selectedPillIds) {
+      final inst = pillInstructionMap[id];
+      if (inst != null && inst.isNotEmpty) {
+        instructions.add(inst);
+      }
+    }
+    if (instructions.isNotEmpty) {
+      await refineContent(instructions);
     }
   }
 

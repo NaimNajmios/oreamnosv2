@@ -31,7 +31,7 @@ abstract class GenerateUiState with _$GenerateUiState {
     @Default(false) bool isExtractingImage,
     @Default(false) bool keepStructure,
     @Default(false) bool isEditMode,
-    String? activePillId,
+    @Default(<String>{}) Set<String> selectedPillIds,
   }) = _GenerateUiState;
 
   bool get canUndo => historyStack.isNotEmpty;

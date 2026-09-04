@@ -16,6 +16,7 @@ class AppButton extends StatefulWidget {
     this.height = 52,
     this.backgroundColor,
     this.foregroundColor,
+    this.padding,
   });
 
   final String label;
@@ -25,6 +26,7 @@ class AppButton extends StatefulWidget {
   final double height;
   final Color? backgroundColor;
   final Color? foregroundColor;
+  final EdgeInsetsGeometry? padding;
 
   @override
   State<AppButton> createState() => _AppButtonState();
@@ -110,7 +112,8 @@ class _AppButtonState extends State<AppButton>
               color: bgColor,
               borderRadius: AppSpacing.borderRadiusXl,
             ),
-            padding: const EdgeInsets.symmetric(horizontal: 24),
+            padding:
+                widget.padding ?? const EdgeInsets.symmetric(horizontal: 16),
             child: Center(
               child: widget.isLoading
                   ? SizedBox(
@@ -129,20 +132,20 @@ class _AppButtonState extends State<AppButton>
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
                         if (widget.icon != null) ...[
-                          Icon(widget.icon, size: 20, color: fgColor),
-                          const SizedBox(width: 12),
+                          Icon(widget.icon, size: 18, color: fgColor),
+                          const SizedBox(width: 8),
                         ],
-                        // Flexible + ellipsis: fixed side padding starves
-                        // the label in narrow parents (e.g. dialogs).
                         Flexible(
-                          child: Text(
-                            widget.label,
-                            style: theme.textTheme.labelLarge?.copyWith(
-                              color: fgColor,
+                          child: FittedBox(
+                            fit: BoxFit.scaleDown,
+                            child: Text(
+                              widget.label,
+                              style: theme.textTheme.labelLarge?.copyWith(
+                                color: fgColor,
+                              ),
+                              maxLines: 1,
+                              textAlign: TextAlign.center,
                             ),
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                            textAlign: TextAlign.center,
                           ),
                         ),
                       ],

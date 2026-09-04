@@ -1,13 +1,21 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:oreamnos/core/di/injection.dart';
+import 'package:oreamnos/core/error/failures.dart';
+import 'package:oreamnos/core/repositories/content_repository.dart';
+import 'package:oreamnos/data/models/ai_provider.dart';
+import 'package:oreamnos/data/services/log_service.dart';
 import 'package:oreamnos/data/services/preferences_service.dart';
+import 'package:oreamnos/data/services/usage_service.dart';
+import 'package:oreamnos/domain/models/curated_post.dart';
 import 'package:oreamnos/domain/models/custom_pill.dart';
 import 'package:oreamnos/domain/models/default_pill.dart';
 import 'package:oreamnos/ui/core/widgets/kickoff_loading_indicator.dart';
 import 'package:oreamnos/ui/core/widgets/refinement_pill.dart';
 import 'package:oreamnos/ui/features/generate/view_models/generate_state.dart';
+import 'package:oreamnos/ui/features/generate/view_models/generate_view_model.dart';
 import 'package:oreamnos/ui/features/settings/view_models/settings_view_model.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -102,6 +110,26 @@ void main() {
       await tester.longPress(find.byType(RefinementPill));
       expect(longPressed, isTrue);
     });
+
+    testWidgets(
+      'shows checkmark icon and selected state when isSelected is true',
+      (tester) async {
+        await tester.pumpWidget(
+          const MaterialApp(
+            home: Scaffold(
+              body: RefinementPill(
+                label: 'Selected Pill',
+                icon: Icons.star_rounded,
+                isSelected: true,
+              ),
+            ),
+          ),
+        );
+
+        expect(find.byIcon(Icons.check_rounded), findsOneWidget);
+        expect(find.byIcon(Icons.star_rounded), findsNothing);
+      },
+    );
   });
 
   group('SettingsViewModel - Reorder Custom Pills', () {
@@ -170,16 +198,205 @@ void main() {
     });
   });
 
-  group('GenerateUiState - activePillId', () {
-    test('defaults to null and can be updated via copyWith', () {
+  group('GenerateUiState - selectedPillIds', () {
+    test('defaults to empty set and can be updated via copyWith', () {
       const state = GenerateUiState();
-      expect(state.activePillId, isNull);
+      expect(state.selectedPillIds, isEmpty);
 
-      final updated = state.copyWith(activePillId: 'pill-123');
-      expect(updated.activePillId, 'pill-123');
+      final updated = state.copyWith(selectedPillIds: {'pill-1', 'pill-2'});
+      expect(updated.selectedPillIds, containsAll(['pill-1', 'pill-2']));
+      expect(updated.selectedPillIds.length, 2);
 
-      final cleared = updated.copyWith(activePillId: null);
-      expect(cleared.activePillId, isNull);
+      final cleared = updated.copyWith(selectedPillIds: const {});
+      expect(cleared.selectedPillIds, isEmpty);
     });
   });
+
+  group('GenerateViewModel - Pill Multi-Selection', () {
+    late ProviderContainer container;
+
+    setUp(() async {
+      SharedPreferences.setMockInitialValues({});
+      FlutterSecureStorage.setMockInitialValues({});
+      final prefs = await SharedPreferences.getInstance();
+      const storage = FlutterSecureStorage();
+      final prefService = PreferencesService(
+        prefs: prefs,
+        secureStorage: storage,
+      );
+
+      await getIt.reset();
+      await configureDependencies();
+      getIt.allowReassignment = true;
+      getIt.registerLazySingleton<PreferencesService>(() => prefService);
+      getIt.registerLazySingleton<UsageService>(() => UsageService(prefs));
+      getIt.registerLazySingleton<LogService>(() => LogService(prefs));
+
+      container = ProviderContainer();
+      await Future.delayed(const Duration(milliseconds: 50));
+    });
+
+    tearDown(() {
+      container.dispose();
+    });
+
+    test('togglePillSelection and clearPillSelection manage selected IDs', () {
+      final notifier = container.read(generateViewModelProvider.notifier);
+
+      expect(
+        container.read(generateViewModelProvider).selectedPillIds,
+        isEmpty,
+      );
+
+      // Select pill 1
+      notifier.togglePillSelection('pill-1');
+      expect(container.read(generateViewModelProvider).selectedPillIds, {
+        'pill-1',
+      });
+
+      // Select pill 2
+      notifier.togglePillSelection('pill-2');
+      expect(container.read(generateViewModelProvider).selectedPillIds, {
+        'pill-1',
+        'pill-2',
+      });
+
+      // Deselect pill 1
+      notifier.togglePillSelection('pill-1');
+      expect(container.read(generateViewModelProvider).selectedPillIds, {
+        'pill-2',
+      });
+
+      // Clear all selections
+      notifier.clearPillSelection();
+      expect(
+        container.read(generateViewModelProvider).selectedPillIds,
+        isEmpty,
+      );
+    });
+
+    test('refineSelectedPills combines all instructions and clears selection on success', () async {
+      final fakeRepo = _FakeContentRepository();
+      final overrideContainer = ProviderContainer(
+        overrides: [contentRepositoryProvider.overrideWithValue(fakeRepo)],
+      );
+      addTearDown(overrideContainer.dispose);
+
+      // Setup API key and initial post
+      final settings = overrideContainer.read(
+        settingsViewModelProvider.notifier,
+      );
+      await settings.setSelectedProvider(AiProvider.gemini);
+      await settings.setSelectedModel('gemini-1.5-flash');
+      await settings.setApiKey(AiProvider.gemini, 'fake-gemini-key');
+
+      final notifier = overrideContainer.read(
+        generateViewModelProvider.notifier,
+      );
+
+      // Generate an initial post
+      await notifier.generatePost('Initial text');
+      expect(overrideContainer.read(generateViewModelProvider).hasPost, isTrue);
+
+      // Select two pills
+      notifier.togglePillSelection('default_rephrase');
+      notifier.togglePillSelection('default_shorter');
+      expect(
+        overrideContainer.read(generateViewModelProvider).selectedPillIds,
+        {'default_rephrase', 'default_shorter'},
+      );
+
+      // Refine with selected pills
+      final pillMap = {
+        for (final p in kDefaultRefinementPills) p.id: p.instruction,
+      };
+      await notifier.refineSelectedPills(pillMap);
+
+      final postState = overrideContainer.read(generateViewModelProvider);
+      expect(postState.status, GenerateState.success);
+      expect(fakeRepo.lastRefinements.length, 2);
+      expect(
+        fakeRepo.lastRefinements,
+        contains(kDefaultRefinementPills[0].instruction),
+      );
+      expect(
+        fakeRepo.lastRefinements,
+        contains(kDefaultRefinementPills[2].instruction),
+      );
+
+      // Selections MUST be cleared upon success
+      expect(postState.selectedPillIds, isEmpty);
+    });
+  });
+}
+
+class _FakeContentRepository implements IContentRepository {
+  List<String> lastRefinements = [];
+
+  @override
+  Future<Result<CuratedPost>> generateStructuredPost({
+    required dynamic content,
+    required String modelId,
+    required String apiKey,
+    String? sourceUrl,
+    required AiProvider provider,
+    List<String> searchSources = const [],
+    bool keepStructure = false,
+    bool isFanModeEnabled = false,
+    String fanClubName = '',
+    String length = 'medium',
+    String? siteName,
+    String? authorDisplayName,
+    String? candidateOutlet,
+    bool isTwitter = false,
+  }) async {
+    return const ResultSuccess(
+      CuratedPost(
+        title: 'Initial Title',
+        bodyMarkdown: 'Initial Body',
+        hashtags: ['Tag'],
+        source: SourceAttribution(label: 'source'),
+        rawMarkdown: 'Raw',
+      ),
+    );
+  }
+
+  @override
+  Future<Result<CuratedPost>> refinePost({
+    required CuratedPost original,
+    required List<String> refinements,
+    required String modelId,
+    required String apiKey,
+    required AiProvider provider,
+    bool includeSource = true,
+    bool keepStructure = false,
+  }) async {
+    lastRefinements = refinements;
+    return ResultSuccess(
+      original.copyWith(bodyMarkdown: 'Refined: ${refinements.join(", ")}'),
+    );
+  }
+
+  @override
+  Future<Result<String>> generatePost({
+    required String contentOrUrl,
+    required String modelId,
+    required String apiKey,
+    required AiProvider provider,
+    required String tone,
+    required String defaultHashtags,
+  }) async {
+    return const ResultSuccess('Generated');
+  }
+
+  @override
+  Future<Result<String>> rewriteField({
+    required String text,
+    required String fieldName,
+    required String modelId,
+    required String apiKey,
+    required AiProvider provider,
+  }) async {
+    return const ResultSuccess('Rewritten');
+  }
 }

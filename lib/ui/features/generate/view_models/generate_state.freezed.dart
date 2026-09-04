@@ -15,7 +15,7 @@ T _$identity<T>(T value) => value;
 /// @nodoc
 mixin _$GenerateUiState {
 
- PromptLength get promptLength; GenerateState get status; GeneratingStep get generatingStep; CuratedPost? get curatedPost; List<String> get historyStack; List<String> get recentInputs; String? get errorMessage; AiProvider? get suggestedFallbackProvider; String? get rateLimitWaitMessage; String? get validationMessage; String? get pendingInput; bool get isResearchModeEnabled; List<String> get searchSources; bool get showTitle; bool get showHashtags; bool get showSource; String? get twitterExtractionUrl; bool get isExtractingImage; bool get keepStructure; bool get isEditMode; String? get activePillId;
+ PromptLength get promptLength; GenerateState get status; GeneratingStep get generatingStep; CuratedPost? get curatedPost; List<String> get historyStack; List<String> get recentInputs; String? get errorMessage; AiProvider? get suggestedFallbackProvider; String? get rateLimitWaitMessage; String? get validationMessage; String? get pendingInput; bool get isResearchModeEnabled; List<String> get searchSources; bool get showTitle; bool get showHashtags; bool get showSource; String? get twitterExtractionUrl; bool get isExtractingImage; bool get keepStructure; bool get isEditMode; Set<String> get selectedPillIds;
 /// Create a copy of GenerateUiState
 /// with the given fields replaced by the non-null parameter values.
 @JsonKey(includeFromJson: false, includeToJson: false)
@@ -26,16 +26,16 @@ $GenerateUiStateCopyWith<GenerateUiState> get copyWith => _$GenerateUiStateCopyW
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is GenerateUiState&&(identical(other.promptLength, promptLength) || other.promptLength == promptLength)&&(identical(other.status, status) || other.status == status)&&(identical(other.generatingStep, generatingStep) || other.generatingStep == generatingStep)&&(identical(other.curatedPost, curatedPost) || other.curatedPost == curatedPost)&&const DeepCollectionEquality().equals(other.historyStack, historyStack)&&const DeepCollectionEquality().equals(other.recentInputs, recentInputs)&&(identical(other.errorMessage, errorMessage) || other.errorMessage == errorMessage)&&(identical(other.suggestedFallbackProvider, suggestedFallbackProvider) || other.suggestedFallbackProvider == suggestedFallbackProvider)&&(identical(other.rateLimitWaitMessage, rateLimitWaitMessage) || other.rateLimitWaitMessage == rateLimitWaitMessage)&&(identical(other.validationMessage, validationMessage) || other.validationMessage == validationMessage)&&(identical(other.pendingInput, pendingInput) || other.pendingInput == pendingInput)&&(identical(other.isResearchModeEnabled, isResearchModeEnabled) || other.isResearchModeEnabled == isResearchModeEnabled)&&const DeepCollectionEquality().equals(other.searchSources, searchSources)&&(identical(other.showTitle, showTitle) || other.showTitle == showTitle)&&(identical(other.showHashtags, showHashtags) || other.showHashtags == showHashtags)&&(identical(other.showSource, showSource) || other.showSource == showSource)&&(identical(other.twitterExtractionUrl, twitterExtractionUrl) || other.twitterExtractionUrl == twitterExtractionUrl)&&(identical(other.isExtractingImage, isExtractingImage) || other.isExtractingImage == isExtractingImage)&&(identical(other.keepStructure, keepStructure) || other.keepStructure == keepStructure)&&(identical(other.isEditMode, isEditMode) || other.isEditMode == isEditMode)&&(identical(other.activePillId, activePillId) || other.activePillId == activePillId));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is GenerateUiState&&(identical(other.promptLength, promptLength) || other.promptLength == promptLength)&&(identical(other.status, status) || other.status == status)&&(identical(other.generatingStep, generatingStep) || other.generatingStep == generatingStep)&&(identical(other.curatedPost, curatedPost) || other.curatedPost == curatedPost)&&const DeepCollectionEquality().equals(other.historyStack, historyStack)&&const DeepCollectionEquality().equals(other.recentInputs, recentInputs)&&(identical(other.errorMessage, errorMessage) || other.errorMessage == errorMessage)&&(identical(other.suggestedFallbackProvider, suggestedFallbackProvider) || other.suggestedFallbackProvider == suggestedFallbackProvider)&&(identical(other.rateLimitWaitMessage, rateLimitWaitMessage) || other.rateLimitWaitMessage == rateLimitWaitMessage)&&(identical(other.validationMessage, validationMessage) || other.validationMessage == validationMessage)&&(identical(other.pendingInput, pendingInput) || other.pendingInput == pendingInput)&&(identical(other.isResearchModeEnabled, isResearchModeEnabled) || other.isResearchModeEnabled == isResearchModeEnabled)&&const DeepCollectionEquality().equals(other.searchSources, searchSources)&&(identical(other.showTitle, showTitle) || other.showTitle == showTitle)&&(identical(other.showHashtags, showHashtags) || other.showHashtags == showHashtags)&&(identical(other.showSource, showSource) || other.showSource == showSource)&&(identical(other.twitterExtractionUrl, twitterExtractionUrl) || other.twitterExtractionUrl == twitterExtractionUrl)&&(identical(other.isExtractingImage, isExtractingImage) || other.isExtractingImage == isExtractingImage)&&(identical(other.keepStructure, keepStructure) || other.keepStructure == keepStructure)&&(identical(other.isEditMode, isEditMode) || other.isEditMode == isEditMode)&&const DeepCollectionEquality().equals(other.selectedPillIds, selectedPillIds));
 }
 
 
 @override
-int get hashCode => Object.hashAll([runtimeType,promptLength,status,generatingStep,curatedPost,const DeepCollectionEquality().hash(historyStack),const DeepCollectionEquality().hash(recentInputs),errorMessage,suggestedFallbackProvider,rateLimitWaitMessage,validationMessage,pendingInput,isResearchModeEnabled,const DeepCollectionEquality().hash(searchSources),showTitle,showHashtags,showSource,twitterExtractionUrl,isExtractingImage,keepStructure,isEditMode,activePillId]);
+int get hashCode => Object.hashAll([runtimeType,promptLength,status,generatingStep,curatedPost,const DeepCollectionEquality().hash(historyStack),const DeepCollectionEquality().hash(recentInputs),errorMessage,suggestedFallbackProvider,rateLimitWaitMessage,validationMessage,pendingInput,isResearchModeEnabled,const DeepCollectionEquality().hash(searchSources),showTitle,showHashtags,showSource,twitterExtractionUrl,isExtractingImage,keepStructure,isEditMode,const DeepCollectionEquality().hash(selectedPillIds)]);
 
 @override
 String toString() {
-  return 'GenerateUiState(promptLength: $promptLength, status: $status, generatingStep: $generatingStep, curatedPost: $curatedPost, historyStack: $historyStack, recentInputs: $recentInputs, errorMessage: $errorMessage, suggestedFallbackProvider: $suggestedFallbackProvider, rateLimitWaitMessage: $rateLimitWaitMessage, validationMessage: $validationMessage, pendingInput: $pendingInput, isResearchModeEnabled: $isResearchModeEnabled, searchSources: $searchSources, showTitle: $showTitle, showHashtags: $showHashtags, showSource: $showSource, twitterExtractionUrl: $twitterExtractionUrl, isExtractingImage: $isExtractingImage, keepStructure: $keepStructure, isEditMode: $isEditMode, activePillId: $activePillId)';
+  return 'GenerateUiState(promptLength: $promptLength, status: $status, generatingStep: $generatingStep, curatedPost: $curatedPost, historyStack: $historyStack, recentInputs: $recentInputs, errorMessage: $errorMessage, suggestedFallbackProvider: $suggestedFallbackProvider, rateLimitWaitMessage: $rateLimitWaitMessage, validationMessage: $validationMessage, pendingInput: $pendingInput, isResearchModeEnabled: $isResearchModeEnabled, searchSources: $searchSources, showTitle: $showTitle, showHashtags: $showHashtags, showSource: $showSource, twitterExtractionUrl: $twitterExtractionUrl, isExtractingImage: $isExtractingImage, keepStructure: $keepStructure, isEditMode: $isEditMode, selectedPillIds: $selectedPillIds)';
 }
 
 
@@ -46,7 +46,7 @@ abstract mixin class $GenerateUiStateCopyWith<$Res>  {
   factory $GenerateUiStateCopyWith(GenerateUiState value, $Res Function(GenerateUiState) _then) = _$GenerateUiStateCopyWithImpl;
 @useResult
 $Res call({
- PromptLength promptLength, GenerateState status, GeneratingStep generatingStep, CuratedPost? curatedPost, List<String> historyStack, List<String> recentInputs, String? errorMessage, AiProvider? suggestedFallbackProvider, String? rateLimitWaitMessage, String? validationMessage, String? pendingInput, bool isResearchModeEnabled, List<String> searchSources, bool showTitle, bool showHashtags, bool showSource, String? twitterExtractionUrl, bool isExtractingImage, bool keepStructure, bool isEditMode, String? activePillId
+ PromptLength promptLength, GenerateState status, GeneratingStep generatingStep, CuratedPost? curatedPost, List<String> historyStack, List<String> recentInputs, String? errorMessage, AiProvider? suggestedFallbackProvider, String? rateLimitWaitMessage, String? validationMessage, String? pendingInput, bool isResearchModeEnabled, List<String> searchSources, bool showTitle, bool showHashtags, bool showSource, String? twitterExtractionUrl, bool isExtractingImage, bool keepStructure, bool isEditMode, Set<String> selectedPillIds
 });
 
 
@@ -63,7 +63,7 @@ class _$GenerateUiStateCopyWithImpl<$Res>
 
 /// Create a copy of GenerateUiState
 /// with the given fields replaced by the non-null parameter values.
-@pragma('vm:prefer-inline') @override $Res call({Object? promptLength = null,Object? status = null,Object? generatingStep = null,Object? curatedPost = freezed,Object? historyStack = null,Object? recentInputs = null,Object? errorMessage = freezed,Object? suggestedFallbackProvider = freezed,Object? rateLimitWaitMessage = freezed,Object? validationMessage = freezed,Object? pendingInput = freezed,Object? isResearchModeEnabled = null,Object? searchSources = null,Object? showTitle = null,Object? showHashtags = null,Object? showSource = null,Object? twitterExtractionUrl = freezed,Object? isExtractingImage = null,Object? keepStructure = null,Object? isEditMode = null,Object? activePillId = freezed,}) {
+@pragma('vm:prefer-inline') @override $Res call({Object? promptLength = null,Object? status = null,Object? generatingStep = null,Object? curatedPost = freezed,Object? historyStack = null,Object? recentInputs = null,Object? errorMessage = freezed,Object? suggestedFallbackProvider = freezed,Object? rateLimitWaitMessage = freezed,Object? validationMessage = freezed,Object? pendingInput = freezed,Object? isResearchModeEnabled = null,Object? searchSources = null,Object? showTitle = null,Object? showHashtags = null,Object? showSource = null,Object? twitterExtractionUrl = freezed,Object? isExtractingImage = null,Object? keepStructure = null,Object? isEditMode = null,Object? selectedPillIds = null,}) {
   return _then(GenerateUiState(
 promptLength: null == promptLength ? _self.promptLength : promptLength // ignore: cast_nullable_to_non_nullable
 as PromptLength,status: null == status ? _self.status : status // ignore: cast_nullable_to_non_nullable
@@ -85,8 +85,8 @@ as bool,twitterExtractionUrl: freezed == twitterExtractionUrl ? _self.twitterExt
 as String?,isExtractingImage: null == isExtractingImage ? _self.isExtractingImage : isExtractingImage // ignore: cast_nullable_to_non_nullable
 as bool,keepStructure: null == keepStructure ? _self.keepStructure : keepStructure // ignore: cast_nullable_to_non_nullable
 as bool,isEditMode: null == isEditMode ? _self.isEditMode : isEditMode // ignore: cast_nullable_to_non_nullable
-as bool,activePillId: freezed == activePillId ? _self.activePillId : activePillId // ignore: cast_nullable_to_non_nullable
-as String?,
+as bool,selectedPillIds: null == selectedPillIds ? _self.selectedPillIds : selectedPillIds // ignore: cast_nullable_to_non_nullable
+as Set<String>,
   ));
 }
 
@@ -171,10 +171,10 @@ return $default(_that);case _:
 /// }
 /// ```
 
-@optionalTypeArgs TResult maybeWhen<TResult extends Object?>(TResult Function( PromptLength promptLength,  GenerateState status,  GeneratingStep generatingStep,  CuratedPost? curatedPost,  List<String> historyStack,  List<String> recentInputs,  String? errorMessage,  AiProvider? suggestedFallbackProvider,  String? rateLimitWaitMessage,  String? validationMessage,  String? pendingInput,  bool isResearchModeEnabled,  List<String> searchSources,  bool showTitle,  bool showHashtags,  bool showSource,  String? twitterExtractionUrl,  bool isExtractingImage,  bool keepStructure,  bool isEditMode,  String? activePillId)?  $default,{required TResult orElse(),}) {final _that = this;
+@optionalTypeArgs TResult maybeWhen<TResult extends Object?>(TResult Function( PromptLength promptLength,  GenerateState status,  GeneratingStep generatingStep,  CuratedPost? curatedPost,  List<String> historyStack,  List<String> recentInputs,  String? errorMessage,  AiProvider? suggestedFallbackProvider,  String? rateLimitWaitMessage,  String? validationMessage,  String? pendingInput,  bool isResearchModeEnabled,  List<String> searchSources,  bool showTitle,  bool showHashtags,  bool showSource,  String? twitterExtractionUrl,  bool isExtractingImage,  bool keepStructure,  bool isEditMode,  Set<String> selectedPillIds)?  $default,{required TResult orElse(),}) {final _that = this;
 switch (_that) {
 case _GenerateUiState() when $default != null:
-return $default(_that.promptLength,_that.status,_that.generatingStep,_that.curatedPost,_that.historyStack,_that.recentInputs,_that.errorMessage,_that.suggestedFallbackProvider,_that.rateLimitWaitMessage,_that.validationMessage,_that.pendingInput,_that.isResearchModeEnabled,_that.searchSources,_that.showTitle,_that.showHashtags,_that.showSource,_that.twitterExtractionUrl,_that.isExtractingImage,_that.keepStructure,_that.isEditMode,_that.activePillId);case _:
+return $default(_that.promptLength,_that.status,_that.generatingStep,_that.curatedPost,_that.historyStack,_that.recentInputs,_that.errorMessage,_that.suggestedFallbackProvider,_that.rateLimitWaitMessage,_that.validationMessage,_that.pendingInput,_that.isResearchModeEnabled,_that.searchSources,_that.showTitle,_that.showHashtags,_that.showSource,_that.twitterExtractionUrl,_that.isExtractingImage,_that.keepStructure,_that.isEditMode,_that.selectedPillIds);case _:
   return orElse();
 
 }
@@ -192,10 +192,10 @@ return $default(_that.promptLength,_that.status,_that.generatingStep,_that.curat
 /// }
 /// ```
 
-@optionalTypeArgs TResult when<TResult extends Object?>(TResult Function( PromptLength promptLength,  GenerateState status,  GeneratingStep generatingStep,  CuratedPost? curatedPost,  List<String> historyStack,  List<String> recentInputs,  String? errorMessage,  AiProvider? suggestedFallbackProvider,  String? rateLimitWaitMessage,  String? validationMessage,  String? pendingInput,  bool isResearchModeEnabled,  List<String> searchSources,  bool showTitle,  bool showHashtags,  bool showSource,  String? twitterExtractionUrl,  bool isExtractingImage,  bool keepStructure,  bool isEditMode,  String? activePillId)  $default,) {final _that = this;
+@optionalTypeArgs TResult when<TResult extends Object?>(TResult Function( PromptLength promptLength,  GenerateState status,  GeneratingStep generatingStep,  CuratedPost? curatedPost,  List<String> historyStack,  List<String> recentInputs,  String? errorMessage,  AiProvider? suggestedFallbackProvider,  String? rateLimitWaitMessage,  String? validationMessage,  String? pendingInput,  bool isResearchModeEnabled,  List<String> searchSources,  bool showTitle,  bool showHashtags,  bool showSource,  String? twitterExtractionUrl,  bool isExtractingImage,  bool keepStructure,  bool isEditMode,  Set<String> selectedPillIds)  $default,) {final _that = this;
 switch (_that) {
 case _GenerateUiState():
-return $default(_that.promptLength,_that.status,_that.generatingStep,_that.curatedPost,_that.historyStack,_that.recentInputs,_that.errorMessage,_that.suggestedFallbackProvider,_that.rateLimitWaitMessage,_that.validationMessage,_that.pendingInput,_that.isResearchModeEnabled,_that.searchSources,_that.showTitle,_that.showHashtags,_that.showSource,_that.twitterExtractionUrl,_that.isExtractingImage,_that.keepStructure,_that.isEditMode,_that.activePillId);case _:
+return $default(_that.promptLength,_that.status,_that.generatingStep,_that.curatedPost,_that.historyStack,_that.recentInputs,_that.errorMessage,_that.suggestedFallbackProvider,_that.rateLimitWaitMessage,_that.validationMessage,_that.pendingInput,_that.isResearchModeEnabled,_that.searchSources,_that.showTitle,_that.showHashtags,_that.showSource,_that.twitterExtractionUrl,_that.isExtractingImage,_that.keepStructure,_that.isEditMode,_that.selectedPillIds);case _:
   throw StateError('Unexpected subclass');
 
 }
@@ -212,10 +212,10 @@ return $default(_that.promptLength,_that.status,_that.generatingStep,_that.curat
 /// }
 /// ```
 
-@optionalTypeArgs TResult? whenOrNull<TResult extends Object?>(TResult? Function( PromptLength promptLength,  GenerateState status,  GeneratingStep generatingStep,  CuratedPost? curatedPost,  List<String> historyStack,  List<String> recentInputs,  String? errorMessage,  AiProvider? suggestedFallbackProvider,  String? rateLimitWaitMessage,  String? validationMessage,  String? pendingInput,  bool isResearchModeEnabled,  List<String> searchSources,  bool showTitle,  bool showHashtags,  bool showSource,  String? twitterExtractionUrl,  bool isExtractingImage,  bool keepStructure,  bool isEditMode,  String? activePillId)?  $default,) {final _that = this;
+@optionalTypeArgs TResult? whenOrNull<TResult extends Object?>(TResult? Function( PromptLength promptLength,  GenerateState status,  GeneratingStep generatingStep,  CuratedPost? curatedPost,  List<String> historyStack,  List<String> recentInputs,  String? errorMessage,  AiProvider? suggestedFallbackProvider,  String? rateLimitWaitMessage,  String? validationMessage,  String? pendingInput,  bool isResearchModeEnabled,  List<String> searchSources,  bool showTitle,  bool showHashtags,  bool showSource,  String? twitterExtractionUrl,  bool isExtractingImage,  bool keepStructure,  bool isEditMode,  Set<String> selectedPillIds)?  $default,) {final _that = this;
 switch (_that) {
 case _GenerateUiState() when $default != null:
-return $default(_that.promptLength,_that.status,_that.generatingStep,_that.curatedPost,_that.historyStack,_that.recentInputs,_that.errorMessage,_that.suggestedFallbackProvider,_that.rateLimitWaitMessage,_that.validationMessage,_that.pendingInput,_that.isResearchModeEnabled,_that.searchSources,_that.showTitle,_that.showHashtags,_that.showSource,_that.twitterExtractionUrl,_that.isExtractingImage,_that.keepStructure,_that.isEditMode,_that.activePillId);case _:
+return $default(_that.promptLength,_that.status,_that.generatingStep,_that.curatedPost,_that.historyStack,_that.recentInputs,_that.errorMessage,_that.suggestedFallbackProvider,_that.rateLimitWaitMessage,_that.validationMessage,_that.pendingInput,_that.isResearchModeEnabled,_that.searchSources,_that.showTitle,_that.showHashtags,_that.showSource,_that.twitterExtractionUrl,_that.isExtractingImage,_that.keepStructure,_that.isEditMode,_that.selectedPillIds);case _:
   return null;
 
 }
@@ -227,7 +227,7 @@ return $default(_that.promptLength,_that.status,_that.generatingStep,_that.curat
 
 
 class _GenerateUiState extends GenerateUiState {
-  const _GenerateUiState({this.promptLength = PromptLength.medium, this.status = GenerateState.idle, this.generatingStep = GeneratingStep.idle, this.curatedPost,  List<String> historyStack = const [],  List<String> recentInputs = const [], this.errorMessage, this.suggestedFallbackProvider, this.rateLimitWaitMessage, this.validationMessage, this.pendingInput, this.isResearchModeEnabled = false,  List<String> searchSources = const [], this.showTitle = true, this.showHashtags = true, this.showSource = true, this.twitterExtractionUrl, this.isExtractingImage = false, this.keepStructure = false, this.isEditMode = false, this.activePillId}): _historyStack = historyStack,_recentInputs = recentInputs,_searchSources = searchSources,super._();
+  const _GenerateUiState({this.promptLength = PromptLength.medium, this.status = GenerateState.idle, this.generatingStep = GeneratingStep.idle, this.curatedPost,  List<String> historyStack = const [],  List<String> recentInputs = const [], this.errorMessage, this.suggestedFallbackProvider, this.rateLimitWaitMessage, this.validationMessage, this.pendingInput, this.isResearchModeEnabled = false,  List<String> searchSources = const [], this.showTitle = true, this.showHashtags = true, this.showSource = true, this.twitterExtractionUrl, this.isExtractingImage = false, this.keepStructure = false, this.isEditMode = false,  Set<String> selectedPillIds = const <String>{}}): _historyStack = historyStack,_recentInputs = recentInputs,_searchSources = searchSources,_selectedPillIds = selectedPillIds,super._();
   
 
 @override@JsonKey() final  PromptLength promptLength;
@@ -268,7 +268,13 @@ class _GenerateUiState extends GenerateUiState {
 @override@JsonKey() final  bool isExtractingImage;
 @override@JsonKey() final  bool keepStructure;
 @override@JsonKey() final  bool isEditMode;
-@override final  String? activePillId;
+ final  Set<String> _selectedPillIds;
+@override@JsonKey() Set<String> get selectedPillIds {
+  if (_selectedPillIds is EqualUnmodifiableSetView) return _selectedPillIds;
+  // ignore: implicit_dynamic_type
+  return EqualUnmodifiableSetView(_selectedPillIds);
+}
+
 
 /// Create a copy of GenerateUiState
 /// with the given fields replaced by the non-null parameter values.
@@ -280,16 +286,16 @@ _$GenerateUiStateCopyWith<_GenerateUiState> get copyWith => __$GenerateUiStateCo
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is _GenerateUiState&&(identical(other.promptLength, promptLength) || other.promptLength == promptLength)&&(identical(other.status, status) || other.status == status)&&(identical(other.generatingStep, generatingStep) || other.generatingStep == generatingStep)&&(identical(other.curatedPost, curatedPost) || other.curatedPost == curatedPost)&&const DeepCollectionEquality().equals(other._historyStack, _historyStack)&&const DeepCollectionEquality().equals(other._recentInputs, _recentInputs)&&(identical(other.errorMessage, errorMessage) || other.errorMessage == errorMessage)&&(identical(other.suggestedFallbackProvider, suggestedFallbackProvider) || other.suggestedFallbackProvider == suggestedFallbackProvider)&&(identical(other.rateLimitWaitMessage, rateLimitWaitMessage) || other.rateLimitWaitMessage == rateLimitWaitMessage)&&(identical(other.validationMessage, validationMessage) || other.validationMessage == validationMessage)&&(identical(other.pendingInput, pendingInput) || other.pendingInput == pendingInput)&&(identical(other.isResearchModeEnabled, isResearchModeEnabled) || other.isResearchModeEnabled == isResearchModeEnabled)&&const DeepCollectionEquality().equals(other._searchSources, _searchSources)&&(identical(other.showTitle, showTitle) || other.showTitle == showTitle)&&(identical(other.showHashtags, showHashtags) || other.showHashtags == showHashtags)&&(identical(other.showSource, showSource) || other.showSource == showSource)&&(identical(other.twitterExtractionUrl, twitterExtractionUrl) || other.twitterExtractionUrl == twitterExtractionUrl)&&(identical(other.isExtractingImage, isExtractingImage) || other.isExtractingImage == isExtractingImage)&&(identical(other.keepStructure, keepStructure) || other.keepStructure == keepStructure)&&(identical(other.isEditMode, isEditMode) || other.isEditMode == isEditMode)&&(identical(other.activePillId, activePillId) || other.activePillId == activePillId));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is _GenerateUiState&&(identical(other.promptLength, promptLength) || other.promptLength == promptLength)&&(identical(other.status, status) || other.status == status)&&(identical(other.generatingStep, generatingStep) || other.generatingStep == generatingStep)&&(identical(other.curatedPost, curatedPost) || other.curatedPost == curatedPost)&&const DeepCollectionEquality().equals(other._historyStack, _historyStack)&&const DeepCollectionEquality().equals(other._recentInputs, _recentInputs)&&(identical(other.errorMessage, errorMessage) || other.errorMessage == errorMessage)&&(identical(other.suggestedFallbackProvider, suggestedFallbackProvider) || other.suggestedFallbackProvider == suggestedFallbackProvider)&&(identical(other.rateLimitWaitMessage, rateLimitWaitMessage) || other.rateLimitWaitMessage == rateLimitWaitMessage)&&(identical(other.validationMessage, validationMessage) || other.validationMessage == validationMessage)&&(identical(other.pendingInput, pendingInput) || other.pendingInput == pendingInput)&&(identical(other.isResearchModeEnabled, isResearchModeEnabled) || other.isResearchModeEnabled == isResearchModeEnabled)&&const DeepCollectionEquality().equals(other._searchSources, _searchSources)&&(identical(other.showTitle, showTitle) || other.showTitle == showTitle)&&(identical(other.showHashtags, showHashtags) || other.showHashtags == showHashtags)&&(identical(other.showSource, showSource) || other.showSource == showSource)&&(identical(other.twitterExtractionUrl, twitterExtractionUrl) || other.twitterExtractionUrl == twitterExtractionUrl)&&(identical(other.isExtractingImage, isExtractingImage) || other.isExtractingImage == isExtractingImage)&&(identical(other.keepStructure, keepStructure) || other.keepStructure == keepStructure)&&(identical(other.isEditMode, isEditMode) || other.isEditMode == isEditMode)&&const DeepCollectionEquality().equals(other._selectedPillIds, _selectedPillIds));
 }
 
 
 @override
-int get hashCode => Object.hashAll([runtimeType,promptLength,status,generatingStep,curatedPost,const DeepCollectionEquality().hash(_historyStack),const DeepCollectionEquality().hash(_recentInputs),errorMessage,suggestedFallbackProvider,rateLimitWaitMessage,validationMessage,pendingInput,isResearchModeEnabled,const DeepCollectionEquality().hash(_searchSources),showTitle,showHashtags,showSource,twitterExtractionUrl,isExtractingImage,keepStructure,isEditMode,activePillId]);
+int get hashCode => Object.hashAll([runtimeType,promptLength,status,generatingStep,curatedPost,const DeepCollectionEquality().hash(_historyStack),const DeepCollectionEquality().hash(_recentInputs),errorMessage,suggestedFallbackProvider,rateLimitWaitMessage,validationMessage,pendingInput,isResearchModeEnabled,const DeepCollectionEquality().hash(_searchSources),showTitle,showHashtags,showSource,twitterExtractionUrl,isExtractingImage,keepStructure,isEditMode,const DeepCollectionEquality().hash(_selectedPillIds)]);
 
 @override
 String toString() {
-  return 'GenerateUiState(promptLength: $promptLength, status: $status, generatingStep: $generatingStep, curatedPost: $curatedPost, historyStack: $historyStack, recentInputs: $recentInputs, errorMessage: $errorMessage, suggestedFallbackProvider: $suggestedFallbackProvider, rateLimitWaitMessage: $rateLimitWaitMessage, validationMessage: $validationMessage, pendingInput: $pendingInput, isResearchModeEnabled: $isResearchModeEnabled, searchSources: $searchSources, showTitle: $showTitle, showHashtags: $showHashtags, showSource: $showSource, twitterExtractionUrl: $twitterExtractionUrl, isExtractingImage: $isExtractingImage, keepStructure: $keepStructure, isEditMode: $isEditMode, activePillId: $activePillId)';
+  return 'GenerateUiState(promptLength: $promptLength, status: $status, generatingStep: $generatingStep, curatedPost: $curatedPost, historyStack: $historyStack, recentInputs: $recentInputs, errorMessage: $errorMessage, suggestedFallbackProvider: $suggestedFallbackProvider, rateLimitWaitMessage: $rateLimitWaitMessage, validationMessage: $validationMessage, pendingInput: $pendingInput, isResearchModeEnabled: $isResearchModeEnabled, searchSources: $searchSources, showTitle: $showTitle, showHashtags: $showHashtags, showSource: $showSource, twitterExtractionUrl: $twitterExtractionUrl, isExtractingImage: $isExtractingImage, keepStructure: $keepStructure, isEditMode: $isEditMode, selectedPillIds: $selectedPillIds)';
 }
 
 
@@ -300,7 +306,7 @@ abstract mixin class _$GenerateUiStateCopyWith<$Res> implements $GenerateUiState
   factory _$GenerateUiStateCopyWith(_GenerateUiState value, $Res Function(_GenerateUiState) _then) = __$GenerateUiStateCopyWithImpl;
 @override @useResult
 $Res call({
- PromptLength promptLength, GenerateState status, GeneratingStep generatingStep, CuratedPost? curatedPost, List<String> historyStack, List<String> recentInputs, String? errorMessage, AiProvider? suggestedFallbackProvider, String? rateLimitWaitMessage, String? validationMessage, String? pendingInput, bool isResearchModeEnabled, List<String> searchSources, bool showTitle, bool showHashtags, bool showSource, String? twitterExtractionUrl, bool isExtractingImage, bool keepStructure, bool isEditMode, String? activePillId
+ PromptLength promptLength, GenerateState status, GeneratingStep generatingStep, CuratedPost? curatedPost, List<String> historyStack, List<String> recentInputs, String? errorMessage, AiProvider? suggestedFallbackProvider, String? rateLimitWaitMessage, String? validationMessage, String? pendingInput, bool isResearchModeEnabled, List<String> searchSources, bool showTitle, bool showHashtags, bool showSource, String? twitterExtractionUrl, bool isExtractingImage, bool keepStructure, bool isEditMode, Set<String> selectedPillIds
 });
 
 
@@ -317,7 +323,7 @@ class __$GenerateUiStateCopyWithImpl<$Res>
 
 /// Create a copy of GenerateUiState
 /// with the given fields replaced by the non-null parameter values.
-@override @pragma('vm:prefer-inline') $Res call({Object? promptLength = null,Object? status = null,Object? generatingStep = null,Object? curatedPost = freezed,Object? historyStack = null,Object? recentInputs = null,Object? errorMessage = freezed,Object? suggestedFallbackProvider = freezed,Object? rateLimitWaitMessage = freezed,Object? validationMessage = freezed,Object? pendingInput = freezed,Object? isResearchModeEnabled = null,Object? searchSources = null,Object? showTitle = null,Object? showHashtags = null,Object? showSource = null,Object? twitterExtractionUrl = freezed,Object? isExtractingImage = null,Object? keepStructure = null,Object? isEditMode = null,Object? activePillId = freezed,}) {
+@override @pragma('vm:prefer-inline') $Res call({Object? promptLength = null,Object? status = null,Object? generatingStep = null,Object? curatedPost = freezed,Object? historyStack = null,Object? recentInputs = null,Object? errorMessage = freezed,Object? suggestedFallbackProvider = freezed,Object? rateLimitWaitMessage = freezed,Object? validationMessage = freezed,Object? pendingInput = freezed,Object? isResearchModeEnabled = null,Object? searchSources = null,Object? showTitle = null,Object? showHashtags = null,Object? showSource = null,Object? twitterExtractionUrl = freezed,Object? isExtractingImage = null,Object? keepStructure = null,Object? isEditMode = null,Object? selectedPillIds = null,}) {
   return _then(_GenerateUiState(
 promptLength: null == promptLength ? _self.promptLength : promptLength // ignore: cast_nullable_to_non_nullable
 as PromptLength,status: null == status ? _self.status : status // ignore: cast_nullable_to_non_nullable
@@ -339,8 +345,8 @@ as bool,twitterExtractionUrl: freezed == twitterExtractionUrl ? _self.twitterExt
 as String?,isExtractingImage: null == isExtractingImage ? _self.isExtractingImage : isExtractingImage // ignore: cast_nullable_to_non_nullable
 as bool,keepStructure: null == keepStructure ? _self.keepStructure : keepStructure // ignore: cast_nullable_to_non_nullable
 as bool,isEditMode: null == isEditMode ? _self.isEditMode : isEditMode // ignore: cast_nullable_to_non_nullable
-as bool,activePillId: freezed == activePillId ? _self.activePillId : activePillId // ignore: cast_nullable_to_non_nullable
-as String?,
+as bool,selectedPillIds: null == selectedPillIds ? _self._selectedPillIds : selectedPillIds // ignore: cast_nullable_to_non_nullable
+as Set<String>,
   ));
 }
 

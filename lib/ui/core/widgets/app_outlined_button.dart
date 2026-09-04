@@ -15,6 +15,7 @@ class AppOutlinedButton extends StatefulWidget {
     this.height = 52,
     this.borderColor,
     this.foregroundColor,
+    this.padding,
   });
 
   final String label;
@@ -24,6 +25,7 @@ class AppOutlinedButton extends StatefulWidget {
   final double height;
   final Color? borderColor;
   final Color? foregroundColor;
+  final EdgeInsetsGeometry? padding;
 
   @override
   State<AppOutlinedButton> createState() => _AppOutlinedButtonState();
@@ -106,7 +108,7 @@ class _AppOutlinedButtonState extends State<AppOutlinedButton>
             borderRadius: AppSpacing.borderRadiusPill,
             border: Border.all(color: outlineColor, width: 1),
           ),
-          padding: const EdgeInsets.symmetric(horizontal: 24),
+          padding: widget.padding ?? const EdgeInsets.symmetric(horizontal: 16),
           child: Center(
             child: widget.isLoading
                 ? SizedBox(
@@ -119,13 +121,20 @@ class _AppOutlinedButtonState extends State<AppOutlinedButton>
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
                       if (widget.icon != null) ...[
-                        Icon(widget.icon, size: 20, color: fgColor),
-                        const SizedBox(width: 12),
+                        Icon(widget.icon, size: 18, color: fgColor),
+                        const SizedBox(width: 8),
                       ],
-                      Text(
-                        widget.label,
-                        style: theme.textTheme.labelLarge?.copyWith(
-                          color: fgColor,
+                      Flexible(
+                        child: FittedBox(
+                          fit: BoxFit.scaleDown,
+                          child: Text(
+                            widget.label,
+                            style: theme.textTheme.labelLarge?.copyWith(
+                              color: fgColor,
+                            ),
+                            maxLines: 1,
+                            textAlign: TextAlign.center,
+                          ),
                         ),
                       ),
                     ],
