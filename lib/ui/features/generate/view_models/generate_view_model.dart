@@ -129,7 +129,7 @@ class GenerateViewModel extends Notifier<GenerateUiState>
       case PromptLength.medium:
         return 'Medium and Natural. Translate and rewrite the original content naturally so it is easy to digest. Avoid stiff, literal translation phrasing, but ensure 100% of the original meaning is retained.';
       case PromptLength.long:
-        return 'Long and Contextual. Provide a comprehensive post. Weave in additional relevant context and background information (using the provided research/source facts or general football knowledge) to enrich the story, while keeping the original facts intact.';
+        return 'Long and Comprehensive. Extract EVERY available detail, minor fact, statistic, and quote from the source material to write a full-length, detailed article. DO NOT invent facts, DO NOT use external knowledge, and DO NOT add personal commentary, assumptions, or meaningless filler. The length must come ONLY from a deep, thorough extraction of the provided source.';
     }
   }
 

@@ -113,6 +113,9 @@ class GenerationPromptManager {
     buf.writeln(
       '- Maintain a strictly objective, journalistic tone at all times.',
     );
+    buf.writeln(
+      '- ABSOLUTE FACTUAL GROUNDING: NEVER fabricate facts, statistics, quotes, or background context. Do NOT extrapolate or add meaningless filler commentary to lengthen the post.',
+    );
     buf.writeln('');
 
     // Length + structure adaptation (Android PromptManager parity).
@@ -181,7 +184,7 @@ class GenerationPromptManager {
       );
     } else {
       buf.writeln(
-        '  "body": "Main content in formal neutral Bahasa Malaysia. Length MUST be proportional to the source — do not add or invent facts. If source is short, keep body short; if long, keep it dense. Do NOT repeat the title or add source/hashtag lines inside body. No emoji. Paragraphs separated by \\\\n\\\\n.",',
+        '  "body": "Main content in formal neutral Bahasa Malaysia. Follow the LENGTH REQUIREMENT strictly, BUT you MUST NEVER invent facts, extrapolate, or add meaningless commentary/fluff to reach a length goal. All information MUST be sourced exclusively from the provided text. Do NOT repeat the title or add source/hashtag lines inside body. No emoji. Paragraphs separated by \\\\n\\\\n.",',
       );
     }
     buf.writeln(
@@ -205,7 +208,7 @@ class GenerationPromptManager {
       );
     } else {
       buf.writeln(
-        '- Length is proportional: summarise the source without adding new facts; never pad artificially.',
+        '- Factual grounding is absolute: adhere to LENGTH REQUIREMENT by extracting every detail when requested, but NEVER invent facts, speculate, or pad with empty commentary to reach length targets.',
       );
       buf.writeln(
         '- Paragraphs follow the source structure — split when the source shifts aspect/fact, not arbitrarily. Use \\\\n\\\\n for readability when body exceeds one dense paragraph.',
