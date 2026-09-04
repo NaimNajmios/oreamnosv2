@@ -26,12 +26,19 @@ void main() {
 
   group('DefaultPills', () {
     test('contains expected standard refinement actions', () {
-      expect(kDefaultRefinementPills.length, 3);
+      expect(kDefaultRefinementPills.length, 10);
       final ids = kDefaultRefinementPills.map((p) => p.id).toSet();
-      expect(ids.length, 3);
+      expect(ids.length, 10);
       expect(ids, contains('default_rephrase'));
       expect(ids, contains('default_check_flow'));
       expect(ids, contains('default_shorter'));
+      expect(ids, contains('default_bullet_points'));
+      expect(ids, contains('default_sports_stats'));
+      expect(ids, contains('default_sports_post'));
+      expect(ids, contains('default_split_paragraphs'));
+      expect(ids, contains('default_restructure'));
+      expect(ids, contains('default_grammar_check'));
+      expect(ids, contains('default_fix_translation'));
 
       for (final pill in kDefaultRefinementPills) {
         expect(pill.label.isNotEmpty, isTrue);
