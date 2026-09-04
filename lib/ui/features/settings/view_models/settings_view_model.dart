@@ -37,6 +37,8 @@ class SettingsNotifier extends Notifier<SettingsState> {
     final currentApiKey = await _preferencesService.getApiKey(selectedProvider);
     final isFanModeEnabled = _preferencesService.isFanModeEnabled;
     final fanClubName = _preferencesService.fanClubName;
+    final persistGenerationOptions =
+        _preferencesService.persistGenerationOptions;
     state = state.copyWith(
       isInitialized: true,
       themeMode: themeMode,
@@ -52,6 +54,7 @@ class SettingsNotifier extends Notifier<SettingsState> {
       currentApiKey: currentApiKey,
       isFanModeEnabled: isFanModeEnabled,
       fanClubName: fanClubName,
+      persistGenerationOptions: persistGenerationOptions,
     );
   }
 
@@ -197,5 +200,11 @@ class SettingsNotifier extends Notifier<SettingsState> {
     if (state.fanClubName == name) return;
     await _preferencesService.setFanClubName(name);
     state = state.copyWith(fanClubName: name);
+  }
+
+  Future<void> setPersistGenerationOptions(bool enabled) async {
+    if (state.persistGenerationOptions == enabled) return;
+    await _preferencesService.setPersistGenerationOptions(enabled);
+    state = state.copyWith(persistGenerationOptions: enabled);
   }
 }

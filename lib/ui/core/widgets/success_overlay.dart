@@ -114,10 +114,7 @@ class _SuccessOverlayState extends State<SuccessOverlay>
                       Stack(
                         alignment: Alignment.center,
                         children: [
-                          const KickoffMark(
-                            size: 150,
-                            highlightedIndex: 4,
-                          ),
+                          const KickoffMark(size: 150, highlightedIndex: 4),
                           Container(
                             width: 110,
                             height: 110,

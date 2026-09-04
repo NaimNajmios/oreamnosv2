@@ -147,15 +147,11 @@ class _PicsartToolDockState extends ConsumerState<PicsartToolDock> {
                 ),
                 child: KeyedSubtree(
                   key: ValueKey(
-                    ref
-                            .watch(cardGeneratorViewModelProvider)
-                            .activePanel ??
+                    ref.watch(cardGeneratorViewModelProvider).activePanel ??
                         'none',
                   ),
                   child:
-                      ref
-                              .watch(cardGeneratorViewModelProvider)
-                              .activePanel !=
+                      ref.watch(cardGeneratorViewModelProvider).activePanel !=
                           null
                       ? _buildActivePanel(theme)
                       : const SizedBox.shrink(),

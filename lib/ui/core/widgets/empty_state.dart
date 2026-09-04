@@ -102,10 +102,7 @@ class _KickoffIllustration extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final mark = KickoffMark(
-      size: 120,
-      highlightedIndex: accentIndex,
-    );
+    final mark = KickoffMark(size: 120, highlightedIndex: accentIndex);
     if (AppMotion.shouldSuppressAmbient(context)) return mark;
     return mark
         .animate(onPlay: (controller) => controller.repeat(reverse: true))

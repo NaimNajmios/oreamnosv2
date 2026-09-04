@@ -37,9 +37,7 @@ class CardStage extends StatelessWidget {
                     duration: AppMotion.cardMove,
                     switchInCurve: AppMotion.curveCardMove,
                     child: RepaintBoundary(
-                      key: ValueKey(
-                        '${boundaryKey.hashCode}-$aspectRatio',
-                      ),
+                      key: ValueKey('${boundaryKey.hashCode}-$aspectRatio'),
                       child: child,
                     ),
                   ),

@@ -53,9 +53,7 @@ abstract final class AppSnackBar {
         ),
         duration: duration,
         behavior: SnackBarBehavior.floating,
-        shape: RoundedRectangleBorder(
-          borderRadius: AppSpacing.borderRadiusSm,
-        ),
+        shape: RoundedRectangleBorder(borderRadius: AppSpacing.borderRadiusSm),
       ),
     );
   }
@@ -67,11 +65,7 @@ abstract final class AppSnackBar {
 
   static void showSuccess(BuildContext context, String message) {
     Haptics.success();
-    show(
-      context,
-      message,
-      icon: Icons.check_circle_rounded,
-    );
+    show(context, message, icon: Icons.check_circle_rounded);
   }
 
   static void showError(BuildContext context, String message) {

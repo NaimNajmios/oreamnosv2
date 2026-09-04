@@ -20,6 +20,7 @@ class SettingsState {
   final String fanClubName;
   final bool? lastTestOk;
   final DateTime? lastTestedAt;
+  final bool persistGenerationOptions;
 
   const SettingsState({
     this.isInitialized = false,
@@ -38,6 +39,7 @@ class SettingsState {
     this.fanClubName = '',
     this.lastTestOk,
     this.lastTestedAt,
+    this.persistGenerationOptions = false,
   });
 
   SettingsState copyWith({
@@ -61,6 +63,7 @@ class SettingsState {
     bool? lastTestOk,
     DateTime? lastTestedAt,
     bool clearLastTest = false,
+    bool? persistGenerationOptions,
   }) {
     return SettingsState(
       isInitialized: isInitialized ?? this.isInitialized,
@@ -79,6 +82,8 @@ class SettingsState {
       fanClubName: fanClubName ?? this.fanClubName,
       lastTestOk: clearLastTest ? null : (lastTestOk ?? this.lastTestOk),
       lastTestedAt: clearLastTest ? null : (lastTestedAt ?? this.lastTestedAt),
+      persistGenerationOptions:
+          persistGenerationOptions ?? this.persistGenerationOptions,
     );
   }
 }

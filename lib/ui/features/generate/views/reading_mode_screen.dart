@@ -105,57 +105,46 @@ class _ReadingModeScreenState extends ConsumerState<ReadingModeScreen>
                         constraints: const BoxConstraints(
                           maxWidth: AppSpacing.maxContentWidth,
                         ),
-                        child:
-                            SingleChildScrollView(
-                              padding: const EdgeInsets.fromLTRB(
-                                AppSpacing.xl,
-                                AppSpacing.huge + AppSpacing.base,
-                                AppSpacing.xl,
-                                100,
-                              ),
-                              child: widget.curatedPost != null
-                                  ? Column(
-                                      crossAxisAlignment:
-                                          CrossAxisAlignment.start,
-                                      children: [
-                                        TitleBlock(
-                                          title: widget.curatedPost!.title,
-                                        ),
-                                        BodyBlock(
-                                          bodyMarkdown: widget
-                                              .curatedPost!
-                                              .bodyMarkdown,
-                                        ),
-                                        if (widget
-                                            .curatedPost!
-                                            .hashtags
-                                            .isNotEmpty) ...[
-                                          const SizedBox(
-                                            height: AppSpacing.base,
-                                          ),
-                                          HashtagChips(
-                                            hashtags:
-                                                widget.curatedPost!.hashtags,
-                                          ),
-                                        ],
-                                        if (!widget
-                                            .curatedPost!
-                                            .source
-                                            .isEmpty) ...[
-                                          const SizedBox(
-                                            height: AppSpacing.base,
-                                          ),
-                                          SourceAttributionCard(
-                                            source:
-                                                widget.curatedPost!.source,
-                                          ),
-                                        ],
-                                      ],
-                                    )
-                                  : TypewriterMarkdown(data: widget.content),
-                            )
-                                .animate()
-                                .fadeIn(duration: AppMotion.transitionSpec),
+                        child: SingleChildScrollView(
+                          padding: const EdgeInsets.fromLTRB(
+                            AppSpacing.xl,
+                            AppSpacing.huge + AppSpacing.base,
+                            AppSpacing.xl,
+                            100,
+                          ),
+                          child: widget.curatedPost != null
+                              ? Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    TitleBlock(
+                                      title: widget.curatedPost!.title,
+                                    ),
+                                    BodyBlock(
+                                      bodyMarkdown:
+                                          widget.curatedPost!.bodyMarkdown,
+                                    ),
+                                    if (widget
+                                        .curatedPost!
+                                        .hashtags
+                                        .isNotEmpty) ...[
+                                      const SizedBox(height: AppSpacing.base),
+                                      HashtagChips(
+                                        hashtags: widget.curatedPost!.hashtags,
+                                      ),
+                                    ],
+                                    if (!widget
+                                        .curatedPost!
+                                        .source
+                                        .isEmpty) ...[
+                                      const SizedBox(height: AppSpacing.base),
+                                      SourceAttributionCard(
+                                        source: widget.curatedPost!.source,
+                                      ),
+                                    ],
+                                  ],
+                                )
+                              : TypewriterMarkdown(data: widget.content),
+                        ).animate().fadeIn(duration: AppMotion.transitionSpec),
                       ),
                     ),
                   ),

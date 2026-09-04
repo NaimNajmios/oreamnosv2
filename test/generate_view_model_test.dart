@@ -89,5 +89,43 @@ void main() {
       vm.toggleEditMode();
       expect(container.read(generateViewModelProvider).isEditMode, isFalse);
     });
+
+    test('options persistence when enabled', () async {
+      final prefService = getIt<PreferencesService>();
+      await prefService.setPersistGenerationOptions(true);
+
+      vm.setPromptLength(PromptLength.long);
+      vm.toggleResearchMode();
+      vm.toggleKeepStructure();
+
+      expect(prefService.lastPromptLength, 'long');
+      expect(prefService.lastIsResearchMode, isTrue);
+      expect(prefService.lastKeepStructure, isTrue);
+
+      // Rebuild container to verify initialization from persisted prefs
+      final newContainer = ProviderContainer();
+      addTearDown(newContainer.dispose);
+      final newState = newContainer.read(generateViewModelProvider);
+
+      expect(newState.promptLength, PromptLength.long);
+      expect(newState.isResearchModeEnabled, isTrue);
+      expect(newState.keepStructure, isTrue);
+    });
+
+    test('reset clears state and pending input', () {
+      vm.setPendingInput('some test input');
+      expect(
+        container.read(generateViewModelProvider).pendingInput,
+        'some test input',
+      );
+
+      vm.reset();
+      expect(
+        container.read(generateViewModelProvider).status,
+        GenerateState.idle,
+      );
+      expect(container.read(generateViewModelProvider).curatedPost, isNull);
+      expect(container.read(generateViewModelProvider).errorMessage, isNull);
+    });
   });
 }

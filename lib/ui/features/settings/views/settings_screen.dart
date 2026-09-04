@@ -189,6 +189,16 @@ class SettingsScreen extends ConsumerWidget {
             onTap: () => ToneSelectionDialog.show(context),
           ),
           SettingsTile(
+            leadingIcon: Icons.history_toggle_off_rounded,
+            title: 'Remember options',
+            subtitle:
+                'Persist last-used length & research mode across sessions',
+            trailing: AppSwitch(
+              value: state.persistGenerationOptions,
+              onChanged: (value) => notifier.setPersistGenerationOptions(value),
+            ),
+          ),
+          SettingsTile(
             leadingIcon: Icons.sports_soccer_rounded,
             title: 'Supporter voice',
             subtitle: state.isFanModeEnabled

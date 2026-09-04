@@ -65,9 +65,7 @@ void main() {
 
     testWidgets('KickoffDotsDivider renders five dots', (tester) async {
       await tester.pumpWidget(
-        const MaterialApp(
-          home: Scaffold(body: KickoffDotsDivider(count: 5)),
-        ),
+        const MaterialApp(home: Scaffold(body: KickoffDotsDivider(count: 5))),
       );
       expect(find.byType(KickoffDotsDivider), findsOneWidget);
     });

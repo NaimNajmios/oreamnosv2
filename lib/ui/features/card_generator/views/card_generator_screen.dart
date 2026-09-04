@@ -145,8 +145,7 @@ class _CardGeneratorScreenState extends ConsumerState<CardGeneratorScreen> {
             ),
             body: EmptyState(
               title: 'No card data',
-              description:
-                  'Go to Generate to create a post first. Your card will appear here automatically.',
+              description: 'Go to Generate to create a post first. Your card will appear here automatically.',
               icon: Icons.image_not_supported_rounded,
               illustrationStyle: EmptyIllustrationStyle.kickoff,
               actionLabel: 'Go to Generate',
@@ -244,8 +243,7 @@ class _CardGeneratorScreenState extends ConsumerState<CardGeneratorScreen> {
       return EmptyState(
         icon: Icons.image_not_supported_rounded,
         title: 'Nothing to polish yet',
-        description:
-            'Extraction returned no card data. Retry extraction or go back to Generate.',
+        description: 'Extraction returned no card data. Retry extraction or go back to Generate.',
         illustrationStyle: EmptyIllustrationStyle.kickoff,
         actionLabel: 'Back to Generate',
         onAction: () => context.go(RoutePaths.generate),

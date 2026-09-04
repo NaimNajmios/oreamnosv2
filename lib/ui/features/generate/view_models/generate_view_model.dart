@@ -19,6 +19,7 @@ import 'package:oreamnos/domain/repositories/search_repository.dart';
 import 'package:oreamnos/domain/services/enrich_context_usecase.dart';
 import 'package:oreamnos/domain/services/intent_classifier.dart';
 import 'package:oreamnos/data/services/twitter_extractor.dart';
+import 'package:oreamnos/data/services/preferences_service.dart';
 import 'package:oreamnos/ui/features/settings/view_models/settings_view_model.dart';
 import 'package:uuid/uuid.dart';
 
@@ -51,6 +52,7 @@ class GenerateViewModel extends Notifier<GenerateUiState>
     with WidgetsBindingObserver {
   late final UsageService _usageService;
   bool _isBackgrounded = false;
+  int _generationSessionId = 0;
 
   @override
   GenerateUiState build() {
@@ -59,6 +61,22 @@ class GenerateViewModel extends Notifier<GenerateUiState>
     ref.onDispose(() {
       WidgetsBinding.instance.removeObserver(this);
     });
+
+    if (getIt.isRegistered<PreferencesService>()) {
+      final prefs = getIt<PreferencesService>();
+      if (prefs.persistGenerationOptions) {
+        final length = PromptLength.values.firstWhere(
+          (e) => e.name == prefs.lastPromptLength,
+          orElse: () => PromptLength.medium,
+        );
+        return GenerateUiState(
+          promptLength: length,
+          isResearchModeEnabled: prefs.lastIsResearchMode,
+          keepStructure: prefs.lastKeepStructure,
+        );
+      }
+    }
+
     return const GenerateUiState();
   }
 
@@ -117,6 +135,12 @@ class GenerateViewModel extends Notifier<GenerateUiState>
 
   void setPromptLength(PromptLength length) {
     state = state.copyWith(promptLength: length);
+    if (getIt.isRegistered<PreferencesService>()) {
+      final prefs = getIt<PreferencesService>();
+      if (prefs.persistGenerationOptions) {
+        prefs.setLastPromptLength(length.name);
+      }
+    }
   }
 
   AiProvider _getNextProvider(AiProvider current) => current.nextFallback;
@@ -132,7 +156,14 @@ class GenerateViewModel extends Notifier<GenerateUiState>
   }
 
   void toggleResearchMode() {
-    state = state.copyWith(isResearchModeEnabled: !state.isResearchModeEnabled);
+    final next = !state.isResearchModeEnabled;
+    state = state.copyWith(isResearchModeEnabled: next);
+    if (getIt.isRegistered<PreferencesService>()) {
+      final prefs = getIt<PreferencesService>();
+      if (prefs.persistGenerationOptions) {
+        prefs.setLastIsResearchMode(next);
+      }
+    }
   }
 
   void toggleTitle() {
@@ -140,7 +171,14 @@ class GenerateViewModel extends Notifier<GenerateUiState>
   }
 
   void toggleKeepStructure() {
-    state = state.copyWith(keepStructure: !state.keepStructure);
+    final next = !state.keepStructure;
+    state = state.copyWith(keepStructure: next);
+    if (getIt.isRegistered<PreferencesService>()) {
+      final prefs = getIt<PreferencesService>();
+      if (prefs.persistGenerationOptions) {
+        prefs.setLastKeepStructure(next);
+      }
+    }
   }
 
   void toggleHashtags() {
@@ -250,8 +288,10 @@ class GenerateViewModel extends Notifier<GenerateUiState>
   }
 
   Future<void> generatePost(String input) async {
+    final sessionId = ++_generationSessionId;
     final v = validateForGenerate(input);
     if (!v.isValid) {
+      if (sessionId != _generationSessionId) return;
       state = state.copyWith(
         errorMessage: v.message,
         validationMessage: v.message,
@@ -260,6 +300,7 @@ class GenerateViewModel extends Notifier<GenerateUiState>
       return;
     }
     final apiCheck = await validateApiKey();
+    if (sessionId != _generationSessionId) return;
     if (!apiCheck.isValid) {
       state = state.copyWith(
         errorMessage: apiCheck.message,
@@ -426,6 +467,8 @@ class GenerateViewModel extends Notifier<GenerateUiState>
                 throw const NetworkFailure('Request timed out after 30s'),
           );
 
+      if (sessionId != _generationSessionId) return;
+
       // Handle Result via typed Failure — no string contains
       if (repoResult is ResultError<CuratedPost>) {
         final failure = repoResult.failure;
@@ -524,6 +567,8 @@ class GenerateViewModel extends Notifier<GenerateUiState>
         'Generated post successfully in ${stopwatch.elapsedMilliseconds}ms',
       );
 
+      if (sessionId != _generationSessionId) return;
+
       state = state.copyWith(
         curatedPost: curated,
         status: GenerateState.success,
@@ -537,6 +582,7 @@ class GenerateViewModel extends Notifier<GenerateUiState>
         );
       }
     } catch (e, st) {
+      if (sessionId != _generationSessionId) return;
       // Only for non-API failures (Twitter, scrape, timeout before repo call)
       stopwatch.stop();
       _usageService.logUsage(
@@ -591,6 +637,8 @@ class GenerateViewModel extends Notifier<GenerateUiState>
     final cp = state.curatedPost;
     if (cp == null) return;
 
+    final sessionId = ++_generationSessionId;
+
     _pushHistory(cp);
     state = state.copyWith(
       status: GenerateState.generating,
@@ -635,6 +683,9 @@ class GenerateViewModel extends Notifier<GenerateUiState>
             onTimeout: () =>
                 throw const NetworkFailure('Request timed out after 30s'),
           );
+
+      if (sessionId != _generationSessionId) return;
+
       if (repoResult is ResultError<CuratedPost>) {
         throw repoResult.failure;
       }
@@ -685,6 +736,8 @@ class GenerateViewModel extends Notifier<GenerateUiState>
         'Refined post successfully in ${stopwatch.elapsedMilliseconds}ms',
       );
 
+      if (sessionId != _generationSessionId) return;
+
       state = state.copyWith(
         curatedPost: merged,
         status: GenerateState.success,
@@ -698,6 +751,7 @@ class GenerateViewModel extends Notifier<GenerateUiState>
         );
       }
     } catch (e, st) {
+      if (sessionId != _generationSessionId) return;
       stopwatch.stop();
       _usageService.logUsage(
         UsageLog(
@@ -762,6 +816,7 @@ class GenerateViewModel extends Notifier<GenerateUiState>
   }
 
   void reset() {
+    _generationSessionId++;
     state = state.copyWith(
       status: GenerateState.idle,
       generatingStep: GeneratingStep.idle,

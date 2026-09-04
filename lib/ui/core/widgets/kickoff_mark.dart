@@ -123,10 +123,7 @@ class KickoffMarkPainter extends CustomPainter {
     final dotR = 512 * AppKickoff.dotRadiusFactor;
     for (var i = 0; i < dotCount; i++) {
       final angle = (i * 2 * math.pi) / dotCount - math.pi / 2;
-      final offset = Offset(
-        orbitR * math.cos(angle),
-        orbitR * math.sin(angle),
-      );
+      final offset = Offset(orbitR * math.cos(angle), orbitR * math.sin(angle));
       canvas.drawCircle(
         offset,
         dotR,
@@ -160,9 +157,8 @@ class KickoffDotsDivider extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final color = Theme.of(
-      context,
-    ).colorScheme.onSurface.withValues(alpha: opacity);
+    final color = Theme.of(context).colorScheme.onSurface
+        .withValues(alpha: opacity);
     return Row(
       mainAxisAlignment: MainAxisAlignment.center,
       children: List.generate(

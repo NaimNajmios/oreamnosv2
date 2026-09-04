@@ -222,4 +222,34 @@ class PreferencesService {
   Future<bool> setFanClubName(String name) {
     return _prefs.setString('fan_club_name', name);
   }
+
+  // === Generation Options Persistence ===
+
+  bool get persistGenerationOptions =>
+      _prefs.getBool(AppConstants.keyPersistGenerationOptions) ?? false;
+
+  Future<bool> setPersistGenerationOptions(bool enabled) {
+    return _prefs.setBool(AppConstants.keyPersistGenerationOptions, enabled);
+  }
+
+  String get lastPromptLength =>
+      _prefs.getString(AppConstants.keyLastPromptLength) ?? 'medium';
+
+  Future<bool> setLastPromptLength(String length) {
+    return _prefs.setString(AppConstants.keyLastPromptLength, length);
+  }
+
+  bool get lastIsResearchMode =>
+      _prefs.getBool(AppConstants.keyLastIsResearchMode) ?? false;
+
+  Future<bool> setLastIsResearchMode(bool enabled) {
+    return _prefs.setBool(AppConstants.keyLastIsResearchMode, enabled);
+  }
+
+  bool get lastKeepStructure =>
+      _prefs.getBool(AppConstants.keyLastKeepStructure) ?? false;
+
+  Future<bool> setLastKeepStructure(bool enabled) {
+    return _prefs.setBool(AppConstants.keyLastKeepStructure, enabled);
+  }
 }

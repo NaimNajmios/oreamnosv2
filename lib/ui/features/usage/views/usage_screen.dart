@@ -88,8 +88,7 @@ class _UsageScreenState extends ConsumerState<UsageScreen> {
           ? EmptyState(
               icon: Icons.analytics_outlined,
               title: 'No Usage Data Yet',
-              description:
-                  'Generated posts and API latency statistics will appear here.',
+              description: 'Generated posts and API latency statistics will appear here.',
               illustrationStyle: EmptyIllustrationStyle.kickoff,
               kickoffAccentIndex: 4,
               actionLabel: 'Generate first post',
@@ -134,10 +133,7 @@ class _UsageScreenState extends ConsumerState<UsageScreen> {
                             return StaggeredEntranceItem(
                               index: index,
                               child: TweenAnimationBuilder<double>(
-                                tween: Tween<double>(
-                                  begin: 0,
-                                  end: target,
-                                ),
+                                tween: Tween<double>(begin: 0, end: target),
                                 duration: AppMotion.count,
                                 curve: AppMotion.curveCount,
                                 builder: (context, value, _) =>
@@ -327,9 +323,7 @@ class _UsageScreenState extends ConsumerState<UsageScreen> {
                                   key: ValueKey(
                                     '${_rangeDays}_${_rangedLogs(logsAll).length}',
                                   ),
-                                  child: UsageChart(
-                                    logs: _rangedLogs(logsAll),
-                                  ),
+                                  child: UsageChart(logs: _rangedLogs(logsAll)),
                                 ),
                               ),
                             ),

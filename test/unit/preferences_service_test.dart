@@ -48,6 +48,27 @@ void main() {
       expect(svc.themeMode, AppThemeMode.system);
       expect(svc.selectedProvider, AiProvider.gemini);
       expect(svc.toneMode, 'formal');
+      expect(svc.persistGenerationOptions, isFalse);
+    });
+
+    test('generation options persistence roundtrip', () async {
+      final prefs = await createMockPrefs();
+      final svc = createTestPreferencesService(prefs);
+
+      expect(svc.persistGenerationOptions, isFalse);
+      expect(svc.lastPromptLength, 'medium');
+      expect(svc.lastIsResearchMode, isFalse);
+      expect(svc.lastKeepStructure, isFalse);
+
+      await svc.setPersistGenerationOptions(true);
+      await svc.setLastPromptLength('long');
+      await svc.setLastIsResearchMode(true);
+      await svc.setLastKeepStructure(true);
+
+      expect(svc.persistGenerationOptions, isTrue);
+      expect(svc.lastPromptLength, 'long');
+      expect(svc.lastIsResearchMode, isTrue);
+      expect(svc.lastKeepStructure, isTrue);
     });
   });
 }

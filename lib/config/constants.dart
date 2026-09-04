@@ -47,4 +47,9 @@ abstract final class AppConstants {
   static const String keyDefaultHashtags = 'default_hashtags';
   static const String keyAutoAppendHashtags = 'auto_append_hashtags';
   static const String keyReadingTextSize = 'reading_text_size';
+  static const String keyPersistGenerationOptions =
+      'persist_generation_options';
+  static const String keyLastPromptLength = 'last_prompt_length';
+  static const String keyLastIsResearchMode = 'last_is_research_mode';
+  static const String keyLastKeepStructure = 'last_keep_structure';
 }

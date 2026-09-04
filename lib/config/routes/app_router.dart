@@ -52,10 +52,7 @@ CustomTransitionPage<T> _kickoffTabPage<T>({required Widget child}) {
         opacity: curved,
         child: SlideTransition(
           position: curved.drive(
-            Tween<Offset>(
-              begin: const Offset(0, 0.02),
-              end: Offset.zero,
-            ),
+            Tween<Offset>(begin: const Offset(0, 0.02), end: Offset.zero),
           ),
           child: child,
         ),
