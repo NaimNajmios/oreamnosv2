@@ -105,6 +105,16 @@ class CardConfig {
     this.showBrandFooter = true,
   });
 
+  /// Dynamic aspect ratio scale factor for Magic Resize
+  double get aspectRatioScale {
+    return switch (exportSize) {
+      ExportSize.story => 1.05,
+      ExportSize.portrait || ExportSize.photo34 => 1.0,
+      ExportSize.wide => 0.88,
+      ExportSize.square => 1.0,
+    };
+  }
+
   TextStyle font({
     required double fontSize,
     FontWeight? fontWeight,
@@ -117,7 +127,7 @@ class CardConfig {
   }) {
     final family = primaryFontFamilyName ?? 'Inter';
     final scaledSize = applyMultiplier
-        ? fontSize * fontSizeMultiplier
+        ? fontSize * fontSizeMultiplier * aspectRatioScale
         : fontSize;
     return GoogleFonts.getFont(
       family,

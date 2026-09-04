@@ -1,5 +1,3 @@
-import 'dart:ui' as dart_ui;
-
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
@@ -20,6 +18,7 @@ import '../view_models/card_generator_view_model.dart';
 import '../view_models/card_generator_state.dart';
 import '../widgets/card_stage.dart';
 import '../widgets/renderers/card_canvas_dispatcher.dart';
+import '../widgets/card_background_renderer.dart';
 
 import 'package:oreamnos/domain/models/card_config.dart';
 
@@ -261,16 +260,7 @@ class _CardGeneratorScreenState extends ConsumerState<CardGeneratorScreen> {
               child: Stack(
                 fit: StackFit.expand,
                 children: [
-                  // Preset background handling (as in original)
-                  if (state.backgroundType == BackgroundType.preset &&
-                      state.presetBackground != null)
-                    Container(
-                      decoration: BoxDecoration(
-                        gradient: _presetGradient(state.presetBackground!),
-                      ),
-                    )
-                  else if (state.backgroundImage != null)
-                    _buildBackgroundByPosition(state),
+                  CardBackgroundRenderer(state: state),
                   AnimatedSwitcher(
                     duration: const Duration(milliseconds: 300),
                     child: CardCanvasDispatcher(
@@ -442,272 +432,9 @@ class _CardGeneratorScreenState extends ConsumerState<CardGeneratorScreen> {
       ],
     );
   }
-
-  Widget _buildBackgroundByPosition(CardGeneratorState state) {
-    final img = _wrapWithOpacityAndBlur(
-      opacity: state.imageOpacity,
-      blur: state.backgroundBlurRadius,
-      child: _applyPhotoFilter(
-        state.photoFilter,
-        Image.file(state.backgroundImage!, fit: BoxFit.cover),
-      ),
-    );
-    switch (state.imagePosition) {
-      case ImagePosition.splitLeft:
-        return Row(
-          children: [
-            Expanded(
-              child: InteractiveViewer(
-                boundaryMargin: const EdgeInsets.all(double.infinity),
-                minScale: 0.5,
-                maxScale: 4.0,
-                child: img,
-              ),
-            ),
-            const Expanded(child: SizedBox.shrink()),
-          ],
-        );
-      case ImagePosition.splitRight:
-        return Row(
-          children: [
-            const Expanded(child: SizedBox.shrink()),
-            Expanded(
-              child: InteractiveViewer(
-                boundaryMargin: const EdgeInsets.all(double.infinity),
-                minScale: 0.5,
-                maxScale: 4.0,
-                child: img,
-              ),
-            ),
-          ],
-        );
-      case ImagePosition.overlayTop:
-        return Column(
-          children: [
-            SizedBox(
-              height: 140,
-              child: ClipRRect(
-                borderRadius: const BorderRadius.vertical(
-                  top: Radius.circular(12),
-                ),
-                child: img,
-              ),
-            ),
-            const Expanded(child: SizedBox.shrink()),
-          ],
-        );
-      case ImagePosition.minimal:
-        return Center(
-          child: Padding(
-            padding: const EdgeInsets.all(32),
-            child: ClipRRect(
-              borderRadius: BorderRadius.circular(12),
-              child: SizedBox(width: 200, height: 200, child: img),
-            ),
-          ),
-        );
-      case ImagePosition.cutout:
-        return Center(
-          child: Padding(padding: const EdgeInsets.all(16), child: img),
-        );
-      case ImagePosition.magazineBold:
-        return Padding(
-          padding: const EdgeInsets.all(12),
-          child: ClipRRect(borderRadius: BorderRadius.circular(8), child: img),
-        );
-      case ImagePosition.offsetCard:
-        return Align(
-          alignment: const Alignment(0.2, -0.2),
-          child: FractionallySizedBox(
-            widthFactor: 0.9,
-            heightFactor: 0.85,
-            child: ClipRRect(
-              borderRadius: BorderRadius.circular(12),
-              child: img,
-            ),
-          ),
-        );
-      case ImagePosition.brutalist:
-        return Container(
-          decoration: BoxDecoration(
-            border: Border.all(color: Colors.white24, width: 2),
-          ),
-          child: img,
-        );
-      case ImagePosition.floatWindow:
-        return Align(
-          alignment: Alignment.bottomRight,
-          child: Padding(
-            padding: const EdgeInsets.all(16),
-            child: ClipRRect(
-              borderRadius: BorderRadius.circular(8),
-              child: SizedBox(width: 140, height: 140, child: img),
-            ),
-          ),
-        );
-      case ImagePosition.background:
-        return InteractiveViewer(
-          boundaryMargin: const EdgeInsets.all(double.infinity),
-          minScale: 0.5,
-          maxScale: 4.0,
-          child: img,
-        );
-    }
-  }
-
-  Widget _wrapWithOpacityAndBlur({
-    required double opacity,
-    required double blur,
-    required Widget child,
-  }) {
-    Widget w = child;
-    if (opacity < 0.99) {
-      w = Opacity(opacity: opacity, child: w);
-    }
-    if (blur > 0.1) {
-      w = ImageFiltered(
-        imageFilter: dart_ui.ImageFilter.blur(sigmaX: blur, sigmaY: blur),
-        child: w,
-      );
-    }
-    return w;
-  }
-
-  LinearGradient _presetGradient(PresetBackground preset) {
-    return switch (preset) {
-      PresetBackground.stadiumBlur => const LinearGradient(
-        colors: [Color(0xFF0F172A), Color(0xFF334155)],
-        begin: Alignment.topLeft,
-        end: Alignment.bottomRight,
-      ),
-      PresetBackground.darkMesh => const LinearGradient(
-        colors: [Color(0xFF111827), Color(0xFF1F2937)],
-        begin: Alignment.topCenter,
-        end: Alignment.bottomCenter,
-      ),
-      PresetBackground.grassTexture => const LinearGradient(
-        colors: [Color(0xFF14532D), Color(0xFF22C55E)],
-        begin: Alignment.topLeft,
-        end: Alignment.bottomRight,
-      ),
-    };
-  }
-
-  Widget _applyPhotoFilter(PhotoFilter filter, Widget child) {
-    switch (filter) {
-      case PhotoFilter.vibrant:
-        // Saturation boost 1.8 via color matrix approximated
-        return ColorFiltered(
-          colorFilter: const ColorFilter.matrix([
-            1.4,
-            -0.2,
-            -0.2,
-            0,
-            0,
-            -0.2,
-            1.4,
-            -0.2,
-            0,
-            0,
-            -0.2,
-            -0.2,
-            1.4,
-            0,
-            0,
-            0,
-            0,
-            0,
-            1,
-            0,
-          ]),
-          child: child,
-        );
-      case PhotoFilter.highContrast:
-        // High contrast matrix
-        return ColorFiltered(
-          colorFilter: const ColorFilter.matrix([
-            1.5,
-            0,
-            0,
-            0,
-            -20,
-            0,
-            1.5,
-            0,
-            0,
-            -20,
-            0,
-            0,
-            1.5,
-            0,
-            -20,
-            0,
-            0,
-            0,
-            1,
-            0,
-          ]),
-          child: child,
-        );
-      case PhotoFilter.blackWhite:
-        return ColorFiltered(
-          colorFilter: const ColorFilter.matrix([
-            0.2126,
-            0.7152,
-            0.0722,
-            0,
-            0,
-            0.2126,
-            0.7152,
-            0.0722,
-            0,
-            0,
-            0.2126,
-            0.7152,
-            0.0722,
-            0,
-            0,
-            0,
-            0,
-            0,
-            1,
-            0,
-          ]),
-          child: child,
-        );
-      case PhotoFilter.vintage:
-        return ColorFiltered(
-          colorFilter: const ColorFilter.matrix([
-            0.393,
-            0.769,
-            0.189,
-            0,
-            0,
-            0.349,
-            0.686,
-            0.168,
-            0,
-            0,
-            0.272,
-            0.534,
-            0.131,
-            0,
-            0,
-            0,
-            0,
-            0,
-            1,
-            0,
-          ]),
-          child: child,
-        );
-      case PhotoFilter.none:
-        return child;
-    }
-  }
 }
 
-class _WatermarkOverlay extends StatelessWidget {
+class _WatermarkOverlay extends StatefulWidget {
   final dynamic state;
   final ValueChanged<Offset> onDragUpdate;
   final ValueChanged<Offset> onDragEnd;
@@ -719,7 +446,16 @@ class _WatermarkOverlay extends StatelessWidget {
   });
 
   @override
+  State<_WatermarkOverlay> createState() => _WatermarkOverlayState();
+}
+
+class _WatermarkOverlayState extends State<_WatermarkOverlay> {
+  bool _snappedX = false;
+  bool _snappedY = false;
+
+  @override
   Widget build(BuildContext context) {
+    final state = widget.state;
     final hasImage = state.watermarkImage != null;
     final hasText =
         state.watermarkText != null && state.watermarkText!.isNotEmpty;
@@ -762,18 +498,81 @@ class _WatermarkOverlay extends StatelessWidget {
         final h = constraints.maxHeight;
         final dx = offset.dx.clamp(0.05, 0.95);
         final dy = offset.dy.clamp(0.05, 0.95);
+
         return Stack(
           children: [
+            // Visual Snap Guide Lines
+            if (_snappedX)
+              Positioned(
+                left: dx * w,
+                top: 0,
+                bottom: 0,
+                child: Container(
+                  width: 1.5,
+                  color: Colors.amberAccent.withValues(alpha: 0.8),
+                ),
+              ),
+            if (_snappedY)
+              Positioned(
+                top: dy * h,
+                left: 0,
+                right: 0,
+                child: Container(
+                  height: 1.5,
+                  color: Colors.amberAccent.withValues(alpha: 0.8),
+                ),
+              ),
+
+            // Draggable Watermark Content
             Positioned(
               left: dx * w - size / 2,
               top: dy * h - size / 2,
               child: GestureDetector(
                 onPanUpdate: (details) {
-                  final newDx = (dx * w + details.delta.dx) / w;
-                  final newDy = (dy * h + details.delta.dy) / h;
-                  onDragUpdate(Offset(newDx, newDy));
+                  final rawDx = (dx * w + details.delta.dx) / w;
+                  final rawDy = (dy * h + details.delta.dy) / h;
+
+                  double newDx = rawDx.clamp(0.05, 0.95);
+                  double newDy = rawDy.clamp(0.05, 0.95);
+                  bool snapX = false;
+                  bool snapY = false;
+
+                  const snapThreshold = 0.025;
+                  const anchors = [0.08, 0.5, 0.92];
+
+                  for (final a in anchors) {
+                    if ((rawDx - a).abs() < snapThreshold) {
+                      newDx = a;
+                      snapX = true;
+                      break;
+                    }
+                  }
+                  for (final a in anchors) {
+                    if ((rawDy - a).abs() < snapThreshold) {
+                      newDy = a;
+                      snapY = true;
+                      break;
+                    }
+                  }
+
+                  if ((snapX && !_snappedX) || (snapY && !_snappedY)) {
+                    Haptics.selectionClick();
+                  }
+
+                  setState(() {
+                    _snappedX = snapX;
+                    _snappedY = snapY;
+                  });
+
+                  widget.onDragUpdate(Offset(newDx, newDy));
                 },
-                onPanEnd: (_) => onDragEnd(offset),
+                onPanEnd: (_) {
+                  setState(() {
+                    _snappedX = false;
+                    _snappedY = false;
+                  });
+                  widget.onDragEnd(offset);
+                },
                 child: Opacity(opacity: 0.92, child: content),
               ),
             ),
