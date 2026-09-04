@@ -19,6 +19,7 @@ import 'package:oreamnos/domain/repositories/search_repository.dart';
 import 'package:oreamnos/domain/services/enrich_context_usecase.dart';
 import 'package:oreamnos/domain/services/intent_classifier.dart';
 import 'package:oreamnos/data/services/twitter_extractor.dart';
+import 'package:oreamnos/data/services/twitter_article_enricher.dart';
 import 'package:oreamnos/data/services/preferences_service.dart';
 import 'package:oreamnos/ui/features/settings/view_models/settings_view_model.dart';
 import 'package:uuid/uuid.dart';
@@ -374,7 +375,17 @@ class GenerateViewModel extends Notifier<GenerateUiState>
           if (tweet != null && tweet.isValid) {
             authorDisplayName = tweet.authorDisplayName;
             candidateOutlet = tweet.resolvedCandidateOutlet;
-            contentToCurate = TwitterExtractor.formatForAiPrompt(tweet);
+
+            final enricher = getIt.isRegistered<TwitterArticleEnricher>()
+                ? getIt<TwitterArticleEnricher>()
+                : TwitterArticleEnricher();
+            final enrichment = await enricher.enrichFromTweet(tweet.text);
+
+            contentToCurate = TwitterExtractor.formatForAiPrompt(
+              tweet,
+              linkedArticleContent: enrichment?.content,
+              linkedArticleUrl: enrichment?.url,
+            );
           } else {
             try {
               final searchRepo = getIt<ISearchRepository>();

@@ -6,6 +6,7 @@ import 'package:oreamnos/core/network/api_client.dart';
 import 'package:oreamnos/core/di/injection.dart';
 import 'package:oreamnos/domain/models/curated_post.dart';
 import 'package:oreamnos/data/services/twitter_extractor.dart';
+import 'package:oreamnos/data/services/twitter_article_enricher.dart';
 
 @lazySingleton
 class WebScraperService {
@@ -70,8 +71,17 @@ class WebScraperService {
         tweet = await TwitterExtractor.extractViaVxTwitter(trimmed);
       }
       if (tweet != null && tweet.isValid) {
+        final enricher = getIt.isRegistered<TwitterArticleEnricher>()
+            ? getIt<TwitterArticleEnricher>()
+            : TwitterArticleEnricher(null, this);
+        final enrichment = await enricher.enrichFromTweet(tweet.text);
+
         return ExtractedArticle(
-          text: TwitterExtractor.formatForAiPrompt(tweet),
+          text: TwitterExtractor.formatForAiPrompt(
+            tweet,
+            linkedArticleContent: enrichment?.content,
+            linkedArticleUrl: enrichment?.url,
+          ),
           url: trimmed,
           domain: 'x.com',
           pageTitle: 'X/Twitter Post',

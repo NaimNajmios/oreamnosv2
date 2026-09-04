@@ -87,13 +87,56 @@ class TwitterExtractor {
     }
   }
 
+  /// Extracts external article URLs found inside the tweet text.
+  ///
+  /// Ignores internal X/Twitter status/profile links while preserving t.co
+  /// shortlinks (which may redirect to external articles) and external web domains.
+  static List<String> extractArticleUrls(String text) {
+    if (text.isEmpty) return const [];
+    final matches = RegExp(
+      r'https?://[^\s<>"]+',
+      caseSensitive: false,
+    ).allMatches(text);
+    final urls = <String>[];
+    for (final m in matches) {
+      var u = m.group(0)!;
+      while (u.isNotEmpty &&
+          (u.endsWith('.') ||
+              u.endsWith(',') ||
+              u.endsWith(')') ||
+              u.endsWith(']') ||
+              u.endsWith('!') ||
+              u.endsWith('?'))) {
+        u = u.substring(0, u.length - 1);
+      }
+      final uri = Uri.tryParse(u);
+      if (uri == null || !uri.hasScheme) continue;
+      final host = uri.host.toLowerCase();
+      // Skip direct twitter/x status or media URLs
+      if ((host == 'twitter.com' ||
+              host == 'www.twitter.com' ||
+              host == 'x.com' ||
+              host == 'www.x.com' ||
+              host == 'mobile.twitter.com') &&
+          (uri.path.contains('/status/') || uri.path.contains('/i/'))) {
+        continue;
+      }
+      urls.add(u);
+    }
+    return urls;
+  }
+
   /// Formats tweet content into a structured block for the AI prompt.
   ///
   /// The handle/URL are metadata only and must NEVER be used as
   /// `source.label`. The label must come from POST CONTENT (see
   /// [TweetContent.candidateOutlet]) formatted as
   /// "[Outlet] via [Author Display Name]".
-  static String formatForAiPrompt(TweetContent tweet) {
+  static String formatForAiPrompt(
+    TweetContent tweet, {
+    String? linkedArticleContent,
+    String? linkedArticleUrl,
+  }) {
     final sb = StringBuffer();
     sb.writeln('TYPE: social_post');
     sb.writeln('AUTHOR_DISPLAY_NAME: ${tweet.authorDisplayName}');
@@ -115,6 +158,18 @@ class TwitterExtractor {
       'CANDIDATE_OUTLET. Never use a URL, domain, platform name '
       '(X/Twitter/x.com) or handle-alone.',
     );
+
+    if (linkedArticleContent != null &&
+        linkedArticleContent.trim().isNotEmpty) {
+      sb.writeln('');
+      sb.writeln('--- LINKED ARTICLE CONTENT (from link in post) ---');
+      if (linkedArticleUrl != null && linkedArticleUrl.isNotEmpty) {
+        sb.writeln('ARTICLE_URL: $linkedArticleUrl');
+      }
+      sb.writeln('ARTICLE_TEXT:');
+      sb.writeln(linkedArticleContent.trim());
+    }
+
     return sb.toString();
   }
 }
