@@ -84,6 +84,11 @@ class _OreamnosAppState extends ConsumerState<OreamnosApp> {
     ShareIntentService().onSharedTextReceived = (text) async {
       if (!mounted) return;
 
+      // Dismiss any open modal dialogs on root navigator
+      try {
+        rootNavigatorKey.currentState?.popUntil((route) => route.isFirst);
+      } catch (_) {}
+
       // Route-to-card alias (Android `ShareRouterActivity` parity): shared
       // text starting with `card:` opens Card Studio directly with the
       // remainder as the headline. Everything else auto-generates.
@@ -111,14 +116,7 @@ class _OreamnosAppState extends ConsumerState<OreamnosApp> {
 
       _router.go(RoutePaths.generate);
       final notifier = ref.read(generateViewModelProvider.notifier);
-      notifier.reset();
-      notifier.setPendingInput(text);
-
-      Future.microtask(() {
-        if (mounted) {
-          notifier.generatePost(text);
-        }
-      });
+      await notifier.handleExternalSharedInput(text);
     };
     ShareIntentService().initialize();
   }

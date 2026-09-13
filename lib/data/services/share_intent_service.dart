@@ -9,6 +9,8 @@ class ShareIntentService {
   ShareIntentService._internal();
 
   StreamSubscription? _intentDataStreamSubscription;
+  DateTime? _lastHandledTime;
+  String? _lastHandledContent;
 
   /// Callback fired when new text or URL is shared to the app
   Function(String)? onSharedTextReceived;
@@ -19,7 +21,11 @@ class ShareIntentService {
         .getMediaStream()
         .listen(
           (List<SharedMediaFile> value) {
-            _handleSharedMedia(value);
+            handleSharedMedia(value);
+            // Clear the stream intent cache so warm resumptions don't replay stale data
+            try {
+              ReceiveSharingIntent.instance.reset();
+            } catch (_) {}
           },
           onError: (err) {
             debugPrint("getMediaStream error: $err");
@@ -30,27 +36,47 @@ class ShareIntentService {
     ReceiveSharingIntent.instance
         .getInitialMedia()
         .then((List<SharedMediaFile> value) {
-          _handleSharedMedia(value);
+          handleSharedMedia(value);
           // Tell the library that we are done processing the initial intent
-          ReceiveSharingIntent.instance.reset();
+          try {
+            ReceiveSharingIntent.instance.reset();
+          } catch (_) {}
         })
         .catchError((err) {
           debugPrint("getInitialMedia error: $err");
         });
   }
 
-  void _handleSharedMedia(List<SharedMediaFile> files) {
+  @visibleForTesting
+  void resetDeduplicationForTesting() {
+    _lastHandledTime = null;
+    _lastHandledContent = null;
+  }
+
+  @visibleForTesting
+  void handleSharedMedia(List<SharedMediaFile> files) {
     if (files.isEmpty) return;
 
-    // We only care about text/urls for now.
-    // ReceiveSharingIntent puts text/urls in the path or type property depending on version.
-    // In version 1.9.0, text is usually in path or message.
     final file = files.first;
 
-    // According to 1.9.0 docs, if type is text, the content is in path.
     if (file.type == SharedMediaType.text || file.type == SharedMediaType.url) {
-      final content = file.path;
-      if (content.isNotEmpty && onSharedTextReceived != null) {
+      final content = file.path.trim();
+      if (content.isEmpty) return;
+
+      // Debounce duplicate events within 1500ms (common on Android resume/stream rebroadcasts)
+      final now = DateTime.now();
+      if (_lastHandledContent == content &&
+          _lastHandledTime != null &&
+          now.difference(_lastHandledTime!) <
+              const Duration(milliseconds: 1500)) {
+        debugPrint("Ignoring duplicate share intent event: $content");
+        return;
+      }
+
+      _lastHandledTime = now;
+      _lastHandledContent = content;
+
+      if (onSharedTextReceived != null) {
         onSharedTextReceived!(content);
       }
     }

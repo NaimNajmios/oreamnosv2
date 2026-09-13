@@ -27,6 +27,12 @@ class ErrorMappingInterceptor extends Interceptor {
       );
     } else if (status == 400) {
       failure = _mapBadRequest(err, body, short);
+    } else if (status == 402) {
+      final provider = err.requestOptions.extra['provider'] as String?;
+      failure = PaymentRequiredFailure(
+        'Credits exhausted for ${_providerLabel(err)} (HTTP 402). Check your credit balance or switch provider. ($short)',
+        providerName: provider,
+      );
     } else if (status == 401 || status == 403) {
       failure = AuthFailure(
         '${_providerLabel(err)} rejected the API key (HTTP $status). Check it in Settings → API Key. ($short)',

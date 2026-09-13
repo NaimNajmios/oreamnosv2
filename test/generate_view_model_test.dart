@@ -126,6 +126,20 @@ void main() {
       );
       expect(container.read(generateViewModelProvider).curatedPost, isNull);
       expect(container.read(generateViewModelProvider).errorMessage, isNull);
+      expect(container.read(generateViewModelProvider).pendingInput, isNull);
     });
+
+    test(
+      'handleExternalSharedInput parses input and sets pendingInput cleanly',
+      () async {
+        await vm.handleExternalSharedInput(
+          'Check this out: https://x.com/jack/status/20?s=20',
+        );
+        expect(
+          container.read(generateViewModelProvider).pendingInput,
+          contains('https://x.com/jack/status/20'),
+        );
+      },
+    );
   });
 }

@@ -10,4 +10,7 @@ abstract class ISearchRepository {
 
   /// Extracts clean text from a specific URL.
   Future<String> extractFromUrl(String url);
+
+  /// Checks if the search repository is configured with a valid API key.
+  Future<bool> isConfigured();
 }

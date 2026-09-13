@@ -7,7 +7,7 @@ import 'package:oreamnos/domain/services/source_policy.dart';
 
 class TwitterExtractor {
   static final RegExp _xUrlPattern = RegExp(
-    r'(?:x\.com|twitter\.com)/(\w+)/status/(\d+)',
+    r'(?:x\.com|twitter\.com|mobile\.twitter\.com|m\.twitter\.com|vxtwitter\.com|fxtwitter\.com|fixupx\.com)/(?:(\w+)/)?(?:i/web/|i/)?status/(\d+)',
     caseSensitive: false,
   );
 
@@ -33,7 +33,7 @@ class TwitterExtractor {
     final match = _xUrlPattern.firstMatch(url);
     if (match == null) return null;
 
-    final username = match.group(1)!;
+    final username = match.group(1) ?? 'i';
     final tweetId = match.group(2)!;
 
     try {

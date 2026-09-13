@@ -330,11 +330,11 @@ class GenerationPromptManager {
           as Map<String, dynamic>;
 
   static dynamic _stripAdditionalProperties(dynamic node) {
-    if (node is Map<String, dynamic>) {
+    if (node is Map) {
       final out = <String, dynamic>{};
       node.forEach((key, value) {
-        if (key == 'additionalProperties') return;
-        out[key] = _stripAdditionalProperties(value);
+        if (key.toString() == 'additionalProperties') return;
+        out[key.toString()] = _stripAdditionalProperties(value);
       });
       return out;
     }

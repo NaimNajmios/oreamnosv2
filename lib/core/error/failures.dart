@@ -67,6 +67,11 @@ class AuthFailure extends Failure {
   const AuthFailure(super.message);
 }
 
+class PaymentRequiredFailure extends Failure {
+  const PaymentRequiredFailure(super.message, {this.providerName});
+  final String? providerName;
+}
+
 class ServerFailure extends Failure {
   const ServerFailure(super.message);
 }

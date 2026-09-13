@@ -56,4 +56,10 @@ class TavilySearchRepository implements ISearchRepository {
     if (results.isEmpty) throw Exception('Failed to extract URL');
     return results[0]['raw_content'] as String;
   }
+
+  @override
+  Future<bool> isConfigured() async {
+    final key = await _prefs.getTavilyApiKey();
+    return key != null && key.trim().isNotEmpty;
+  }
 }

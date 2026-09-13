@@ -196,7 +196,15 @@ class WebScraperService {
         siteName: siteName,
       );
     } catch (e) {
-      throw Exception('Failed to extract content from URL: $e');
+      debugPrint('WebScraper extraction error for $trimmed: $e');
+      final uri = Uri.tryParse(trimmed);
+      return ExtractedArticle(
+        text: trimmed,
+        url: trimmed,
+        domain: uri?.host ?? '',
+        pageTitle: null,
+        description: null,
+      );
     }
   }
 

@@ -20,6 +20,8 @@ import 'package:oreamnos/domain/services/enrich_context_usecase.dart';
 import 'package:oreamnos/domain/services/intent_classifier.dart';
 import 'package:oreamnos/data/services/twitter_extractor.dart';
 import 'package:oreamnos/data/services/twitter_article_enricher.dart';
+import 'package:oreamnos/core/utils/shared_content_parser.dart';
+import 'package:oreamnos/core/utils/url_detector.dart';
 import 'package:oreamnos/data/services/preferences_service.dart';
 import 'package:oreamnos/ui/features/settings/view_models/settings_view_model.dart';
 import 'package:uuid/uuid.dart';
@@ -328,7 +330,8 @@ class GenerateViewModel extends Notifier<GenerateUiState>
     final provider = ref.read(settingsViewModelProvider).selectedProvider;
 
     try {
-      dynamic contentToCurate = state.pendingInput!.trim();
+      final parsed = SharedContentParser.parse(trimmedInput);
+      dynamic contentToCurate = trimmedInput;
       String? sourceUrl;
       String? siteName;
       String? authorDisplayName;
@@ -339,9 +342,9 @@ class GenerateViewModel extends Notifier<GenerateUiState>
         state = state.copyWith(status: GenerateState.researching);
 
         final enrichUsecase = getIt<EnrichContextUseCase>();
-        final intent = IntentClassifier.classify(contentToCurate as String);
+        final intent = IntentClassifier.classify(trimmedInput);
         final enrichmentResult = await enrichUsecase.execute(
-          contentToCurate,
+          parsed.primaryUrl ?? trimmedInput,
           intent,
         );
 
@@ -358,18 +361,26 @@ class GenerateViewModel extends Notifier<GenerateUiState>
       } else {
         state = state.copyWith(searchSources: []);
 
-        if (TwitterExtractor.isTwitterUrl(contentToCurate)) {
+        final isTwitterLink =
+            parsed.urlType == UrlType.twitterStatus ||
+            (parsed.primaryUrl != null &&
+                TwitterExtractor.isTwitterUrl(parsed.primaryUrl!));
+
+        if (isTwitterLink) {
+          final targetTwitterUrl = parsed.primaryUrl ?? trimmedInput;
           state = state.copyWith(generatingStep: GeneratingStep.scraping);
 
-          sourceUrl = contentToCurate;
+          sourceUrl = targetTwitterUrl;
           isTwitter = true;
 
-          TweetContent? tweet;
-
-          tweet = await TwitterExtractor.extractViaFxTwitter(contentToCurate);
+          TweetContent? tweet = await TwitterExtractor.extractViaFxTwitter(
+            targetTwitterUrl,
+          );
 
           if (tweet == null || !tweet.isValid) {
-            tweet = await TwitterExtractor.extractViaVxTwitter(contentToCurate);
+            tweet = await TwitterExtractor.extractViaVxTwitter(
+              targetTwitterUrl,
+            );
           }
 
           if (tweet != null && tweet.isValid) {
@@ -381,43 +392,78 @@ class GenerateViewModel extends Notifier<GenerateUiState>
                 : TwitterArticleEnricher();
             final enrichment = await enricher.enrichFromTweet(tweet.text);
 
-            contentToCurate = TwitterExtractor.formatForAiPrompt(
+            var promptBody = TwitterExtractor.formatForAiPrompt(
               tweet,
               linkedArticleContent: enrichment?.content,
               linkedArticleUrl: enrichment?.url,
             );
+            if (parsed.accompanyingText.isNotEmpty) {
+              promptBody =
+                  '$promptBody\n\nUSER COMMENTARY / CONTEXT:\n${parsed.accompanyingText}';
+            }
+            contentToCurate = promptBody;
           } else {
-            try {
-              final searchRepo = getIt<ISearchRepository>();
-              contentToCurate = await searchRepo.extractFromUrl(
-                contentToCurate,
-              );
-            } catch (e) {
-              throw TwitterExtractionException(sourceUrl);
+            // Fallback: If external APIs fail but user shared accompanying text, use it!
+            if (parsed.accompanyingText.isNotEmpty) {
+              contentToCurate = parsed.accompanyingText;
+            } else {
+              try {
+                final searchRepo = getIt<ISearchRepository>();
+                if (await searchRepo.isConfigured()) {
+                  contentToCurate = await searchRepo.extractFromUrl(
+                    targetTwitterUrl,
+                  );
+                } else {
+                  throw TwitterExtractionException(sourceUrl);
+                }
+              } catch (e) {
+                throw TwitterExtractionException(sourceUrl);
+              }
             }
           }
 
           state = state.copyWith(generatingStep: GeneratingStep.prompting);
-        } else if (WebScraperService.isUrl(contentToCurate)) {
+        } else if (parsed.primaryUrl != null ||
+            WebScraperService.isUrl(trimmedInput)) {
+          final targetUrl = parsed.primaryUrl ?? trimmedInput;
           state = state.copyWith(generatingStep: GeneratingStep.scraping);
           try {
             final article = await WebScraperService.extractArticleFromUrl(
-              contentToCurate,
+              targetUrl,
             ).timeout(const Duration(seconds: 10));
             contentToCurate = article;
             sourceUrl = article.url;
             siteName = article.siteName;
-            if (article.text.trim().isEmpty) {
+            if (article.text.trim().isEmpty ||
+                article.text.trim() == targetUrl) {
               getIt<LogService>().warning(
-                'Scrape returned empty, falling back to raw input',
+                'Scrape returned empty/fallback, using input text',
               );
-              contentToCurate = state.pendingInput!;
-              sourceUrl = state.pendingInput;
+              contentToCurate = parsed.accompanyingText.isNotEmpty
+                  ? parsed.accompanyingText
+                  : trimmedInput;
+              sourceUrl = targetUrl;
+            } else if (parsed.accompanyingText.isNotEmpty) {
+              contentToCurate = ExtractedArticle(
+                text:
+                    'USER CONTEXT / HEADLINE:\n${parsed.accompanyingText}\n\nARTICLE BODY:\n${article.text}',
+                url: article.url,
+                domain: article.domain,
+                pageTitle: article.pageTitle ?? parsed.accompanyingText,
+                description: article.description,
+                faviconUrl: article.faviconUrl,
+                siteName: article.siteName,
+              );
             }
           } on TimeoutException {
-            throw Exception(
-              'URL extraction timed out. Please paste the article text manually.',
-            );
+            if (parsed.accompanyingText.isNotEmpty) {
+              contentToCurate = parsed.accompanyingText;
+              sourceUrl = targetUrl;
+            } else {
+              throw Exception(
+                'URL extraction timed out. Please paste the article text manually.',
+              );
+            }
           }
           state = state.copyWith(generatingStep: GeneratingStep.prompting);
         }
@@ -502,6 +548,14 @@ class GenerateViewModel extends Notifier<GenerateUiState>
                 'Rate limit exceeded for ${provider.displayName}. Try another provider. ${failure.waitTimeMessage}',
             suggestedFallbackProvider: _getNextProvider(provider),
             rateLimitWaitMessage: failure.waitTimeMessage,
+            status: GenerateState.rateLimited,
+            generatingStep: GeneratingStep.idle,
+          );
+        } else if (failure is PaymentRequiredFailure) {
+          state = state.copyWith(
+            errorMessage:
+                'Credits exhausted for ${provider.displayName} (HTTP 402). Switch to another provider.',
+            suggestedFallbackProvider: _getNextProvider(provider),
             status: GenerateState.rateLimited,
             generatingStep: GeneratingStep.idle,
           );
@@ -806,6 +860,14 @@ class GenerateViewModel extends Notifier<GenerateUiState>
           status: GenerateState.rateLimited,
           generatingStep: GeneratingStep.idle,
         );
+      } else if (e is PaymentRequiredFailure) {
+        state = state.copyWith(
+          errorMessage:
+              'Credits exhausted for ${provider.displayName} (HTTP 402). Switch to another provider.',
+          suggestedFallbackProvider: _getNextProvider(provider),
+          status: GenerateState.rateLimited,
+          generatingStep: GeneratingStep.idle,
+        );
       } else if (e is AuthFailure) {
         state = state.copyWith(
           errorMessage:
@@ -860,6 +922,28 @@ class GenerateViewModel extends Notifier<GenerateUiState>
     }
   }
 
+  Future<void> handleExternalSharedInput(String rawInput) async {
+    _generationSessionId++;
+    final parsed = SharedContentParser.parse(rawInput);
+    final effectiveText = parsed.displayInput;
+
+    state = state.copyWith(
+      status: GenerateState.idle,
+      generatingStep: GeneratingStep.idle,
+      curatedPost: null,
+      errorMessage: null,
+      validationMessage: null,
+      suggestedFallbackProvider: null,
+      rateLimitWaitMessage: null,
+      twitterExtractionUrl: null,
+      isEditMode: false,
+      selectedPillIds: const {},
+      pendingInput: effectiveText,
+    );
+
+    await generatePost(effectiveText);
+  }
+
   void reset() {
     _generationSessionId++;
     state = state.copyWith(
@@ -870,6 +954,10 @@ class GenerateViewModel extends Notifier<GenerateUiState>
       validationMessage: null,
       suggestedFallbackProvider: null,
       rateLimitWaitMessage: null,
+      twitterExtractionUrl: null,
+      pendingInput: null,
+      isEditMode: false,
+      selectedPillIds: const {},
     );
   }
 

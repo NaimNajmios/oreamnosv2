@@ -94,7 +94,13 @@ class _GenerateScreenState extends ConsumerState<GenerateScreen> {
   }
 
   Future<void> _consumeQsClipboard() async {
-    if (!mounted || _controller.text.trim().isNotEmpty) return;
+    final uiState = ref.read(generateViewModelProvider);
+    if (!mounted ||
+        _controller.text.trim().isNotEmpty ||
+        uiState.pendingInput != null ||
+        uiState.status != GenerateState.idle) {
+      return;
+    }
     try {
       final data = await Clipboard.getData(Clipboard.kTextPlain);
       final text = data?.text?.trim() ?? '';
@@ -218,7 +224,11 @@ class _GenerateScreenState extends ConsumerState<GenerateScreen> {
     if (uiState.pendingInput != null &&
         uiState.pendingInput != _controller.text) {
       WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (!mounted) return;
         _controller.text = uiState.pendingInput!;
+        _controller.selection = TextSelection.fromPosition(
+          TextPosition(offset: _controller.text.length),
+        );
         notifier.clearPendingInput();
       });
     }

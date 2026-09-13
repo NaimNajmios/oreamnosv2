@@ -18,6 +18,9 @@ class FakeSearchRepository implements ISearchRepository {
   }
 
   @override
+  Future<bool> isConfigured() async => true;
+
+  @override
   Future<TavilySearchResponse> searchContext({
     required String query,
     int maxResults = 3,

@@ -57,6 +57,29 @@ void main() {
       final failure = dioEx.requestOptions.extra['failure'];
       expect(failure, isA<RateLimitFailure>());
     });
+    test('maps 402 to PaymentRequiredFailure', () {
+      final interceptor = ErrorMappingInterceptor();
+      final dioEx = DioException(
+        requestOptions: RequestOptions(
+          path: '/',
+          extra: {'provider': 'openrouter'},
+        ),
+        response: Response(
+          requestOptions: RequestOptions(path: '/'),
+          statusCode: 402,
+          data: 'Payment Required: insufficient credits',
+        ),
+        type: DioExceptionType.badResponse,
+      );
+      interceptor.onError(dioEx, _FakeErrorHandler());
+      final failure = dioEx.requestOptions.extra['failure'];
+      expect(failure, isA<PaymentRequiredFailure>());
+      expect(
+        (failure as PaymentRequiredFailure).message,
+        contains('Credits exhausted'),
+      );
+      expect(failure.providerName, 'openrouter');
+    });
     test('maps 401 to AuthFailure', () {
       final interceptor = ErrorMappingInterceptor();
       final dioEx = DioException(

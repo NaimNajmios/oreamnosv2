@@ -33,45 +33,60 @@ class EnrichContextUseCase {
           return EnrichmentResult(content: localScrape.text, sources: [input]);
         }
 
-        // Fallback to Tavily Extract
-        final extracted = await _searchRepo.extractFromUrl(input);
-        return EnrichmentResult(content: extracted, sources: [input]);
+        // Fallback to Tavily Extract if available
+        if (await _searchRepo.isConfigured()) {
+          final extracted = await _searchRepo.extractFromUrl(input);
+          return EnrichmentResult(content: extracted, sources: [input]);
+        }
+        return EnrichmentResult(
+          content: localScrape.text.isNotEmpty ? localScrape.text : input,
+          sources: [input],
+        );
       } catch (_) {
-        throw Exception('Failed to extract content from URL');
+        return EnrichmentResult(content: input, sources: [input]);
       }
     }
 
     // Short Query -> Search
-    final searchResponse = await _searchRepo.searchContext(
-      query: "football soccer $input",
-      maxResults: 3,
-    );
+    try {
+      if (!await _searchRepo.isConfigured()) {
+        return EnrichmentResult(content: input, sources: []);
+      }
 
-    final mergedContent = StringBuffer();
-    mergedContent.writeln('USER QUERY: $input\n');
-    mergedContent.writeln('REAL-TIME SEARCH CONTEXT:');
-
-    final sources = <String>[];
-    for (final result in searchResponse.results) {
-      mergedContent.writeln('--- Source: ${result.title} ---');
-      mergedContent.writeln(
-        'URL (INTERNAL ONLY, grounding reference — never use as source.label): '
-        '${result.url}',
+      final searchResponse = await _searchRepo.searchContext(
+        query: "football soccer $input",
+        maxResults: 3,
       );
-      mergedContent.writeln(result.content);
-      sources.add(result.url);
-    }
-    mergedContent.writeln(
-      'SOURCE RULE: Derive source.label ONLY from outlet names in the content above. NEVER use a URL, domain, or platform name as the citation.',
-    );
 
-    if (searchResponse.answer.isNotEmpty) {
-      mergedContent.writeln('\nAI SUMMARY: ${searchResponse.answer}');
-    }
+      final mergedContent = StringBuffer();
+      mergedContent.writeln('USER QUERY: $input\n');
+      mergedContent.writeln('REAL-TIME SEARCH CONTEXT:');
 
-    return EnrichmentResult(
-      content: mergedContent.toString(),
-      sources: sources,
-    );
+      final sources = <String>[];
+      for (final result in searchResponse.results) {
+        mergedContent.writeln('--- Source: ${result.title} ---');
+        mergedContent.writeln(
+          'URL (INTERNAL ONLY, grounding reference — never use as source.label): '
+          '${result.url}',
+        );
+        mergedContent.writeln(result.content);
+        sources.add(result.url);
+      }
+      mergedContent.writeln(
+        'SOURCE RULE: Derive source.label ONLY from outlet names in the content above. NEVER use a URL, domain, or platform name as the citation.',
+      );
+
+      if (searchResponse.answer.isNotEmpty) {
+        mergedContent.writeln('\nAI SUMMARY: ${searchResponse.answer}');
+      }
+
+      return EnrichmentResult(
+        content: mergedContent.toString(),
+        sources: sources,
+      );
+    } catch (_) {
+      // Graceful degradation when search fails or Tavily key is missing
+      return EnrichmentResult(content: input, sources: []);
+    }
   }
 }
