@@ -65,6 +65,26 @@ class ExtractedArticle extends Equatable {
     this.siteName,
   });
 
+  ExtractedArticle copyWith({
+    String? text,
+    String? pageTitle,
+    String? url,
+    String? domain,
+    String? description,
+    String? faviconUrl,
+    String? siteName,
+  }) {
+    return ExtractedArticle(
+      text: text ?? this.text,
+      pageTitle: pageTitle ?? this.pageTitle,
+      url: url ?? this.url,
+      domain: domain ?? this.domain,
+      description: description ?? this.description,
+      faviconUrl: faviconUrl ?? this.faviconUrl,
+      siteName: siteName ?? this.siteName,
+    );
+  }
+
   @override
   List<Object?> get props => [
     text,
@@ -214,20 +234,25 @@ class CuratedPost extends Equatable {
     return result.join(' ');
   }
 
-  factory CuratedPost.fromJson(Map<String, dynamic> json) {
+  factory CuratedPost.fromJson(
+    Map<String, dynamic> json, {
+    bool keepStructure = false,
+  }) {
     final rawTitle = (json['title'] as String?) ?? '';
     final rawBody =
         (json['body'] as String?) ?? (json['content'] as String?) ?? '';
     final rawHashtags = json['hashtags'];
     final rawSource = json['source'];
 
-    String title = _stripEmoji(rawTitle.trim());
+    String title = keepStructure
+        ? rawTitle.trim()
+        : _stripEmoji(rawTitle.trim());
     // Title: single line, max 100 chars, converted to Title Case
     title = title.split('\n').first.trim();
     if (title.length > 100) title = title.substring(0, 100).trim();
     title = _toTitleCase(title);
 
-    String body = _stripEmoji(rawBody.trim());
+    String body = keepStructure ? rawBody.trim() : _stripEmoji(rawBody.trim());
     // Remove any accidental source/hashtag block inside body
     body = body
         .replaceAll(
@@ -239,7 +264,7 @@ class CuratedPost extends Equatable {
         )
         .trim();
     body = body.replaceAll(RegExp(r'(\n\s*#[^\n]*)+$'), '').trim();
-    body = _formatBody(body);
+    body = _formatBody(body, keepStructure: keepStructure);
 
     List<String> hashtags = [];
     if (rawHashtags is List) {
@@ -291,9 +316,14 @@ class CuratedPost extends Equatable {
     );
   }
 
-  static String _formatBody(String body) {
+  static String _formatBody(String body, {bool keepStructure = false}) {
     if (body.isEmpty) return body;
-    final canonical = _canonicalizeBody(body);
+    final canonical = _canonicalizeBody(body, keepStructure: keepStructure);
+    if (keepStructure) {
+      // In keep structure mode, preserve exact line breaks and paragraph spacing.
+      // Do NOT run splitLongParagraphs which destroys user-intended line layouts.
+      return canonical;
+    }
     // Preserve bullet lists as-is (now paste-safe with •)
     if (canonical.contains(RegExp(r'^\s*•\s', multiLine: true))) {
       return canonical;
@@ -310,7 +340,7 @@ class CuratedPost extends Equatable {
   /// Normalizes every list marker to paste-safe `•`, strips markdown syntax
   /// that `MarkdownBody` hides visually but clipboard would leak literally,
   /// and collapses 3+ newlines. Idempotent — safe to run on already-clean text.
-  static String _canonicalizeBody(String input) {
+  static String _canonicalizeBody(String input, {bool keepStructure = false}) {
     var text = input.replaceAll('\r\n', '\n');
     final lines = text.split('\n');
     final out = <String>[];
@@ -319,20 +349,22 @@ class CuratedPost extends Equatable {
       // Strip heading / quote markers the renderer hides but paste would leak.
       l = l.replaceAll(RegExp(r'^\s*#{1,6}\s+'), '');
       l = l.replaceAll(RegExp(r'^\s*>\s?'), '');
-      // Normalize bullets: - * + > • · ▪ ▫ ‣ ⁃ → •
-      l = l.replaceAllMapped(
-        RegExp(r'^(\s*)[-*+>•·▪▫‣⁃](\s+)'),
-        (m) => '${m.group(1)}•${m.group(2)}',
-      );
-      // Numbered / lettered list markers → • (prompt mandates • only).
-      l = l.replaceAllMapped(
-        RegExp(r'^(\s*)\d{1,3}[.)](\s+)'),
-        (m) => '${m.group(1)}•${m.group(2)}',
-      );
-      l = l.replaceAllMapped(
-        RegExp(r'^(\s*)[a-z]\)(\s+)'),
-        (m) => '${m.group(1)}•${m.group(2)}',
-      );
+      if (!keepStructure) {
+        // Normalize bullets: - * + > • · ▪ ▫ ‣ ⁃ → •
+        l = l.replaceAllMapped(
+          RegExp(r'^(\s*)[-*+>•·▪▫‣⁃](\s+)'),
+          (m) => '${m.group(1)}•${m.group(2)}',
+        );
+        // Numbered / lettered list markers → • (prompt mandates • only).
+        l = l.replaceAllMapped(
+          RegExp(r'^(\s*)\d{1,3}[.)](\s+)'),
+          (m) => '${m.group(1)}•${m.group(2)}',
+        );
+        l = l.replaceAllMapped(
+          RegExp(r'^(\s*)[a-z]\)(\s+)'),
+          (m) => '${m.group(1)}•${m.group(2)}',
+        );
+      }
       out.add(l);
     }
     text = out.join('\n');
@@ -344,7 +376,9 @@ class CuratedPost extends Equatable {
     text = text.replaceAllMapped(RegExp(r'__(.*?)__'), (m) => m.group(1) ?? '');
     text = text.replaceAllMapped(RegExp(r'~~(.*?)~~'), (m) => m.group(1) ?? '');
     text = text.replaceAll(RegExp(r'`+'), '');
-    text = text.replaceAll(RegExp(r'\n\s*\n\s*\n+'), '\n\n');
+    if (!keepStructure) {
+      text = text.replaceAll(RegExp(r'\n\s*\n\s*\n+'), '\n\n');
+    }
     return text.trim();
   }
 
@@ -378,8 +412,9 @@ class CuratedPost extends Equatable {
   factory CuratedPost.fromMarkdownFallback(
     String markdown, {
     SourceAttribution? source,
+    bool keepStructure = false,
   }) {
-    var text = _stripEmoji(markdown.trim());
+    var text = keepStructure ? markdown.trim() : _stripEmoji(markdown.trim());
     if (text.isEmpty) {
       return CuratedPost(
         title: '',

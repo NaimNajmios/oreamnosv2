@@ -26,48 +26,62 @@ class TwitterArticleEnricher {
   WebScraperService get _resolvedWebScraper =>
       _webScraper ?? getIt<WebScraperService>();
 
-  /// Attempts to extract content from the first external article link found in [tweetText].
+  /// Attempts to extract content from external article links found in [tweetText],
+  /// or from [cardUrl] / [expandedUrls].
   ///
   /// Priority:
-  /// 1. Tavily Extract API via [ISearchRepository.extractFromUrl].
-  /// 2. Local scraping via [WebScraperService.extractArticleFromUrlInternal].
+  /// 1. Built-in local scraper via [WebScraperService.extractArticleFromUrlInternal].
+  /// 2. Fallback to Tavily Extract API via [ISearchRepository.extractFromUrl].
   ///
   /// Returns [TwitterArticleEnrichResult] if substantive content (>100 chars) is found,
   /// or `null` if no external link exists or extraction fails.
-  Future<TwitterArticleEnrichResult?> enrichFromTweet(String tweetText) async {
-    final urls = TwitterExtractor.extractArticleUrls(tweetText);
+  Future<TwitterArticleEnrichResult?> enrichFromTweet(
+    String tweetText, {
+    String? cardUrl,
+    List<String>? expandedUrls,
+  }) async {
+    final urls = TwitterExtractor.extractArticleUrls(
+      tweetText,
+      cardUrl: cardUrl,
+      expandedUrls: expandedUrls,
+    );
     if (urls.isEmpty) return null;
 
     for (final url in urls) {
-      // 1. Try Tavily Extract
-      try {
-        final tavilyContent = await _resolvedSearchRepo.extractFromUrl(url);
-        final cleaned = tavilyContent.trim();
-        if (cleaned.length > 100) {
-          return TwitterArticleEnrichResult(
-            url: url,
-            content: _sanitizeAndTruncate(cleaned),
-          );
-        }
-      } catch (e) {
-        debugPrint('Tavily extract failed for $url, trying local scraper: $e');
-      }
-
-      // 2. Fallback to local WebScraperService
+      // 1. Try built-in local scraper FIRST
       try {
         final article = await _resolvedWebScraper.extractArticleFromUrlInternal(
           url,
         );
         final cleaned = article.text.trim();
         if (cleaned.length > 100 &&
-            !cleaned.contains('No readable content found')) {
+            !cleaned.contains('No readable content found') &&
+            cleaned != url) {
           return TwitterArticleEnrichResult(
             url: url,
             content: _sanitizeAndTruncate(cleaned),
           );
         }
       } catch (e) {
-        debugPrint('WebScraper extract failed for $url: $e');
+        debugPrint(
+          'Built-in WebScraper extract failed for $url, trying Tavily fallback: $e',
+        );
+      }
+
+      // 2. Tavily Extract as LAST fallback
+      try {
+        if (await _resolvedSearchRepo.isConfigured()) {
+          final tavilyContent = await _resolvedSearchRepo.extractFromUrl(url);
+          final cleaned = tavilyContent.trim();
+          if (cleaned.length > 100) {
+            return TwitterArticleEnrichResult(
+              url: url,
+              content: _sanitizeAndTruncate(cleaned),
+            );
+          }
+        }
+      } catch (e) {
+        debugPrint('Tavily extract fallback failed for $url: $e');
       }
     }
 

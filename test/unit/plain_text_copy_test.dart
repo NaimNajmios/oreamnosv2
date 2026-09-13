@@ -62,6 +62,35 @@ void main() {
       }
       expect(plain, contains('Memang kelas tersendiri.'));
     });
+
+    test('keepStructure: true preserves structural emojis and line breaks', () {
+      const statPost =
+          '📊 Statistik Perlawanan:\n⚽ Gol: 2\n🎯 Percubaan Tepat: 5\n⏱️ Minit Permainan: 90\n✅ Ketepatan Hantaran: 89%';
+      final post = CuratedPost.fromJson({
+        'title': 'Statistik Hebat',
+        'body': statPost,
+        'source': {'label': '', 'url': ''},
+      }, keepStructure: true);
+
+      expect(post.bodyMarkdown, contains('📊 Statistik Perlawanan:'));
+      expect(post.bodyMarkdown, contains('⚽ Gol: 2'));
+      expect(post.bodyMarkdown, contains('🎯 Percubaan Tepat: 5'));
+      expect(post.bodyMarkdown, contains('⏱️ Minit Permainan: 90'));
+      expect(post.bodyMarkdown, contains('✅ Ketepatan Hantaran: 89%'));
+    });
+
+    test('keepStructure: false strips emojis from body', () {
+      const statPost =
+          '📊 Statistik Perlawanan:\n• Gol: 2\n• Percubaan Tepat: 5';
+      final post = CuratedPost.fromJson({
+        'title': 'Statistik Hebat',
+        'body': statPost,
+        'source': {'label': '', 'url': ''},
+      }, keepStructure: false);
+
+      expect(post.bodyMarkdown, isNot(contains('📊')));
+      expect(post.bodyMarkdown, contains('Statistik Perlawanan:'));
+    });
   });
 
   group('TypewriterMarkdown.normalizeForDisplay', () {

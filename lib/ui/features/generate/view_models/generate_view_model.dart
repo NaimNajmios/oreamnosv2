@@ -338,21 +338,145 @@ class GenerateViewModel extends Notifier<GenerateUiState>
       String? candidateOutlet;
       bool isTwitter = false;
 
+      // 1. Content Extraction Pipeline
+      final isTwitterLink =
+          parsed.urlType == UrlType.twitterStatus ||
+          (parsed.primaryUrl != null &&
+              TwitterExtractor.isTwitterUrl(parsed.primaryUrl!));
+
+      if (isTwitterLink) {
+        final targetTwitterUrl = parsed.primaryUrl ?? trimmedInput;
+        state = state.copyWith(generatingStep: GeneratingStep.scraping);
+
+        sourceUrl = targetTwitterUrl;
+        isTwitter = true;
+
+        TweetContent? tweet = await TwitterExtractor.extractViaFxTwitter(
+          targetTwitterUrl,
+        );
+
+        if (tweet == null || !tweet.isValid) {
+          tweet = await TwitterExtractor.extractViaVxTwitter(targetTwitterUrl);
+        }
+
+        if (tweet != null && tweet.isValid) {
+          authorDisplayName = tweet.authorDisplayName;
+          candidateOutlet = tweet.resolvedCandidateOutlet;
+
+          final enricher = getIt.isRegistered<TwitterArticleEnricher>()
+              ? getIt<TwitterArticleEnricher>()
+              : TwitterArticleEnricher();
+          final enrichment = await enricher.enrichFromTweet(
+            tweet.text,
+            cardUrl: tweet.cardUrl,
+            expandedUrls: tweet.expandedUrls,
+          );
+
+          var promptBody = TwitterExtractor.formatForAiPrompt(
+            tweet,
+            linkedArticleContent: enrichment?.content,
+            linkedArticleUrl: enrichment?.url,
+          );
+          if (parsed.accompanyingText.isNotEmpty) {
+            promptBody =
+                '$promptBody\n\nUSER COMMENTARY / CONTEXT:\n${parsed.accompanyingText}';
+          }
+          contentToCurate = promptBody;
+        } else {
+          // Fallback: If external APIs fail but user shared accompanying text, use it!
+          if (parsed.accompanyingText.isNotEmpty) {
+            contentToCurate = parsed.accompanyingText;
+          } else {
+            try {
+              final searchRepo = getIt<ISearchRepository>();
+              if (await searchRepo.isConfigured()) {
+                contentToCurate = await searchRepo.extractFromUrl(
+                  targetTwitterUrl,
+                );
+              } else {
+                throw TwitterExtractionException(sourceUrl);
+              }
+            } catch (e) {
+              throw TwitterExtractionException(sourceUrl);
+            }
+          }
+        }
+
+        state = state.copyWith(generatingStep: GeneratingStep.prompting);
+      } else if (parsed.primaryUrl != null ||
+          WebScraperService.isUrl(trimmedInput)) {
+        final targetUrl = parsed.primaryUrl ?? trimmedInput;
+        state = state.copyWith(generatingStep: GeneratingStep.scraping);
+        try {
+          final article = await WebScraperService.extractArticleFromUrl(
+            targetUrl,
+          ).timeout(const Duration(seconds: 10));
+          contentToCurate = article;
+          sourceUrl = article.url;
+          siteName = article.siteName;
+          if (article.text.trim().isEmpty || article.text.trim() == targetUrl) {
+            getIt<LogService>().warning(
+              'Scrape returned empty/fallback, using input text',
+            );
+            contentToCurate = parsed.accompanyingText.isNotEmpty
+                ? parsed.accompanyingText
+                : trimmedInput;
+            sourceUrl = targetUrl;
+          } else if (parsed.accompanyingText.isNotEmpty) {
+            contentToCurate = ExtractedArticle(
+              text:
+                  'USER CONTEXT / HEADLINE:\n${parsed.accompanyingText}\n\nARTICLE BODY:\n${article.text}',
+              url: article.url,
+              domain: article.domain,
+              pageTitle: article.pageTitle ?? parsed.accompanyingText,
+              description: article.description,
+              faviconUrl: article.faviconUrl,
+              siteName: article.siteName,
+            );
+          }
+        } on TimeoutException {
+          if (parsed.accompanyingText.isNotEmpty) {
+            contentToCurate = parsed.accompanyingText;
+            sourceUrl = targetUrl;
+          } else {
+            throw Exception(
+              'URL extraction timed out. Please paste the article text manually.',
+            );
+          }
+        }
+        state = state.copyWith(generatingStep: GeneratingStep.prompting);
+      }
+
+      // 2. AI Research Mode Enrichment (if enabled)
       if (state.isResearchModeEnabled) {
         state = state.copyWith(status: GenerateState.researching);
 
         final enrichUsecase = getIt<EnrichContextUseCase>();
-        final intent = IntentClassifier.classify(trimmedInput);
+        final textForEnrichment = contentToCurate is ExtractedArticle
+            ? contentToCurate.text
+            : contentToCurate.toString();
+
+        final intent = IntentClassifier.classify(textForEnrichment);
         final enrichmentResult = await enrichUsecase.execute(
-          parsed.primaryUrl ?? trimmedInput,
+          textForEnrichment,
           intent,
         );
 
-        contentToCurate = enrichmentResult.content;
+        if (contentToCurate is ExtractedArticle) {
+          contentToCurate = contentToCurate.copyWith(
+            text: enrichmentResult.content,
+          );
+        } else {
+          contentToCurate = enrichmentResult.content;
+        }
+
         final sources = enrichmentResult.sources;
-        if (intent == InputIntent.url && sources.isNotEmpty) {
+        if (sourceUrl == null &&
+            intent == InputIntent.url &&
+            sources.isNotEmpty) {
           sourceUrl = sources.first;
         }
+
         state = state.copyWith(
           searchSources: sources,
           status: GenerateState.generating,
@@ -360,113 +484,6 @@ class GenerateViewModel extends Notifier<GenerateUiState>
         );
       } else {
         state = state.copyWith(searchSources: []);
-
-        final isTwitterLink =
-            parsed.urlType == UrlType.twitterStatus ||
-            (parsed.primaryUrl != null &&
-                TwitterExtractor.isTwitterUrl(parsed.primaryUrl!));
-
-        if (isTwitterLink) {
-          final targetTwitterUrl = parsed.primaryUrl ?? trimmedInput;
-          state = state.copyWith(generatingStep: GeneratingStep.scraping);
-
-          sourceUrl = targetTwitterUrl;
-          isTwitter = true;
-
-          TweetContent? tweet = await TwitterExtractor.extractViaFxTwitter(
-            targetTwitterUrl,
-          );
-
-          if (tweet == null || !tweet.isValid) {
-            tweet = await TwitterExtractor.extractViaVxTwitter(
-              targetTwitterUrl,
-            );
-          }
-
-          if (tweet != null && tweet.isValid) {
-            authorDisplayName = tweet.authorDisplayName;
-            candidateOutlet = tweet.resolvedCandidateOutlet;
-
-            final enricher = getIt.isRegistered<TwitterArticleEnricher>()
-                ? getIt<TwitterArticleEnricher>()
-                : TwitterArticleEnricher();
-            final enrichment = await enricher.enrichFromTweet(tweet.text);
-
-            var promptBody = TwitterExtractor.formatForAiPrompt(
-              tweet,
-              linkedArticleContent: enrichment?.content,
-              linkedArticleUrl: enrichment?.url,
-            );
-            if (parsed.accompanyingText.isNotEmpty) {
-              promptBody =
-                  '$promptBody\n\nUSER COMMENTARY / CONTEXT:\n${parsed.accompanyingText}';
-            }
-            contentToCurate = promptBody;
-          } else {
-            // Fallback: If external APIs fail but user shared accompanying text, use it!
-            if (parsed.accompanyingText.isNotEmpty) {
-              contentToCurate = parsed.accompanyingText;
-            } else {
-              try {
-                final searchRepo = getIt<ISearchRepository>();
-                if (await searchRepo.isConfigured()) {
-                  contentToCurate = await searchRepo.extractFromUrl(
-                    targetTwitterUrl,
-                  );
-                } else {
-                  throw TwitterExtractionException(sourceUrl);
-                }
-              } catch (e) {
-                throw TwitterExtractionException(sourceUrl);
-              }
-            }
-          }
-
-          state = state.copyWith(generatingStep: GeneratingStep.prompting);
-        } else if (parsed.primaryUrl != null ||
-            WebScraperService.isUrl(trimmedInput)) {
-          final targetUrl = parsed.primaryUrl ?? trimmedInput;
-          state = state.copyWith(generatingStep: GeneratingStep.scraping);
-          try {
-            final article = await WebScraperService.extractArticleFromUrl(
-              targetUrl,
-            ).timeout(const Duration(seconds: 10));
-            contentToCurate = article;
-            sourceUrl = article.url;
-            siteName = article.siteName;
-            if (article.text.trim().isEmpty ||
-                article.text.trim() == targetUrl) {
-              getIt<LogService>().warning(
-                'Scrape returned empty/fallback, using input text',
-              );
-              contentToCurate = parsed.accompanyingText.isNotEmpty
-                  ? parsed.accompanyingText
-                  : trimmedInput;
-              sourceUrl = targetUrl;
-            } else if (parsed.accompanyingText.isNotEmpty) {
-              contentToCurate = ExtractedArticle(
-                text:
-                    'USER CONTEXT / HEADLINE:\n${parsed.accompanyingText}\n\nARTICLE BODY:\n${article.text}',
-                url: article.url,
-                domain: article.domain,
-                pageTitle: article.pageTitle ?? parsed.accompanyingText,
-                description: article.description,
-                faviconUrl: article.faviconUrl,
-                siteName: article.siteName,
-              );
-            }
-          } on TimeoutException {
-            if (parsed.accompanyingText.isNotEmpty) {
-              contentToCurate = parsed.accompanyingText;
-              sourceUrl = targetUrl;
-            } else {
-              throw Exception(
-                'URL extraction timed out. Please paste the article text manually.',
-              );
-            }
-          }
-          state = state.copyWith(generatingStep: GeneratingStep.prompting);
-        }
       }
 
       final settings = ref.read(settingsViewModelProvider);

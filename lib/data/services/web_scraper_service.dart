@@ -5,6 +5,7 @@ import 'package:injectable/injectable.dart';
 import 'package:oreamnos/core/network/api_client.dart';
 import 'package:oreamnos/core/di/injection.dart';
 import 'package:oreamnos/domain/models/curated_post.dart';
+import 'package:oreamnos/domain/repositories/search_repository.dart';
 import 'package:oreamnos/data/services/twitter_extractor.dart';
 import 'package:oreamnos/data/services/twitter_article_enricher.dart';
 
@@ -74,7 +75,11 @@ class WebScraperService {
         final enricher = getIt.isRegistered<TwitterArticleEnricher>()
             ? getIt<TwitterArticleEnricher>()
             : TwitterArticleEnricher(null, this);
-        final enrichment = await enricher.enrichFromTweet(tweet.text);
+        final enrichment = await enricher.enrichFromTweet(
+          tweet.text,
+          cardUrl: tweet.cardUrl,
+          expandedUrls: tweet.expandedUrls,
+        );
 
         return ExtractedArticle(
           text: TwitterExtractor.formatForAiPrompt(
@@ -91,6 +96,9 @@ class WebScraperService {
       // Fall through to normal scraping if both fail
     }
 
+    final uri = Uri.tryParse(trimmed);
+    final domain = uri?.host ?? '';
+
     try {
       final response = await _client.get<String>(
         trimmed,
@@ -105,13 +113,16 @@ class WebScraperService {
         ),
       );
 
-      final uri = Uri.tryParse(trimmed);
-      final domain = uri?.host ?? '';
-
       if (response.statusCode != 200) {
         debugPrint(
-          'WebScraper warning: Failed to load page (Status ${response.statusCode}). Falling back to raw URL.',
+          'WebScraper warning: Failed to load page (Status ${response.statusCode}). Trying Tavily fallback...',
         );
+        final fallbackArticle = await _tryTavilyExtractFallback(
+          trimmed,
+          domain,
+        );
+        if (fallbackArticle != null) return fallbackArticle;
+
         return ExtractedArticle(
           text: trimmed,
           url: trimmed,
@@ -182,6 +193,22 @@ class WebScraperService {
         }
       }
 
+      final trimmedText = text.trim();
+      if (trimmedText.isEmpty ||
+          trimmedText == trimmed ||
+          trimmedText == 'No readable content found on this page.' ||
+          trimmedText.length < 100) {
+        final fallbackArticle = await _tryTavilyExtractFallback(
+          trimmed,
+          domain,
+          pageTitle: pageTitle,
+          description: description,
+          siteName: siteName,
+          faviconUrl: faviconUrl,
+        );
+        if (fallbackArticle != null) return fallbackArticle;
+      }
+
       if (text.trim().isEmpty) {
         text = trimmed;
       }
@@ -196,16 +223,53 @@ class WebScraperService {
         siteName: siteName,
       );
     } catch (e) {
-      debugPrint('WebScraper extraction error for $trimmed: $e');
-      final uri = Uri.tryParse(trimmed);
+      debugPrint(
+        'WebScraper extraction error for $trimmed: $e. Trying Tavily fallback...',
+      );
+      final fallbackArticle = await _tryTavilyExtractFallback(trimmed, domain);
+      if (fallbackArticle != null) return fallbackArticle;
+
       return ExtractedArticle(
         text: trimmed,
         url: trimmed,
-        domain: uri?.host ?? '',
+        domain: domain,
         pageTitle: null,
         description: null,
       );
     }
+  }
+
+  Future<ExtractedArticle?> _tryTavilyExtractFallback(
+    String url,
+    String domain, {
+    String? pageTitle,
+    String? description,
+    String? siteName,
+    String? faviconUrl,
+  }) async {
+    try {
+      if (getIt.isRegistered<ISearchRepository>()) {
+        final searchRepo = getIt<ISearchRepository>();
+        if (await searchRepo.isConfigured()) {
+          final extracted = await searchRepo.extractFromUrl(url);
+          final cleaned = cleanTextPreserveParagraphs(extracted);
+          if (cleaned.length > 100) {
+            return ExtractedArticle(
+              text: cleaned,
+              url: url,
+              domain: domain,
+              pageTitle: pageTitle,
+              description: description,
+              siteName: siteName,
+              faviconUrl: faviconUrl,
+            );
+          }
+        }
+      }
+    } catch (e) {
+      debugPrint('Tavily extract fallback failed in WebScraper: $e');
+    }
+    return null;
   }
 
   /// Resolves the portal/outlet name for source.label (never a URL/domain).

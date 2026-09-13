@@ -58,16 +58,22 @@ void main() {
       expect(result, isNull);
     });
 
-    test('extracts via Tavily when Tavily succeeds', () async {
+    test('prioritizes local WebScraperService when both local and Tavily succeed', () async {
       final fakeSearch = FakeSearchRepository(
         onExtract: (url) async {
-          return 'Tavily extracted deep report on the tactical setup and team selection details for the upcoming clash.';
+          return 'Tavily extracted deep report that should not be used because local succeeded and has higher priority.';
         },
       );
-      final enricher = TwitterArticleEnricher(
-        fakeSearch,
-        FakeWebScraperService(),
+      final fakeScraper = FakeWebScraperService(
+        onExtract: (url) async {
+          return ExtractedArticle(
+            text: 'Built-in local scraper extracted article content with high priority, containing complete in-depth match analysis and player statistics.',
+            url: url,
+            domain: 'theathletic.com',
+          );
+        },
       );
+      final enricher = TwitterArticleEnricher(fakeSearch, fakeScraper);
 
       final result = await enricher.enrichFromTweet(
         'Check out the report: https://theathletic.com/tactics/match',
@@ -75,22 +81,21 @@ void main() {
 
       expect(result, isNotNull);
       expect(result!.url, 'https://theathletic.com/tactics/match');
-      expect(result.content, contains('Tavily extracted deep report'));
+      expect(
+        result.content,
+        contains('Built-in local scraper extracted article content'),
+      );
     });
 
-    test('falls back to WebScraperService when Tavily throws', () async {
+    test('falls back to Tavily when local WebScraperService fails', () async {
       final fakeSearch = FakeSearchRepository(
         onExtract: (url) async {
-          throw Exception('Tavily quota exceeded or missing API key');
+          return 'Tavily extracted deep report when local scraper failed, providing detailed tactical insight and transfer context.';
         },
       );
       final fakeScraper = FakeWebScraperService(
         onExtract: (url) async {
-          return ExtractedArticle(
-            text: 'Locally scraped article content providing extensive details regarding the transfer saga and player fee negotiations.',
-            url: url,
-            domain: 'theathletic.com',
-          );
+          throw Exception('Local scraper blocked by Cloudflare');
         },
       );
 
@@ -102,8 +107,44 @@ void main() {
 
       expect(result, isNotNull);
       expect(result!.url, 'https://theathletic.com/transfer/update');
-      expect(result.content, contains('Locally scraped article content'));
+      expect(
+        result.content,
+        contains('Tavily extracted deep report when local scraper failed'),
+      );
     });
+
+    test(
+      'extracts from cardUrl and expandedUrls when text has no direct link',
+      () async {
+        final fakeScraper = FakeWebScraperService(
+          onExtract: (url) async {
+            return ExtractedArticle(
+              text: 'Scraped article content from attached Twitter Card URL with detailed statistics and transfer agreement updates.',
+              url: url,
+              domain: 'theathletic.com',
+            );
+          },
+        );
+
+        final enricher = TwitterArticleEnricher(
+          FakeSearchRepository(),
+          fakeScraper,
+        );
+
+        final result = await enricher.enrichFromTweet(
+          'Tweet without link in text',
+          cardUrl: 'https://theathletic.com/news/12345',
+          expandedUrls: ['https://theathletic.com/news/12345'],
+        );
+
+        expect(result, isNotNull);
+        expect(result!.url, 'https://theathletic.com/news/12345');
+        expect(
+          result.content,
+          contains('Scraped article content from attached Twitter Card URL'),
+        );
+      },
+    );
 
     test('returns null when both Tavily and WebScraper fail', () async {
       final fakeSearch = FakeSearchRepository(

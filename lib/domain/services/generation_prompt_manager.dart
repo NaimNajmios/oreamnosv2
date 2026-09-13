@@ -71,10 +71,10 @@ class GenerationPromptManager {
 
     if (keepStructure) {
       buf.writeln(
-        'STYLE (KEEP STRUCTURE): Mirror the source skeleton exactly — same paragraph breaks, same number and order of list items, same facts and numbers in the same sequence. But ADAPT each line into natural, idiomatic Bahasa Malaysia sports-news style. Do NOT translate word-for-word.',
+        'STYLE (KEEP STRUCTURE): Mirror the source skeleton exactly — same line breaks, same paragraph breaks, same number and order of list items/stats, same facts and numbers in the same sequence. PRESERVE structural emojis (e.g., ⚽, 📊, ⏱️, 🎯, 📌, ✅) and bullet icons used in the source as visual section markers or stat bullets. But ADAPT each line into natural, idiomatic Bahasa Malaysia sports-news style. Do NOT translate word-for-word.',
       );
       buf.writeln(
-        'ADAPTATION: Avoid literal cognates/calques (e.g. NEVER render "Generational." as "Generasi." — use a natural BM pundit line such as "Memang kelas tersendiri." or omit it if it is pure filler with no factual content). Use wording a local football admin would use. No emoji, no emoticons, no emoji suggestions, no markdown, no hashtags inside body.',
+        'ADAPTATION: Avoid literal cognates/calques (e.g. NEVER render "Generational." as "Generasi." — use a natural BM pundit line such as "Memang kelas tersendiri." or omit it if it is pure filler with no factual content). Use wording a local football admin would use. Preserve structural/bullet emojis from the original, but do not invent decorative emoji spam. No markdown formatting, no hashtags inside body.',
       );
     } else {
       buf.writeln(
@@ -92,7 +92,7 @@ class GenerationPromptManager {
     if (searchSources.isNotEmpty) {
       buf.writeln('GROUNDEDNESS RULES (when search context is provided):');
       buf.writeln(
-        '1. Base ALL facts, stats and quotes ONLY on the provided search context.',
+        '1. Base ALL facts, stats and quotes ONLY on the provided search context and source text.',
       );
       buf.writeln(
         '2. Do NOT invent stats, scores or transfer fees. If not mentioned, omit it.',
@@ -106,6 +106,12 @@ class GenerationPromptManager {
     buf.writeln('STRICT EDITORIAL GUIDELINES:');
     buf.writeln(
       '- You are writing formal sports news. NEVER include conversational filler, encouraging words, or well-wishes (e.g., "Good luck", "Semoga berjaya", "Here is the news").',
+    );
+    buf.writeln(
+      '- BANAL COMMENTARY & TRIVIAL VERDICTS ARE STRICTLY FORBIDDEN: NEVER include obvious commentary, clichés, or empty filler verdicts (e.g., "Gol ini amat penting bagi pasukan dalam perlawanan ini", "Kejayaan ini amat bermakna", "Pemain ini membuktikan kehebatannya", "Kemenangan ini membakar semangat pemain"). That is useless information. Every sentence must deliver concrete, verifiable facts or substantial match context.',
+    );
+    buf.writeln(
+      '- HIGH-VALUE VALUE-ADD: Prioritize concrete facts that elevate the report (e.g., player season statistics like goals/assists/appearances, official contract lengths or transfer fees, head-to-head records, verified milestones).',
     );
     buf.writeln(
       '- Do not add any personal commentary unless specifically requested by the user.',
@@ -125,7 +131,7 @@ class GenerationPromptManager {
     final range = lengthRange(text.isEmpty ? 600 : text.length, length);
     if (keepStructure) {
       buf.writeln(
-        'LENGTH: STRICTLY PRESERVE the original formatting, bullet points, lists, and structure. Do NOT summarize into paragraphs if the original used a list format. Keep the visual layout exactly the same (paragraphs separated by \\n\\n, list items separated by single \\n with • only), but rewrite each line naturally — convey the same meaning, not the same words.',
+        'LENGTH: STRICTLY PRESERVE the original formatting, bullet points, stats lines, and structure. Do NOT summarize into paragraphs if the original used a list or stat line format. Keep the visual layout exactly the same: preserve single newlines (\\n) between stats/items, and blank lines (\\n\\n) between sections. Preserve original bullet characters or emoji bullet indicators (e.g. •, -, ⚽, 📊). Rewrite each line naturally — convey the same meaning, not the same words.',
       );
     } else {
       buf.writeln(
@@ -142,10 +148,16 @@ class GenerationPromptManager {
       );
     }
     if (hasBullets) {
-      buf.writeln(
-        'LISTS: The source contains bullet points/lists — preserve this format using the • character only.',
-      );
-    } else {
+      if (keepStructure) {
+        buf.writeln(
+          'LISTS: The source contains bullet points/lists — preserve this format, retaining the original bullet symbols or emoji markers.',
+        );
+      } else {
+        buf.writeln(
+          'LISTS: The source contains bullet points/lists — preserve this format using the • character only.',
+        );
+      }
+    } else if (!keepStructure) {
       buf.writeln(
         'LISTS: Do NOT use bullet points or lists. Write in flowing paragraph format only.',
       );
@@ -156,7 +168,9 @@ class GenerationPromptManager {
     );
     buf.writeln('- Do not use em-dashes (—) anywhere in the output.');
     buf.writeln('- Do NOT include any hashtags in the body.');
-    buf.writeln('- Do NOT include any emojis in the output.');
+    if (!keepStructure) {
+      buf.writeln('- Do NOT include any emojis in the output.');
+    }
     buf.writeln('');
     buf.writeln('QUOTE HANDLING:');
     buf.writeln(
@@ -355,7 +369,7 @@ class GenerationPromptManager {
       'body': {
         'type': 'string',
         'description': keepStructure
-            ? 'Adapted natural Bahasa Malaysia, same structure/newlines/bullets as source (paragraphs \\n\\n, list items single \\n with • only). Same meaning, never word-for-word; localize slang/hype.'
+            ? 'Adapted natural Bahasa Malaysia, same structure/newlines/bullets/emojis as source (paragraphs \\n\\n, list items single \\n, preserving original bullet/emoji markers). Same meaning, never word-for-word; localize slang/hype.'
             : 'Formal neutral Bahasa Malaysia, proportional to source, 1-4 paragraphs separated by \\n\\n, no emoji/hashtag/source line, no invented facts',
       },
       'source': {
@@ -530,6 +544,15 @@ class GenerationPromptManager {
       final t = line.trim();
       if (t.startsWith('•') ||
           t.startsWith('·') ||
+          t.startsWith('▪') ||
+          t.startsWith('▫') ||
+          t.startsWith('‣') ||
+          t.startsWith('⁃') ||
+          t.startsWith('▶') ||
+          t.startsWith('►') ||
+          t.startsWith('➤') ||
+          t.startsWith('✓') ||
+          t.startsWith('✔') ||
           t.startsWith('- ') ||
           t.startsWith('* ') ||
           t.startsWith('+ ')) {
@@ -542,6 +565,14 @@ class GenerationPromptManager {
       }
       if (RegExp(r'^\d+\)\s').hasMatch(t)) return true;
       if (RegExp(r'^[a-z]\)\s').hasMatch(t)) return true;
+      // Detect emoji bullets at line start (e.g. ⚽, 📊, 🎯, 📌, 🔥, ✅, ⏱️, 🔢)
+      if (t.isNotEmpty &&
+          RegExp(
+            r'^[\u{1F300}-\u{1F6FF}\u{1F900}-\u{1F9FF}\u{2600}-\u{27BF}\u{1FA70}-\u{1FAFF}]',
+            unicode: true,
+          ).hasMatch(t)) {
+        return true;
+      }
     }
     return false;
   }

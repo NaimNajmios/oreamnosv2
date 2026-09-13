@@ -190,6 +190,7 @@ class GeminiCurator implements IContentCurator {
       authorDisplayName: authorDisplayName,
       candidateOutlet: candidateOutlet,
       isTwitter: isTwitter,
+      keepStructure: keepStructure,
     );
   }
 
@@ -276,7 +277,11 @@ class GeminiCurator implements IContentCurator {
     if (parts.isEmpty) {
       throw Exception('Gemini returned empty text parts');
     }
-    return _parseCuratedPost(parts[0]['text'] as String, original.source.url);
+    return _parseCuratedPost(
+      parts[0]['text'] as String,
+      original.source.url,
+      keepStructure: keepStructure,
+    );
   }
 
   Future<CuratedPost> _parseCuratedPost(
@@ -286,6 +291,7 @@ class GeminiCurator implements IContentCurator {
     String? authorDisplayName,
     String? candidateOutlet,
     bool isTwitter = false,
+    bool keepStructure = false,
   }) async {
     try {
       final jsonMap = await JsonCleaner.decodeIsolate(rawText);
@@ -313,7 +319,7 @@ class GeminiCurator implements IContentCurator {
           if (seed != null && seed.isNotEmpty) sm['label'] = seed;
         }
       }
-      return CuratedPost.fromJson(jsonMap);
+      return CuratedPost.fromJson(jsonMap, keepStructure: keepStructure);
     } catch (_) {
       // Fallback: clean markdown chatter then treat as markdown.
       // Label stays "" (never host); url preserved for internal use.
@@ -334,6 +340,7 @@ class GeminiCurator implements IContentCurator {
       return CuratedPost.fromMarkdownFallback(
         ResponseCleanup.cleanUpResponseWithMarkdown(rawText),
         source: src,
+        keepStructure: keepStructure,
       );
     }
   }

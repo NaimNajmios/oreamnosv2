@@ -156,6 +156,7 @@ class OpenAICompatibleCurator implements IContentCurator {
       authorDisplayName: authorDisplayName,
       candidateOutlet: candidateOutlet,
       isTwitter: isTwitter,
+      keepStructure: keepStructure,
     );
   }
 
@@ -166,6 +167,7 @@ class OpenAICompatibleCurator implements IContentCurator {
     String? authorDisplayName,
     String? candidateOutlet,
     bool isTwitter = false,
+    bool keepStructure = false,
   }) async {
     try {
       final jsonMap = await JsonCleaner.decodeIsolate(rawText);
@@ -189,7 +191,7 @@ class OpenAICompatibleCurator implements IContentCurator {
           if (seed != null && seed.isNotEmpty) sm['label'] = seed;
         }
       }
-      return CuratedPost.fromJson(jsonMap);
+      return CuratedPost.fromJson(jsonMap, keepStructure: keepStructure);
     } catch (_) {
       SourceAttribution? src;
       if (sourceUrl != null && sourceUrl.isNotEmpty) {
@@ -208,6 +210,7 @@ class OpenAICompatibleCurator implements IContentCurator {
       return CuratedPost.fromMarkdownFallback(
         ResponseCleanup.cleanUpResponseWithMarkdown(rawText),
         source: src,
+        keepStructure: keepStructure,
       );
     }
   }
@@ -368,7 +371,11 @@ class OpenAICompatibleCurator implements IContentCurator {
       throw Exception('API returned empty response');
     }
     final message = choices[0]['message'];
-    return _parseCuratedPost(message['content'] as String, original.source.url);
+    return _parseCuratedPost(
+      message['content'] as String,
+      original.source.url,
+      keepStructure: keepStructure,
+    );
   }
 
   @override

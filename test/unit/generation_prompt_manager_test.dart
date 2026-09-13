@@ -90,5 +90,57 @@ void main() {
       final schema = GenerationPromptManager.jsonSchema();
       expect(schema['additionalProperties'], isFalse);
     });
+
+    test(
+      'containsBulletPoints recognizes emoji and unicode bullet markers',
+      () {
+        expect(
+          GenerationPromptManager.containsBulletPoints(
+            '⚽ 12 goals\n⚽ 5 assists',
+          ),
+          isTrue,
+        );
+        expect(
+          GenerationPromptManager.containsBulletPoints(
+            '📊 85% pass accuracy\n📊 3 key passes',
+          ),
+          isTrue,
+        );
+        expect(
+          GenerationPromptManager.containsBulletPoints(
+            '▪ Matchday 1\n▪ Matchday 2',
+          ),
+          isTrue,
+        );
+        expect(
+          GenerationPromptManager.containsBulletPoints(
+            '▶ First half\n▶ Second half',
+          ),
+          isTrue,
+        );
+        expect(
+          GenerationPromptManager.containsBulletPoints(
+            '✓ Passed medical\n✓ Signed 5-year deal',
+          ),
+          isTrue,
+        );
+        expect(
+          GenerationPromptManager.containsBulletPoints(
+            'Just a regular narrative sentence without bullets.',
+          ),
+          isFalse,
+        );
+      },
+    );
+
+    test('buildSystemPrompt includes strict editorial guidelines against banal commentary', () {
+      final s = GenerationPromptManager.buildSystemPrompt(keepStructure: true);
+      expect(s, contains('STRICT EDITORIAL GUIDELINES:'));
+      expect(
+        s,
+        contains('BANAL COMMENTARY & TRIVIAL VERDICTS ARE STRICTLY FORBIDDEN'),
+      );
+      expect(s, contains('PRESERVE structural emojis'));
+    });
   });
 }

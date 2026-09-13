@@ -69,6 +69,47 @@ class TwitterExtractor {
       final authorHandle = author?['screen_name'] as String? ?? '';
       final metrics = tweet['metrics'] as Map<String, dynamic>?;
 
+      // Extract card attachment details (e.g. summary_large_image, summary)
+      final card = tweet['card'] as Map<String, dynamic>?;
+      final cardUrl = card?['url'] as String?;
+      final cardTitle = card?['title'] as String?;
+      final cardDescription = card?['description'] as String?;
+      final cardDomain = card?['domain'] as String?;
+
+      // Extract X Article details
+      final article = tweet['article'] as Map<String, dynamic>?;
+      final articleTitle = article?['title'] as String?;
+      final articleContent = (article?['content'] is Map)
+          ? (article!['content']['text'] as String? ??
+                article['preview_text'] as String?)
+          : article?['preview_text'] as String?;
+
+      // Extract expanded destination URLs from raw_text facets
+      final expandedUrls = <String>[];
+      final rawTextObj = tweet['raw_text'] as Map<String, dynamic>?;
+      final facets = rawTextObj?['facets'] as List<dynamic>?;
+      if (facets != null) {
+        for (final facet in facets) {
+          if (facet is Map && facet['type'] == 'url') {
+            final replacement = facet['replacement'] as String?;
+            if (replacement != null && replacement.isNotEmpty) {
+              expandedUrls.add(replacement);
+            }
+          }
+        }
+      }
+
+      // Extract quoted tweet
+      String? quoteText;
+      String? quoteAuthor;
+      final quote = tweet['quote'] as Map<String, dynamic>?;
+      if (quote != null) {
+        quoteText = quote['text'] as String?;
+        final qAuthor = quote['author'] as Map<String, dynamic>?;
+        quoteAuthor =
+            qAuthor?['name'] as String? ?? qAuthor?['screen_name'] as String?;
+      }
+
       return TweetContent(
         text: text,
         authorName: authorName,
@@ -80,6 +121,15 @@ class TwitterExtractor {
         views: metrics?['views'] as int? ?? 0,
         createdAt: tweet['created_at'] as String? ?? '',
         sourceUrl: url,
+        cardUrl: cardUrl,
+        cardTitle: cardTitle,
+        cardDescription: cardDescription,
+        cardDomain: cardDomain,
+        articleTitle: articleTitle,
+        articleContent: articleContent,
+        quoteText: quoteText,
+        quoteAuthor: quoteAuthor,
+        expandedUrls: expandedUrls,
       );
     } catch (e) {
       debugPrint('TwitterExtractor error ($baseUrl): $e');
@@ -87,28 +137,49 @@ class TwitterExtractor {
     }
   }
 
-  /// Extracts external article URLs found inside the tweet text.
+  /// Extracts external article URLs found inside the tweet, attached card, or facets.
   ///
   /// Ignores internal X/Twitter status/profile links while preserving t.co
   /// shortlinks (which may redirect to external articles) and external web domains.
-  static List<String> extractArticleUrls(String text) {
-    if (text.isEmpty) return const [];
-    final matches = RegExp(
-      r'https?://[^\s<>"]+',
-      caseSensitive: false,
-    ).allMatches(text);
-    final urls = <String>[];
-    for (final m in matches) {
-      var u = m.group(0)!;
-      while (u.isNotEmpty &&
-          (u.endsWith('.') ||
-              u.endsWith(',') ||
-              u.endsWith(')') ||
-              u.endsWith(']') ||
-              u.endsWith('!') ||
-              u.endsWith('?'))) {
-        u = u.substring(0, u.length - 1);
+  static List<String> extractArticleUrls(
+    String text, {
+    String? cardUrl,
+    List<String>? expandedUrls,
+  }) {
+    final candidateUrls = <String>[];
+    if (cardUrl != null && cardUrl.trim().isNotEmpty) {
+      candidateUrls.add(cardUrl.trim());
+    }
+    if (expandedUrls != null) {
+      for (final eu in expandedUrls) {
+        if (eu.trim().isNotEmpty) candidateUrls.add(eu.trim());
       }
+    }
+
+    if (text.isNotEmpty) {
+      final matches = RegExp(
+        r'https?://[^\s<>"]+',
+        caseSensitive: false,
+      ).allMatches(text);
+      for (final m in matches) {
+        var u = m.group(0)!;
+        while (u.isNotEmpty &&
+            (u.endsWith('.') ||
+                u.endsWith(',') ||
+                u.endsWith(')') ||
+                u.endsWith(']') ||
+                u.endsWith('!') ||
+                u.endsWith('?'))) {
+          u = u.substring(0, u.length - 1);
+        }
+        candidateUrls.add(u);
+      }
+    }
+
+    final validUrls = <String>[];
+    final seen = <String>{};
+
+    for (final u in candidateUrls) {
       final uri = Uri.tryParse(u);
       if (uri == null || !uri.hasScheme) continue;
       final host = uri.host.toLowerCase();
@@ -121,9 +192,11 @@ class TwitterExtractor {
           (uri.path.contains('/status/') || uri.path.contains('/i/'))) {
         continue;
       }
-      urls.add(u);
+      if (seen.add(u)) {
+        validUrls.add(u);
+      }
     }
-    return urls;
+    return validUrls;
   }
 
   /// Formats tweet content into a structured block for the AI prompt.
@@ -159,6 +232,40 @@ class TwitterExtractor {
       '(X/Twitter/x.com) or handle-alone.',
     );
 
+    if (tweet.cardTitle != null || tweet.cardDescription != null) {
+      sb.writeln('');
+      sb.writeln('--- ATTACHED CARD / LINK PREVIEW (from post) ---');
+      if (tweet.cardTitle != null && tweet.cardTitle!.isNotEmpty) {
+        sb.writeln('CARD TITLE: ${tweet.cardTitle}');
+      }
+      if (tweet.cardDomain != null && tweet.cardDomain!.isNotEmpty) {
+        sb.writeln('CARD DOMAIN: ${tweet.cardDomain}');
+      }
+      if (tweet.cardUrl != null && tweet.cardUrl!.isNotEmpty) {
+        sb.writeln('CARD URL: ${tweet.cardUrl}');
+      }
+      if (tweet.cardDescription != null && tweet.cardDescription!.isNotEmpty) {
+        sb.writeln('CARD DESCRIPTION: ${tweet.cardDescription}');
+      }
+    }
+
+    if (tweet.articleTitle != null || tweet.articleContent != null) {
+      sb.writeln('');
+      sb.writeln('--- ATTACHED ARTICLE ---');
+      if (tweet.articleTitle != null) {
+        sb.writeln('ARTICLE TITLE: ${tweet.articleTitle}');
+      }
+      if (tweet.articleContent != null) {
+        sb.writeln('ARTICLE TEXT: ${tweet.articleContent}');
+      }
+    }
+
+    if (tweet.quoteText != null && tweet.quoteText!.isNotEmpty) {
+      sb.writeln('');
+      sb.writeln('--- QUOTED POST (${tweet.quoteAuthor ?? 'Quoted'}) ---');
+      sb.writeln(tweet.quoteText);
+    }
+
     if (linkedArticleContent != null &&
         linkedArticleContent.trim().isNotEmpty) {
       sb.writeln('');
@@ -185,6 +292,15 @@ class TweetContent {
   final String createdAt;
   final String sourceUrl;
   final String? candidateOutlet;
+  final String? cardUrl;
+  final String? cardTitle;
+  final String? cardDescription;
+  final String? cardDomain;
+  final String? articleTitle;
+  final String? articleContent;
+  final String? quoteText;
+  final String? quoteAuthor;
+  final List<String> expandedUrls;
 
   TweetContent({
     required this.text,
@@ -197,6 +313,15 @@ class TweetContent {
     this.createdAt = '',
     this.sourceUrl = '',
     this.candidateOutlet,
+    this.cardUrl,
+    this.cardTitle,
+    this.cardDescription,
+    this.cardDomain,
+    this.articleTitle,
+    this.articleContent,
+    this.quoteText,
+    this.quoteAuthor,
+    this.expandedUrls = const [],
   });
 
   /// Display name for "Outlet via Display Name" formatting.
