@@ -17,14 +17,18 @@ import 'package:shared_preferences/shared_preferences.dart' as _i460;
 import '../../data/repositories/tavily_search_repository.dart' as _i389;
 import '../../data/services/card_data_extractor.dart' as _i633;
 import '../../data/services/export_service.dart' as _i496;
+import '../../data/services/free_tier_guard.dart' as _i200;
 import '../../data/services/log_service.dart' as _i713;
+import '../../data/services/ml_kit_vision_extractor.dart' as _i560;
 import '../../data/services/preferences_service.dart' as _i867;
 import '../../data/services/provider_api_service.dart' as _i581;
 import '../../data/services/token_usage_side_channel.dart' as _i952;
 import '../../data/services/usage_service.dart' as _i1062;
+import '../../data/services/vision_curator_chain.dart' as _i652;
 import '../../data/services/web_scraper_service.dart' as _i978;
 import '../../domain/repositories/search_repository.dart' as _i475;
 import '../../domain/services/enrich_context_usecase.dart' as _i253;
+import '../../domain/services/vision_extractor.dart' as _i754;
 import '../network/api_client.dart' as _i557;
 import '../repositories/card_repository.dart' as _i83;
 import '../repositories/content_repository.dart' as _i739;
@@ -66,6 +70,12 @@ extension GetItInjectableX on _i174.GetIt {
     gh.lazySingleton<_i83.ICardRepository>(
       () => _i83.CardRepository(gh<_i633.CardDataExtractor>()),
     );
+    gh.lazySingleton<_i754.IVisionExtractor>(
+      () => _i560.MLKitVisionExtractor(),
+    );
+    gh.lazySingleton<_i200.FreeTierGuard>(
+      () => _i200.FreeTierGuard(gh<_i460.SharedPreferences>()),
+    );
     gh.lazySingleton<_i713.LogService>(
       () => _i713.LogService(gh<_i460.SharedPreferences>()),
     );
@@ -91,6 +101,12 @@ extension GetItInjectableX on _i174.GetIt {
       () => _i253.EnrichContextUseCase(
         gh<_i475.ISearchRepository>(),
         gh<_i978.WebScraperService>(),
+      ),
+    );
+    gh.lazySingleton<_i652.VisionCuratorChain>(
+      () => _i652.VisionCuratorChain(
+        gh<_i867.PreferencesService>(),
+        gh<_i200.FreeTierGuard>(),
       ),
     );
     return this;

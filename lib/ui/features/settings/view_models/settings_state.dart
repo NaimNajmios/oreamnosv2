@@ -2,6 +2,7 @@ import 'package:oreamnos/data/models/ai_provider.dart';
 import 'package:oreamnos/domain/models/app_theme_mode.dart';
 import 'package:oreamnos/domain/models/custom_pill.dart';
 import 'package:oreamnos/domain/models/hashtag_group.dart';
+import 'package:oreamnos/domain/models/vision_mode.dart';
 
 class SettingsState {
   final bool isInitialized;
@@ -21,6 +22,7 @@ class SettingsState {
   final bool? lastTestOk;
   final DateTime? lastTestedAt;
   final bool persistGenerationOptions;
+  final VisionMode visionMode;
 
   const SettingsState({
     this.isInitialized = false,
@@ -40,6 +42,7 @@ class SettingsState {
     this.lastTestOk,
     this.lastTestedAt,
     this.persistGenerationOptions = false,
+    this.visionMode = VisionMode.auto,
   });
 
   SettingsState copyWith({
@@ -64,6 +67,7 @@ class SettingsState {
     DateTime? lastTestedAt,
     bool clearLastTest = false,
     bool? persistGenerationOptions,
+    VisionMode? visionMode,
   }) {
     return SettingsState(
       isInitialized: isInitialized ?? this.isInitialized,
@@ -84,6 +88,7 @@ class SettingsState {
       lastTestedAt: clearLastTest ? null : (lastTestedAt ?? this.lastTestedAt),
       persistGenerationOptions:
           persistGenerationOptions ?? this.persistGenerationOptions,
+      visionMode: visionMode ?? this.visionMode,
     );
   }
 }

@@ -156,9 +156,82 @@ class ProviderApiService {
               isFree = true;
             }
           }
-          return AiModel(id: id, isFree: isFree);
+          return AiModel(
+            id: id,
+            isFree: isFree,
+            supportsVision: _supportsVision(m),
+          );
         })
         .where((m) => m.id.startsWith(prefixFilter))
         .toList();
+  }
+
+  /// Heuristic for OpenAI-compatible `/models` entries: true when the entry
+  /// advertises image input (OpenRouter `architecture.modality`) or the id
+  /// names a known vision family (scout/vision/vl/qwen2-vl).
+  static bool _supportsVision(dynamic m) {
+    try {
+      if (m is Map) {
+        final arch = m['architecture'];
+        if (arch is Map) {
+          final modality = (arch['modality'] ?? '').toString().toLowerCase();
+          final inputModalities = arch['input_modalities'];
+          if (modality.contains('image') ||
+              (inputModalities is List &&
+                  inputModalities
+                      .map((e) => e.toString().toLowerCase())
+                      .any((e) => e.contains('image')))) {
+            return true;
+          }
+        }
+      }
+    } catch (_) {}
+    final id = (m is Map ? (m['id'] ?? '').toString() : '').toLowerCase();
+    return id.contains('vision') ||
+        id.contains('scout') ||
+        id.contains('-vl') ||
+        id.contains('qwen2-vl') ||
+        id.contains('llama-3.2');
+  }
+
+  static bool _isZeroCost(dynamic pricing) {
+    if (pricing is! Map) return false;
+    bool zero(v) => v == 0 || v == '0' || v == '0.0';
+    return zero(pricing['prompt']) && zero(pricing['completion']);
+  }
+
+  /// Auto-discovers free vision models on OpenRouter at runtime so the
+  /// vision chain self-heals when the free lineup rotates.
+  /// Returns model ids ending in `:free` with image input capability.
+  Future<List<String>> fetchFreeVisionModels(String apiKey) async {
+    final response = await _client.get<dynamic>(
+      'https://openrouter.ai/api/v1/models',
+      options: Options(
+        extra: {'apiKey': apiKey, 'provider': 'openai'},
+        responseType: ResponseType.json,
+        headers: {'Content-Type': 'application/json'},
+      ),
+    );
+    if (response.statusCode != 200) {
+      throw ProviderApiException(
+        'API Error: ${response.statusCode} - ${response.data}',
+      );
+    }
+    final data = response.data is String
+        ? jsonDecode(response.data as String)
+        : response.data;
+    final raw = data is Map && data['data'] is List
+        ? data['data'] as List
+        : const [];
+    final out = <String>[];
+    for (final m in raw) {
+      if (m is! Map) continue;
+      final id = (m['id'] ?? '').toString();
+      if (!id.endsWith(':free')) continue;
+      if (!_supportsVision(m)) continue;
+      if (m.containsKey('pricing') && !_isZeroCost(m['pricing'])) continue;
+      out.add(id);
+    }
+    return out;
   }
 }

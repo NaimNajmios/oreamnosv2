@@ -1,3 +1,5 @@
+import 'dart:typed_data';
+
 import 'package:flutter_test/flutter_test.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -34,6 +36,8 @@ class _MockContentRepository implements IContentRepository {
     String? authorDisplayName,
     String? candidateOutlet,
     bool isTwitter = false,
+    Uint8List? imageBytes,
+    String? imageMimeType,
   }) async {
     callCount++;
     lastProvider = provider;

@@ -1,19 +1,30 @@
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:oreamnos/config/theme/app_spacing.dart';
+import 'package:oreamnos/domain/models/vision_mode.dart';
 import 'package:oreamnos/ui/core/utils/haptics.dart';
 
 import 'app_card.dart';
 
-/// Modal bottom sheet for choosing between Camera and Gallery OCR image extraction.
+/// Modal bottom sheet for vision extraction: Camera/Gallery picker plus
+/// Auto (cloud $0 chain -> on-device) vs On-device only toggle.
 class OcrExtractionSheet extends StatelessWidget {
-  const OcrExtractionSheet({super.key, required this.onSourceSelected});
+  const OcrExtractionSheet({
+    super.key,
+    required this.onSourceSelected,
+    required this.visionMode,
+    required this.onModeChanged,
+  });
 
   final ValueChanged<ImageSource> onSourceSelected;
+  final VisionMode visionMode;
+  final ValueChanged<VisionMode> onModeChanged;
 
   static Future<void> show(
     BuildContext context, {
     required ValueChanged<ImageSource> onSourceSelected,
+    required VisionMode visionMode,
+    required ValueChanged<VisionMode> onModeChanged,
   }) {
     return showModalBottomSheet(
       context: context,
@@ -23,8 +34,11 @@ class OcrExtractionSheet extends StatelessWidget {
           top: Radius.circular(AppSpacing.radiusXl),
         ),
       ),
-      builder: (context) =>
-          OcrExtractionSheet(onSourceSelected: onSourceSelected),
+      builder: (context) => OcrExtractionSheet(
+        onSourceSelected: onSourceSelected,
+        visionMode: visionMode,
+        onModeChanged: onModeChanged,
+      ),
     );
   }
 
@@ -69,10 +83,32 @@ class OcrExtractionSheet extends StatelessWidget {
           ),
           const SizedBox(height: AppSpacing.xs),
           Text(
-            'Use on-device OCR machine learning to extract text from a photo or screenshot.',
+            visionMode == VisionMode.auto
+                ? 'Auto tries free cloud vision first, then on-device OCR. Screenshots are sent to your configured AI provider.'
+                : 'On-device only: unlimited, offline, nothing leaves your phone.',
             style: theme.textTheme.bodySmall?.copyWith(
               color: theme.colorScheme.onSurface.withValues(alpha: 0.6),
             ),
+          ),
+          const SizedBox(height: AppSpacing.md),
+          SegmentedButton<VisionMode>(
+            segments: const [
+              ButtonSegment(
+                value: VisionMode.auto,
+                label: Text('Auto'),
+                icon: Icon(Icons.auto_awesome_outlined, size: 16),
+              ),
+              ButtonSegment(
+                value: VisionMode.onDeviceOnly,
+                label: Text('On-device'),
+                icon: Icon(Icons.smartphone_outlined, size: 16),
+              ),
+            ],
+            selected: {visionMode},
+            onSelectionChanged: (s) {
+              Haptics.lightImpact();
+              onModeChanged(s.first);
+            },
           ),
           const SizedBox(height: AppSpacing.lg),
           Row(

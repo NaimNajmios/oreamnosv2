@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'dart:typed_data';
 
 import 'package:dio/dio.dart';
 
@@ -93,6 +94,8 @@ class GeminiCurator implements IContentCurator {
     String? authorDisplayName,
     String? candidateOutlet,
     bool isTwitter = false,
+    Uint8List? imageBytes,
+    String? imageMimeType,
   }) async {
     final resolvedSourceUrl =
         sourceUrl ?? (content is ExtractedArticle ? content.url : null);
@@ -111,13 +114,29 @@ class GeminiCurator implements IContentCurator {
       candidateOutlet: candidateOutlet,
       isTwitter: isTwitter,
     );
-    final userPrompt = GenerationPromptManager.buildUserPrompt(content);
+    final userPrompt = imageBytes != null
+        ? 'Extract football content from this screenshot (lineups, scores, '
+              'stats, captions) and curate it per the schema. '
+              'Return ONLY the JSON object.\n\n'
+              '${GenerationPromptManager.buildUserPrompt(content)}'
+        : GenerationPromptManager.buildUserPrompt(content);
 
     final actualModelId = modelId.startsWith('models/')
         ? modelId
         : 'models/$modelId';
     final path =
         'https://generativelanguage.googleapis.com/v1beta/$actualModelId:generateContent';
+
+    final requestParts = <Map<String, dynamic>>[
+      {'text': userPrompt},
+      if (imageBytes != null)
+        {
+          'inline_data': {
+            'mime_type': imageMimeType ?? 'image/png',
+            'data': base64Encode(imageBytes),
+          },
+        },
+    ];
 
     Response response;
     try {
@@ -130,11 +149,7 @@ class GeminiCurator implements IContentCurator {
             ],
           },
           "contents": [
-            {
-              "parts": [
-                {"text": userPrompt},
-              ],
-            },
+            {"parts": requestParts},
           ],
           "generationConfig": {
             "temperature": 0.7,

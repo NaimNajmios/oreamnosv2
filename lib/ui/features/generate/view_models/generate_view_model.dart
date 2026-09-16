@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'dart:convert';
+import 'dart:typed_data';
 
 import 'package:flutter/widgets.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -23,7 +24,12 @@ import 'package:oreamnos/data/services/twitter_article_enricher.dart';
 import 'package:oreamnos/core/utils/shared_content_parser.dart';
 import 'package:oreamnos/core/utils/url_detector.dart';
 import 'package:oreamnos/data/services/preferences_service.dart';
+import 'package:oreamnos/data/services/vision_curator_chain.dart';
+import 'package:oreamnos/data/services/vision_image_prep.dart';
+import 'package:oreamnos/domain/models/vision_mode.dart';
+import 'package:oreamnos/domain/services/vision_extractor.dart';
 import 'package:oreamnos/ui/features/settings/view_models/settings_view_model.dart';
+import 'package:image_picker/image_picker.dart';
 import 'package:uuid/uuid.dart';
 
 import 'generate_state.dart';
@@ -978,12 +984,141 @@ class GenerateViewModel extends Notifier<GenerateUiState>
     );
   }
 
-  // Vision/ML Kit extraction removed — vision models excluded per v2 verdict.
-  Future<void> extractTextFromImage(dynamic _) async {
+  /// $0 vision extraction: Auto (cloud chain -> ML Kit) or on-device only.
+  ///
+  /// Cloud success sets the curated post directly; on-device OCR fills
+  /// [pendingInput] and runs the normal text pipeline.
+  Future<void> extractTextFromImage(ImageSource source) async {
+    final sessionId = ++_generationSessionId;
     state = state.copyWith(
-      errorMessage: 'Image extraction is disabled (vision models excluded).',
-      status: GenerateState.error,
+      isExtractingImage: true,
+      errorMessage: null,
+      validationMessage: null,
     );
+    final stopwatch = Stopwatch()..start();
+    try {
+      final picker = ImagePicker();
+      final picked = await picker.pickImage(source: source, maxWidth: 1920);
+      if (picked == null) {
+        if (sessionId != _generationSessionId) return;
+        state = state.copyWith(isExtractingImage: false);
+        return;
+      }
+      final rawBytes = await picked.readAsBytes();
+      final mimeType = VisionImagePrep.detectMimeType(picked.path);
+      final visionMode = getIt.isRegistered<PreferencesService>()
+          ? getIt<PreferencesService>().visionMode
+          : VisionMode.auto;
+
+      if (visionMode == VisionMode.onDeviceOnly) {
+        await _extractOnDeviceOnly(picked.path, sessionId, stopwatch);
+        return;
+      }
+
+      // Auto: cloud $0 chain first, ML Kit offline floor on failure.
+      Uint8List bytes;
+      try {
+        bytes = await VisionImagePrep.downscaleForVision(rawBytes);
+      } catch (_) {
+        bytes = rawBytes;
+      }
+      if (getIt.isRegistered<VisionCuratorChain>()) {
+        try {
+          final chain = getIt<VisionCuratorChain>();
+          final post = await chain
+              .extractStructured(
+                content: '',
+                imageBytes: bytes,
+                imageMimeType: mimeType,
+                keepStructure: state.keepStructure,
+              )
+              .timeout(
+                const Duration(seconds: 60),
+                onTimeout: () =>
+                    throw const NetworkFailure('Vision request timed out.'),
+              );
+          if (sessionId != _generationSessionId) return;
+          stopwatch.stop();
+          _logVisionUsage(stopwatch, true, post.rawMarkdown.length);
+          getIt<LogService>().info('Vision extraction succeeded (cloud)');
+          state = state.copyWith(
+            curatedPost: post,
+            pendingInput: post.bodyMarkdown.isNotEmpty
+                ? post.bodyMarkdown
+                : post.rawMarkdown,
+            status: GenerateState.success,
+            isExtractingImage: false,
+          );
+          return;
+        } catch (e, st) {
+          getIt<LogService>().error(
+            'Cloud vision failed, trying on-device',
+            e,
+            st,
+          );
+          // Fall through to on-device floor unless auth errors with no
+          // on-device available (ML Kit always available, so continue).
+        }
+      }
+      await _extractOnDeviceOnly(picked.path, sessionId, stopwatch);
+    } catch (e, st) {
+      if (sessionId != _generationSessionId) return;
+      stopwatch.stop();
+      getIt<LogService>().error('Failed to extract text from image', e, st);
+      final msg = e.toString().replaceAll(RegExp(r'\s+'), ' ').trim();
+      state = state.copyWith(
+        errorMessage: msg.length > 220 ? '${msg.substring(0, 220)}…' : msg,
+        status: GenerateState.error,
+        isExtractingImage: false,
+      );
+    }
+  }
+
+  Future<void> _extractOnDeviceOnly(
+    String imagePath,
+    int sessionId,
+    Stopwatch stopwatch,
+  ) async {
+    if (!getIt.isRegistered<IVisionExtractor>()) {
+      throw Exception('On-device OCR is unavailable.');
+    }
+    final text = await getIt<IVisionExtractor>().extractText(imagePath);
+    if (sessionId != _generationSessionId) return;
+    stopwatch.stop();
+    if (text.trim().isEmpty) {
+      _logVisionUsage(stopwatch, false, 0);
+      state = state.copyWith(
+        errorMessage:
+            'No readable text found in this image. Try a clearer screenshot.',
+        status: GenerateState.error,
+        isExtractingImage: false,
+      );
+      return;
+    }
+    _logVisionUsage(stopwatch, true, text.length);
+    getIt<LogService>().info('Vision extraction succeeded (on-device)');
+    state = state.copyWith(
+      pendingInput: text,
+      isExtractingImage: false,
+      status: GenerateState.idle,
+    );
+    await generatePost(text);
+  }
+
+  void _logVisionUsage(Stopwatch stopwatch, bool success, int chars) {
+    try {
+      _usageService.logUsage(
+        UsageLog(
+          id: const Uuid().v4(),
+          timestamp: DateTime.now(),
+          providerId: 'vision',
+          modelName: 'vision-chain',
+          latencyMs: stopwatch.elapsedMilliseconds,
+          estimatedTokens: (chars / 4).round(),
+          isSuccess: success,
+        ),
+      );
+    } catch (_) {}
   }
 }
 

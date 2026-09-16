@@ -8,6 +8,7 @@ import '../../config/constants.dart';
 import '../../domain/models/app_theme_mode.dart';
 import '../../domain/models/custom_pill.dart';
 import '../../domain/models/hashtag_group.dart';
+import '../../domain/models/vision_mode.dart';
 import '../models/ai_provider.dart';
 
 /// Manages user preferences and secure API key storage.
@@ -251,5 +252,14 @@ class PreferencesService {
 
   Future<bool> setLastKeepStructure(bool enabled) {
     return _prefs.setBool(AppConstants.keyLastKeepStructure, enabled);
+  }
+
+  // === Vision Extraction Mode (Auto cloud chain vs on-device only) ===
+
+  VisionMode get visionMode =>
+      VisionMode.fromString(_prefs.getString('vision_mode'));
+
+  Future<bool> setVisionMode(VisionMode mode) {
+    return _prefs.setString('vision_mode', mode.name);
   }
 }

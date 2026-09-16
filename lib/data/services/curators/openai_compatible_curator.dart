@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'dart:typed_data';
 
 import 'package:dio/dio.dart';
 
@@ -65,6 +66,8 @@ class OpenAICompatibleCurator implements IContentCurator {
     String? authorDisplayName,
     String? candidateOutlet,
     bool isTwitter = false,
+    Uint8List? imageBytes,
+    String? imageMimeType,
   }) async {
     final resolvedSourceUrl =
         sourceUrl ?? (content is ExtractedArticle ? content.url : null);
@@ -83,9 +86,42 @@ class OpenAICompatibleCurator implements IContentCurator {
       candidateOutlet: candidateOutlet,
       isTwitter: isTwitter,
     );
-    final userPrompt = GenerationPromptManager.buildUserPrompt(content);
+    final userPrompt = imageBytes != null
+        ? 'Extract football content from this screenshot (lineups, scores, '
+              'stats, captions) and curate it per the schema. '
+              'Return ONLY the JSON object.\n\n'
+              '${GenerationPromptManager.buildUserPrompt(content)}'
+        : GenerationPromptManager.buildUserPrompt(content);
 
     final path = '$baseUrl/chat/completions';
+
+    // Vision models reject strict json_schema; use json_object for images.
+    final bytes = imageBytes;
+    final hasImage = bytes != null;
+    final Object responseFormat = hasImage
+        ? const {'type': 'json_object'}
+        : {
+            "type": "json_schema",
+            "json_schema": {
+              "name": "curated_post",
+              "strict": true,
+              "schema": GenerationPromptManager.jsonSchema(
+                keepStructure: keepStructure,
+              ),
+            },
+          };
+    final Object userContent = hasImage
+        ? [
+            {'type': 'text', 'text': userPrompt},
+            {
+              'type': 'image_url',
+              'image_url': {
+                'url':
+                    'data:${imageMimeType ?? 'image/png'};base64,${base64Encode(bytes)}',
+              },
+            },
+          ]
+        : userPrompt;
 
     Response response;
     try {
@@ -95,20 +131,11 @@ class OpenAICompatibleCurator implements IContentCurator {
           "model": modelId,
           "messages": [
             {"role": "system", "content": systemPrompt},
-            {"role": "user", "content": userPrompt},
+            {"role": "user", "content": userContent},
           ],
           "temperature": 0.7,
           "max_tokens": 2048,
-          "response_format": {
-            "type": "json_schema",
-            "json_schema": {
-              "name": "curated_post",
-              "strict": true,
-              "schema": GenerationPromptManager.jsonSchema(
-                keepStructure: keepStructure,
-              ),
-            },
-          },
+          "response_format": responseFormat,
         },
         options: Options(
           extra: {'apiKey': apiKey, 'provider': 'openai'},

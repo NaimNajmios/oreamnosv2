@@ -6,6 +6,7 @@ import '../../../../data/services/preferences_service.dart';
 import '../../../../domain/models/app_theme_mode.dart';
 import '../../../../domain/models/custom_pill.dart';
 import '../../../../domain/models/hashtag_group.dart';
+import '../../../../domain/models/vision_mode.dart';
 import 'settings_state.dart';
 
 final settingsViewModelProvider =
@@ -39,6 +40,7 @@ class SettingsNotifier extends Notifier<SettingsState> {
     final fanClubName = _preferencesService.fanClubName;
     final persistGenerationOptions =
         _preferencesService.persistGenerationOptions;
+    final visionMode = _preferencesService.visionMode;
     state = state.copyWith(
       isInitialized: true,
       themeMode: themeMode,
@@ -55,6 +57,7 @@ class SettingsNotifier extends Notifier<SettingsState> {
       isFanModeEnabled: isFanModeEnabled,
       fanClubName: fanClubName,
       persistGenerationOptions: persistGenerationOptions,
+      visionMode: visionMode,
     );
   }
 
@@ -218,5 +221,11 @@ class SettingsNotifier extends Notifier<SettingsState> {
     if (state.persistGenerationOptions == enabled) return;
     await _preferencesService.setPersistGenerationOptions(enabled);
     state = state.copyWith(persistGenerationOptions: enabled);
+  }
+
+  Future<void> setVisionMode(VisionMode mode) async {
+    if (state.visionMode == mode) return;
+    await _preferencesService.setVisionMode(mode);
+    state = state.copyWith(visionMode: mode);
   }
 }

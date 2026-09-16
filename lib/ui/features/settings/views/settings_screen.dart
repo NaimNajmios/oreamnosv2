@@ -16,6 +16,7 @@ import 'package:oreamnos/ui/core/widgets/section_header.dart';
 import 'package:oreamnos/ui/core/widgets/settings_tile.dart';
 import 'package:oreamnos/ui/core/widgets/staggered_entrance.dart';
 import 'package:oreamnos/domain/models/app_theme_mode.dart';
+import 'package:oreamnos/domain/models/vision_mode.dart';
 
 import '../view_models/settings_view_model.dart';
 import 'widgets/api_key_dialog.dart';
@@ -221,6 +222,19 @@ class SettingsScreen extends ConsumerWidget {
               ),
               child: _FanClubField(),
             ),
+          SettingsTile(
+            leadingIcon: Icons.document_scanner_outlined,
+            title: 'On-device vision only',
+            subtitle: state.visionMode.name == 'onDeviceOnly'
+                ? 'Unlimited, offline — nothing leaves your phone'
+                : 'Auto: free cloud vision first, then on-device',
+            trailing: AppSwitch(
+              value: state.visionMode == VisionMode.onDeviceOnly,
+              onChanged: (value) => notifier.setVisionMode(
+                value ? VisionMode.onDeviceOnly : VisionMode.auto,
+              ),
+            ),
+          ),
           SettingsTile(
             leadingIcon: Icons.tag_rounded,
             title: 'Hashtag Manager',

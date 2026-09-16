@@ -1,3 +1,5 @@
+import 'dart:typed_data';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -356,6 +358,8 @@ class _FakeContentRepository implements IContentRepository {
     String? authorDisplayName,
     String? candidateOutlet,
     bool isTwitter = false,
+    Uint8List? imageBytes,
+    String? imageMimeType,
   }) async {
     return const ResultSuccess(
       CuratedPost(

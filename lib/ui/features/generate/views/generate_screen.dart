@@ -40,6 +40,7 @@ import 'package:oreamnos/ui/core/widgets/enhanced_loading_card.dart';
 import 'package:oreamnos/ui/core/widgets/kickoff_mark.dart';
 import 'package:oreamnos/ui/features/settings/view_models/settings_view_model.dart';
 import 'package:oreamnos/ui/features/settings/views/widgets/add_pill_dialog.dart';
+import 'package:oreamnos/ui/core/widgets/ocr_extraction_sheet.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import '../view_models/generate_view_model.dart';
@@ -547,6 +548,10 @@ class _GenerateScreenState extends ConsumerState<GenerateScreen> {
               }
             }),
           ),
+          if (viewModel.isExtractingImage) ...[
+            const SizedBox(height: AppSpacing.sm),
+            const LinearProgressIndicator(minHeight: 2),
+          ],
           if (isUrl && _controller.text.trim() != _previewDismissedFor) ...[
             const SizedBox(height: AppSpacing.sm),
             Builder(
@@ -594,6 +599,30 @@ class _GenerateScreenState extends ConsumerState<GenerateScreen> {
                         onTap: isGenerating ? null : _pasteFromClipboard,
                         selected: false,
                       ),
+                    AppChip(
+                      label: viewModel.isExtractingImage
+                          ? 'Scanning…'
+                          : 'Scan image',
+                      icon: Icons.document_scanner_outlined,
+                      onTap: isGenerating || viewModel.isExtractingImage
+                          ? null
+                          : () {
+                              final settings = ref.read(
+                                settingsViewModelProvider,
+                              );
+                              OcrExtractionSheet.show(
+                                context,
+                                visionMode: settings.visionMode,
+                                onModeChanged: (m) => ref
+                                    .read(settingsViewModelProvider.notifier)
+                                    .setVisionMode(m),
+                                onSourceSelected: (source) => ref
+                                    .read(generateViewModelProvider.notifier)
+                                    .extractTextFromImage(source),
+                              );
+                            },
+                      selected: false,
+                    ),
                   ],
                 ),
               ),

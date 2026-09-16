@@ -3,6 +3,8 @@ import 'package:injectable/injectable.dart';
 
 import '../../core/di/injection.dart';
 
+import 'dart:typed_data';
+
 import 'package:dio/dio.dart';
 
 import '../../core/error/failures.dart';
@@ -26,6 +28,8 @@ abstract class IContentRepository {
     String? authorDisplayName,
     String? candidateOutlet,
     bool isTwitter = false,
+    Uint8List? imageBytes,
+    String? imageMimeType,
   });
 
   Future<Result<CuratedPost>> refinePost({
@@ -106,6 +110,8 @@ class ContentRepository implements IContentRepository {
     String? authorDisplayName,
     String? candidateOutlet,
     bool isTwitter = false,
+    Uint8List? imageBytes,
+    String? imageMimeType,
   }) async {
     try {
       final curator = CuratorFactory.getCurator(provider);
@@ -123,6 +129,8 @@ class ContentRepository implements IContentRepository {
         authorDisplayName: authorDisplayName,
         candidateOutlet: candidateOutlet,
         isTwitter: isTwitter,
+        imageBytes: imageBytes,
+        imageMimeType: imageMimeType,
       );
       return ResultSuccess(res);
     } catch (e, st) {

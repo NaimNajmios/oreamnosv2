@@ -1,3 +1,5 @@
+import 'dart:typed_data';
+
 import '../models/card_brief.dart';
 import '../models/card_template.dart';
 import '../models/curated_post.dart';
@@ -32,6 +34,8 @@ abstract class IContentCurator {
     String? authorDisplayName,
     String? candidateOutlet,
     bool isTwitter = false,
+    Uint8List? imageBytes,
+    String? imageMimeType,
   });
 
   /// Full refinement pipeline (Android `refinePost` parity): applies a list
