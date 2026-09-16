@@ -37,6 +37,27 @@ void main() {
       );
     });
 
+    test('allows maverick + openrouter/free router', () {
+      expect(
+        VisionModelAllowlist.isAllowed(
+          AiProvider.groq,
+          'meta-llama/llama-4-maverick-17b-128e-instruct',
+        ),
+        isTrue,
+      );
+      expect(
+        VisionModelAllowlist.isAllowed(
+          AiProvider.openRouter,
+          'openrouter/free',
+        ),
+        isTrue,
+      );
+      expect(
+        VisionModelAllowlist.defaultFor(AiProvider.openRouter),
+        'openrouter/free',
+      );
+    });
+
     test('blocks paid models', () {
       expect(
         VisionModelAllowlist.isAllowed(AiProvider.gemini, 'gemini-1.5-pro'),
@@ -57,6 +78,27 @@ void main() {
         throwsA(isA<Failure>()),
       );
     });
+
+    test(
+      'blocks retired/unpinned Gemini 3.6 (falls back to 2.5-flash-lite)',
+      () {
+        expect(
+          VisionModelAllowlist.isAllowed(AiProvider.gemini, 'gemini-3.6-flash'),
+          isFalse,
+        );
+        expect(
+          VisionModelAllowlist.needsVisionDefault(
+            AiProvider.gemini,
+            'gemini-3.6-flash',
+          ),
+          isTrue,
+        );
+        expect(
+          VisionModelAllowlist.candidatesFor(AiProvider.gemini).first,
+          'gemini-2.5-flash-lite',
+        );
+      },
+    );
 
     test('needsVisionDefault for text-only selections', () {
       expect(

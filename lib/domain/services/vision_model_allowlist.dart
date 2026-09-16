@@ -9,17 +9,26 @@ abstract final class VisionModelAllowlist {
   static const geminiFlashLite = 'gemini-2.5-flash-lite';
   static const geminiFlash = 'gemini-2.5-flash';
   static const geminiFlash20 = 'gemini-2.0-flash';
+  static const gemini31FlashLite = 'gemini-3.1-flash-lite';
   static const groqScout = 'meta-llama/llama-4-scout-17b-16e-instruct';
-  static const groqVision11b = 'meta-llama/llama-3.2-11b-vision-preview';
-  static const groqVision90b = 'meta-llama/llama-3.2-90b-vision-preview';
+  static const groqMaverick = 'meta-llama/llama-4-maverick-17b-128e-instruct';
+  static const openRouterFreeRouter = 'openrouter/free';
 
+  /// Pinned vision-capable free-tier IDs (Sept 2026 refresh).
+  ///
+  /// Rationale: Gemini 3.5/3.6/3.8 Flash are real but target the new
+  /// Interactions API / lack a generateContent free tier and return HTTP 400
+  /// on the legacy endpoint — so they are deliberately NOT allowed here and
+  /// fall back to 2.5-flash-lite. Groq `llama-3.2-*-vision-preview` IDs are
+  /// decommissioned (HTTP 404) and were removed.
   static const _exact = {
     geminiFlashLite,
     geminiFlash,
     geminiFlash20,
+    gemini31FlashLite,
     groqScout,
-    groqVision11b,
-    groqVision90b,
+    groqMaverick,
+    openRouterFreeRouter,
   };
 
   /// Returns true when [modelId] is allowed for vision on [provider].
@@ -39,17 +48,9 @@ abstract final class VisionModelAllowlist {
     }
     if (provider == AiProvider.openRouter) {
       if (lower.endsWith(':free')) return true;
+      if (lower == openRouterFreeRouter) return true;
     }
     if (_exact.contains(id)) return true;
-    // Gemini flash family is vision-capable and free-tier.
-    if (provider == AiProvider.gemini && lower.contains('flash')) {
-      return !lower.contains('pro');
-    }
-    // Groq llama vision/scout family.
-    if (provider == AiProvider.groq &&
-        (lower.contains('scout') || lower.contains('vision'))) {
-      return true;
-    }
     return false;
   }
 
@@ -63,13 +64,31 @@ abstract final class VisionModelAllowlist {
   }
 
   /// Sensible free vision default per provider (used when user has no model
-  /// selected or selected a text-only model).
+  /// selected or selected a text-only/retired model).
+  ///
+  /// OpenRouter uses the `openrouter/free` router, which auto-selects a free
+  /// model matching the request's features (image understanding) instead of
+  /// a hardcoded `:free` ID that rotates away (e.g. the retired
+  /// `llama-3.2-11b-vision-instruct:free` which now 404s with
+  /// "No endpoints found").
   static String defaultFor(AiProvider provider) {
     return switch (provider) {
       AiProvider.gemini => geminiFlashLite,
       AiProvider.groq => groqScout,
-      AiProvider.openRouter => 'meta-llama/llama-3.2-11b-vision-instruct:free',
+      AiProvider.openRouter => openRouterFreeRouter,
       AiProvider.cerebras => provider.defaultModelId,
+    };
+  }
+
+  /// Ordered candidate vision models to try per provider before hopping to
+  /// the next provider. First entry is [defaultFor]; extras are fallbacks
+  /// when the first 404s (retired ID) without burning the next provider.
+  static List<String> candidatesFor(AiProvider provider) {
+    return switch (provider) {
+      AiProvider.gemini => const [geminiFlashLite, geminiFlash, geminiFlash20],
+      AiProvider.groq => const [groqScout, groqMaverick],
+      AiProvider.openRouter => const [openRouterFreeRouter],
+      AiProvider.cerebras => const [],
     };
   }
 

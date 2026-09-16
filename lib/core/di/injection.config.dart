@@ -107,6 +107,7 @@ extension GetItInjectableX on _i174.GetIt {
       () => _i652.VisionCuratorChain(
         gh<_i867.PreferencesService>(),
         gh<_i200.FreeTierGuard>(),
+        gh<_i581.ProviderApiService>(),
       ),
     );
     return this;
