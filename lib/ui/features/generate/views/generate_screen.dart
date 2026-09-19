@@ -40,6 +40,7 @@ import 'package:oreamnos/ui/core/widgets/enhanced_loading_card.dart';
 import 'package:oreamnos/ui/core/widgets/kickoff_mark.dart';
 import 'package:oreamnos/ui/features/settings/view_models/settings_view_model.dart';
 import 'package:oreamnos/ui/features/settings/views/widgets/add_pill_dialog.dart';
+import 'package:oreamnos/ui/features/settings/views/widgets/provider_selection_dialog.dart';
 import 'package:oreamnos/ui/core/widgets/ocr_extraction_sheet.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -58,6 +59,7 @@ class _GenerateScreenState extends ConsumerState<GenerateScreen> {
   bool _showSuccessOverlay = false;
   bool _lastSuccessState = false;
   bool _showSettings = false;
+  bool _rateLimitDialogOpen = false;
 
   // Link preview metadata (fetched lazily, dismissed per-URL).
   String _previewFor = '';
@@ -184,19 +186,44 @@ class _GenerateScreenState extends ConsumerState<GenerateScreen> {
     ref.listen<GenerateUiState>(generateViewModelProvider, (prev, next) {
       if (next.status == GenerateState.rateLimited &&
           next.suggestedFallbackProvider != null &&
-          prev?.status != GenerateState.rateLimited) {
-        WidgetsBinding.instance.addPostFrameCallback((_) {
-          if (!context.mounted) return;
+          prev?.status != GenerateState.rateLimited &&
+          !_rateLimitDialogOpen) {
+        _rateLimitDialogOpen = true;
+        WidgetsBinding.instance.addPostFrameCallback((_) async {
+          if (!context.mounted) {
+            _rateLimitDialogOpen = false;
+            return;
+          }
           final notifier = ref.read(generateViewModelProvider.notifier);
+          final settingsNotifier = ref.read(settingsViewModelProvider.notifier);
+          final fallback = next.suggestedFallbackProvider!;
+          // Resolve key availability up-front so the dialog can disable
+          // retry with an "add key" hint instead of firing a doomed request.
+          final fallbackKey = await settingsNotifier.getApiKeyForProvider(
+            fallback,
+          );
+          if (!context.mounted) {
+            _rateLimitDialogOpen = false;
+            return;
+          }
           RateLimitDialog.show(
             context,
-            suggestedFallbackProvider: next.suggestedFallbackProvider,
+            suggestedFallbackProvider: fallback,
             currentProviderName: notifier.providerDisplayName,
-            onRetryWithFallback: () =>
-                notifier.retryWithProvider(next.suggestedFallbackProvider!),
+            onRetryWithFallback: () => notifier.retryWithProvider(fallback),
             waitTimeMessage: next.rateLimitWaitMessage,
-          );
+            fallbackHasKey: (fallbackKey ?? '').isNotEmpty,
+          ).then((_) {
+            _rateLimitDialogOpen = false;
+          });
         });
+      } else if (next.status != GenerateState.rateLimited &&
+          _rateLimitDialogOpen &&
+          prev?.status == GenerateState.rateLimited) {
+        // State moved on (retry started, reset) — allow a future 429 to
+        // present the dialog again. The dialog dismisses itself; both of its
+        // actions pop before any state change, so no orphan pop is needed.
+        _rateLimitDialogOpen = false;
       } else if (next.status == GenerateState.error &&
           next.twitterExtractionUrl != null &&
           prev?.status != GenerateState.error) {
@@ -519,7 +546,9 @@ class _GenerateScreenState extends ConsumerState<GenerateScreen> {
     final state = ref.watch(settingsViewModelProvider);
 
     final providerLabel = state.selectedProvider.displayName;
-    final modelLabel = state.selectedModel ?? 'Auto';
+    final modelLabel = (state.selectedModel?.isNotEmpty ?? false)
+        ? state.selectedModel!
+        : state.selectedProvider.defaultModelId;
     final toneLabel =
         state.toneMode[0].toUpperCase() + state.toneMode.substring(1);
     final charCount = _controller.text.length;
@@ -825,45 +854,74 @@ class _GenerateScreenState extends ConsumerState<GenerateScreen> {
             duration: const Duration(milliseconds: 200),
           ),
           const SizedBox(height: 2),
-          InkWell(
-            onTap: () {
-              Haptics.lightImpact();
-              context.push(RoutePaths.settings);
-            },
-            borderRadius: AppSpacing.borderRadiusSm,
-            child: Padding(
-              padding: const EdgeInsets.symmetric(vertical: 6, horizontal: 2),
-              child: Row(
-                children: [
-                  Icon(
-                    Icons.tune_rounded,
-                    size: 13,
-                    color: theme.colorScheme.onSurface.withValues(alpha: 0.45),
-                  ),
-                  const SizedBox(width: 6),
-                  Expanded(
-                    child: Text(
-                      '$providerLabel • $modelLabel • $toneLabel',
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: theme.textTheme.labelSmall?.copyWith(
-                        color: theme.colorScheme.onSurface.withValues(
-                          alpha: 0.55,
+          Row(
+            children: [
+              Expanded(
+                child: InkWell(
+                  onTap: isGenerating
+                      ? null
+                      : () {
+                          Haptics.lightImpact();
+                          ProviderSelectionDialog.show(context);
+                        },
+                  borderRadius: AppSpacing.borderRadiusSm,
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(
+                      vertical: 6,
+                      horizontal: 2,
+                    ),
+                    child: Row(
+                      children: [
+                        Icon(
+                          Icons.smart_toy_outlined,
+                          size: 13,
+                          color: theme.colorScheme.onSurface.withValues(
+                            alpha: 0.45,
+                          ),
                         ),
-                        fontWeight: FontWeight.w500,
-                        letterSpacing: 0.2,
-                      ),
+                        const SizedBox(width: 6),
+                        Expanded(
+                          child: Text(
+                            '$providerLabel • $modelLabel • $toneLabel',
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: theme.textTheme.labelSmall?.copyWith(
+                              color: theme.colorScheme.onSurface.withValues(
+                                alpha: 0.55,
+                              ),
+                              fontWeight: FontWeight.w500,
+                              letterSpacing: 0.2,
+                            ),
+                          ),
+                        ),
+                        const SizedBox(width: 4),
+                        Icon(
+                          Icons.swap_horiz_rounded,
+                          size: 16,
+                          color: theme.colorScheme.onSurface.withValues(
+                            alpha: 0.35,
+                          ),
+                        ),
+                      ],
                     ),
                   ),
-                  const SizedBox(width: 8),
-                  Icon(
-                    Icons.chevron_right_rounded,
-                    size: 16,
-                    color: theme.colorScheme.onSurface.withValues(alpha: 0.35),
-                  ),
-                ],
+                ),
               ),
-            ),
+              const SizedBox(width: 4),
+              IconButton(
+                icon: const Icon(Icons.tune_rounded, size: 16),
+                tooltip: 'Model & Settings',
+                color: theme.colorScheme.onSurface.withValues(alpha: 0.45),
+                constraints: const BoxConstraints(minWidth: 32, minHeight: 32),
+                padding: EdgeInsets.zero,
+                onPressed: isGenerating
+                    ? null
+                    : () {
+                        Haptics.lightImpact();
+                        context.push(RoutePaths.settings);
+                      },
+              ),
+            ],
           ),
 
           const SizedBox(height: AppSpacing.base),

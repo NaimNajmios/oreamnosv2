@@ -41,11 +41,15 @@ class SettingsNotifier extends Notifier<SettingsState> {
     final persistGenerationOptions =
         _preferencesService.persistGenerationOptions;
     final visionMode = _preferencesService.visionMode;
+    final lastTestOk = _preferencesService.getLastTestOk(selectedProvider);
+    final lastTestedAt = _preferencesService.getLastTestedAt(selectedProvider);
     state = state.copyWith(
       isInitialized: true,
       themeMode: themeMode,
       selectedProvider: selectedProvider,
       selectedModel: selectedModel,
+      lastTestOk: lastTestOk,
+      lastTestedAt: lastTestedAt,
       toneMode: toneMode,
       defaultHashtags: defaultHashtags,
       hashtagGroups: hashtagGroups,
@@ -72,31 +76,42 @@ class SettingsNotifier extends Notifier<SettingsState> {
     await _preferencesService.setSelectedProvider(provider);
     final model = _preferencesService.getSelectedModel(provider);
     final key = await _preferencesService.getApiKey(provider);
+    final lastTestOk = _preferencesService.getLastTestOk(provider);
+    final lastTestedAt = _preferencesService.getLastTestedAt(provider);
     state = state.copyWith(
       selectedProvider: provider,
       selectedModel: model,
       clearModel: model == null,
       currentApiKey: key,
       clearApiKey: key == null,
-      clearLastTest: true,
+      lastTestOk: lastTestOk,
+      lastTestedAt: lastTestedAt,
+      clearLastTest: lastTestOk == null,
     );
   }
 
   Future<void> setSelectedModel(String modelId) async {
     if (state.selectedModel == modelId) return;
-    await _preferencesService.setSelectedModel(state.selectedProvider, modelId);
-    state = state.copyWith(selectedModel: modelId);
+    final provider = state.selectedProvider;
+    await _preferencesService.setSelectedModel(provider, modelId);
+    // Model change invalidates the verified flag for this provider.
+    await _preferencesService.clearLastTestResult(provider);
+    state = state.copyWith(selectedModel: modelId, clearLastTest: true);
   }
 
   Future<void> setApiKey(AiProvider provider, String key) async {
     await _preferencesService.setApiKey(provider, key);
+    // Key change invalidates the verified flag for this provider.
+    await _preferencesService.clearLastTestResult(provider);
     if (state.selectedProvider == provider) {
-      state = state.copyWith(currentApiKey: key);
+      state = state.copyWith(currentApiKey: key, clearLastTest: true);
     }
   }
 
   Future<void> setLastTestResult(bool ok) async {
-    state = state.copyWith(lastTestOk: ok, lastTestedAt: DateTime.now());
+    final at = DateTime.now();
+    await _preferencesService.setLastTestResult(state.selectedProvider, ok, at);
+    state = state.copyWith(lastTestOk: ok, lastTestedAt: at);
   }
 
   Future<String?> getApiKeyForProvider(AiProvider provider) async {

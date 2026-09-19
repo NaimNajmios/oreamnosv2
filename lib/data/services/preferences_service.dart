@@ -115,6 +115,43 @@ class PreferencesService {
     return _prefs.setString('model_${provider.name}', modelId);
   }
 
+  // === Connection Test Result (per provider, persistent) ===
+
+  bool? getLastTestOk(AiProvider provider) {
+    final key = '${AppConstants.keyLastTestOkPrefix}${provider.name}';
+    if (!_prefs.containsKey(key)) return null;
+    return _prefs.getBool(key);
+  }
+
+  DateTime? getLastTestedAt(AiProvider provider) {
+    final key = '${AppConstants.keyLastTestedAtPrefix}${provider.name}';
+    final millis = _prefs.getInt(key);
+    if (millis == null) return null;
+    return DateTime.fromMillisecondsSinceEpoch(millis);
+  }
+
+  Future<void> setLastTestResult(
+    AiProvider provider,
+    bool ok,
+    DateTime at,
+  ) async {
+    await _prefs.setBool(
+      '${AppConstants.keyLastTestOkPrefix}${provider.name}',
+      ok,
+    );
+    await _prefs.setInt(
+      '${AppConstants.keyLastTestedAtPrefix}${provider.name}',
+      at.millisecondsSinceEpoch,
+    );
+  }
+
+  Future<void> clearLastTestResult(AiProvider provider) async {
+    await _prefs.remove('${AppConstants.keyLastTestOkPrefix}${provider.name}');
+    await _prefs.remove(
+      '${AppConstants.keyLastTestedAtPrefix}${provider.name}',
+    );
+  }
+
   // === Tone ===
 
   String get toneMode => _prefs.getString(AppConstants.keyToneMode) ?? 'formal';

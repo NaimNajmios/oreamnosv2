@@ -42,6 +42,8 @@ abstract final class AppConstants {
   static const String keyTavilyApiKey = 'tavily_api_key';
   static const String keySelectedProvider = 'selected_provider';
   static const String keySelectedModel = 'selected_model';
+  static const String keyLastTestOkPrefix = 'last_test_ok_';
+  static const String keyLastTestedAtPrefix = 'last_tested_at_';
   static const String keyToneMode = 'tone_mode';
   static const String keyThemeMode = 'theme_mode';
   static const String keyDefaultHashtags = 'default_hashtags';

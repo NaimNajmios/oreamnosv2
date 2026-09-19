@@ -155,9 +155,30 @@ class GenerateViewModel extends Notifier<GenerateUiState>
   AiProvider _getNextProvider(AiProvider current) => current.nextFallback;
 
   Future<void> retryWithProvider(AiProvider provider) async {
-    await ref
-        .read(settingsViewModelProvider.notifier)
-        .setSelectedProvider(provider);
+    final settingsNotifier = ref.read(settingsViewModelProvider.notifier);
+    await settingsNotifier.setSelectedProvider(provider);
+    // Ensure the fallback has a usable model: persist the provider default
+    // when the user never picked one explicitly for this provider.
+    final selectedModel = ref.read(settingsViewModelProvider).selectedModel;
+    if ((selectedModel == null || selectedModel.isEmpty) &&
+        provider.defaultModelId.isNotEmpty) {
+      await settingsNotifier.setSelectedModel(provider.defaultModelId);
+    }
+    // Don't fire a doomed request when the fallback has no API key —
+    // surface a named error so the user can configure it instead.
+    final apiKey = await settingsNotifier.getApiKeyForProvider(provider);
+    if (apiKey == null || apiKey.isEmpty) {
+      final message =
+          'API key not configured for ${provider.displayName}. Go to Settings → API Key.';
+      state = state.copyWith(
+        errorMessage: message,
+        validationMessage: message,
+        suggestedFallbackProvider: null,
+        rateLimitWaitMessage: null,
+        status: GenerateState.error,
+      );
+      return;
+    }
     final pi = state.pendingInput;
     if (pi != null) {
       await generatePost(pi);

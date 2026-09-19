@@ -166,5 +166,124 @@ void main() {
 
       container.dispose();
     });
+
+    test(
+      'retryWithProvider persists default model when fallback has none',
+      () async {
+        SharedPreferences.setMockInitialValues({});
+        FlutterSecureStorage.setMockInitialValues({});
+        final prefs = await SharedPreferences.getInstance();
+        const storage = FlutterSecureStorage();
+        final prefService = PreferencesService(
+          prefs: prefs,
+          secureStorage: storage,
+        );
+        await prefService.setApiKey(AiProvider.gemini, 'fake-gemini-key');
+        await prefService.setSelectedModel(
+          AiProvider.gemini,
+          'gemini-1.5-flash',
+        );
+        await prefService.setApiKey(AiProvider.groq, 'fake-groq-key');
+        // Intentionally no model for Groq.
+
+        final mockRepo = _MockContentRepository()
+          ..failureToReturn = const RateLimitFailure('429 Resource Exhausted');
+
+        await getIt.reset();
+        await configureDependencies();
+        getIt.allowReassignment = true;
+        getIt.registerLazySingleton<PreferencesService>(() => prefService);
+        getIt.registerLazySingleton<UsageService>(() => UsageService(prefs));
+        getIt.registerLazySingleton<LogService>(() => LogService(prefs));
+
+        final container = ProviderContainer(
+          overrides: [contentRepositoryProvider.overrideWithValue(mockRepo)],
+        );
+
+        final settings = container.read(settingsViewModelProvider.notifier);
+        await settings.setSelectedProvider(AiProvider.gemini);
+        await settings.setSelectedModel('gemini-1.5-flash');
+        await settings.setApiKey(AiProvider.gemini, 'fake-gemini-key');
+
+        final vm = container.read(generateViewModelProvider.notifier);
+        await vm.generatePost('Breaking football news article');
+        expect(
+          container.read(generateViewModelProvider).status,
+          GenerateState.rateLimited,
+        );
+
+        mockRepo.failureToReturn = null;
+        await vm.retryWithProvider(AiProvider.groq);
+
+        expect(
+          container.read(generateViewModelProvider).status,
+          GenerateState.success,
+        );
+        // Default model was persisted for the fallback provider.
+        expect(
+          container.read(settingsViewModelProvider).selectedModel,
+          AiProvider.groq.defaultModelId,
+        );
+
+        container.dispose();
+      },
+    );
+
+    test(
+      'retryWithProvider without fallback key surfaces named error',
+      () async {
+        SharedPreferences.setMockInitialValues({});
+        FlutterSecureStorage.setMockInitialValues({});
+        final prefs = await SharedPreferences.getInstance();
+        const storage = FlutterSecureStorage();
+        final prefService = PreferencesService(
+          prefs: prefs,
+          secureStorage: storage,
+        );
+        await prefService.setApiKey(AiProvider.gemini, 'fake-gemini-key');
+        await prefService.setSelectedModel(
+          AiProvider.gemini,
+          'gemini-1.5-flash',
+        );
+        // Intentionally no Groq key.
+
+        final mockRepo = _MockContentRepository()
+          ..failureToReturn = const RateLimitFailure('429 Resource Exhausted');
+
+        await getIt.reset();
+        await configureDependencies();
+        getIt.allowReassignment = true;
+        getIt.registerLazySingleton<PreferencesService>(() => prefService);
+        getIt.registerLazySingleton<UsageService>(() => UsageService(prefs));
+        getIt.registerLazySingleton<LogService>(() => LogService(prefs));
+
+        final container = ProviderContainer(
+          overrides: [contentRepositoryProvider.overrideWithValue(mockRepo)],
+        );
+
+        final settings = container.read(settingsViewModelProvider.notifier);
+        await settings.setSelectedProvider(AiProvider.gemini);
+        await settings.setSelectedModel('gemini-1.5-flash');
+        await settings.setApiKey(AiProvider.gemini, 'fake-gemini-key');
+
+        final vm = container.read(generateViewModelProvider.notifier);
+        await vm.generatePost('Breaking football news article');
+        expect(
+          container.read(generateViewModelProvider).status,
+          GenerateState.rateLimited,
+        );
+
+        final callsBefore = mockRepo.callCount;
+        await vm.retryWithProvider(AiProvider.groq);
+
+        // No doomed request fired; named configuration error instead.
+        expect(mockRepo.callCount, callsBefore);
+        final state = container.read(generateViewModelProvider);
+        expect(state.status, GenerateState.error);
+        expect(state.errorMessage, contains('Groq'));
+
+        container.dispose();
+      },
+    );
   });
 }

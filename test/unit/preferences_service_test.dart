@@ -51,6 +51,26 @@ void main() {
       expect(svc.persistGenerationOptions, isFalse);
     });
 
+    test('connection test result roundtrip per provider', () async {
+      final prefs = await createMockPrefs();
+      final svc = createTestPreferencesService(prefs);
+
+      expect(svc.getLastTestOk(AiProvider.gemini), isNull);
+      expect(svc.getLastTestedAt(AiProvider.gemini), isNull);
+
+      final at = DateTime(2026, 9, 19, 12, 30);
+      await svc.setLastTestResult(AiProvider.gemini, true, at);
+      expect(svc.getLastTestOk(AiProvider.gemini), isTrue);
+      expect(svc.getLastTestedAt(AiProvider.gemini), at);
+
+      // Other providers are unaffected.
+      expect(svc.getLastTestOk(AiProvider.groq), isNull);
+
+      await svc.clearLastTestResult(AiProvider.gemini);
+      expect(svc.getLastTestOk(AiProvider.gemini), isNull);
+      expect(svc.getLastTestedAt(AiProvider.gemini), isNull);
+    });
+
     test('generation options persistence roundtrip', () async {
       final prefs = await createMockPrefs();
       final svc = createTestPreferencesService(prefs);
