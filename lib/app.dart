@@ -29,6 +29,12 @@ class OreamnosApp extends ConsumerStatefulWidget {
 class _OreamnosAppState extends ConsumerState<OreamnosApp> {
   late final GoRouter _router;
 
+  /// Content of the share currently being processed — guards against a
+  /// slow double-delivery (stream bounce after the service dedup window)
+  /// starting two generations of the same input. Shares with *different*
+  /// content always supersede (session-id cancel model handles the rest).
+  String? _inFlightShareContent;
+
   @override
   void initState() {
     super.initState();
@@ -81,42 +87,59 @@ class _OreamnosAppState extends ConsumerState<OreamnosApp> {
       }
     };
 
-    ShareIntentService().onSharedTextReceived = (text) async {
+    ShareIntentService().onSharedTextReceived = (text) {
       if (!mounted) return;
-
-      // Dismiss any open modal dialogs on root navigator
-      try {
-        rootNavigatorKey.currentState?.popUntil((route) => route.isFirst);
-      } catch (_) {}
-
-      // Route-to-card alias (Android `ShareRouterActivity` parity): shared
-      // text starting with `card:` opens Card Studio directly with the
-      // remainder as the headline. Everything else auto-generates.
       final trimmed = text.trim();
-      final lower = trimmed.toLowerCase();
-      if (lower.startsWith('card:') || lower.startsWith('kad:')) {
-        final headline = trimmed.substring(trimmed.indexOf(':') + 1).trim();
-        if (headline.isNotEmpty) {
-          final settings = ref.read(settingsViewModelProvider);
-          final modelId = (settings.selectedModel?.isNotEmpty ?? false)
-              ? settings.selectedModel!
-              : settings.selectedProvider.defaultModelId;
-          _router.go(
-            RoutePaths.cardGenerator,
-            extra: CardBrief(
-              headline: headline,
-              subtext: '',
-              provider: settings.selectedProvider,
-              modelId: modelId,
-            ),
-          );
-          return;
-        }
+      if (_inFlightShareContent == trimmed) {
+        // Identical share already being processed (double delivery).
+        return;
       }
+      _inFlightShareContent = trimmed;
 
-      _router.go(RoutePaths.generate);
-      final notifier = ref.read(generateViewModelProvider.notifier);
-      await notifier.handleExternalSharedInput(text);
+      // Defer to the first frame so the router/shell exists before the
+      // share-driven navigation and generation kick off (cold-start race).
+      WidgetsBinding.instance.addPostFrameCallback((_) async {
+        try {
+          if (!mounted) return;
+
+          // Dismiss any open modal dialogs on root navigator
+          try {
+            rootNavigatorKey.currentState?.popUntil((route) => route.isFirst);
+          } catch (_) {}
+
+          // Route-to-card alias (Android `ShareRouterActivity` parity): shared
+          // text starting with `card:` opens Card Studio directly with the
+          // remainder as the headline. Everything else auto-generates.
+          final lower = trimmed.toLowerCase();
+          if (lower.startsWith('card:') || lower.startsWith('kad:')) {
+            final headline = trimmed.substring(trimmed.indexOf(':') + 1).trim();
+            if (headline.isNotEmpty) {
+              final settings = ref.read(settingsViewModelProvider);
+              final modelId = (settings.selectedModel?.isNotEmpty ?? false)
+                  ? settings.selectedModel!
+                  : settings.selectedProvider.defaultModelId;
+              _router.go(
+                RoutePaths.cardGenerator,
+                extra: CardBrief(
+                  headline: headline,
+                  subtext: '',
+                  provider: settings.selectedProvider,
+                  modelId: modelId,
+                ),
+              );
+              return;
+            }
+          }
+
+          _router.go(RoutePaths.generate);
+          final notifier = ref.read(generateViewModelProvider.notifier);
+          await notifier.handleExternalSharedInput(text);
+        } finally {
+          if (_inFlightShareContent == trimmed) {
+            _inFlightShareContent = null;
+          }
+        }
+      });
     };
     ShareIntentService().initialize();
   }

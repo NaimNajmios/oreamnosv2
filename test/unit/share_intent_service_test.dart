@@ -130,5 +130,65 @@ void main() {
       ]);
       expect(received.length, 2);
     });
+
+    test('normalizeDedupKey strips tracking params and casing', () {
+      const a = 'https://x.com/oreamnos/status/123456?s=20&t=abcDEF';
+      const b = 'HTTPS://X.COM/oreamnos/status/123456/';
+      const c = 'https://x.com/oreamnos/status/999999';
+
+      expect(
+        ShareIntentService.normalizeDedupKey(a),
+        contains('status/123456'),
+      );
+      expect(ShareIntentService.normalizeDedupKey(a), isNot(contains('?')));
+      expect(
+        ShareIntentService.normalizeDedupKey(a),
+        equalsIgnoringCase(ShareIntentService.normalizeDedupKey(b)),
+      );
+      expect(
+        ShareIntentService.normalizeDedupKey(a),
+        isNot(equals(ShareIntentService.normalizeDedupKey(c))),
+      );
+    });
+
+    test('normalizes differently-tracked versions of the same tweet as '
+        'duplicates', () {
+      final received = <String>[];
+      service.onSharedTextReceived = (text) => received.add(text);
+
+      const tracked = 'https://x.com/sports/status/987654321?s=20&t=xyz';
+      const plain = 'https://x.com/sports/status/987654321';
+
+      service.handleSharedMedia([
+        SharedMediaFile(path: tracked, type: SharedMediaType.text),
+      ]);
+      service.handleSharedMedia([
+        SharedMediaFile(path: plain, type: SharedMediaType.text),
+      ]);
+
+      // Same logical share re-shared with different tracking params within
+      // the dedup window: one delivery (and the *last* content wins).
+      expect(received.length, 1);
+    });
+
+    test('whitespace-only differences in plain text dedupe within window', () {
+      final received = <String>[];
+      service.onSharedTextReceived = (text) => received.add(text);
+
+      service.handleSharedMedia([
+        SharedMediaFile(
+          path: 'Breaking: Oreamnos reaches v2',
+          type: SharedMediaType.text,
+        ),
+      ]);
+      service.handleSharedMedia([
+        SharedMediaFile(
+          path: 'Breaking:  Oreamnos   reaches v2',
+          type: SharedMediaType.text,
+        ),
+      ]);
+
+      expect(received.length, 1);
+    });
   });
 }

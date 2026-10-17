@@ -29,6 +29,8 @@ class ApiClient {
         baseDelayMs: AppConstants.initialBackoff.inMilliseconds,
         maxDelayMs: AppConstants.maxBackoff.inMilliseconds,
         backoffMultiplier: AppConstants.backoffMultiplier,
+        maxRetriesOn429: AppConstants.maxRetriesOn429,
+        retry429MaxWaitMs: AppConstants.retry429MaxWaitMs,
       ),
       ErrorMappingInterceptor(),
       if (kDebugMode) LoggingInterceptor(),

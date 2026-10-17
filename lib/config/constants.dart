@@ -21,6 +21,13 @@ abstract final class AppConstants {
   static const Duration maxBackoff = Duration(seconds: 60);
   static const double backoffMultiplier = 2.0;
 
+  // === 429 Retry Policy ===
+  // 429s get at most one honoring retry, and only when the provider-supplied
+  // wait is short. Longer/unknown quota windows propagate immediately so the
+  // ViewModel fallback chain can switch provider instead of idling.
+  static const int maxRetriesOn429 = 1;
+  static const int retry429MaxWaitMs = 10000;
+
   // === Content Generation ===
   static const double minLengthRatio = 0.4;
   static const double maxLengthRatio = 0.6;

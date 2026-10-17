@@ -69,11 +69,15 @@ Dio(BaseOptions(
 )) // api_client.dart:16
 ..interceptors.addAll([
   AuthInterceptor(),                     // extra apiKey/provider → ?key= or Bearer
-  RetryInterceptor(dio, maxRetries:4, base 500ms, cap 60s, multiplier 2.0, jitter ±15%, honors Retry-After),
+  RetryInterceptor(dio, maxRetries:4, base 500ms, cap 60s, multiplier 2.0, jitter ±15%, honors Retry-After,
+                   429 policy: ≤1 honoring retry only when Retry-After ≤ 10s, else propagate immediately
+                   for ViewModel fallback; constants.dart maxRetriesOn429/retry429MaxWaitMs),
   ErrorMappingInterceptor(),             // 429→RateLimitFailure, 401/403→AuthFailure, ≥500→NetworkFailure, extra['failure']
   if(kDebugMode) LoggingInterceptor(),   // [DIO] →/←/✗ last
 ])
 ```
+
+* **Resilience (2026-10)**: `GenerateViewModel` runs a **silent fallback chain** on `RateLimitFailure`/`PaymentRequiredFailure` — `gemini→groq→openRouter→cerebras` ≤4 hops via `_switchToNextHealthyProvider` (skips keyless providers), persists provider + default model, shows inline `fallbackNotice` in `EnhancedLoadingCard`; `RateLimitDialog` only on full chain exhaustion. Per-provider in-memory cooldown (`_recordCooldown`, default 30s from `retryDelayMs`, cap 120s) makes subsequent generations skip the cooling provider outright. `ShareIntentService` purges stale native intent on init (consume-once initial media), normalizes dedup keys (strips tracking params/whitespace). Share-initiated generations auto-retry ≤2× on transient failures (`NetworkFailure`/`TimeoutException`/`TwitterExtractionException`, backoff 1.5s/3s) before surfacing one-tap retry (`test/unit/generate_view_model_share_retry_test.dart`).
 
 * Curators (`GeminiCurator:15`, `OpenAICompatibleCurator:15`) inject `ApiClient` (fallback `?? ApiClient()`), call `_client.post(path, data:{system_instruction, contents, generationConfig:{responseMimeType, responseSchema}}, options: Options(extra:{apiKey, provider}))` `lib/data/services/curators/gemini_curator.dart:62` — `GenerationPromptManager.jsonSchema` wired to Gemini `responseSchema` / OpenAI `json_schema strict`. Tokens via side-channel `TokenUsageSideChannel` `lib/data/services/token_usage_side_channel.dart:1` (`usageMetadata/total_tokens`).
 * `WebScraperService:10` `@lazySingleton WebScraperService(this._client)` → `_client.get<String>(url, Options(headers User-Agent/Accept, responseType plain, receiveTimeout 8s))` `web_scraper_service.dart:41`; `ProviderApiService:18` similarly via Dio (previously `http`, probe moved `tool/dev/scrape_probe.dart`).

@@ -1,3 +1,5 @@
+import 'dart:typed_data';
+
 import 'package:dio/dio.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:oreamnos/core/network/interceptors/auth_interceptor.dart';
@@ -10,6 +12,82 @@ class _FakeErrorHandler extends ErrorInterceptorHandler {
   void next(DioException err) {
     // swallow — we only care about extra['failure'] set by interceptor
   }
+}
+
+class _CapturingErrorHandler extends ErrorInterceptorHandler {
+  DioException? nextErr;
+  Response? resolvedResponse;
+  @override
+  void next(DioException err) {
+    nextErr = err;
+  }
+
+  @override
+  void resolve(Response response) {
+    resolvedResponse = response;
+  }
+}
+
+/// Adapter that records calls; returns the configured status.
+class _StubAdapter implements HttpClientAdapter {
+  _StubAdapter(this.statusCode);
+  final int statusCode;
+  int calls = 0;
+  @override
+  Future<ResponseBody> fetch(
+    RequestOptions options,
+    Stream<Uint8List>? requestStream,
+    Future<dynamic>? cancelFuture,
+  ) async {
+    calls++;
+    return ResponseBody.fromString('{"ok":true}', statusCode);
+  }
+
+  @override
+  void close({bool force = false}) {}
+}
+
+/// Adapter that throws if the interceptor attempts a network call — used to
+/// prove no doomed retry happens for long/unknown 429 windows.
+class _NeverAdapter implements HttpClientAdapter {
+  @override
+  Future<ResponseBody> fetch(
+    RequestOptions options,
+    Stream<Uint8List>? requestStream,
+    Future<dynamic>? cancelFuture,
+  ) {
+    fail('RetryInterceptor must not fetch for this case');
+  }
+
+  @override
+  void close({bool force = false}) {}
+}
+
+DioException _statusError(
+  int status, {
+  int retryCount = 0,
+  Map<String, List<String>> headers = const {},
+}) {
+  final options = RequestOptions(
+    path: '/test',
+    extra: {'provider': 'gemini', if (retryCount > 0) 'retryCount': retryCount},
+  );
+  return DioException(
+    requestOptions: options,
+    type: DioExceptionType.badResponse,
+    response: Response<Map<String, dynamic>>(
+      requestOptions: options,
+      statusCode: status,
+      data: {'error': 'rate limited'},
+      headers: Headers.fromMap(headers),
+    ),
+  );
+}
+
+Dio _neverDio() {
+  final dio = Dio();
+  dio.httpClientAdapter = _NeverAdapter();
+  return dio;
 }
 
 class _FakeRequestHandler extends RequestInterceptorHandler {
@@ -158,6 +236,100 @@ void main() {
       );
       expect(r.maxRetries, 4);
       expect(r.baseDelayMs, 500);
+      expect(r.maxRetriesOn429, 1);
+      expect(r.retry429MaxWaitMs, 10000);
+    });
+
+    test(
+      '429 with long Retry-After propagates immediately (no doomed retry)',
+      () async {
+        final interceptor = RetryInterceptor(dio: _neverDio());
+        final dioEx = _statusError(
+          429,
+          headers: {
+            'retry-after': ['34'],
+          },
+        );
+        final handler = _CapturingErrorHandler();
+        await interceptor.onError(dioEx, handler);
+        expect(handler.nextErr, isNotNull);
+        expect(handler.resolvedResponse, isNull);
+        // retryCount unchanged — no retry consumed
+        expect(dioEx.requestOptions.extra['retryCount'], isNull);
+      },
+    );
+
+    test('429 without Retry-After propagates immediately', () async {
+      final interceptor = RetryInterceptor(dio: _neverDio());
+      final dioEx = _statusError(429);
+      final handler = _CapturingErrorHandler();
+      await interceptor.onError(dioEx, handler);
+      expect(handler.nextErr, isNotNull);
+      expect(handler.resolvedResponse, isNull);
+    });
+
+    test('second 429 propagates even with short Retry-After', () async {
+      final interceptor = RetryInterceptor(dio: _neverDio());
+      final dioEx = _statusError(
+        429,
+        retryCount: 1,
+        headers: {
+          'retry-after': ['1'],
+        },
+      );
+      final handler = _CapturingErrorHandler();
+      await interceptor.onError(dioEx, handler);
+      expect(handler.nextErr, isNotNull);
+    });
+
+    test(
+      '429 with short Retry-After retries exactly once via injected client',
+      () async {
+        final adapter = _StubAdapter(200);
+        final dio = Dio(
+          BaseOptions(
+            connectTimeout: Duration(seconds: 2),
+            receiveTimeout: Duration(seconds: 2),
+          ),
+        );
+        dio.httpClientAdapter = adapter;
+        final interceptor = RetryInterceptor(dio: dio);
+        final dioEx = _statusError(
+          429,
+          headers: {
+            'retry-after': ['1'],
+          },
+        );
+        final handler = _CapturingErrorHandler();
+        await interceptor.onError(dioEx, handler);
+        expect(adapter.calls, 1);
+        expect(handler.resolvedResponse, isNotNull);
+        expect(handler.resolvedResponse!.statusCode, 200);
+        expect(dioEx.requestOptions.extra['retryCount'], 1);
+      },
+    );
+
+    test('5xx keeps the exponential retry path', () async {
+      // First attempt: 500 → one honoring retry (Retry-After none → backoff)
+      final adapter = _StubAdapter(200);
+      final dio = Dio(
+        BaseOptions(
+          connectTimeout: Duration(seconds: 2),
+          receiveTimeout: Duration(seconds: 2),
+        ),
+      );
+      dio.httpClientAdapter = adapter;
+      final interceptor = RetryInterceptor(
+        dio: dio,
+        baseDelayMs: 10,
+        maxDelayMs: 20,
+      );
+      final dioEx = _statusError(500);
+      final handler = _CapturingErrorHandler();
+      await interceptor.onError(dioEx, handler);
+      expect(adapter.calls, 1);
+      expect(handler.resolvedResponse, isNotNull);
+      expect(dioEx.requestOptions.extra['retryCount'], 1);
     });
   });
 }

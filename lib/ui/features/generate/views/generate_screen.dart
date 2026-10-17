@@ -1003,6 +1003,9 @@ class _GenerateScreenState extends ConsumerState<GenerateScreen> {
       return EnhancedLoadingCard(
         key: const ValueKey('generating'),
         type: isScraping ? LoadingType.extracting : LoadingType.generating,
+        // Inline hint for intermediate share retries / silent provider
+        // fallbacks (e.g. "Gemini rate-limited — retrying with Groq…").
+        customMessage: viewModel.fallbackNotice,
       );
     }
 

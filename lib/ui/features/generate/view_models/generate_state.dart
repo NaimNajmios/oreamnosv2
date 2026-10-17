@@ -32,6 +32,8 @@ abstract class GenerateUiState with _$GenerateUiState {
     @Default(false) bool keepStructure,
     @Default(false) bool isEditMode,
     @Default(<String>{}) Set<String> selectedPillIds,
+    @Default(false) bool isFromShare,
+    String? fallbackNotice,
   }) = _GenerateUiState;
 
   bool get canUndo => historyStack.isNotEmpty;

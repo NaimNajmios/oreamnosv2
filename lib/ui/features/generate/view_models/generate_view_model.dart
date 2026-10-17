@@ -63,6 +63,34 @@ class GenerateViewModel extends Notifier<GenerateUiState>
   bool _isBackgrounded = false;
   int _generationSessionId = 0;
 
+  /// Extra attempts for share-initiated generations on transient failures
+  /// (flaky FxTwitter, network gap right after app resume). Non-share
+  /// generations keep single-shot semantics.
+  static const int _maxShareRetries = 2;
+  static const List<int> _shareRetryDelaysMs = [1500, 3000];
+
+  /// Maximum automatic provider hops in the silent fallback chain
+  /// (gemini → groq → openRouter → cerebras). Full chain length.
+  static const int _maxFallbackHops = 4;
+
+  /// In-memory cooldown per provider after a 429 — subsequent requests
+  /// within the window skip the doomed provider entirely.
+  static const int _defaultCooldownMs = 30000;
+  static const int _maxCooldownMs = 120000;
+  final Map<AiProvider, DateTime> _cooldownUntil = {};
+
+  void _recordCooldown(AiProvider provider, int? retryDelayMs) {
+    final delay = (retryDelayMs ?? _defaultCooldownMs).clamp(0, _maxCooldownMs);
+    _cooldownUntil[provider] = DateTime.now().add(
+      Duration(milliseconds: delay),
+    );
+  }
+
+  bool _isCoolingDown(AiProvider provider) {
+    final until = _cooldownUntil[provider];
+    return until != null && until.isAfter(DateTime.now());
+  }
+
   @override
   GenerateUiState build() {
     _usageService = getIt<UsageService>();
@@ -153,6 +181,38 @@ class GenerateViewModel extends Notifier<GenerateUiState>
   }
 
   AiProvider _getNextProvider(AiProvider current) => current.nextFallback;
+
+  /// Walks the fallback chain from [failedProvider], skipping providers in
+  /// cooldown and providers without an API key. On success persists the
+  /// switch (provider + default model when unset) and returns the provider,
+  /// or null when the whole chain is unavailable (→ last-resort dialog).
+  Future<AiProvider?> _switchToNextHealthyProvider(
+    AiProvider failedProvider,
+  ) async {
+    final settingsNotifier = ref.read(settingsViewModelProvider.notifier);
+    var candidate = failedProvider.nextFallback;
+    for (var hop = 0; hop < AiProvider.values.length; hop++) {
+      if (candidate == failedProvider) break;
+      if (!_isCoolingDown(candidate)) {
+        final apiKey = await settingsNotifier.getApiKeyForProvider(candidate);
+        if (apiKey != null && apiKey.isNotEmpty) {
+          await settingsNotifier.setSelectedProvider(candidate);
+          // Ensure the fallback has a usable model: persist the provider
+          // default when the user never picked one explicitly.
+          final selectedModel = ref
+              .read(settingsViewModelProvider)
+              .selectedModel;
+          if ((selectedModel == null || selectedModel.isEmpty) &&
+              candidate.defaultModelId.isNotEmpty) {
+            await settingsNotifier.setSelectedModel(candidate.defaultModelId);
+          }
+          return candidate;
+        }
+      }
+      candidate = candidate.nextFallback;
+    }
+    return null;
+  }
 
   Future<void> retryWithProvider(AiProvider provider) async {
     final settingsNotifier = ref.read(settingsViewModelProvider.notifier);
@@ -317,7 +377,12 @@ class GenerateViewModel extends Notifier<GenerateUiState>
     state = state.copyWith(pendingInput: null);
   }
 
-  Future<void> generatePost(String input) async {
+  Future<void> generatePost(
+    String input, {
+    bool isFromShare = false,
+    int shareAttempt = 0,
+    int fallbackDepth = 0,
+  }) async {
     final sessionId = ++_generationSessionId;
     final v = validateForGenerate(input);
     if (!v.isValid) {
@@ -351,10 +416,35 @@ class GenerateViewModel extends Notifier<GenerateUiState>
       rateLimitWaitMessage: null,
       twitterExtractionUrl: null,
       pendingInput: trimmedInput,
+      isFromShare: isFromShare,
+      fallbackNotice: null,
     );
 
+    // Inline progress notice for intermediate attempts (not shown to the
+    // modal dialog — just the loading card subtitle).
+    var provider = ref.read(settingsViewModelProvider).selectedProvider;
+    String? notice;
+    if (fallbackDepth > 0) {
+      notice = 'Retrying with ${provider.displayName}…';
+    } else if (shareAttempt > 0) {
+      notice = 'Retrying (attempt ${shareAttempt + 1})…';
+    } else if (_isCoolingDown(provider)) {
+      // Cooldown-aware start: the selected provider just got rate-limited;
+      // jump straight to a healthy fallback instead of a doomed request.
+      final switched = await _switchToNextHealthyProvider(provider);
+      if (switched != null && sessionId == _generationSessionId) {
+        provider = switched;
+        notice = 'Retrying with ${switched.displayName}…';
+      }
+    }
+    if (notice != null && sessionId == _generationSessionId) {
+      state = state.copyWith(
+        status: GenerateState.generating,
+        fallbackNotice: notice,
+      );
+    }
+
     final stopwatch = Stopwatch()..start();
-    final provider = ref.read(settingsViewModelProvider).selectedProvider;
 
     try {
       final parsed = SharedContentParser.parse(trimmedInput);
@@ -586,29 +676,70 @@ class GenerateViewModel extends Notifier<GenerateUiState>
           ),
         );
         getIt<LogService>().error('Failed to generate post', failure, null);
-        if (failure is RateLimitFailure) {
+        final isTransientShareFailure =
+            isFromShare &&
+            shareAttempt < _maxShareRetries &&
+            (failure is NetworkFailure);
+        if (failure is RateLimitFailure || failure is PaymentRequiredFailure) {
+          if (failure is RateLimitFailure) {
+            _recordCooldown(provider, failure.retryDelayMs);
+          }
+          // Silent auto-fallback: walk the chain to the first healthy
+          // provider with a key instead of stopping at the dialog.
+          if (fallbackDepth < _maxFallbackHops) {
+            final fallback = await _switchToNextHealthyProvider(provider);
+            if (fallback != null && sessionId == _generationSessionId) {
+              getIt<LogService>().info(
+                '${provider.displayName} quota exhausted — auto-falling back to ${fallback.displayName}',
+              );
+              await generatePost(
+                trimmedInput,
+                isFromShare: isFromShare,
+                shareAttempt: shareAttempt,
+                fallbackDepth: fallbackDepth + 1,
+              );
+              return;
+            }
+          }
+          // Chain exhausted → last-resort dialog state.
+          final waitMessage = failure is RateLimitFailure
+              ? failure.waitTimeMessage
+              : null;
           state = state.copyWith(
             errorMessage:
-                'Rate limit exceeded for ${provider.displayName}. Try another provider. ${failure.waitTimeMessage}',
+                'Rate limit exceeded for ${provider.displayName}. Try another provider.${waitMessage != null ? ' $waitMessage' : ''}',
             suggestedFallbackProvider: _getNextProvider(provider),
-            rateLimitWaitMessage: failure.waitTimeMessage,
+            rateLimitWaitMessage: waitMessage,
             status: GenerateState.rateLimited,
             generatingStep: GeneratingStep.idle,
+            fallbackNotice: null,
           );
-        } else if (failure is PaymentRequiredFailure) {
-          state = state.copyWith(
-            errorMessage:
-                'Credits exhausted for ${provider.displayName} (HTTP 402). Switch to another provider.',
-            suggestedFallbackProvider: _getNextProvider(provider),
-            status: GenerateState.rateLimited,
-            generatingStep: GeneratingStep.idle,
+        } else if (isTransientShareFailure) {
+          // Share-initiated transient failure: auto-retry in the background.
+          await Future.delayed(
+            Duration(
+              milliseconds:
+                  _shareRetryDelaysMs[shareAttempt.clamp(
+                    0,
+                    _shareRetryDelaysMs.length - 1,
+                  )],
+            ),
           );
+          if (sessionId != _generationSessionId) return;
+          await generatePost(
+            input,
+            isFromShare: true,
+            shareAttempt: shareAttempt + 1,
+            fallbackDepth: fallbackDepth,
+          );
+          return;
         } else if (failure is AuthFailure) {
           state = state.copyWith(
             errorMessage:
                 'Authentication failed for ${provider.displayName}. Check your API key in Settings.',
             status: GenerateState.error,
             generatingStep: GeneratingStep.idle,
+            fallbackNotice: null,
           );
         } else if (failure is NetworkFailure) {
           state = state.copyWith(
@@ -616,6 +747,7 @@ class GenerateViewModel extends Notifier<GenerateUiState>
                 'Network error. Please check your connection and try again.',
             status: GenerateState.error,
             generatingStep: GeneratingStep.idle,
+            fallbackNotice: null,
           );
         } else {
           final msg = failure.message.length > 220
@@ -625,6 +757,7 @@ class GenerateViewModel extends Notifier<GenerateUiState>
             errorMessage: msg,
             status: GenerateState.error,
             generatingStep: GeneratingStep.idle,
+            fallbackNotice: null,
           );
         }
         if (_isBackgrounded) {
@@ -682,6 +815,7 @@ class GenerateViewModel extends Notifier<GenerateUiState>
         curatedPost: curated,
         status: GenerateState.success,
         generatingStep: GeneratingStep.idle,
+        fallbackNotice: null,
       );
 
       if (_isBackgrounded) {
@@ -708,6 +842,34 @@ class GenerateViewModel extends Notifier<GenerateUiState>
 
       getIt<LogService>().error('Failed to generate post', e, st);
 
+      // Share-initiated transient failures (flaky FxTwitter/VxTwitter,
+      // network gap right after app resume): auto-retry in the background.
+      final isTransientException =
+          e is TwitterExtractionException ||
+          e is TimeoutException ||
+          e is NetworkFailure;
+      if (isFromShare &&
+          shareAttempt < _maxShareRetries &&
+          isTransientException) {
+        await Future.delayed(
+          Duration(
+            milliseconds:
+                _shareRetryDelaysMs[shareAttempt.clamp(
+                  0,
+                  _shareRetryDelaysMs.length - 1,
+                )],
+          ),
+        );
+        if (sessionId != _generationSessionId) return;
+        await generatePost(
+          input,
+          isFromShare: true,
+          shareAttempt: shareAttempt + 1,
+          fallbackDepth: fallbackDepth,
+        );
+        return;
+      }
+
       if (e is TwitterExtractionException) {
         state = state.copyWith(
           status: GenerateState.error,
@@ -717,6 +879,7 @@ class GenerateViewModel extends Notifier<GenerateUiState>
               'Please copy the tweet text directly and paste it here.\n\n'
               'Tip: Tap "..." on the tweet → "Copy text"',
           generatingStep: GeneratingStep.idle,
+          fallbackNotice: null,
         );
       } else {
         final raw = e.toString();
@@ -730,6 +893,7 @@ class GenerateViewModel extends Notifier<GenerateUiState>
           errorMessage: msg,
           status: GenerateState.error,
           generatingStep: GeneratingStep.idle,
+          fallbackNotice: null,
         );
       }
 
@@ -756,7 +920,10 @@ class GenerateViewModel extends Notifier<GenerateUiState>
     state = state.copyWith(selectedPillIds: const {});
   }
 
-  Future<void> refineContent(List<String> instructions) async {
+  Future<void> refineContent(
+    List<String> instructions, {
+    int fallbackDepth = 0,
+  }) async {
     final cp = state.curatedPost;
     if (cp == null || instructions.isEmpty) return;
 
@@ -768,6 +935,7 @@ class GenerateViewModel extends Notifier<GenerateUiState>
       generatingStep: GeneratingStep.prompting,
       errorMessage: null,
       validationMessage: null,
+      fallbackNotice: null,
     );
 
     final stopwatch = Stopwatch()..start();
@@ -870,6 +1038,7 @@ class GenerateViewModel extends Notifier<GenerateUiState>
         status: GenerateState.success,
         generatingStep: GeneratingStep.idle,
         selectedPillIds: const {},
+        fallbackNotice: null,
       );
 
       if (_isBackgrounded) {
@@ -895,22 +1064,36 @@ class GenerateViewModel extends Notifier<GenerateUiState>
 
       getIt<LogService>().error('Failed to refine post', e, st);
 
-      if (e is RateLimitFailure) {
+      if (e is RateLimitFailure || e is PaymentRequiredFailure) {
+        if (e is RateLimitFailure) {
+          _recordCooldown(provider, e.retryDelayMs);
+        }
+        // Silent auto-fallback (same chain as generatePost).
+        if (fallbackDepth < _maxFallbackHops) {
+          final fallback = await _switchToNextHealthyProvider(provider);
+          if (fallback != null && sessionId == _generationSessionId) {
+            getIt<LogService>().info(
+              '${provider.displayName} quota exhausted — auto-falling back to ${fallback.displayName}',
+            );
+            state = state.copyWith(
+              status: GenerateState.generating,
+              fallbackNotice:
+                  '${provider.displayName} rate-limited — retrying with ${fallback.displayName}…',
+            );
+            await refineContent(instructions, fallbackDepth: fallbackDepth + 1);
+            return;
+          }
+        }
         state = state.copyWith(
           errorMessage:
-              'Rate limit exceeded for ${provider.displayName}. ${e.waitTimeMessage}',
+              'Rate limit exceeded for ${provider.displayName}. ${e is RateLimitFailure ? e.waitTimeMessage : ''}',
           suggestedFallbackProvider: _getNextProvider(provider),
-          rateLimitWaitMessage: e.waitTimeMessage,
+          rateLimitWaitMessage: e is RateLimitFailure
+              ? e.waitTimeMessage
+              : null,
           status: GenerateState.rateLimited,
           generatingStep: GeneratingStep.idle,
-        );
-      } else if (e is PaymentRequiredFailure) {
-        state = state.copyWith(
-          errorMessage:
-              'Credits exhausted for ${provider.displayName} (HTTP 402). Switch to another provider.',
-          suggestedFallbackProvider: _getNextProvider(provider),
-          status: GenerateState.rateLimited,
-          generatingStep: GeneratingStep.idle,
+          fallbackNotice: null,
         );
       } else if (e is AuthFailure) {
         state = state.copyWith(
@@ -918,6 +1101,7 @@ class GenerateViewModel extends Notifier<GenerateUiState>
               'Authentication failed for ${provider.displayName}. Check your API key in Settings.',
           status: GenerateState.error,
           generatingStep: GeneratingStep.idle,
+          fallbackNotice: null,
         );
       } else if (e is NetworkFailure) {
         state = state.copyWith(
@@ -925,6 +1109,7 @@ class GenerateViewModel extends Notifier<GenerateUiState>
               'Network error. Please check your connection and try again.',
           status: GenerateState.error,
           generatingStep: GeneratingStep.idle,
+          fallbackNotice: null,
         );
       } else {
         final raw = e.toString();
@@ -936,6 +1121,7 @@ class GenerateViewModel extends Notifier<GenerateUiState>
           errorMessage: msg,
           status: GenerateState.error,
           generatingStep: GeneratingStep.idle,
+          fallbackNotice: null,
         );
       }
 
@@ -983,9 +1169,11 @@ class GenerateViewModel extends Notifier<GenerateUiState>
       isEditMode: false,
       selectedPillIds: const {},
       pendingInput: effectiveText,
+      isFromShare: true,
+      fallbackNotice: null,
     );
 
-    await generatePost(effectiveText);
+    await generatePost(effectiveText, isFromShare: true);
   }
 
   void reset() {
@@ -1002,6 +1190,8 @@ class GenerateViewModel extends Notifier<GenerateUiState>
       pendingInput: null,
       isEditMode: false,
       selectedPillIds: const {},
+      isFromShare: false,
+      fallbackNotice: null,
     );
   }
 
