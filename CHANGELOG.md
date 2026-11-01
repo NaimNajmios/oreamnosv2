@@ -1,5 +1,13 @@
 # Changelog — Oreamnos
 
+## v7 — Quota Fix + Share Intent Repair (2026-11-01)
+
+* **Rate-limit root cause:** receive/send timeouts are no longer retried (`RetryInterceptor` — an aborted generation already consumed quota; formerly one tap on Gemini `generateContent` counted up to 5 requests: 15s receiveTimeout × 4 retries). Generation requests get a per-request receive window `AppConstants.generationReceiveTimeout` 90s (pool base stays 15s; `extractCardData`/`rewriteField` use 60s); VM `generateStructuredPost`/`refinePost` guards aligned to 90s; `maxOutputTokens: AppConstants.defaultMaxTokens` bounds unbounded-schema runs.
+* **Silent fallback is volatile:** auto-hop on 429/402 no longer rewrites the persisted `selectedProvider`/`selectedModel` — hops travel via `forceProvider` and `_resolveModelId` (per-provider stored model or provider default; never another provider's selected model). Persistent switching reserved for the explicit `RateLimitDialog` path. 429 cooldown floor 30s→60s + combined share attempt budget `_maxAttemptsPerShare = 4`.
+* **Cancellation:** `CancelToken` plumbed `GenerateViewModel` → `IContentRepository`/`IContentCurator` → `ApiClient.post/get` — superseded sessions, VM timeout expiry, `reset()`, vision 60s timeout and `ref.onDispose` all cancel in-flight provider requests (no more background quota burn from orphaned generations).
+* **Share intent cold-start fix:** removed the pre-init `reset()` that destroyed fresh shares delivered while the app was closed (the "share lands on a blank Generate screen" regression). Order restored: `getInitialMedia` → fingerprint load → handle → reset. Persisted fingerprint (`share_initial_fingerprint`) suppresses Android cached-process stale replays on the initial path; `app.dart` in-flight share pin expires after 8s.
+* **Tests:** 293 green across 43 files (+timeout retry policy, + share fingerprint/stale-replay, volatile-fallback contract rewritten); `dart format` 0, `flutter analyze` 0.
+
 ## v6 — Gemini 400 Fixes (2026-09-04)
 
 * **Structured output:** new `GenerationPromptManager.geminiResponseSchema` (recursive `additionalProperties` strip — Gemini rejects that field with HTTP 400); swapped into both Gemini schema call sites; OpenAI strict schema untouched. One-shot schema-less retry if Gemini ever names `response_schema` in a 400 again.
