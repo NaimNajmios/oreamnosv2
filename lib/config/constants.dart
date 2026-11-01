@@ -11,6 +11,12 @@ abstract final class AppConstants {
   static const String openRouterBaseUrl = 'https://openrouter.ai/api/v1';
   static const String cerebrasBaseUrl = 'https://api.cerebras.ai/v1';
 
+  // === Facebook Publishing ===
+  // Page publishing goes through the Graph API; the version constant keeps
+  // each call pinned in one place (older versions eventually get retired).
+  static const String facebookGraphBaseUrl = 'https://graph.facebook.com';
+  static const String facebookGraphVersion = 'v23.0';
+
   // === Network Timeouts ===
   static const Duration connectTimeout = Duration(seconds: 15);
   static const Duration readTimeout = Duration(seconds: 15);
@@ -31,6 +37,15 @@ abstract final class AppConstants {
   // pooling/lookup calls keep the shared BaseOptions timeout.
   static const Duration generationReceiveTimeout = Duration(seconds: 90);
   static const Duration shortGenerationReceiveTimeout = Duration(seconds: 60);
+
+  // === Photo Upload Receive Timeout ===
+  // `/{page-id}/photos` is a multipart upload: a ~1MB JPEG on a slow link can
+  // exceed the shared 15s receiveTimeout while Facebook still finishes
+  // processing the photo. Aborting client-side here is dangerous — Facebook
+  // often publishes the photo anyway, and the user's retry then hits the
+  // duplicate rejection (code 506). Photo requests override with a generous
+  // receive window, mirroring `generationReceiveTimeout` for Gemini.
+  static const Duration photoUploadTimeout = Duration(seconds: 60);
 
   // === 429 Retry Policy ===
   // 429s get at most one honoring retry, and only when the provider-supplied
@@ -80,4 +95,10 @@ abstract final class AppConstants {
   static const String keyLastPromptLength = 'last_prompt_length';
   static const String keyLastIsResearchMode = 'last_is_research_mode';
   static const String keyLastKeepStructure = 'last_keep_structure';
+
+  // === Facebook Publishing (secure + prefs) ===
+  static const String keyFacebookPageToken = 'facebook_page_token';
+  static const String keyFacebookPageId = 'facebook_page_id';
+  static const String keyFacebookPageName = 'facebook_page_name';
+  static const String keyFacebookHistory = 'facebook_publish_history';
 }
