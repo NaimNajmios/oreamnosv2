@@ -28,6 +28,14 @@ abstract final class AppConstants {
   static const int maxRetriesOn429 = 1;
   static const int retry429MaxWaitMs = 10000;
 
+  // === Daily Quota Visibility (estimated free-tier RPD) ===
+  // Amber warning on the Usage tab when the day's request count crosses
+  // this fraction of the model budget.
+  static const double dailyQuotaWarnThreshold = 0.8;
+  // Conservative default for models not in the DailyUsageService budget
+  // table.
+  static const int defaultDailyQuota = 500;
+
   // === Content Generation ===
   static const double minLengthRatio = 0.4;
   static const double maxLengthRatio = 0.6;

@@ -16,6 +16,7 @@ import 'package:shared_preferences/shared_preferences.dart' as _i460;
 
 import '../../data/repositories/tavily_search_repository.dart' as _i389;
 import '../../data/services/card_data_extractor.dart' as _i633;
+import '../../data/services/daily_usage_service.dart' as _i267;
 import '../../data/services/export_service.dart' as _i496;
 import '../../data/services/free_tier_guard.dart' as _i200;
 import '../../data/services/log_service.dart' as _i713;
@@ -64,6 +65,15 @@ extension GetItInjectableX on _i174.GetIt {
         secureStorage: gh<_i558.FlutterSecureStorage>(),
       ),
     );
+    gh.lazySingleton<_i1062.UsageService>(
+      () => _i1062.UsageService(
+        gh<_i460.SharedPreferences>(),
+        gh<_i267.DailyUsageService>(),
+      ),
+    );
+    gh.lazySingleton<_i671.IUsageRepository>(
+      () => _i671.UsageRepository(gh<_i1062.UsageService>()),
+    );
     gh.lazySingleton<_i2.ISettingsRepository>(
       () => _i2.SettingsRepository(gh<_i867.PreferencesService>()),
     );
@@ -73,14 +83,14 @@ extension GetItInjectableX on _i174.GetIt {
     gh.lazySingleton<_i754.IVisionExtractor>(
       () => _i560.MLKitVisionExtractor(),
     );
+    gh.lazySingleton<_i267.DailyUsageService>(
+      () => _i267.DailyUsageService(gh<_i460.SharedPreferences>()),
+    );
     gh.lazySingleton<_i200.FreeTierGuard>(
       () => _i200.FreeTierGuard(gh<_i460.SharedPreferences>()),
     );
     gh.lazySingleton<_i713.LogService>(
       () => _i713.LogService(gh<_i460.SharedPreferences>()),
-    );
-    gh.lazySingleton<_i1062.UsageService>(
-      () => _i1062.UsageService(gh<_i460.SharedPreferences>()),
     );
     gh.lazySingleton<_i581.ProviderApiService>(
       () => _i581.ProviderApiService(gh<_i557.ApiClient>()),
@@ -93,9 +103,6 @@ extension GetItInjectableX on _i174.GetIt {
         gh<_i557.ApiClient>(),
         gh<_i867.PreferencesService>(),
       ),
-    );
-    gh.lazySingleton<_i671.IUsageRepository>(
-      () => _i671.UsageRepository(gh<_i1062.UsageService>()),
     );
     gh.factory<_i253.EnrichContextUseCase>(
       () => _i253.EnrichContextUseCase(

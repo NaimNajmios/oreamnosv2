@@ -11,7 +11,9 @@ import '../../../../config/theme/app_spacing.dart';
 import '../../../../config/theme/app_typography.dart';
 import '../../../core/widgets/staggered_entrance.dart';
 import '../../../../data/services/usage_service.dart';
+import '../../../../data/services/daily_usage_service.dart';
 import '../../../../domain/models/usage_log.dart';
+import '../../../../core/di/injection.dart';
 import '../../../core/utils/haptics.dart';
 import '../../../core/widgets/app_button.dart';
 import '../../../core/widgets/app_card.dart';
@@ -43,6 +45,16 @@ class _UsageScreenState extends ConsumerState<UsageScreen> {
     final logs = _filter == 'all'
         ? logsAll
         : logsAll.where((l) => l.providerId.toLowerCase() == _filter).toList();
+
+    // Daily RPD budget (device-local estimate; refreshes with usage logs).
+    DailyUsageService? dailyUsage;
+    try {
+      if (getIt.isRegistered<DailyUsageService>()) {
+        dailyUsage = getIt<DailyUsageService>();
+      }
+    } catch (_) {
+      dailyUsage = null;
+    }
 
     int totalTokens = 0;
     int successCount = 0;
@@ -235,6 +247,13 @@ class _UsageScreenState extends ConsumerState<UsageScreen> {
                         },
                       ),
                       const SizedBox(height: AppSpacing.base),
+
+                      // DAILY QUOTA — Gemini estimated free-tier budget
+                      if (dailyUsage != null &&
+                          dailyUsage.hasGeminiActivityToday()) ...[
+                        _buildDailyQuotaCard(context, dailyUsage),
+                        const SizedBox(height: AppSpacing.base),
+                      ],
 
                       // Usage Chart — grouped card with legend
                       AppCard(
@@ -519,6 +538,69 @@ class _UsageScreenState extends ConsumerState<UsageScreen> {
     );
   }
 
+  Widget _buildDailyQuotaCard(BuildContext context, DailyUsageService daily) {
+    final theme = Theme.of(context);
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final quotas = daily.todayGeminiQuota();
+    final reset = daily.timeUntilPacificReset();
+    final resetLabel = reset.inHours > 0
+        ? '${reset.inHours}h ${reset.inMinutes % 60}m'
+        : '${reset.inMinutes}m';
+
+    return AppCard(
+      padding: const EdgeInsets.all(AppSpacing.base),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Container(
+                width: 28,
+                height: 28,
+                decoration: BoxDecoration(
+                  color:
+                      (isDark
+                              ? AppColors.darkAmberSoft
+                              : AppColors.lightAmberSoft)
+                          .withValues(alpha: 0.35),
+                  borderRadius: AppSpacing.borderRadiusXs,
+                ),
+                child: Icon(
+                  Icons.speed_rounded,
+                  size: 14,
+                  color: isDark ? AppColors.darkAmber : AppColors.lightAmber,
+                ),
+              ),
+              const SizedBox(width: AppSpacing.sm),
+              Text(
+                'DAILY QUOTA — GEMINI (EST.)',
+                style: theme.textTheme.labelSmall?.copyWith(
+                  letterSpacing: 0.8,
+                  fontWeight: FontWeight.w700,
+                  color: theme.colorScheme.onSurface.withValues(alpha: 0.6),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: AppSpacing.md),
+          for (final q in quotas) ...[
+            _DailyQuotaRow(quota: q),
+            if (q != quotas.last) const SizedBox(height: AppSpacing.sm),
+          ],
+          const SizedBox(height: AppSpacing.sm),
+          Text(
+            'Resets in $resetLabel (midnight PT). Device-local estimate — '
+            'your real Google-project quota may include other keys.',
+            style: theme.textTheme.bodySmall?.copyWith(
+              fontSize: 10,
+              color: theme.colorScheme.onSurface.withValues(alpha: 0.45),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
   List<UsageLog> _rangedLogs(List<UsageLog> all) {
     if (_rangeDays <= 0) return all;
     final cutoff = DateTime.now().subtract(Duration(days: _rangeDays));
@@ -652,6 +734,67 @@ class _UsageScreenState extends ConsumerState<UsageScreen> {
       Haptics.heavyImpact();
       await ref.read(usageNotifierProvider.notifier).clearLogs();
     }
+  }
+}
+
+/// One model row in the DAILY QUOTA card: label + count/budget + progress.
+class _DailyQuotaRow extends StatelessWidget {
+  const _DailyQuotaRow({required this.quota});
+
+  final DailyQuota quota;
+
+  Color _barColor(BuildContext context) {
+    if (quota.isExhausted) return AppColors.error;
+    if (quota.isWarning) return Colors.orange.shade600;
+    return Theme.of(context).colorScheme.primary;
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final color = _barColor(context);
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        Row(
+          children: [
+            Expanded(
+              child: Text(
+                quota.modelId,
+                overflow: TextOverflow.ellipsis,
+                style: AppTypography.mono(
+                  fontSize: 11,
+                  fontWeight: FontWeight.w600,
+                  color: theme.colorScheme.onSurface.withValues(alpha: 0.85),
+                ),
+              ),
+            ),
+            const SizedBox(width: AppSpacing.sm),
+            Text(
+              '${quota.requestsToday} / ${quota.budget}',
+              style: AppTypography.mono(
+                fontSize: 11,
+                fontWeight: FontWeight.w600,
+                color: quota.isExhausted
+                    ? AppColors.error
+                    : theme.colorScheme.onSurface.withValues(alpha: 0.75),
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: 4),
+        ClipRRect(
+          borderRadius: BorderRadius.circular(999),
+          child: LinearProgressIndicator(
+            value: quota.fraction,
+            minHeight: 6,
+            backgroundColor: theme.colorScheme.surfaceContainerHighest
+                .withValues(alpha: 0.5),
+            valueColor: AlwaysStoppedAnimation<Color>(color),
+          ),
+        ),
+      ],
+    );
   }
 }
 

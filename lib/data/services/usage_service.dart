@@ -7,6 +7,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:oreamnos/core/di/injection.dart';
 
 import '../../domain/models/usage_log.dart';
+import 'daily_usage_service.dart';
 
 final usageNotifierProvider = NotifierProvider<UsageNotifier, List<UsageLog>>(
   UsageNotifier.new,
@@ -39,10 +40,11 @@ class UsageService {
   static const int _maxLogs = 50;
 
   final SharedPreferences _prefs;
+  final DailyUsageService? _dailyUsage;
   List<UsageLog> _logs = [];
   final List<void Function(List<UsageLog>)> _listeners = [];
 
-  UsageService(this._prefs) {
+  UsageService(this._prefs, [this._dailyUsage]) {
     _loadLogs();
   }
 
@@ -74,6 +76,11 @@ class UsageService {
   }
 
   Future<void> logUsage(UsageLog log) async {
+    // Daily RPD budget visibility — every attempt (success or failure)
+    // counts against the provider window, including 429-burned ones.
+    try {
+      await _dailyUsage?.recordRequest(log.providerId, log.modelName);
+    } catch (_) {}
     _logs = List.of(_logs)..insert(0, log);
     if (_logs.length > _maxLogs) {
       _logs = _logs.sublist(0, _maxLogs);
