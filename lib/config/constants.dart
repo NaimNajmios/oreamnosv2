@@ -21,6 +21,17 @@ abstract final class AppConstants {
   static const Duration maxBackoff = Duration(seconds: 60);
   static const double backoffMultiplier = 2.0;
 
+  // === Generation Receive Timeout ===
+  // Gemini `generateContent` is non-streaming: the full JSON body only
+  // arrives after the server finishes generating, so the pooled 15s
+  // receiveTimeout fires mid-generation on long posts/images. Each timed-out
+  // attempt was previously retried up to 4× (one tap → up to 5 counted
+  // requests) which silently exhausted even generous per-minute quotas.
+  // Generation requests override with a generous receive window; short
+  // pooling/lookup calls keep the shared BaseOptions timeout.
+  static const Duration generationReceiveTimeout = Duration(seconds: 90);
+  static const Duration shortGenerationReceiveTimeout = Duration(seconds: 60);
+
   // === 429 Retry Policy ===
   // 429s get at most one honoring retry, and only when the provider-supplied
   // wait is short. Longer/unknown quota windows propagate immediately so the

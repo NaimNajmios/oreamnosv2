@@ -30,6 +30,7 @@ abstract class IContentRepository {
     bool isTwitter = false,
     Uint8List? imageBytes,
     String? imageMimeType,
+    CancelToken? cancelToken,
   });
 
   Future<Result<CuratedPost>> refinePost({
@@ -40,6 +41,7 @@ abstract class IContentRepository {
     required AiProvider provider,
     bool includeSource = true,
     bool keepStructure = false,
+    CancelToken? cancelToken,
   });
 
   Future<Result<String>> generatePost({
@@ -112,6 +114,7 @@ class ContentRepository implements IContentRepository {
     bool isTwitter = false,
     Uint8List? imageBytes,
     String? imageMimeType,
+    CancelToken? cancelToken,
   }) async {
     try {
       final curator = CuratorFactory.getCurator(provider);
@@ -131,6 +134,7 @@ class ContentRepository implements IContentRepository {
         isTwitter: isTwitter,
         imageBytes: imageBytes,
         imageMimeType: imageMimeType,
+        cancelToken: cancelToken,
       );
       return ResultSuccess(res);
     } catch (e, st) {
@@ -147,6 +151,7 @@ class ContentRepository implements IContentRepository {
     required AiProvider provider,
     bool includeSource = true,
     bool keepStructure = false,
+    CancelToken? cancelToken,
   }) async {
     try {
       final curator = CuratorFactory.getCurator(provider);
@@ -157,6 +162,7 @@ class ContentRepository implements IContentRepository {
         apiKey: apiKey,
         includeSource: includeSource,
         keepStructure: keepStructure,
+        cancelToken: cancelToken,
       );
       return ResultSuccess(res);
     } catch (e, st) {

@@ -1,5 +1,6 @@
 import 'dart:typed_data';
 
+import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -360,6 +361,7 @@ class _FakeContentRepository implements IContentRepository {
     bool isTwitter = false,
     Uint8List? imageBytes,
     String? imageMimeType,
+    CancelToken? cancelToken,
   }) async {
     return const ResultSuccess(
       CuratedPost(
@@ -381,6 +383,7 @@ class _FakeContentRepository implements IContentRepository {
     required AiProvider provider,
     bool includeSource = true,
     bool keepStructure = false,
+    CancelToken? cancelToken,
   }) async {
     lastRefinements = refinements;
     return ResultSuccess(

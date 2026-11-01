@@ -14,6 +14,15 @@ import 'package:dio/dio.dart';
 /// unknown quota window (typical Gemini free-tier RPM limit) propagates
 /// immediately so the ViewModel fallback chain can switch provider instead
 /// of burning the quota window with doomed requests.
+///
+/// Timeout policy: `receiveTimeout`/`sendTimeout` are NOT retried. When a
+/// response socket goes idle mid-request the server is still processing —
+/// Gemini counts the aborted attempt against its per-minute quota, so
+/// resending a timed-out generation used to turn one tap into up to 5
+/// counted requests (the root cause of "Gemini rate-limits even with a
+/// generous quota"). `connectionTimeout`/`connectionError` stay retryable:
+/// nothing was sent or processed. Slow generations get a generous
+/// per-request receive window instead (`AppConstants.generationReceiveTimeout`).
 class RetryInterceptor extends Interceptor {
   RetryInterceptor({
     this.dio,
@@ -68,8 +77,6 @@ class RetryInterceptor extends Interceptor {
         status == 503 || (status != null && status >= 500) || is429;
     final isRetryableException =
         err.type == DioExceptionType.connectionTimeout ||
-        err.type == DioExceptionType.receiveTimeout ||
-        err.type == DioExceptionType.sendTimeout ||
         err.type == DioExceptionType.connectionError;
 
     if (!isRetryableStatus && !isRetryableException) {

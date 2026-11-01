@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:convert';
 
 import 'package:flutter/material.dart';
@@ -95,6 +96,14 @@ class _OreamnosAppState extends ConsumerState<OreamnosApp> {
         return;
       }
       _inFlightShareContent = trimmed;
+      // Late stream bounces (beyond the service's 1500ms dedup window) must
+      // not re-trigger generation of the same share. But the guard must not
+      // pin "in flight" for the whole multi-minute retry/fallback chain
+      // either, or a deliberate re-share minutes later gets dropped — so
+      // the pin expires after 8s (the bounce window) as a hard cap.
+      Timer(const Duration(seconds: 8), () {
+        if (_inFlightShareContent == trimmed) _inFlightShareContent = null;
+      });
 
       // Defer to the first frame so the router/shell exists before the
       // share-driven navigation and generation kick off (cold-start race).

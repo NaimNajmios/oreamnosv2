@@ -2,9 +2,11 @@ import 'dart:async';
 import 'dart:convert';
 import 'dart:typed_data';
 
+import 'package:dio/dio.dart';
 import 'package:flutter/widgets.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import 'package:oreamnos/config/constants.dart';
 import 'package:oreamnos/core/di/injection.dart';
 import 'package:oreamnos/core/error/failures.dart';
 import 'package:oreamnos/core/repositories/content_repository.dart';
@@ -28,6 +30,7 @@ import 'package:oreamnos/data/services/vision_curator_chain.dart';
 import 'package:oreamnos/data/services/vision_image_prep.dart';
 import 'package:oreamnos/domain/models/vision_mode.dart';
 import 'package:oreamnos/domain/services/vision_extractor.dart';
+import 'package:oreamnos/ui/features/settings/view_models/settings_state.dart';
 import 'package:oreamnos/ui/features/settings/view_models/settings_view_model.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:uuid/uuid.dart';
@@ -73,9 +76,43 @@ class GenerateViewModel extends Notifier<GenerateUiState>
   /// (gemini → groq → openRouter → cerebras). Full chain length.
   static const int _maxFallbackHops = 4;
 
+  /// Combined attempt budget for share-initiated generations: share retries
+  /// and provider fallbacks share one cap so a burst cannot chain
+  /// `_maxFallbackHops × _maxShareRetries` sequential 30s+ generations
+  /// inside a single share handling.
+  static const int _maxAttemptsPerShare = 4;
+
+  bool _canAttemptMore({
+    required bool isFromShare,
+    required int shareAttempt,
+    required int fallbackDepth,
+  }) {
+    if (!isFromShare) return fallbackDepth < _maxFallbackHops;
+    return shareAttempt + fallbackDepth < _maxAttemptsPerShare;
+  }
+
+  /// Cancellation token for the in-flight network attempt. A newer session
+  /// (new tap, share, refine, reset, dispose) cancels the previous attempt
+  /// chain outright — orphaned requests otherwise keep burning provider
+  /// quota in the background.
+  CancelToken? _attemptCancelToken;
+
+  CancelToken _newAttemptToken(int sessionId) {
+    final stale = _attemptCancelToken;
+    final token = CancelToken();
+    _attemptCancelToken = token;
+    if (stale != null && !stale.isCancelled) {
+      stale.cancel('Superseded by a newer generation (session $sessionId)');
+    }
+    return token;
+  }
+
   /// In-memory cooldown per provider after a 429 — subsequent requests
   /// within the window skip the doomed provider entirely.
-  static const int _defaultCooldownMs = 30000;
+  ///
+  /// Default floor is 60s: Google's RPM windows reset per minute, so a 30s
+  /// cooldown can collide with the same still-closing window.
+  static const int _defaultCooldownMs = 60000;
   static const int _maxCooldownMs = 120000;
   final Map<AiProvider, DateTime> _cooldownUntil = {};
 
@@ -97,6 +134,13 @@ class GenerateViewModel extends Notifier<GenerateUiState>
     WidgetsBinding.instance.addObserver(this);
     ref.onDispose(() {
       WidgetsBinding.instance.removeObserver(this);
+      // Cancel any in-flight provider request — a disposed Notifier's state
+      // will never be read, so the only sane outcome for the network call is
+      // cancellation (this also stops background quota burn).
+      final token = _attemptCancelToken;
+      if (token != null && !token.isCancelled) {
+        token.cancel('GenerateViewModel disposed');
+      }
     });
 
     if (getIt.isRegistered<PreferencesService>()) {
@@ -182,10 +226,34 @@ class GenerateViewModel extends Notifier<GenerateUiState>
 
   AiProvider _getNextProvider(AiProvider current) => current.nextFallback;
 
+  /// Resolves the model for [provider]:
+  /// - the settings state's selection when the persisted provider matches
+  ///   (the normal path — identical to the old `selectedModel ?: default`);
+  /// - for a VOLATILE fallback hop to a different provider, that provider's
+  ///   stored per-provider selection, else its default model — never the
+  ///   other provider's selected model ID, which would be invalid there.
+  String _resolveModelId(AiProvider provider, SettingsState settings) {
+    if (settings.selectedProvider == provider) {
+      final selected = settings.selectedModel;
+      if (selected != null && selected.isNotEmpty) return selected;
+    }
+    try {
+      if (getIt.isRegistered<PreferencesService>()) {
+        final stored = getIt<PreferencesService>().getSelectedModel(provider);
+        if (stored != null && stored.trim().isNotEmpty) return stored;
+      }
+    } catch (_) {}
+    return provider.defaultModelId;
+  }
   /// Walks the fallback chain from [failedProvider], skipping providers in
-  /// cooldown and providers without an API key. On success persists the
-  /// switch (provider + default model when unset) and returns the provider,
-  /// or null when the whole chain is unavailable (→ last-resort dialog).
+  /// cooldown and providers without an API key. Returns the first healthy
+  /// candidate, or null when the whole chain is unavailable (→ last-resort
+  /// dialog).
+  ///
+  /// The switch is VOLATILE: the caller only uses it for the current
+  /// generation attempt set (via `forceProvider`), so the user's persisted
+  /// provider selection survives a rate-limit burst. Persisting a provider
+  /// switch is reserved for the explicit dialog path (`retryWithProvider`).
   Future<AiProvider?> _switchToNextHealthyProvider(
     AiProvider failedProvider,
   ) async {
@@ -196,16 +264,6 @@ class GenerateViewModel extends Notifier<GenerateUiState>
       if (!_isCoolingDown(candidate)) {
         final apiKey = await settingsNotifier.getApiKeyForProvider(candidate);
         if (apiKey != null && apiKey.isNotEmpty) {
-          await settingsNotifier.setSelectedProvider(candidate);
-          // Ensure the fallback has a usable model: persist the provider
-          // default when the user never picked one explicitly.
-          final selectedModel = ref
-              .read(settingsViewModelProvider)
-              .selectedModel;
-          if ((selectedModel == null || selectedModel.isEmpty) &&
-              candidate.defaultModelId.isNotEmpty) {
-            await settingsNotifier.setSelectedModel(candidate.defaultModelId);
-          }
           return candidate;
         }
       }
@@ -382,8 +440,10 @@ class GenerateViewModel extends Notifier<GenerateUiState>
     bool isFromShare = false,
     int shareAttempt = 0,
     int fallbackDepth = 0,
+    AiProvider? forceProvider,
   }) async {
     final sessionId = ++_generationSessionId;
+    final attemptToken = _newAttemptToken(sessionId);
     final v = validateForGenerate(input);
     if (!v.isValid) {
       if (sessionId != _generationSessionId) return;
@@ -422,7 +482,12 @@ class GenerateViewModel extends Notifier<GenerateUiState>
 
     // Inline progress notice for intermediate attempts (not shown to the
     // modal dialog — just the loading card subtitle).
-    var provider = ref.read(settingsViewModelProvider).selectedProvider;
+    //
+    // `forceProvider` is the volatile fallback target chosen by the previous
+    // attempt's failure handler — it must keep passing through so the chain
+    // hop doesn't silently get lost between recursion boundaries.
+    var provider =
+        forceProvider ?? ref.read(settingsViewModelProvider).selectedProvider;
     String? notice;
     if (fallbackDepth > 0) {
       notice = 'Retrying with ${provider.displayName}…';
@@ -604,9 +669,7 @@ class GenerateViewModel extends Notifier<GenerateUiState>
       }
 
       final settings = ref.read(settingsViewModelProvider);
-      final modelId = (settings.selectedModel?.isNotEmpty ?? false)
-          ? settings.selectedModel!
-          : provider.defaultModelId;
+      final modelId = _resolveModelId(provider, settings);
 
       final apiKey = await ref
           .read(settingsViewModelProvider.notifier)
@@ -632,7 +695,9 @@ class GenerateViewModel extends Notifier<GenerateUiState>
               '$contentToCurate\n\nLENGTH REQUIREMENT: $_lengthInstruction';
         }
       }
-      // API resilience: via pooled IContentRepository + Result fold + 30s timeout
+      // API resilience: via pooled IContentRepository + Result fold + timeout
+      // aligned with the per-request generation receive window (long posts
+      // legitimately take >30s; 30s used to orphan mid-flight generations).
       final repo = ref.read(contentRepositoryProvider);
 
       final repoResult = await repo
@@ -651,11 +716,18 @@ class GenerateViewModel extends Notifier<GenerateUiState>
             authorDisplayName: authorDisplayName,
             candidateOutlet: candidateOutlet,
             isTwitter: isTwitter,
+            cancelToken: attemptToken,
           )
           .timeout(
-            const Duration(seconds: 30),
-            onTimeout: () =>
-                throw const NetworkFailure('Request timed out after 30s'),
+            AppConstants.generationReceiveTimeout,
+            onTimeout: () {
+              if (!attemptToken.isCancelled) {
+                attemptToken.cancel('VM receive window expired');
+              }
+              return throw NetworkFailure(
+                'Request timed out after ${AppConstants.generationReceiveTimeout.inSeconds}s',
+              );
+            },
           );
 
       if (sessionId != _generationSessionId) return;
@@ -679,14 +751,25 @@ class GenerateViewModel extends Notifier<GenerateUiState>
         final isTransientShareFailure =
             isFromShare &&
             shareAttempt < _maxShareRetries &&
+            _canAttemptMore(
+              isFromShare: isFromShare,
+              shareAttempt: shareAttempt,
+              fallbackDepth: fallbackDepth,
+            ) &&
             (failure is NetworkFailure);
         if (failure is RateLimitFailure || failure is PaymentRequiredFailure) {
           if (failure is RateLimitFailure) {
             _recordCooldown(provider, failure.retryDelayMs);
           }
           // Silent auto-fallback: walk the chain to the first healthy
-          // provider with a key instead of stopping at the dialog.
-          if (fallbackDepth < _maxFallbackHops) {
+          // provider with a key instead of stopping at the dialog. The hop
+          // is volatile (forceProvider) — the user's persisted provider is
+          // left untouched.
+          if (_canAttemptMore(
+            isFromShare: isFromShare,
+            shareAttempt: shareAttempt,
+            fallbackDepth: fallbackDepth,
+          )) {
             final fallback = await _switchToNextHealthyProvider(provider);
             if (fallback != null && sessionId == _generationSessionId) {
               getIt<LogService>().info(
@@ -697,6 +780,7 @@ class GenerateViewModel extends Notifier<GenerateUiState>
                 isFromShare: isFromShare,
                 shareAttempt: shareAttempt,
                 fallbackDepth: fallbackDepth + 1,
+                forceProvider: fallback,
               );
               return;
             }
@@ -731,6 +815,9 @@ class GenerateViewModel extends Notifier<GenerateUiState>
             isFromShare: true,
             shareAttempt: shareAttempt + 1,
             fallbackDepth: fallbackDepth,
+            // Retry the same provider (a transient network failure doesn't
+            // imply a provider choice change); preserve any cooldown hop.
+            forceProvider: provider,
           );
           return;
         } else if (failure is AuthFailure) {
@@ -850,6 +937,11 @@ class GenerateViewModel extends Notifier<GenerateUiState>
           e is NetworkFailure;
       if (isFromShare &&
           shareAttempt < _maxShareRetries &&
+          _canAttemptMore(
+            isFromShare: isFromShare,
+            shareAttempt: shareAttempt,
+            fallbackDepth: fallbackDepth,
+          ) &&
           isTransientException) {
         await Future.delayed(
           Duration(
@@ -866,6 +958,9 @@ class GenerateViewModel extends Notifier<GenerateUiState>
           isFromShare: true,
           shareAttempt: shareAttempt + 1,
           fallbackDepth: fallbackDepth,
+          // Retry the same provider (a transient network failure doesn't
+          // imply a provider choice change); preserve any cooldown hop.
+          forceProvider: provider,
         );
         return;
       }
@@ -923,11 +1018,13 @@ class GenerateViewModel extends Notifier<GenerateUiState>
   Future<void> refineContent(
     List<String> instructions, {
     int fallbackDepth = 0,
+    AiProvider? forceProvider,
   }) async {
     final cp = state.curatedPost;
     if (cp == null || instructions.isEmpty) return;
 
     final sessionId = ++_generationSessionId;
+    final attemptToken = _newAttemptToken(sessionId);
 
     _pushHistory(cp);
     state = state.copyWith(
@@ -939,13 +1036,13 @@ class GenerateViewModel extends Notifier<GenerateUiState>
     );
 
     final stopwatch = Stopwatch()..start();
-    final provider = ref.read(settingsViewModelProvider).selectedProvider;
+    // Volatile fallback target — see _switchToNextHealthyProvider.
+    final provider =
+        forceProvider ?? ref.read(settingsViewModelProvider).selectedProvider;
 
     try {
       final settings = ref.read(settingsViewModelProvider);
-      final modelId = (settings.selectedModel?.isNotEmpty ?? false)
-          ? settings.selectedModel!
-          : provider.defaultModelId;
+      final modelId = _resolveModelId(provider, settings);
 
       final apiKey = await ref
           .read(settingsViewModelProvider.notifier)
@@ -968,11 +1065,18 @@ class GenerateViewModel extends Notifier<GenerateUiState>
             provider: provider,
             includeSource: state.showSource,
             keepStructure: state.keepStructure,
+            cancelToken: attemptToken,
           )
           .timeout(
-            const Duration(seconds: 30),
-            onTimeout: () =>
-                throw const NetworkFailure('Request timed out after 30s'),
+            AppConstants.generationReceiveTimeout,
+            onTimeout: () {
+              if (!attemptToken.isCancelled) {
+                attemptToken.cancel('VM receive window expired');
+              }
+              return throw NetworkFailure(
+                'Request timed out after ${AppConstants.generationReceiveTimeout.inSeconds}s',
+              );
+            },
           );
 
       if (sessionId != _generationSessionId) return;
@@ -1068,7 +1172,7 @@ class GenerateViewModel extends Notifier<GenerateUiState>
         if (e is RateLimitFailure) {
           _recordCooldown(provider, e.retryDelayMs);
         }
-        // Silent auto-fallback (same chain as generatePost).
+        // Silent auto-fallback (same chain as generatePost, volatile).
         if (fallbackDepth < _maxFallbackHops) {
           final fallback = await _switchToNextHealthyProvider(provider);
           if (fallback != null && sessionId == _generationSessionId) {
@@ -1080,7 +1184,11 @@ class GenerateViewModel extends Notifier<GenerateUiState>
               fallbackNotice:
                   '${provider.displayName} rate-limited — retrying with ${fallback.displayName}…',
             );
-            await refineContent(instructions, fallbackDepth: fallbackDepth + 1);
+            await refineContent(
+              instructions,
+              fallbackDepth: fallbackDepth + 1,
+              forceProvider: fallback,
+            );
             return;
           }
         }
@@ -1178,6 +1286,10 @@ class GenerateViewModel extends Notifier<GenerateUiState>
 
   void reset() {
     _generationSessionId++;
+    final stale = _attemptCancelToken;
+    if (stale != null && !stale.isCancelled) {
+      stale.cancel('Reset');
+    }
     state = state.copyWith(
       status: GenerateState.idle,
       generatingStep: GeneratingStep.idle,
@@ -1236,17 +1348,25 @@ class GenerateViewModel extends Notifier<GenerateUiState>
       if (getIt.isRegistered<VisionCuratorChain>()) {
         try {
           final chain = getIt<VisionCuratorChain>();
+          final visionToken = _newAttemptToken(sessionId);
           final post = await chain
               .extractStructured(
                 content: '',
                 imageBytes: bytes,
                 imageMimeType: mimeType,
                 keepStructure: state.keepStructure,
+                cancelToken: visionToken,
               )
               .timeout(
                 const Duration(seconds: 60),
-                onTimeout: () =>
-                    throw const NetworkFailure('Vision request timed out.'),
+                onTimeout: () {
+                  if (!visionToken.isCancelled) {
+                    visionToken.cancel('Vision request timed out');
+                  }
+                  return throw const NetworkFailure(
+                    'Vision request timed out.',
+                  );
+                },
               );
           if (sessionId != _generationSessionId) return;
           stopwatch.stop();

@@ -1,5 +1,6 @@
 import 'dart:typed_data';
 
+import 'package:dio/dio.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -54,6 +55,7 @@ class _MockContentRepository implements IContentRepository {
     bool isTwitter = false,
     Uint8List? imageBytes,
     String? imageMimeType,
+    CancelToken? cancelToken,
   }) async {
     callCount++;
     lastProvider = provider;
@@ -69,6 +71,7 @@ class _MockContentRepository implements IContentRepository {
     required AiProvider provider,
     bool includeSource = true,
     bool keepStructure = false,
+    CancelToken? cancelToken,
   }) async {
     callCount++;
     lastProvider = provider;

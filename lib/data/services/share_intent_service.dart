@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:flutter/foundation.dart';
 import 'package:receive_sharing_intent/receive_sharing_intent.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 import 'package:oreamnos/core/di/injection.dart';
 import 'package:oreamnos/data/services/log_service.dart';
@@ -11,9 +12,19 @@ class ShareIntentService {
   factory ShareIntentService() => _instance;
   ShareIntentService._internal();
 
+  /// SharedPreferences key storing the dedup key of the last handled
+  /// initial share. Persists across processes so a cold start can tell a
+  /// *stale replay* (Android cached process replays the previous session's
+  /// `initialMedia`) apart from a *fresh share* (≠ fingerprint → handled).
+  static const String _fingerprintPrefKey = 'share_initial_fingerprint';
+
   StreamSubscription? _intentDataStreamSubscription;
   DateTime? _lastHandledTime;
   String? _lastHandledContent;
+
+  /// Dedup key of the last handled share. Loaded from prefs before the
+  /// initial delivery is judged; persisted after each initial share.
+  String? _initialFingerprint;
 
   /// Android keeps a cached process after swipe-away; the native plugin's
   /// `initialMedia`/`latestMedia` survive it. This guards each process from
@@ -41,15 +52,11 @@ class ShareIntentService {
   }
 
   void initialize() {
-    // Purge stale native cache FIRST. Android's cached process keeps
-    // `latestMedia` from the previous session alive; without this purge a
-    // re-subscribe below can replay the *previous* share instead of waiting
-    // for the new one ("treated as the last entry" bug).
-    try {
-      ReceiveSharingIntent.instance.reset();
-    } catch (e, st) {
-      _log('pre-init reset failed', e, st);
-    }
+    // NOTE: never call `reset()` BEFORE `getInitialMedia()` — the plugin's
+    // reset clears the stored initial intent, so purging first would kill
+    // the *fresh* cold-start share (the "share lands on a blank Generate
+    // screen" regression). Stale-replay protection is handled by the
+    // fingerprint check in [handleSharedMedia] instead.
 
     // For sharing or opening urls/text coming from outside the app while the app is in the memory
     _intentDataStreamSubscription = ReceiveSharingIntent.instance
@@ -74,8 +81,12 @@ class ShareIntentService {
       _initialMediaConsumed = true;
       ReceiveSharingIntent.instance
           .getInitialMedia()
-          .then((List<SharedMediaFile> value) {
-            handleSharedMedia(value);
+          .then((List<SharedMediaFile> value) async {
+            // Load the persisted fingerprint BEFORE judging this delivery —
+            // a stale replay (same content as the last handled share) is
+            // dropped here, a fresh share (≠ fingerprint) is handled.
+            _initialFingerprint ??= await _loadFingerprint();
+            handleSharedMedia(value, isInitial: true);
             // Tell the library that we are done processing the initial intent
             try {
               ReceiveSharingIntent.instance.reset();
@@ -86,6 +97,30 @@ class ShareIntentService {
           .catchError((err, st) {
             _log('getInitialMedia error', err, st);
           });
+    }
+  }
+
+  Future<String?> _loadFingerprint() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      return prefs.getString(_fingerprintPrefKey);
+    } catch (e, st) {
+      _log('fingerprint load failed', e, st);
+      return null;
+    }
+  }
+
+  void _persistFingerprint(String dedupKey) {
+    try {
+      SharedPreferences.getInstance()
+          .then((prefs) => prefs.setString(_fingerprintPrefKey, dedupKey))
+          .catchError((Object e, StackTrace st) {
+            _log('fingerprint save failed', e, st);
+            // Future<bool> catchError contract: must return a default value.
+            return false;
+          });
+    } catch (e, st) {
+      _log('fingerprint save failed', e, st);
     }
   }
 
@@ -121,10 +156,27 @@ class ShareIntentService {
     _lastHandledTime = null;
     _lastHandledContent = null;
     _initialMediaConsumed = false;
+    _initialFingerprint = null;
+  }
+
+  /// Clears only the short-window dedup markers, keeping the initial-share
+  /// fingerprint guard intact — lets tests prove that a same-content
+  /// delivery beyond the 1500ms window (the stale-replay scenario) is
+  /// suppressed on the initial path.
+  @visibleForTesting
+  void expireTransientDedupForTesting() {
+    _lastHandledTime = null;
+    _lastHandledContent = null;
   }
 
   @visibleForTesting
-  void handleSharedMedia(List<SharedMediaFile> files) {
+  String? get initialFingerprintForTesting => _initialFingerprint;
+
+  @visibleForTesting
+  void handleSharedMedia(
+    List<SharedMediaFile> files, {
+    bool isInitial = false,
+  }) {
     if (files.isEmpty) {
       _log('received empty media list (share may have been dropped)');
       return;
@@ -148,8 +200,21 @@ class ShareIntentService {
         return;
       }
 
+      // Stale-replay guard (initial path only): Android's cached process
+      // replays the previous session's share on relaunch. A delivery whose
+      // logical key matches the last handled share is a replay, not a fresh
+      // share — drop it instead of re-generating the same content.
+      if (isInitial && _initialFingerprint == dedupKey) {
+        _log('suppressing stale initial replay: $dedupKey');
+        return;
+      }
+
       _lastHandledTime = now;
       _lastHandledContent = dedupKey;
+      if (isInitial) {
+        _initialFingerprint = dedupKey;
+        _persistFingerprint(dedupKey);
+      }
 
       final callback = onSharedTextReceived;
       if (callback != null) {

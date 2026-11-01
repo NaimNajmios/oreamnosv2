@@ -1,5 +1,7 @@
 import 'dart:typed_data';
 
+import 'package:dio/dio.dart';
+
 import '../models/card_brief.dart';
 import '../models/card_template.dart';
 import '../models/curated_post.dart';
@@ -36,6 +38,7 @@ abstract class IContentCurator {
     bool isTwitter = false,
     Uint8List? imageBytes,
     String? imageMimeType,
+    CancelToken? cancelToken,
   });
 
   /// Full refinement pipeline (Android `refinePost` parity): applies a list
@@ -48,6 +51,7 @@ abstract class IContentCurator {
     required String apiKey,
     bool includeSource = true,
     bool keepStructure = false,
+    CancelToken? cancelToken,
   });
 
   /// Extracts structured JSON data from a generated post to be used for the Card Generator.

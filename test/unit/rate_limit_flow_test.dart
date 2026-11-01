@@ -1,5 +1,6 @@
 import 'dart:typed_data';
 
+import 'package:dio/dio.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -21,6 +22,7 @@ class _MockContentRepository implements IContentRepository {
   final List<Result<CuratedPost>> _script = [];
   int callCount = 0;
   AiProvider? lastProvider;
+  String? lastModelId;
 
   void queue(Result<CuratedPost> result) => _script.add(result);
 
@@ -55,9 +57,11 @@ class _MockContentRepository implements IContentRepository {
     bool isTwitter = false,
     Uint8List? imageBytes,
     String? imageMimeType,
+    CancelToken? cancelToken,
   }) async {
     callCount++;
     lastProvider = provider;
+    lastModelId = modelId;
     return _next();
   }
 
@@ -70,6 +74,7 @@ class _MockContentRepository implements IContentRepository {
     required AiProvider provider,
     bool includeSource = true,
     bool keepStructure = false,
+    CancelToken? cancelToken,
   }) async {
     callCount++;
     lastProvider = provider;
@@ -134,8 +139,8 @@ void main() {
           'gemini-1.5-flash',
         );
         await prefService.setApiKey(AiProvider.groq, 'fake-groq-key');
-        // Intentionally no model for Groq — auto-fallback must persist the
-        // provider default model.
+        // Intentionally no model for Groq — the volatile fallback hop must
+        // use Groq's own default model (never the Gemini selection).
 
         final mockRepo = _MockContentRepository();
         mockRepo.queue(
@@ -166,17 +171,19 @@ void main() {
         final state = container.read(generateViewModelProvider);
         expect(state.status, GenerateState.success);
         expect(state.curatedPost, isNotNull);
+        // The silent fallback hop is VOLATILE: the user's persisted
+        // provider selection survives the rate-limit burst.
         expect(
           container.read(settingsViewModelProvider).selectedProvider,
-          AiProvider.groq,
+          AiProvider.gemini,
         );
-        expect(mockRepo.lastProvider, AiProvider.groq);
-        expect(mockRepo.callCount, 2);
-        // Inline provider-default model persisted for the fallback.
         expect(
           container.read(settingsViewModelProvider).selectedModel,
-          AiProvider.groq.defaultModelId,
+          'gemini-1.5-flash',
         );
+        expect(mockRepo.lastProvider, AiProvider.groq);
+        expect(mockRepo.lastModelId, AiProvider.groq.defaultModelId);
+        expect(mockRepo.callCount, 2);
         // Notice cleared on terminal success.
         expect(state.fallbackNotice, isNull);
 

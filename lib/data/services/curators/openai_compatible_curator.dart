@@ -68,6 +68,7 @@ class OpenAICompatibleCurator implements IContentCurator {
     bool isTwitter = false,
     Uint8List? imageBytes,
     String? imageMimeType,
+    CancelToken? cancelToken,
   }) async {
     final resolvedSourceUrl =
         sourceUrl ?? (content is ExtractedArticle ? content.url : null);
@@ -137,6 +138,7 @@ class OpenAICompatibleCurator implements IContentCurator {
           "max_tokens": 2048,
           "response_format": responseFormat,
         },
+        cancelToken: cancelToken,
         options: Options(
           extra: {'apiKey': apiKey, 'provider': 'openai'},
           headers: _providerHeaders,
@@ -329,6 +331,7 @@ class OpenAICompatibleCurator implements IContentCurator {
     required String apiKey,
     bool includeSource = true,
     bool keepStructure = false,
+    CancelToken? cancelToken,
   }) async {
     final systemPrompt = GenerationPromptManager.buildSystemPrompt(
       sourceUrl: original.source.url,
@@ -363,6 +366,7 @@ class OpenAICompatibleCurator implements IContentCurator {
             },
           },
         },
+        cancelToken: cancelToken,
         options: Options(
           extra: {'apiKey': apiKey, 'provider': 'openai'},
           headers: _providerHeaders,

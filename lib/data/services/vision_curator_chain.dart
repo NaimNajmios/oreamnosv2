@@ -1,5 +1,6 @@
 import 'dart:typed_data';
 
+import 'package:dio/dio.dart';
 import 'package:injectable/injectable.dart';
 
 import 'package:oreamnos/core/error/failures.dart';
@@ -50,6 +51,7 @@ class VisionCuratorChain {
     required String imageMimeType,
     String? sourceUrl,
     bool keepStructure = false,
+    CancelToken? cancelToken,
   }) async {
     Failure? lastFailure;
     for (final provider in chain) {
@@ -68,6 +70,7 @@ class VisionCuratorChain {
             keepStructure: keepStructure,
             imageBytes: imageBytes,
             imageMimeType: imageMimeType,
+            cancelToken: cancelToken,
           );
           await _guard.record(provider);
           return post;

@@ -3,6 +3,7 @@ import 'dart:typed_data';
 
 import 'package:dio/dio.dart';
 
+import 'package:oreamnos/config/constants.dart';
 import 'package:oreamnos/core/di/injection.dart';
 import 'package:oreamnos/core/network/api_client.dart';
 import 'package:oreamnos/data/services/token_usage_side_channel.dart';
@@ -29,12 +30,20 @@ class GeminiCurator implements IContentCurator {
     required String path,
     required Map<String, dynamic> data,
     required String apiKey,
+    CancelToken? cancelToken,
   }) async {
     try {
       return await _client.post(
         path,
         data: data,
-        options: Options(extra: {'apiKey': apiKey, 'provider': 'gemini'}),
+        // Generative requests stream nothing until the model finishes — the
+        // pooled 15s receiveTimeout aborts mid-generation (and each aborted
+        // attempt burns quota). Give generations their own receive window.
+        cancelToken: cancelToken,
+        options: Options(
+          extra: {'apiKey': apiKey, 'provider': 'gemini'},
+          receiveTimeout: AppConstants.generationReceiveTimeout,
+        ),
       );
     } on DioException catch (e) {
       final config = data['generationConfig'];
@@ -48,7 +57,11 @@ class GeminiCurator implements IContentCurator {
         return await _client.post(
           path,
           data: retryData,
-          options: Options(extra: {'apiKey': apiKey, 'provider': 'gemini'}),
+          cancelToken: cancelToken,
+          options: Options(
+            extra: {'apiKey': apiKey, 'provider': 'gemini'},
+            receiveTimeout: AppConstants.generationReceiveTimeout,
+          ),
         );
       }
       rethrow;
@@ -96,6 +109,7 @@ class GeminiCurator implements IContentCurator {
     bool isTwitter = false,
     Uint8List? imageBytes,
     String? imageMimeType,
+    CancelToken? cancelToken,
   }) async {
     final resolvedSourceUrl =
         sourceUrl ?? (content is ExtractedArticle ? content.url : null);
@@ -153,6 +167,10 @@ class GeminiCurator implements IContentCurator {
           ],
           "generationConfig": {
             "temperature": 0.7,
+            // Bound both latency and token burn; long posts with the strict
+            // JSON schema used to run unbounded on the default token limit
+            // and trip the (15s) receive timeout before completing.
+            "maxOutputTokens": AppConstants.defaultMaxTokens,
             "responseMimeType": "application/json",
             "responseSchema": GenerationPromptManager.geminiResponseSchema(
               keepStructure: keepStructure,
@@ -160,6 +178,7 @@ class GeminiCurator implements IContentCurator {
           },
         },
         apiKey: apiKey,
+        cancelToken: cancelToken,
       );
     } on DioException catch (e) {
       if (e.requestOptions.extra.containsKey('failure')) {
@@ -217,6 +236,7 @@ class GeminiCurator implements IContentCurator {
     required String apiKey,
     bool includeSource = true,
     bool keepStructure = false,
+    CancelToken? cancelToken,
   }) async {
     final systemPrompt = GenerationPromptManager.buildSystemPrompt(
       sourceUrl: original.source.url,
@@ -251,6 +271,7 @@ class GeminiCurator implements IContentCurator {
           ],
           "generationConfig": {
             "temperature": 0.7,
+            "maxOutputTokens": AppConstants.defaultMaxTokens,
             "responseMimeType": "application/json",
             "responseSchema": GenerationPromptManager.geminiResponseSchema(
               keepStructure: keepStructure,
@@ -258,6 +279,7 @@ class GeminiCurator implements IContentCurator {
           },
         },
         apiKey: apiKey,
+        cancelToken: cancelToken,
       );
     } on DioException catch (e) {
       if (e.requestOptions.extra.containsKey('failure')) {
@@ -426,7 +448,10 @@ class GeminiCurator implements IContentCurator {
             "responseMimeType": "application/json",
           },
         },
-        options: Options(extra: {'apiKey': apiKey, 'provider': 'gemini'}),
+        options: Options(
+          extra: {'apiKey': apiKey, 'provider': 'gemini'},
+          receiveTimeout: AppConstants.shortGenerationReceiveTimeout,
+        ),
       );
     } on DioException catch (e) {
       if (e.requestOptions.extra.containsKey('failure')) {
@@ -501,7 +526,10 @@ class GeminiCurator implements IContentCurator {
           ],
           "generationConfig": {"temperature": 0.5, "maxOutputTokens": 256},
         },
-        options: Options(extra: {'apiKey': apiKey, 'provider': 'gemini'}),
+        options: Options(
+          extra: {'apiKey': apiKey, 'provider': 'gemini'},
+          receiveTimeout: AppConstants.shortGenerationReceiveTimeout,
+        ),
       );
 
       final data = response.data;
