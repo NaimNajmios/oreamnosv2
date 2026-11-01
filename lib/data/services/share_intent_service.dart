@@ -172,6 +172,15 @@ class ShareIntentService {
   @visibleForTesting
   String? get initialFingerprintForTesting => _initialFingerprint;
 
+  /// Loads the persisted fingerprint exactly as the initial path inside
+  /// [initialize] does, right before judging the cold-start delivery.
+  /// Test hook for simulating a process restart (fingerprint survives in
+  /// prefs, in-memory key is empty).
+  @visibleForTesting
+  Future<void> loadInitialFingerprintForTesting() async {
+    _initialFingerprint ??= await _loadFingerprint();
+  }
+
   @visibleForTesting
   void handleSharedMedia(
     List<SharedMediaFile> files, {

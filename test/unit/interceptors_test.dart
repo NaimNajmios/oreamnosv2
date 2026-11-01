@@ -331,5 +331,81 @@ void main() {
       expect(handler.resolvedResponse, isNotNull);
       expect(dioEx.requestOptions.extra['retryCount'], 1);
     });
+
+    test('receiveTimeout is NOT retried (propagates immediately)', () async {
+      // A receive timeout means the server was still processing — the aborted
+      // attempt already consumed quota, so resending would amplify burn.
+      final interceptor = RetryInterceptor(dio: _neverDio());
+      final options = RequestOptions(path: '/test');
+      final dioEx = DioException(
+        requestOptions: options,
+        type: DioExceptionType.receiveTimeout,
+      );
+      final handler = _CapturingErrorHandler();
+      await interceptor.onError(dioEx, handler);
+      expect(handler.nextErr, isNotNull);
+      expect(handler.resolvedResponse, isNull);
+      expect(dioEx.requestOptions.extra['retryCount'], isNull);
+    });
+
+    test('sendTimeout is NOT retried (propagates immediately)', () async {
+      final interceptor = RetryInterceptor(dio: _neverDio());
+      final options = RequestOptions(path: '/test');
+      final dioEx = DioException(
+        requestOptions: options,
+        type: DioExceptionType.sendTimeout,
+      );
+      final handler = _CapturingErrorHandler();
+      await interceptor.onError(dioEx, handler);
+      expect(handler.nextErr, isNotNull);
+      expect(handler.resolvedResponse, isNull);
+      expect(dioEx.requestOptions.extra['retryCount'], isNull);
+    });
+
+    test('connectionTimeout IS retried (nothing was processed)', () async {
+      // The initial attempt is simulated via the DioException below; the
+      // adapter's first call IS the retry — it must succeed and resolve.
+      final adapter = _StubAdapter(200);
+      final dio = Dio(BaseOptions(connectTimeout: Duration(seconds: 2)));
+      dio.httpClientAdapter = adapter;
+      final interceptor = RetryInterceptor(
+        dio: dio,
+        baseDelayMs: 10,
+        maxDelayMs: 20,
+      );
+      final options = RequestOptions(path: '/test');
+      final dioEx = DioException(
+        requestOptions: options,
+        type: DioExceptionType.connectionTimeout,
+      );
+      final handler = _CapturingErrorHandler();
+      await interceptor.onError(dioEx, handler);
+      expect(adapter.calls, 1);
+      expect(handler.resolvedResponse, isNotNull);
+      expect(handler.resolvedResponse!.statusCode, 200);
+      expect(dioEx.requestOptions.extra['retryCount'], 1);
+    });
+
+    test('connectionError IS retried (nothing was processed)', () async {
+      final adapter = _StubAdapter(200);
+      final dio = Dio(BaseOptions(connectTimeout: Duration(seconds: 2)));
+      dio.httpClientAdapter = adapter;
+      final interceptor = RetryInterceptor(
+        dio: dio,
+        baseDelayMs: 10,
+        maxDelayMs: 20,
+      );
+      final options = RequestOptions(path: '/test');
+      final dioEx = DioException(
+        requestOptions: options,
+        type: DioExceptionType.connectionError,
+      );
+      final handler = _CapturingErrorHandler();
+      await interceptor.onError(dioEx, handler);
+      expect(adapter.calls, 1);
+      expect(handler.resolvedResponse, isNotNull);
+      expect(handler.resolvedResponse!.statusCode, 200);
+      expect(dioEx.requestOptions.extra['retryCount'], 1);
+    });
   });
 }

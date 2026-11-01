@@ -1,6 +1,7 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:oreamnos/data/services/share_intent_service.dart';
 import 'package:receive_sharing_intent/receive_sharing_intent.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 void main() {
   group('ShareIntentService', () {
@@ -190,5 +191,95 @@ void main() {
 
       expect(received.length, 1);
     });
+
+    test('fresh cold-start initial share is handled and persists its '
+        'fingerprint', () async {
+      SharedPreferences.setMockInitialValues({});
+      final received = <String>[];
+      service.onSharedTextReceived = (text) => received.add(text);
+
+      const content = 'https://x.com/sports/status/5554443332';
+      await service.loadInitialFingerprintForTesting();
+      expect(service.initialFingerprintForTesting, isNull);
+
+      service.handleSharedMedia([
+        SharedMediaFile(path: content, type: SharedMediaType.text),
+      ], isInitial: true);
+
+      expect(received, [content]);
+      expect(
+        service.initialFingerprintForTesting,
+        ShareIntentService.normalizeDedupKey(content),
+      );
+
+      // The fingerprint must reach prefs so a *new* process can recognize
+      // a stale replay of the same content on its initial path.
+      await Future<void>.delayed(const Duration(milliseconds: 50));
+      final prefs = await SharedPreferences.getInstance();
+      expect(
+        prefs.getString('share_initial_fingerprint'),
+        service.initialFingerprintForTesting,
+      );
+    });
+
+    test('stale initial replay after process restart is suppressed, but a '
+        'distinct share passes', () async {
+      SharedPreferences.setMockInitialValues({});
+      final received = <String>[];
+      service.onSharedTextReceived = (text) => received.add(text);
+
+      const handled = 'https://x.com/sports/status/1112223334445556666';
+      const fresh = 'https://x.com/sports/status/999888777666555';
+
+      // Session 1: initial cold-start share handled.
+      await service.loadInitialFingerprintForTesting();
+      service.handleSharedMedia([
+        SharedMediaFile(path: handled, type: SharedMediaType.text),
+      ], isInitial: true);
+      expect(received, [handled]);
+      await Future<void>.delayed(const Duration(milliseconds: 50));
+
+      // Session 2 (new "process"): in-memory state gone, fingerprint
+      // reloaded from prefs — Android's cached process replays the SAME
+      // initial share, which must be suppressed...
+      service.resetDeduplicationForTesting();
+      await service.loadInitialFingerprintForTesting();
+      expect(
+        service.initialFingerprintForTesting,
+        ShareIntentService.normalizeDedupKey(handled),
+      );
+
+      service.handleSharedMedia([
+        SharedMediaFile(path: handled, type: SharedMediaType.text),
+      ], isInitial: true);
+      expect(received, [handled]);
+
+      // ...but a genuinely NEW share on the initial path is handled.
+      service.handleSharedMedia([
+        SharedMediaFile(path: fresh, type: SharedMediaType.text),
+      ], isInitial: true);
+      expect(received, [handled, fresh]);
+    });
+
+    test(
+      'transient (stream) deliveries never update the initial fingerprint',
+      () async {
+        SharedPreferences.setMockInitialValues({});
+        final received = <String>[];
+        service.onSharedTextReceived = (text) => received.add(text);
+
+        await service.loadInitialFingerprintForTesting();
+        service.handleSharedMedia([
+          SharedMediaFile(
+            path: 'https://x.com/sports/status/777777',
+            type: SharedMediaType.text,
+          ),
+          // default isInitial: false — live-stream path
+        ]);
+
+        expect(received, hasLength(1));
+        expect(service.initialFingerprintForTesting, isNull);
+      },
+    );
   });
 }

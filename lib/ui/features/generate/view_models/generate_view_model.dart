@@ -245,6 +245,7 @@ class GenerateViewModel extends Notifier<GenerateUiState>
     } catch (_) {}
     return provider.defaultModelId;
   }
+
   /// Walks the fallback chain from [failedProvider], skipping providers in
   /// cooldown and providers without an API key. Returns the first healthy
   /// candidate, or null when the whole chain is unavailable (→ last-resort
