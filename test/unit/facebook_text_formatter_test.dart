@@ -26,7 +26,9 @@ void main() {
 
     test('keeps hashtags alongside removed headings', () {
       expect(
-        FacebookTextFormatter.toPlainText('## Penalties\nGoal #3 in minute #2.'),
+        FacebookTextFormatter.toPlainText(
+          '## Penalties\nGoal #3 in minute #2.',
+        ),
         'Penalties\nGoal #3 in minute #2.',
       );
     });
@@ -42,29 +44,29 @@ void main() {
 
     test('bare-link markdown collapses to the URL', () {
       expect(
-        FacebookTextFormatter.toPlainText(
-          r'[](https://example.com/x)',
-        ),
+        FacebookTextFormatter.toPlainText(r'[](https://example.com/x)'),
         'https://example.com/x',
       );
     });
 
     test('label equal to URL collapses to the URL', () {
       expect(
-        FacebookTextFormatter.toPlainText(
-          '[](https://example.com/x)',
-        ),
+        FacebookTextFormatter.toPlainText('[](https://example.com/x)'),
         'https://example.com/x',
       );
     });
 
     test('underscore emphasis only across word boundaries', () {
       // Emphasis survives when the underscores hug a whole word.
-      expect(FacebookTextFormatter.toPlainText('_Safuwan_ scores'),
-          'Safuwan scores');
+      expect(
+        FacebookTextFormatter.toPlainText('_Safuwan_ scores'),
+        'Safuwan scores',
+      );
       // snake_case and in-hashtag underscores survive.
-      expect(FacebookTextFormatter.toPlainText('man_of_the_match'),
-          'man_of_the_match');
+      expect(
+        FacebookTextFormatter.toPlainText('man_of_the_match'),
+        'man_of_the_match',
+      );
       expect(
         FacebookTextFormatter.toPlainText('#man_of_the_match trended'),
         '#man_of_the_match trended',
@@ -94,23 +96,21 @@ void main() {
     });
 
     test('trims trailing whitespace per line and at the ends', () {
-      expect(
-        FacebookTextFormatter.toPlainText('  A   \n  B  \n'),
-        'A\nB',
-      );
+      expect(FacebookTextFormatter.toPlainText('  A   \n  B  \n'), 'A\nB');
     });
 
     test('a realistic curated post comes out clean', () {
-      const input = '**FT: JDT 4 - 1 Terengganu** 🏆\n\n'
+      const input =
+          '**FT: JDT 4 - 1 Terengganu** 🏆\n\n'
           '# Match Report\n'
           'Martin hat-trick seals the _Super League_ crown.\n\n'
           '[Full story](https://example.com/jdt) — #FAM #JDT';
       expect(
         FacebookTextFormatter.toPlainText(input),
         'FT: JDT 4 - 1 Terengganu 🏆\n\n'
-            'Match Report\n'
-            'Martin hat-trick seals the Super League crown.\n\n'
-            'Full story (https://example.com/jdt) — #FAM #JDT',
+        'Match Report\n'
+        'Martin hat-trick seals the Super League crown.\n\n'
+        'Full story (https://example.com/jdt) — #FAM #JDT',
       );
     });
   });

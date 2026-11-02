@@ -90,10 +90,7 @@ class FacebookPublisherService {
           message: 'Facebook returned no Page id for this token.',
         );
       }
-      return FacebookPage(
-        id: id,
-        name: (data?['name'] ?? 'Page').toString(),
-      );
+      return FacebookPage(id: id, name: (data?['name'] ?? 'Page').toString());
     } on DioException catch (e) {
       throw _map(e);
     }
@@ -141,9 +138,9 @@ class FacebookPublisherService {
       'access_token': token,
     });
     form.files.add(
-      await MultipartFile.fromFile(
-        filePath,
-        filename: 'oreamnos_card.png',
+      MapEntry(
+        'source',
+        await MultipartFile.fromFile(filePath, filename: 'oreamnos_card.png'),
       ),
     );
     try {
@@ -189,7 +186,11 @@ class FacebookPublisherService {
         message: 'Facebook returned no post id for this publish.',
       );
     }
-    final postId = (isPhoto ? body?['post_id']?.toString() : id) ?? id;
+    var postId = id;
+    if (isPhoto) {
+      final rawPostId = body?['post_id']?.toString() ?? '';
+      if (rawPostId.isNotEmpty) postId = rawPostId;
+    }
     return FacebookPublishResult(
       id: id,
       postId: postId,

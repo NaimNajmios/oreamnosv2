@@ -94,7 +94,10 @@ void main() {
   group('FacebookPublisherService', () {
     group('verify', () {
       test('GET /me returns the Page; token only in Bearer header', () async {
-        final adapter = _GraphAdapter(200, {'id': '123456', 'name': 'Oreamnos FC'});
+        final adapter = _GraphAdapter(200, {
+          'id': '123456',
+          'name': 'Oreamnos FC',
+        });
         final page = await _service(adapter).verify(_token);
 
         expect(page.id, '123456');
@@ -133,9 +136,11 @@ void main() {
       });
 
       test('code 200/10 maps to permission', () async {
-        final service = _service(_GraphAdapter(400, {
-          'error': {'code': 200, 'message': 'Permissions error'},
-        }));
+        final service = _service(
+          _GraphAdapter(400, {
+            'error': {'code': 200, 'message': 'Permissions error'},
+          }),
+        );
         try {
           await service.verify(_token);
           fail('should throw');
@@ -147,22 +152,33 @@ void main() {
 
       test('codes 4/17/32/613 map to rateLimit', () async {
         for (final code in const [4, 17, 32, 613]) {
-          final service = _service(_GraphAdapter(400, {
-            'error': {'code': code, 'message': 'Application request limit reached'},
-          }));
+          final service = _service(
+            _GraphAdapter(400, {
+              'error': {
+                'code': code,
+                'message': 'Application request limit reached',
+              },
+            }),
+          );
           try {
             await service.verify(_token);
             fail('should throw');
           } on FacebookApiException catch (e) {
-            expect(e.kind, FacebookApiErrorKind.rateLimit, reason: 'code $code');
+            expect(
+              e.kind,
+              FacebookApiErrorKind.rateLimit,
+              reason: 'code $code',
+            );
           }
         }
       });
 
       test('code 506 (or subcode) maps to duplicate', () async {
-        final service = _service(_GraphAdapter(400, {
-          'error': {'code': 506, 'message': 'Duplicate Post'},
-        }));
+        final service = _service(
+          _GraphAdapter(400, {
+            'error': {'code': 506, 'message': 'Duplicate Post'},
+          }),
+        );
         try {
           await service.publishText(
             pageId: '123456',
@@ -177,9 +193,11 @@ void main() {
       });
 
       test('subcode 506 also maps to duplicate', () async {
-        final service = _service(_GraphAdapter(400, {
-          'error': {'code': 100, 'error_subcode': 506, 'message': 'dup'},
-        }));
+        final service = _service(
+          _GraphAdapter(400, {
+            'error': {'code': 100, 'error_subcode': 506, 'message': 'dup'},
+          }),
+        );
         try {
           await service.publishText(
             pageId: '123456',
@@ -205,8 +223,7 @@ void main() {
     });
 
     group('publishText', () {
-      test('posts to /{page}/feed with token in body, never the URL',
-          () async {
+      test('posts to /{page}/feed with token in body, never the URL', () async {
         final adapter = _GraphAdapter(200, {'id': '999_888'});
         final result = await _service(adapter).publishText(
           pageId: '123456',
@@ -259,10 +276,10 @@ void main() {
     group('publishPhoto', () {
       test('multipart /photos uses post_id for the permalink', () async {
         final path = await _tempPng();
-        final adapter = _GraphAdapter(
-          200,
-          {'id': 'photo_777', 'post_id': '123456_999_777'},
-        );
+        final adapter = _GraphAdapter(200, {
+          'id': 'photo_777',
+          'post_id': '123456_999_777',
+        });
         final result = await _service(adapter).publishPhoto(
           pageId: '123456',
           token: _token,
@@ -278,6 +295,10 @@ void main() {
           (request.data as FormData).fields.map((e) => e.key),
           contains('access_token'),
         );
+        expect(
+          (request.data as FormData).files.map((e) => e.key),
+          contains('source'),
+        );
 
         expect(result.id, 'photo_777');
         expect(result.postId, '123456_999_777');
@@ -285,30 +306,26 @@ void main() {
         expect(result.isPhoto, isTrue);
       });
 
-      test('photo upload overrides receiveTimeout to photoUploadTimeout',
-          () async {
-        final path = await _tempPng();
-        final adapter = _GraphAdapter(200, {'id': 'p', 'post_id': 'q'});
-        await _service(adapter).publishPhoto(
-          pageId: '123456',
-          token: _token,
-          filePath: path,
-        );
-        // After the interceptor chain, the per-request override survives.
-        expect(
-          adapter.lastRequest!.receiveTimeout,
-          AppConstants.photoUploadTimeout,
-        );
-      });
+      test(
+        'photo upload overrides receiveTimeout to photoUploadTimeout',
+        () async {
+          final path = await _tempPng();
+          final adapter = _GraphAdapter(200, {'id': 'p', 'post_id': 'q'});
+          await _service(adapter)
+              .publishPhoto(pageId: '123456', token: _token, filePath: path);
+          // After the interceptor chain, the per-request override survives.
+          expect(
+            adapter.lastRequest!.receiveTimeout,
+            AppConstants.photoUploadTimeout,
+          );
+        },
+      );
 
       test('falls back to photo id when post_id is absent', () async {
         final path = await _tempPng();
         final adapter = _GraphAdapter(200, {'id': 'photo_only'});
-        final result = await _service(adapter).publishPhoto(
-          pageId: '123456',
-          token: _token,
-          filePath: path,
-        );
+        final result = await _service(adapter)
+            .publishPhoto(pageId: '123456', token: _token, filePath: path);
         expect(result.permalink, 'https://www.facebook.com/photo_only');
       });
 

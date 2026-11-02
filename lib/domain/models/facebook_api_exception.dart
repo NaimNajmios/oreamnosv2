@@ -105,7 +105,7 @@ class FacebookApiException implements Exception {
         'Facebook is rate-limiting posts. Wait a moment and try again.',
       FacebookApiErrorKind.duplicate =>
         'An identical post was already published. Edit the text a little, '
-        'then publish.',
+            'then publish.',
       _ => rawMessage,
     };
   }
