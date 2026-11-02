@@ -5,6 +5,7 @@ import 'package:image_picker/image_picker.dart';
 import 'package:oreamnos/core/di/injection.dart';
 
 import '../../../../data/services/facebook_publisher_service.dart';
+import '../../../../data/services/facebook_history_service.dart';
 import '../../../../data/services/preferences_service.dart';
 import '../../../../domain/models/facebook_api_exception.dart';
 import '../../../../domain/services/facebook_text_formatter.dart';
@@ -188,6 +189,17 @@ class FacebookDraftNotifier extends Notifier<FacebookComposeState> {
         phase: FacebookComposePhase.published,
         result: result,
       );
+      // Persist for the Published Posts history (Stage 4).
+      try {
+        if (getIt.isRegistered<FacebookHistoryService>()) {
+          await getIt<FacebookHistoryService>().recordPublish(
+            postId: result.postId,
+            message: state.text,
+            permalink: result.permalink,
+            hasImage: result.isPhoto || state.imagePath != null,
+          );
+        }
+      } catch (_) {}
     } on FacebookApiException catch (e) {
       if (e.needsReconnect) {
         ref.read(facebookViewModelProvider.notifier).markExpired();

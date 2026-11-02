@@ -18,6 +18,7 @@ import '../../data/repositories/tavily_search_repository.dart' as _i389;
 import '../../data/services/card_data_extractor.dart' as _i633;
 import '../../data/services/daily_usage_service.dart' as _i267;
 import '../../data/services/export_service.dart' as _i496;
+import '../../data/services/facebook_history_service.dart' as _i278;
 import '../../data/services/facebook_publisher_service.dart' as _i493;
 import '../../data/services/free_tier_guard.dart' as _i200;
 import '../../data/services/log_service.dart' as _i713;
@@ -86,6 +87,9 @@ extension GetItInjectableX on _i174.GetIt {
     );
     gh.lazySingleton<_i267.DailyUsageService>(
       () => _i267.DailyUsageService(gh<_i460.SharedPreferences>()),
+    );
+    gh.lazySingleton<_i278.FacebookHistoryService>(
+      () => _i278.FacebookHistoryService(gh<_i460.SharedPreferences>()),
     );
     gh.lazySingleton<_i200.FreeTierGuard>(
       () => _i200.FreeTierGuard(gh<_i460.SharedPreferences>()),

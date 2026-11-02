@@ -20,6 +20,7 @@ import 'package:oreamnos/domain/models/vision_mode.dart';
 
 import '../view_models/settings_view_model.dart';
 import '../../facebook/view_models/facebook_view_model.dart';
+import '../../../../data/services/facebook_history_service.dart';
 import '../../facebook/widgets/facebook_connection_dialog.dart';
 import 'widgets/api_key_dialog.dart';
 import 'widgets/model_selection_dialog.dart';
@@ -73,6 +74,7 @@ class SettingsScreen extends ConsumerWidget {
         ?.name;
 
     final facebook = ref.watch(facebookViewModelProvider);
+    final history = ref.watch(facebookHistoryProvider);
 
     Widget sectionCard({required List<Widget> children}) {
       return AppCard(
@@ -276,6 +278,14 @@ class SettingsScreen extends ConsumerWidget {
                 ? 'Publish generated posts & cards to your Page'
                 : facebook.subtitle,
             onTap: () => FacebookConnectionDialog.show(context),
+          ),
+          SettingsTile(
+            leadingIcon: Icons.history_rounded,
+            title: 'Published Posts',
+            subtitle: history.isEmpty
+                ? 'Your recent Page posts will appear here'
+                : '${history.length} published · tap to open a post',
+            onTap: () => context.push(RoutePaths.facebookHistory),
           ),
         ],
       ),

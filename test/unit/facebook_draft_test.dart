@@ -8,6 +8,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:oreamnos/core/di/injection.dart';
 import 'package:oreamnos/core/network/api_client.dart';
+import 'package:oreamnos/data/services/facebook_history_service.dart';
 import 'package:oreamnos/data/services/facebook_publisher_service.dart';
 import 'package:oreamnos/data/services/preferences_service.dart';
 import 'package:oreamnos/domain/models/facebook_api_exception.dart';
@@ -148,6 +149,12 @@ void main() {
         expect(draft.phase, FacebookComposePhase.published);
         expect(draft.result?.permalink, 'https://www.facebook.com/999_888');
         expect(draft.error, isNull);
+        // History written (service registered by configureDependencies on
+        // the mock prefs, so a restarted app reloads the same records).
+        expect(
+          getIt<FacebookHistoryService>().records.single.postId,
+          '999_888',
+        );
 
         notifier.clearDraft();
         expect(

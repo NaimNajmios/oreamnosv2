@@ -12,6 +12,7 @@ import '../../ui/features/usage/views/session_list_screen.dart';
 import '../../ui/features/card_generator/views/card_generator_screen.dart';
 import '../../ui/features/generate/views/reading_mode_screen.dart';
 import '../../ui/features/facebook/views/facebook_compose_screen.dart';
+import '../../ui/features/facebook/views/facebook_history_screen.dart';
 import '../../ui/features/settings/views/debug_log_screen.dart';
 import '../../data/models/ai_provider.dart';
 import '../../domain/models/card_brief.dart';
@@ -30,6 +31,7 @@ abstract final class RoutePaths {
   static const String debugLogs = '/debug-logs';
   static const String sessionHistory = '/sessions';
   static const String facebookCompose = '/facebook-compose';
+  static const String facebookHistory = '/facebook-history';
 }
 
 final rootNavigatorKey = GlobalKey<NavigatorState>();
@@ -225,6 +227,11 @@ GoRouter createAppRouter({String? initialLocation}) {
         path: RoutePaths.facebookCompose,
         pageBuilder: (context, state) =>
             _kickoffPage(child: const FacebookComposeScreen()),
+      ),
+      GoRoute(
+        path: RoutePaths.facebookHistory,
+        pageBuilder: (context, state) =>
+            _kickoffPage(child: const FacebookHistoryScreen()),
       ),
       GoRoute(
         path: RoutePaths.hashtagManager,
