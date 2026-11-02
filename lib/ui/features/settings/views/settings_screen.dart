@@ -19,6 +19,8 @@ import 'package:oreamnos/domain/models/app_theme_mode.dart';
 import 'package:oreamnos/domain/models/vision_mode.dart';
 
 import '../view_models/settings_view_model.dart';
+import '../../facebook/view_models/facebook_view_model.dart';
+import '../../facebook/widgets/facebook_connection_dialog.dart';
 import 'widgets/api_key_dialog.dart';
 import 'widgets/model_selection_dialog.dart';
 import 'widgets/provider_selection_dialog.dart';
@@ -69,6 +71,8 @@ class SettingsScreen extends ConsumerWidget {
         .where((g) => g.isDefault)
         .firstOrNull
         ?.name;
+
+    final facebook = ref.watch(facebookViewModelProvider);
 
     Widget sectionCard({required List<Widget> children}) {
       return AppCard(
@@ -259,6 +263,19 @@ class SettingsScreen extends ConsumerWidget {
                 ? 'No pills yet — e.g. "Shorter"'
                 : '${state.customPills.length} custom pills',
             onTap: () => context.push(RoutePaths.pillManager),
+          ),
+        ],
+      ),
+      const SectionHeader(title: 'Facebook'),
+      sectionCard(
+        children: [
+          SettingsTile(
+            leadingIcon: Icons.facebook_rounded,
+            title: 'Page publishing',
+            subtitle: facebook.isNotConnected
+                ? 'Publish generated posts & cards to your Page'
+                : facebook.subtitle,
+            onTap: () => FacebookConnectionDialog.show(context),
           ),
         ],
       ),

@@ -81,6 +81,59 @@ class PreferencesService {
     }
   }
 
+  // === Facebook Page connection ===
+
+  Future<String?> getFacebookPageToken() async {
+    try {
+      return await _secureStorage.read(key: AppConstants.keyFacebookPageToken);
+    } catch (e) {
+      return null;
+    }
+  }
+
+  Future<void> setFacebookPageToken(String value) async {
+    try {
+      await _secureStorage.write(
+        key: AppConstants.keyFacebookPageToken,
+        value: value,
+      );
+    } catch (e) {
+      try {
+        await _secureStorage.delete(key: AppConstants.keyFacebookPageToken);
+        await _secureStorage.write(
+          key: AppConstants.keyFacebookPageToken,
+          value: value,
+        );
+      } catch (_) {}
+    }
+  }
+
+  /// Full disconnect: token, Page identity and (stage 4) publish history.
+  Future<void> disconnectFacebook() async {
+    try {
+      await _secureStorage.delete(key: AppConstants.keyFacebookPageToken);
+    } catch (_) {}
+    await _prefs.remove(AppConstants.keyFacebookPageId);
+    await _prefs.remove(AppConstants.keyFacebookPageName);
+    await _prefs.remove(AppConstants.keyFacebookHistory);
+  }
+
+  // === Facebook Page identity (prefs) ===
+
+  String? get facebookPageId =>
+      _prefs.getString(AppConstants.keyFacebookPageId);
+
+  Future<bool> setFacebookPageId(String value) {
+    return _prefs.setString(AppConstants.keyFacebookPageId, value);
+  }
+
+  String? get facebookPageName =>
+      _prefs.getString(AppConstants.keyFacebookPageName);
+
+  Future<bool> setFacebookPageName(String value) {
+    return _prefs.setString(AppConstants.keyFacebookPageName, value);
+  }
+
   // === Theme ===
 
   AppThemeMode get themeMode {
