@@ -47,6 +47,8 @@ import 'package:shared_preferences/shared_preferences.dart';
 import '../view_models/generate_view_model.dart';
 import '../view_models/generate_state.dart';
 
+import 'package:oreamnos/ui/features/facebook/view_models/facebook_view_model.dart';
+
 class GenerateScreen extends ConsumerStatefulWidget {
   const GenerateScreen({super.key});
 
@@ -1158,6 +1160,18 @@ class _GenerateScreenState extends ConsumerState<GenerateScreen> {
                                 'copyText': copyText,
                               },
                             );
+                          },
+                        ),
+                        IconButton(
+                          icon: const Icon(Icons.facebook_rounded, size: 20),
+                          tooltip: 'Publish to Facebook',
+                          onPressed: () {
+                            // Seed the draft (markdown stripped) first —
+                            // the router needs no `extra`.
+                            ref
+                                .read(facebookDraftProvider.notifier)
+                                .startDraft(copyText);
+                            context.push(RoutePaths.facebookCompose);
                           },
                         ),
                         AppCopyButton(textToCopy: copyText),

@@ -1,7 +1,10 @@
+import 'dart:io';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import 'package:go_router/go_router.dart';
+import 'package:path_provider/path_provider.dart';
 import 'package:oreamnos/config/routes/app_router.dart';
 import 'package:oreamnos/config/theme/app_spacing.dart';
 import 'package:oreamnos/domain/models/card_brief.dart';
@@ -14,6 +17,9 @@ import 'package:oreamnos/ui/core/widgets/enhanced_loading_card.dart';
 import 'package:oreamnos/ui/features/settings/view_models/settings_view_model.dart';
 
 import '../../generate/view_models/generate_view_model.dart';
+
+import 'package:oreamnos/ui/features/facebook/view_models/facebook_view_model.dart';
+
 import '../view_models/card_generator_view_model.dart';
 import '../view_models/card_generator_state.dart';
 import '../widgets/card_stage.dart';
@@ -123,6 +129,35 @@ class _CardGeneratorScreenState extends ConsumerState<CardGeneratorScreen> {
     }
   }
 
+  /// Captures the card PNG to a temp file, seeds the Facebook draft with
+  /// the image attached (caption = the source post's body, already
+  /// plain-text by startDraft) and opens the compose screen.
+  Future<void> _handlePublishToFacebook() async {
+    final vm = ref.read(cardGeneratorViewModelProvider.notifier);
+    Haptics.lightImpact();
+    try {
+      final generateVm = ref.read(generateViewModelProvider.notifier);
+      final captionSource =
+          generateVm.curatedPost?.bodyMarkdown ??
+          ref.read(cardGeneratorViewModelProvider).cardData?.headline ??
+          '';
+      final bytes = await vm.captureCardBytes(_boundaryKey);
+      final dir = await getTemporaryDirectory();
+      final file = File(
+        '${dir.path}/oreamnos_card_${DateTime.now().millisecondsSinceEpoch}.png',
+      );
+      await file.writeAsBytes(bytes);
+      ref
+          .read(facebookDraftProvider.notifier)
+          .startDraft(captionSource, imagePath: file.path);
+      if (!mounted) return;
+      context.push(RoutePaths.facebookCompose);
+    } catch (e) {
+      if (!mounted) return;
+      AppSnackBar.showError(context, 'Failed to prepare the card image');
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return Consumer(
@@ -169,7 +204,12 @@ class _CardGeneratorScreenState extends ConsumerState<CardGeneratorScreen> {
               ),
             ),
             actions: [
-              if (hasData)
+              if (hasData) ...[
+                IconButton(
+                  tooltip: 'Publish to Facebook',
+                  icon: const Icon(Icons.facebook_rounded, size: 20),
+                  onPressed: _handlePublishToFacebook,
+                ),
                 Padding(
                   padding: const EdgeInsets.symmetric(
                     horizontal: AppSpacing.sm,
@@ -191,6 +231,7 @@ class _CardGeneratorScreenState extends ConsumerState<CardGeneratorScreen> {
                     },
                   ),
                 ),
+              ],
             ],
           ),
           body: _buildBody(context, vm, ref, theme, hasData),

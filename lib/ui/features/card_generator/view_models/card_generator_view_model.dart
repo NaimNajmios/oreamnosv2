@@ -809,4 +809,13 @@ class CardGeneratorViewModel extends Notifier<CardGeneratorState> {
       return false;
     }
   }
+
+  /// Raw PNG bytes of the current card canvas at the selected ratio's
+  /// export resolution (4:5 by default) — feeds the Facebook publish flow.
+  Future<List<int>> captureCardBytes(GlobalKey boundaryKey) {
+    return _exportService.capturePng(
+      boundaryKey,
+      pixelRatio: _pixelRatioForRatio(state.selectedRatio),
+    );
+  }
 }
