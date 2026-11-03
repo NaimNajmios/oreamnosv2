@@ -1,5 +1,13 @@
 # Changelog — Oreamnos
 
+## v8 — Facebook Page Publishing (2026-11-03)
+
+* **Stages 1–4:** Graph service + formatter (strict markdown→plain, hashtags kept), secure-token connection flow with `GET /me` verification, compose screen with text/photo publishing and per-kind error panels, and a capped-50 publish history with Settings integration.
+* **Token safety:** Page token only in POST bodies or `Authorization: Bearer` — never URL query params (the debug interceptor's redaction doesn't cover `access_token=`), never in `LogService`, never in prefs.
+* **Network:** pooled `ApiClient` + form/`FormData` bodies; text posts keep the 15s pool window, photo uploads get `photoUploadTimeout` 60s (a client abort on a slow upload causes a server-side post and a duplicate 506 on retry).
+* **Error taxonomy:** 190 → expired (Reconnect), 200/10 → permission, 4/17/32/613 → rate limit, 506 → duplicate (edit to republish), transport → network; unknown keeps Facebook's message.
+* **Tests:** 339 green (46 new: service error kinds + token-in-body invariants, formatter cases, connection VM, draft publish incl. offline/duplicate/expired, history cap/restart); `dart format` 0, `flutter analyze` 0.
+
 ## v7 — Quota Fix + Share Intent Repair (2026-11-01)
 
 * **Rate-limit root cause:** receive/send timeouts are no longer retried (`RetryInterceptor` — an aborted generation already consumed quota; formerly one tap on Gemini `generateContent` counted up to 5 requests: 15s receiveTimeout × 4 retries). Generation requests get a per-request receive window `AppConstants.generationReceiveTimeout` 90s (pool base stays 15s; `extractCardData`/`rewriteField` use 60s); VM `generateStructuredPost`/`refinePost` guards aligned to 90s; `maxOutputTokens: AppConstants.defaultMaxTokens` bounds unbounded-schema runs.

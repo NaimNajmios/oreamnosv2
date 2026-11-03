@@ -40,12 +40,19 @@ Instant, pixel-perfect graphics with deterministic JSON schema extraction and cu
 - **On-device vision models excluded**: `Gemma 3n/1B/PaliGemma/Nano/LiteRTEngine/VisionModelManager` intentionally not ported (≈15% original complexity). `MLKitVisionExtractor` `lib/data/services/ml_kit_vision_extractor.dart:1` stubbed (returns `''`), `google_mlkit_text_recognition` removed from `pubspec.yaml` (probe moved `tool/scrape_probe.dart → tool/dev/scrape_probe.dart`).
 - **Image picker retained** for card backgrounds `lib/ui/features/card_generator/view_models/card_generator_view_model.dart:489` + watermark logos `284` (background/watermark `image_picker:90` only) — no OCR path on Generate.
 
-### 4. Reading Mode & Customization
+### 4. Facebook Page Publishing (Graph API)
+- **One-token connect**: paste a Page token; verified with `GET /me?fields=id,name` before anything is saved. Token lives in `flutter_secure_storage` (never prefs, never logs), Page id/name in prefs; `FacebookConnectionDialog` mirrors `ApiKeyDialog` and hosts Disconnect.
+- **Publish from anywhere**: Generate result header and Card Studio both seed a `FacebookDraftNotifier` draft (Card Studio captures its 4:5 PNG to a temp file first) and push `/facebook-compose` — no router `extra`.
+- **Compose**: plain-text editor (markdown stripped by `FacebookTextFormatter`, hashtags kept), optional gallery/camera image (`maxWidth 2048`, `imageQuality 85`), `Publish to {Page}` with success panel (View on Facebook / Copy link / Done) and inline Retry, or Reconnect on token expiry (code 190).
+- **Service**: `FacebookPublisherService` on the pooled `ApiClient` — text → `/{page}/feed` (form body, token never in the URL), photo → `/{page}/photos` multipart with `AppConstants.photoUploadTimeout` 60s (client abort + duplicate 506 avoided when a slow upload still succeeds server-side). `FacebookApiException` maps codes 190/200/10/4/17/32/613/506 to expired/permission/rateLimit/duplicate/network/unknown.
+- **History**: last 50 publishes (post id, snippet, timestamp, has-image) in `FacebookHistoryService` + `/facebook-history` (tap opens the post; long-press Copy link / Remove) and a Published Posts tile in Settings → Facebook.
+
+### 5. Reading Mode & Customization
 - Immersive, distraction-free reading screen with dynamic font sizing (Small, Medium, Large, Extra Large).
 - Drag-down to dismiss modal sheet gesture.
 - 9 themes via `AppThemeMode` (`lib/domain/models/app_theme_mode.dart:2`): **Light**, **Dark**, **Deep Blue**, **Midnight Noir**, **Solarized Light**, **Cyberpunk**, **Matchday**, **Forest**, **System** (follows OS `ColorScheme` via `DynamicColorBuilder` `lib/app.dart:80`); picker is horizontally scrollable `SingleChildScrollView` `lib/ui/features/settings/views/settings_screen.dart:55`.
 
-### 5. Delight & Micro-Interactions
+### 6. Delight & Micro-Interactions
 - **`EnhancedLoadingCard` (wired)**: 0–95% pulse `enhanced_loading_card.dart:12` shown during generate (`generatingStep` scraping→extracting, prompting→generating) + card-studio extraction; `SkeletonLoader` shimmer retained for log tiles/slivers.
 - **`SuccessOverlay`**: 25-particle radial explosion + animated checkmark `lib/ui/core/widgets/success_overlay.dart:9` (once-ever flag `SharedPreferences hasShownSuccessOverlay` `generate_screen.dart:74`).
 - **`InputClearButton`**: 2-step `Clear→Confirm?` 3s timer `lib/ui/core/widgets/input_clear_button.dart:8` + SnackBar UNDO `generate_screen.dart:93`.
@@ -54,7 +61,7 @@ Instant, pixel-perfect graphics with deterministic JSON schema extraction and cu
 - **`AppChip`**: 0.92 press-scale + long-press + animated select check (NeoChip motion parity).
 - **`SwipeableOutputCard`**: swipe-to-copy/share `lib/ui/core/widgets/swipeable_output_card.dart:1`.
 
-### 6. Analytics & Debugging
+### 7. Analytics & Debugging
 - **`LogService`**: In-memory ring buffer (200 entries) with debounced 500ms disk persistence and microtask notifications.
 - **`DebugLogScreen`**: Filterable logs with text search, level chips (`DEBUG`, `INFO`, `WARN`, `ERROR`), tag chips, and details modal.
 - **`UsageService`**: Historical token and latency tracking with provider success rates (`getSuccessRateByProvider`), average/fastest/slowest latency per provider, 7/30/90-day range filter, success donut + per-provider latency bars on the Usage screen.

@@ -8,7 +8,6 @@ import 'package:oreamnos/data/services/facebook_history_service.dart';
 import 'package:oreamnos/domain/models/facebook_post_record.dart';
 import 'package:oreamnos/ui/core/utils/haptics.dart';
 import 'package:oreamnos/ui/core/widgets/empty_state.dart';
-import 'package:oreamnos/ui/features/facebook/view_models/facebook_view_model.dart';
 
 /// Published Posts history (capped at 50). Tap opens the post on Facebook;
 /// long-press offers Open / Copy link / Remove.
