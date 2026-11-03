@@ -187,6 +187,9 @@ class GenerationPromptManager {
     buf.writeln(
       'OUTPUT FORMAT: Return ONLY a single valid JSON object. No preamble, no explanation, no markdown, no code fence.',
     );
+    buf.writeln(
+      'The value of "body" must be plain prose — NEVER a JSON object, a quoted JSON document, or a copy of this schema.',
+    );
     buf.writeln('Start with { and end with }. Use this exact schema:');
     buf.writeln('{');
     buf.writeln(

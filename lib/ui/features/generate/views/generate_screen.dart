@@ -1107,8 +1107,12 @@ class _GenerateScreenState extends ConsumerState<GenerateScreen> {
                     ),
                   ),
                 ],
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                // Wrap so the action icons drop under the title on narrow
+                // screens / large text instead of forcing a Row overflow.
+                Wrap(
+                  alignment: WrapAlignment.spaceBetween,
+                  crossAxisAlignment: WrapCrossAlignment.center,
+                  runSpacing: AppSpacing.xs,
                   children: [
                     Text(
                       'Generated Post',
@@ -1118,6 +1122,7 @@ class _GenerateScreenState extends ConsumerState<GenerateScreen> {
                       ),
                     ),
                     Row(
+                      mainAxisSize: MainAxisSize.min,
                       children: [
                         FluidEditButton(
                           isEditing: viewModel.isEditMode,

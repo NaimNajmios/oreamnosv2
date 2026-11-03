@@ -1,3 +1,5 @@
+import 'dart:convert';
+
 import 'package:equatable/equatable.dart';
 import 'package:oreamnos/core/utils/readability_utils.dart';
 import 'package:oreamnos/domain/services/source_policy.dart';
@@ -238,6 +240,10 @@ class CuratedPost extends Equatable {
     Map<String, dynamic> json, {
     bool keepStructure = false,
   }) {
+    // Some models nest the whole document inside `body`
+    // ({"title":…,"body":"{\"title\":…,\"body\":…}"}). Unwrap it before the
+    // field passes below so raw JSON never reaches the UI.
+    json = _unwrapNestedJson(json);
     final rawTitle = (json['title'] as String?) ?? '';
     final rawBody =
         (json['body'] as String?) ?? (json['content'] as String?) ?? '';
@@ -252,7 +258,9 @@ class CuratedPost extends Equatable {
     if (title.length > 100) title = title.substring(0, 100).trim();
     title = _toTitleCase(title);
 
-    String body = keepStructure ? rawBody.trim() : _stripEmoji(rawBody.trim());
+    String body = keepStructure
+        ? _unescapeLiteralNewlines(rawBody.trim())
+        : _stripEmoji(_unescapeLiteralNewlines(rawBody.trim()));
     // Remove any accidental source/hashtag block inside body
     body = body
         .replaceAll(
@@ -314,6 +322,57 @@ class CuratedPost extends Equatable {
       source: source,
       rawMarkdown: rawMarkdown,
     );
+  }
+
+  /// Models occasionally return the entire JSON document as the *value* of
+  /// `body` (double-encoded), which used to render a raw `{"title":…` blob
+  /// in the generated post. Unwraps up to 3 nesting levels and keeps the
+  /// outer title/hashtags/source when the inner copy is missing them.
+  static Map<String, dynamic> _unwrapNestedJson(Map<String, dynamic> json) {
+    var current = json;
+    for (var depth = 0; depth < 3; depth++) {
+      final raw = current['body'] ?? current['content'];
+      if (raw is! String) break;
+      final trimmed = raw.trim();
+      if (!trimmed.startsWith('{') || !trimmed.endsWith('}')) break;
+
+      Map<String, dynamic>? inner;
+      try {
+        final decoded = jsonDecode(trimmed);
+        if (decoded is Map<String, dynamic>) inner = decoded;
+      } catch (_) {
+        // Not valid JSON — leave the text alone.
+      }
+      if (inner == null) break;
+
+      final innerBody = inner['body'] ?? inner['content'];
+      if (innerBody is! String || innerBody.trim().isEmpty) break;
+
+      final merged = <String, dynamic>{...inner};
+      for (final key in const ['title', 'hashtags', 'source']) {
+        final innerValue = merged[key];
+        final innerEmpty =
+            innerValue == null || innerValue.toString().trim().isEmpty;
+        if (innerEmpty && current[key] != null) merged[key] = current[key];
+      }
+      current = merged;
+    }
+    return current;
+  }
+
+  /// Converts literal `\n` escape sequences back into real line breaks when
+  /// they dominate the text (a symptom of the double-encoding above).
+  static String _unescapeLiteralNewlines(String text) {
+    if (!text.contains(r'\n') && !text.contains(r'\t')) return text;
+    final literal = RegExp(r'\\n').allMatches(text).length;
+    if (literal == 0) return text;
+    final real = '\n'.allMatches(text).length;
+    if (real > literal) return text;
+    return text
+        .replaceAll(r'\n', '\n')
+        .replaceAll(r'\t', ' ')
+        .replaceAll(r'\"', '"')
+        .replaceAll(r'\\', r'\');
   }
 
   static String _formatBody(String body, {bool keepStructure = false}) {
@@ -414,7 +473,9 @@ class CuratedPost extends Equatable {
     SourceAttribution? source,
     bool keepStructure = false,
   }) {
-    var text = keepStructure ? markdown.trim() : _stripEmoji(markdown.trim());
+    var text = keepStructure
+        ? _unescapeLiteralNewlines(markdown.trim())
+        : _stripEmoji(_unescapeLiteralNewlines(markdown.trim()));
     if (text.isEmpty) {
       return CuratedPost(
         title: '',
