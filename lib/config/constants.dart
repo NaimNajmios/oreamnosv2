@@ -68,6 +68,12 @@ abstract final class AppConstants {
   static const double defaultTemperature = 0.7;
   static const int defaultMaxTokens = 2048;
 
+  /// Output cap for full post generation/refinement. Malay tokenizes poorly
+  /// on most models, so 2048 used to cut long posts mid-sentence (and left
+  /// the JSON unterminated). The 90s receive window still bounds latency;
+  /// `JsonCleaner.repairTruncated` is the safety net if this is hit.
+  static const int generationMaxTokens = 4096;
+
   // === UI ===
   static const int typewriterCharsPerStep = 3;
   static const Duration typewriterDelay = Duration(milliseconds: 1);

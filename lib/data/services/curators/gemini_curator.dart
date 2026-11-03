@@ -170,7 +170,7 @@ class GeminiCurator implements IContentCurator {
             // Bound both latency and token burn; long posts with the strict
             // JSON schema used to run unbounded on the default token limit
             // and trip the (15s) receive timeout before completing.
-            "maxOutputTokens": AppConstants.defaultMaxTokens,
+            "maxOutputTokens": AppConstants.generationMaxTokens,
             "responseMimeType": "application/json",
             "responseSchema": GenerationPromptManager.geminiResponseSchema(
               keepStructure: keepStructure,
@@ -271,7 +271,7 @@ class GeminiCurator implements IContentCurator {
           ],
           "generationConfig": {
             "temperature": 0.7,
-            "maxOutputTokens": AppConstants.defaultMaxTokens,
+            "maxOutputTokens": AppConstants.generationMaxTokens,
             "responseMimeType": "application/json",
             "responseSchema": GenerationPromptManager.geminiResponseSchema(
               keepStructure: keepStructure,
@@ -321,6 +321,18 @@ class GeminiCurator implements IContentCurator {
     );
   }
 
+  /// Decodes the model's JSON, falling back to a best-effort repair when the
+  /// response was cut off by the output-token cap (unterminated JSON).
+  static Future<Map<String, dynamic>> _decodeOrRepair(String rawText) async {
+    try {
+      return await JsonCleaner.decodeIsolate(rawText);
+    } catch (_) {
+      final repaired = JsonCleaner.repairTruncated(rawText);
+      if (repaired == null) rethrow;
+      return repaired;
+    }
+  }
+
   Future<CuratedPost> _parseCuratedPost(
     String rawText,
     String? sourceUrl, {
@@ -331,7 +343,7 @@ class GeminiCurator implements IContentCurator {
     bool keepStructure = false,
   }) async {
     try {
-      final jsonMap = await JsonCleaner.decodeIsolate(rawText);
+      final jsonMap = await _decodeOrRepair(rawText);
       // Backfill source.url for internal use only. NEVER derive
       // source.label from the URL/domain — leave it "" when the LLM
       // provides no content-based outlet (CuratedPost sanitizer enforces).

@@ -93,4 +93,72 @@ void main() {
       expect(() => JsonCleaner.decode('"just text"'), throwsFormatException);
     });
   });
+
+  group('JsonCleaner.repairTruncated (MAX_TOKENS cut)', () {
+    // Real failure: the response stops mid-sentence with no closing quote or
+    // brace, so the app fell back to raw JSON in the generated post.
+    const truncated =
+        '{"title":"Arsenal Sasar Eli Junior Kroupi dan Kenan Yildiz Bagi '
+        'Jendela Perpindahan Januari","body":"Kelab Liga Perdana Inggeris, '
+        'Arsenal, dilaporkan meletakkan penyerang Bournemouth, Eli Junior '
+        'Kroupi, serta Winger Juventus, Kenan Yildiz, dalam senarai sasaran '
+        'utama mereka menjelang jendela perpindahan Januari.\\n\\nPengurus '
+        'Arsenal, Mikel Arteta, berhasrat untuk memperkasakan jentera '
+        'serangan selepas gagal mendapatkan beberapa sasaran berprofil tinggi '
+        'pada musim panas lalu.\\n\\nKroupi, yang merupakan pemain '
+        'antarabangsa Perancis Bawah-21 tahun, sebelum ini mengalami '
+        'kecederaan retak tulang kaki pada pramusim hingga tersisih selama '
+        'tiga bulan.\\n\\nWalaupun turut diminati kelab seperti Manchester '
+        'United, Tottenham, Bayern Munich dan Paris';
+
+    test('recovers a parseable document', () {
+      final map = JsonCleaner.repairTruncated(truncated);
+      expect(map, isNotNull);
+      expect(map!['title'], startsWith('Arsenal Sasar'));
+      expect(map['body'], isA<String>());
+    });
+
+    test('drops the half-written final sentence', () {
+      final body = JsonCleaner.repairTruncated(truncated)!['body'] as String;
+      expect(body, contains('tersisih selama tiga bulan.'));
+      expect(
+        body,
+        isNot(contains('Walaupun turut diminati')),
+        reason: 'the incomplete sentence must be discarded',
+      );
+    });
+
+    test('repaired text renders prose, not raw JSON', () {
+      final post = CuratedPost.fromJson(
+        JsonCleaner.repairTruncated(truncated)!,
+      );
+      expect(
+        post.title,
+        'Arsenal Sasar Eli Junior Kroupi dan Kenan Yildiz '
+        'Bagi Jendela Perpindahan Januari',
+      );
+      expect(post.bodyMarkdown, isNot(contains('{"title"')));
+      expect(post.bodyMarkdown, isNot(contains(r'\n')));
+      expect(post.bodyMarkdown, contains('Kelab Liga Perdana Inggeris'));
+    });
+
+    test('repairs a cut between fields (dangling key and comma)', () {
+      final map = JsonCleaner.repairTruncated(
+        '{"title":"Tajuk","body":"Isi.","hashtags":["FAM","Ars',
+      );
+      expect(map, isNotNull);
+      expect(map!['title'], 'Tajuk');
+      expect(map['body'], 'Isi.');
+    });
+
+    test('repairs a cut right after a colon', () {
+      final map = JsonCleaner.repairTruncated('{"title":"Tajuk","body":');
+      expect(map, isNotNull);
+      expect(map!['title'], 'Tajuk');
+    });
+
+    test('returns null for non-JSON text', () {
+      expect(JsonCleaner.repairTruncated('Tiada JSON di sini.'), isNull);
+    });
+  });
 }

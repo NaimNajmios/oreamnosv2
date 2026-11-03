@@ -4,6 +4,7 @@ import 'dart:typed_data';
 import 'package:dio/dio.dart';
 
 import 'package:oreamnos/core/di/injection.dart';
+import 'package:oreamnos/config/constants.dart';
 import 'package:oreamnos/core/network/api_client.dart';
 import 'package:oreamnos/data/services/token_usage_side_channel.dart';
 import 'package:oreamnos/domain/services/content_curator.dart';
@@ -135,7 +136,7 @@ class OpenAICompatibleCurator implements IContentCurator {
             {"role": "user", "content": userContent},
           ],
           "temperature": 0.7,
-          "max_tokens": 2048,
+          "max_tokens": AppConstants.generationMaxTokens,
           "response_format": responseFormat,
         },
         cancelToken: cancelToken,
@@ -189,6 +190,18 @@ class OpenAICompatibleCurator implements IContentCurator {
     );
   }
 
+  /// Decodes the model's JSON, falling back to a best-effort repair when the
+  /// response was cut off by the output-token cap (unterminated JSON).
+  static Future<Map<String, dynamic>> _decodeOrRepair(String rawText) async {
+    try {
+      return await JsonCleaner.decodeIsolate(rawText);
+    } catch (_) {
+      final repaired = JsonCleaner.repairTruncated(rawText);
+      if (repaired == null) rethrow;
+      return repaired;
+    }
+  }
+
   Future<CuratedPost> _parseCuratedPost(
     String rawText,
     String? sourceUrl, {
@@ -199,7 +212,7 @@ class OpenAICompatibleCurator implements IContentCurator {
     bool keepStructure = false,
   }) async {
     try {
-      final jsonMap = await JsonCleaner.decodeIsolate(rawText);
+      final jsonMap = await _decodeOrRepair(rawText);
       if (jsonMap['source'] is Map) {
         final sm = jsonMap['source'] as Map<String, dynamic>;
         if ((sm['url'] == null ||
@@ -354,7 +367,7 @@ class OpenAICompatibleCurator implements IContentCurator {
             {"role": "user", "content": userPrompt},
           ],
           "temperature": 0.7,
-          "max_tokens": 2048,
+          "max_tokens": AppConstants.generationMaxTokens,
           "response_format": {
             "type": "json_schema",
             "json_schema": {
