@@ -93,4 +93,62 @@ void main() {
       expect(field.maxLines, 2);
     },
   );
+
+  // Re-boot DI with a persisted Page so the dialog shows all 3 actions.
+  Future<void> bootConnected() async {
+    SharedPreferences.setMockInitialValues({
+      'facebook_page_id': '123456',
+      'facebook_page_name': 'Trace Football',
+    });
+    await getIt.reset();
+    await configureDependencies();
+    getIt.allowReassignment = true;
+  }
+
+  testWidgets('actions do not overflow on a 360dp phone (3 buttons)', (
+    tester,
+  ) async {
+    // The previous Row overflowed by 18px with Disconnect + Cancel + Save.
+    tester.view.physicalSize = const Size(360, 640);
+    tester.view.devicePixelRatio = 1.0;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+    await bootConnected();
+
+    await tester.pumpWidget(
+      const ProviderScope(
+        child: MaterialApp(home: Scaffold(body: FacebookConnectionDialog())),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    expect(tester.takeException(), isNull);
+    expect(find.text('Disconnect'), findsOneWidget);
+    expect(find.text('Cancel'), findsOneWidget);
+    expect(find.text('Test & Save'), findsOneWidget);
+  });
+
+  testWidgets('actions wrap instead of overflowing at 320dp', (tester) async {
+    tester.view.physicalSize = const Size(320, 640);
+    tester.view.devicePixelRatio = 1.0;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+    await bootConnected();
+
+    await tester.pumpWidget(
+      const ProviderScope(
+        child: MaterialApp(home: Scaffold(body: FacebookConnectionDialog())),
+      ),
+    );
+    await tester.pumpAndSettle();
+    expect(tester.takeException(), isNull);
+
+    final disconnectY = tester.getCenter(find.text('Disconnect')).dy;
+    final cancelY = tester.getCenter(find.text('Cancel')).dy;
+    expect(
+      cancelY,
+      greaterThan(disconnectY),
+      reason: 'OverflowBar should stack the actions on separate rows',
+    );
+  });
 }

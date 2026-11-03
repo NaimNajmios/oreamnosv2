@@ -102,7 +102,9 @@ class _FacebookConnectionDialogState
       backgroundColor: theme.colorScheme.surface,
       child: ConstrainedBox(
         constraints: const BoxConstraints(maxWidth: 420),
-        child: Padding(
+        // Scrollable so short screens (landscape / big font scale) can reach
+        // the action buttons instead of overflowing.
+        child: SingleChildScrollView(
           padding: const EdgeInsets.all(AppSpacing.xl),
           child: Column(
             mainAxisSize: MainAxisSize.min,
@@ -179,21 +181,23 @@ class _FacebookConnectionDialogState
                 ),
               ],
               const SizedBox(height: AppSpacing.xl),
-              Row(
-                mainAxisAlignment: MainAxisAlignment.end,
+              // OverflowBar stacks the actions vertically on narrow dialogs
+              // (a Row overflowed by 18px at default font scale).
+              OverflowBar(
+                alignment: MainAxisAlignment.end,
+                overflowAlignment: OverflowBarAlignment.end,
+                spacing: AppSpacing.sm,
+                overflowSpacing: AppSpacing.xs,
                 children: [
-                  if (connection.isConnected) ...[
+                  if (connection.isConnected)
                     TextButton(
                       onPressed: _isLoading ? null : _disconnect,
                       child: const Text('Disconnect'),
                     ),
-                    const SizedBox(width: AppSpacing.sm),
-                  ],
                   TextButton(
                     onPressed: () => Navigator.of(context).pop(),
                     child: const Text('Cancel'),
                   ),
-                  const SizedBox(width: AppSpacing.sm),
                   AppButton(
                     label: 'Test & Save',
                     isLoading: _isLoading,
