@@ -154,7 +154,8 @@ class _FacebookConnectionDialogState
                 controller: _controller,
                 label: 'Page access token',
                 hint: 'EAA…',
-                maxLines: 2,
+                // Flutter asserts `!obscureText || maxLines == 1`.
+                maxLines: _obscureText ? 1 : 2,
                 obscureText: _obscureText,
                 suffixIcon: IconButton(
                   icon: Icon(

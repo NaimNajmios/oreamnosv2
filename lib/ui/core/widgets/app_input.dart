@@ -56,8 +56,9 @@ class AppInput extends StatelessWidget {
         ],
         TextField(
           controller: controller,
-          minLines: minLines,
-          maxLines: maxLines,
+          minLines: obscureText ? null : minLines,
+          // TextField asserts `!obscureText || maxLines == 1`.
+          maxLines: obscureText ? 1 : maxLines,
           obscureText: obscureText,
           readOnly: readOnly,
           autofocus: autofocus,
