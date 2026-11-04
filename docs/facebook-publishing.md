@@ -24,6 +24,10 @@ default workflow.
 
 ## Security contract
 
+- **Connection errors are transport-specific:** `FacebookApiException.networkIssue` distinguishes timeout, DNS/connection, TLS, cancellation and unknown. “Can’t reach Facebook” never implies an invalid token.
+- A received HTTP response is terminal: **never** issue a second `/me/accounts` request after a 200. Dio’s transport retry is the only automatic retry; the dialog’s **Try again** handles manual retry.
+- Connect/verify parse `get<dynamic>` responses defensively: a 200 HTML/plain/captive-portal body becomes “Facebook returned a web page instead of JSON…” (not `network`).
+
 - **Page tokens** live only in `flutter_secure_storage` under
   `facebook_page_token_<pageId>` and are only ever sent in a form/JSON body or
   an `Authorization: Bearer` header.

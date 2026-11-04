@@ -46,7 +46,8 @@ class LoggingInterceptor extends Interceptor {
     if (kDebugMode) {
       // err.message can echo URIs; redact those too.
       debugPrint(
-        '[DIO] ✗ ${err.response?.statusCode} ${redact(err.requestOptions.uri)} ${redact(err.message)}',
+        '[DIO] ✗ ${err.type.name} ${err.response?.statusCode} '
+        '${redact(err.requestOptions.uri)} ${redact(err.message)}',
       );
     }
     handler.next(err);

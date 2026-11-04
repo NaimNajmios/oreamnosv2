@@ -215,6 +215,11 @@ class _FacebookConnectionDialogState
                 hint: 'EAA…',
                 maxLines: _obscureText ? 1 : 2,
                 obscureText: _obscureText,
+                onChanged: (_) {
+                  if (_errorText != null) {
+                    setState(() => _errorText = null);
+                  }
+                },
                 suffixIcon: IconButton(
                   icon: Icon(
                     _obscureText
@@ -233,6 +238,14 @@ class _FacebookConnectionDialogState
                   _errorText!,
                   style: theme.textTheme.bodySmall?.copyWith(
                     color: theme.colorScheme.error,
+                  ),
+                ),
+                Align(
+                  alignment: Alignment.centerLeft,
+                  child: TextButton.icon(
+                    onPressed: _isLoading ? null : _testAndSave,
+                    icon: const Icon(Icons.refresh_rounded, size: 16),
+                    label: const Text('Try again'),
                   ),
                 ),
               ],

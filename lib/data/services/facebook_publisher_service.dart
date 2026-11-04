@@ -7,6 +7,8 @@ import 'package:oreamnos/core/network/api_client.dart';
 
 import '../../config/constants.dart';
 import '../../domain/models/facebook_api_exception.dart';
+import 'facebook_network_error.dart';
+import 'facebook_response_guard.dart';
 
 /// The Page resolved from `GET /me`. With a Page access token this returns
 /// the Page itself, so the user only ever pastes one token (the manual
@@ -113,13 +115,19 @@ class FacebookPublisherService {
       );
     }
     try {
-      final response = await _client.get<Map<String, dynamic>>(
+      final response = await _client.get<dynamic>(
         '$_pathBase/me',
         queryParameters: const {'fields': 'id,name,picture{url}'},
         options: Options(headers: {'Authorization': 'Bearer $token'}),
       );
       final data = _asMap(response.data);
-      final id = data?['id']?.toString() ?? '';
+      if (data == null) {
+        throw FacebookApiException(
+          kind: FacebookApiErrorKind.unknown,
+          message: facebookUnexpectedResponseMessage(response.data),
+        );
+      }
+      final id = data['id']?.toString() ?? '';
       if (id.isEmpty) {
         throw FacebookApiException(
           kind: FacebookApiErrorKind.unknown,
@@ -128,7 +136,7 @@ class FacebookPublisherService {
       }
       return FacebookPage(
         id: id,
-        name: (data?['name'] ?? 'Page').toString(),
+        name: (data['name'] ?? 'Page').toString(),
         pictureUrl: _pictureUrl(data),
       );
     } on DioException catch (e) {
@@ -519,6 +527,7 @@ class FacebookPublisherService {
       e.response?.statusCode,
       _asMap(e.response?.data),
       isNetworkFailure: e.response == null,
+      networkIssue: e.response == null ? facebookNetworkIssueFor(e) : null,
     );
   }
 

@@ -57,6 +57,32 @@ class _GraphAdapter implements HttpClientAdapter {
   void close({bool force = false}) {}
 }
 
+class _RawAdapter implements HttpClientAdapter {
+  _RawAdapter(this.status, this.body);
+
+  final int status;
+  final String body;
+
+  @override
+  Future<ResponseBody> fetch(
+    RequestOptions options,
+    Stream<List<int>>? requestStream,
+    Future<void>? cancelFuture,
+  ) async {
+    await for (final _ in requestStream ?? const Stream.empty()) {}
+    return ResponseBody.fromBytes(
+      utf8.encode(body),
+      status,
+      headers: {
+        Headers.contentTypeHeader: ['text/html; charset=utf-8'],
+      },
+    );
+  }
+
+  @override
+  void close({bool force = false}) {}
+}
+
 ApiClient _fastApiClient(_GraphAdapter adapter) {
   final apiClient = ApiClient();
   apiClient.dio.httpClientAdapter = adapter;
@@ -210,6 +236,26 @@ void main() {
         }
       });
 
+      test(
+        'HTML 200 response is not classified as a network failure',
+        () async {
+          final apiClient = ApiClient();
+          apiClient.dio.httpClientAdapter = _RawAdapter(
+            200,
+            '<!doctype html><html><body>Blocked by proxy</body></html>',
+          );
+          apiClient.dio.interceptors.clear();
+          final service = FacebookPublisherService(apiClient);
+          try {
+            await service.verify(_token);
+            fail('should throw');
+          } on FacebookApiException catch (e) {
+            expect(e.kind, isNot(FacebookApiErrorKind.network));
+            expect(e.message, contains('web page'));
+          }
+        },
+      );
+
       test('transport failure with no response maps to network', () async {
         final service = _service(_GraphAdapter(200, null));
         try {
@@ -217,7 +263,8 @@ void main() {
           fail('should throw');
         } on FacebookApiException catch (e) {
           expect(e.kind, FacebookApiErrorKind.network);
-          expect(e.message, contains('No connection'));
+          expect(e.networkIssue, FacebookNetworkIssue.connection);
+          expect(e.message, contains("Can't reach Facebook"));
         }
       });
     });

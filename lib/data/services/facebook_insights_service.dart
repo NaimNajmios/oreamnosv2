@@ -8,6 +8,7 @@ import 'package:oreamnos/core/network/api_client.dart';
 import '../../config/constants.dart';
 import '../../domain/models/facebook_api_exception.dart';
 import '../../domain/models/facebook_post_insights.dart';
+import 'facebook_network_error.dart';
 
 /// Fetches post insights with a single Graph call.
 ///
@@ -57,6 +58,7 @@ class FacebookInsightsService {
         e.response?.statusCode,
         _asMap(e.response?.data),
         isNetworkFailure: e.response == null,
+        networkIssue: e.response == null ? facebookNetworkIssueFor(e) : null,
       );
     } catch (_) {
       throw const FacebookApiException(

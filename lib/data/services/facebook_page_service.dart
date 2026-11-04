@@ -1,12 +1,15 @@
 import 'dart:convert';
 
 import 'package:dio/dio.dart';
+import 'package:flutter/foundation.dart';
 import 'package:injectable/injectable.dart';
 import 'package:oreamnos/core/di/injection.dart';
 import 'package:oreamnos/core/network/api_client.dart';
 
 import '../../config/constants.dart';
 import '../../domain/models/facebook_api_exception.dart';
+import 'facebook_network_error.dart';
+import 'facebook_response_guard.dart';
 import 'facebook_publisher_service.dart';
 
 /// A Page returned by `/me/accounts` plus its derived token.
@@ -38,6 +41,11 @@ class FacebookPageService {
       _publisher.verify(token);
 
   /// `GET /me/accounts` with a user token. Skips rows without an id/token.
+  ///
+  /// A received response is terminal: only the transport pipeline (Dio)
+  /// retries connection failures. This method must never issue a second
+  /// request after a 200, because a successful exchange must close the
+  /// dialog rather than be reclassified as a network error.
   Future<List<FacebookPageAccount>> listPagesFromUserToken(
     String userToken,
   ) async {
@@ -48,23 +56,44 @@ class FacebookPageService {
         message: 'Paste a user access token first.',
       );
     }
+    return _listPagesOnce(token);
+  }
+
+  Future<List<FacebookPageAccount>> _listPagesOnce(String token) async {
     try {
-      final response = await _client.get<Map<String, dynamic>>(
+      final response = await _client.get<dynamic>(
         '$_pathBase/me/accounts',
         queryParameters: const {
           'fields': 'id,name,access_token,picture{url}',
           'limit': 100,
         },
-        options: Options(headers: {'Authorization': 'Bearer $token'}),
+        options: Options(
+          headers: {'Authorization': 'Bearer $token'},
+          receiveTimeout: const Duration(seconds: 20),
+        ),
       );
       final data = _asMap(response.data);
       final rows = data?['data'];
+      assert(() {
+        debugPrint(
+          '[FB] /me/accounts status=${response.statusCode} '
+          'data=${response.data.runtimeType} '
+          'rows=${rows is List ? rows.length : rows.runtimeType}',
+        );
+        return true;
+      }());
+      if (data == null) {
+        throw FacebookApiException(
+          kind: FacebookApiErrorKind.pageTokenExchangeFailed,
+          message: facebookUnexpectedResponseMessage(response.data),
+        );
+      }
       if (rows is! List) {
         throw const FacebookApiException(
           kind: FacebookApiErrorKind.pageTokenExchangeFailed,
           message:
-              'Facebook returned no Pages. Make sure this token has '
-              'pages_show_list and manage_pages permissions.',
+              'Facebook returned an unexpected response. Re-paste the token '
+              'or try again.',
         );
       }
       final accounts = <FacebookPageAccount>[];
@@ -96,10 +125,19 @@ class FacebookPageService {
     } on FacebookApiException {
       rethrow;
     } on DioException catch (e) {
+      // Debug-only cause; no headers/body/token.
+      assert(() {
+        debugPrint(
+          '[FB] /me/accounts failed type=${e.type.name} '
+          'status=${e.response?.statusCode} message=${e.message}',
+        );
+        return true;
+      }());
       final mapped = FacebookApiException.fromGraph(
         e.response?.statusCode,
         _asMap(e.response?.data),
         isNetworkFailure: e.response == null,
+        networkIssue: e.response == null ? facebookNetworkIssueFor(e) : null,
       );
       if (e.response == null) throw mapped;
       throw FacebookApiException(

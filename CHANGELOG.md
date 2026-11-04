@@ -1,5 +1,14 @@
 # Changelog — Oreamnos
 
+## v19 — Facebook Connect Network Diagnostics (2026-11-04)
+
+- **Accurate transport errors:** connection failures now distinguish timeout, DNS/connection, TLS/certificate, cancellation and unknown instead of showing “No connection” for everything.
+- **Non-JSON 200 responses:** connect/verify read responses as raw data and parse defensively. A 200 HTML/captive-portal/proxy page now shows “Facebook returned a web page instead of JSON…” instead of a fake network error.
+- **Exactly one exchange per tap:** a received HTTP response is terminal. The app no longer adds a second `/me/accounts` request after a success; Dio’s connection-level retry remains the only transport retry.
+- **Dialog UX:** errors clear as soon as the token is edited; a **Try again** action retries without re-pasting; loading keeps the button disabled.
+- **Logging:** debug `[DIO]` lines include the Dio error type (`connectionError`, `receiveTimeout`, `badCertificate`, …) with URLs redacted.
+- **Tests:** network issue mapping, transient retry vs auth no-retry, and existing connect dialog/graph tests.
+
 ## v18 — Uppercase Title Toggle (2026-11-04)
 
 - **Title formatting:** the Generate output adds an **Uppercase** chip next to **Title**. When enabled, the title renders in uppercase with slightly wider tracking so it reads separately from the body.

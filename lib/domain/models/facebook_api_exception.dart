@@ -1,3 +1,6 @@
+/// Transport failure detail for [FacebookApiErrorKind.network].
+enum FacebookNetworkIssue { timeout, connection, tls, cancelled, unknown }
+
 /// Failure taxonomy for Facebook Graph API publishing calls.
 enum FacebookApiErrorKind {
   /// Token rejected or expired (code 190) — user must reconnect the Page.
@@ -49,6 +52,7 @@ class FacebookApiException implements Exception {
     required this.message,
     this.code,
     this.subcode,
+    this.networkIssue,
   });
 
   final FacebookApiErrorKind kind;
@@ -62,13 +66,26 @@ class FacebookApiException implements Exception {
   /// Graph `error_subcode` when present (e.g. 1487391).
   final int? subcode;
 
+  /// More specific transport cause when [kind] is [FacebookApiErrorKind.network].
+  final FacebookNetworkIssue? networkIssue;
+
   /// True when the fix is reconnecting the Page (token expired/invalidated).
   bool get needsReconnect => kind == FacebookApiErrorKind.expiredToken;
+
+  /// Safe to retry once: GET verification/connect calls are idempotent.
+  bool get isTransientNetwork =>
+      kind == FacebookApiErrorKind.network &&
+      (networkIssue == FacebookNetworkIssue.timeout ||
+          networkIssue == FacebookNetworkIssue.connection ||
+          networkIssue == FacebookNetworkIssue.unknown ||
+          networkIssue == null);
 
   @override
   String toString() =>
       'FacebookApiException(kind: $kind, code: $code'
-      '${subcode != null ? '/$subcode' : ''}, message: $message)';
+      '${subcode != null ? '/$subcode' : ''}'
+      '${networkIssue != null ? ', networkIssue: $networkIssue' : ''}, '
+      'message: $message)';
 
   /// Maps a Graph error body (from an HTTP error response) or a transport
   /// failure with no body into a typed exception. `body` is the parsed JSON
@@ -78,11 +95,14 @@ class FacebookApiException implements Exception {
     int? statusCode,
     Map<String, dynamic>? body, {
     bool isNetworkFailure = false,
+    FacebookNetworkIssue? networkIssue,
   }) {
     if (isNetworkFailure) {
-      return const FacebookApiException(
+      final issue = networkIssue ?? FacebookNetworkIssue.unknown;
+      return FacebookApiException(
         kind: FacebookApiErrorKind.network,
-        message: 'No connection. Check your internet and try again.',
+        message: _networkMessage(issue),
+        networkIssue: issue,
       );
     }
     final error =
@@ -112,6 +132,22 @@ class FacebookApiException implements Exception {
     }
     if (code == 506 || subcode == 506) return FacebookApiErrorKind.duplicate;
     return FacebookApiErrorKind.unknown;
+  }
+
+  static String _networkMessage(FacebookNetworkIssue issue) {
+    return switch (issue) {
+      FacebookNetworkIssue.timeout =>
+        'Facebook took too long to respond. Check your connection or VPN and '
+            'try again.',
+      FacebookNetworkIssue.connection =>
+        "Can't reach Facebook. Check your internet, DNS or VPN.",
+      FacebookNetworkIssue.tls =>
+        'Secure connection to Facebook failed. Check the device date/time or '
+            'VPN.',
+      FacebookNetworkIssue.cancelled => 'Connection cancelled. Try again.',
+      FacebookNetworkIssue.unknown =>
+        "Couldn't reach Facebook. Check your internet or VPN and try again.",
+    };
   }
 
   /// UI copy per kind; unknown kinds surface the raw Graph message, which
