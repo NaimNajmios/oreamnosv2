@@ -1,47 +1,126 @@
+import 'dart:io';
+
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart' show Clipboard, ClipboardData;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 import 'package:url_launcher/url_launcher.dart';
 
+import 'package:oreamnos/config/routes/app_router.dart';
 import 'package:oreamnos/config/theme/app_spacing.dart';
 import 'package:oreamnos/data/services/facebook_history_service.dart';
 import 'package:oreamnos/domain/models/facebook_post_record.dart';
 import 'package:oreamnos/ui/core/utils/haptics.dart';
 import 'package:oreamnos/ui/core/widgets/empty_state.dart';
+import 'package:oreamnos/ui/features/facebook/view_models/facebook_view_model.dart';
 
-/// Published Posts history (capped at 50). Tap opens the post on Facebook;
-/// long-press offers Open / Copy link / Remove.
-class FacebookHistoryScreen extends ConsumerWidget {
+/// Publish history (capped at 50) split into Published and Scheduled tabs.
+/// Tap opens a live post; long-press offers copy/reuse/remove, plus
+/// reschedule/cancel for scheduled posts.
+class FacebookHistoryScreen extends ConsumerStatefulWidget {
   const FacebookHistoryScreen({super.key});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<FacebookHistoryScreen> createState() =>
+      _FacebookHistoryScreenState();
+}
+
+class _FacebookHistoryScreenState extends ConsumerState<FacebookHistoryScreen> {
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      ref.read(facebookDraftProvider.notifier).reconcileScheduled();
+    });
+  }
+
+  /// Best-effort sequential refresh, capped so a long history never turns
+  /// pull-to-refresh into a burst of Graph calls.
+  Future<void> _refreshInsights(List<FacebookPostRecord> records) async {
+    final notifier = ref.read(facebookHistoryProvider.notifier);
+    for (final record in records.take(10)) {
+      if (!mounted) return;
+      await notifier.refreshInsights(record.id);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final records = ref.watch(facebookHistoryProvider);
+    final published = records.where((r) => !r.isScheduled).toList();
+    final scheduled = records.where((r) => r.isScheduled).toList();
 
-    return Scaffold(
-      appBar: AppBar(
-        title: Text(
-          'Published Posts',
-          style: theme.textTheme.titleMedium?.copyWith(
-            fontWeight: FontWeight.w700,
-            letterSpacing: -0.3,
+    return DefaultTabController(
+      length: 2,
+      child: Scaffold(
+        appBar: AppBar(
+          title: Text(
+            'Facebook posts',
+            style: theme.textTheme.titleMedium?.copyWith(
+              fontWeight: FontWeight.w700,
+              letterSpacing: -0.3,
+            ),
+          ),
+          bottom: TabBar(
+            tabs: [
+              Tab(text: 'Published (${published.length})'),
+              Tab(text: 'Scheduled (${scheduled.length})'),
+            ],
           ),
         ),
-      ),
-      body: records.isEmpty
-          ? EmptyState(
-              title: 'Nothing published yet',
-              description: 'Publish a generated post or a card and it will show up here.',
-              icon: Icons.facebook_rounded,
-            )
-          : ListView.builder(
-              padding: const EdgeInsets.all(AppSpacing.base),
-              itemCount: records.length,
-              itemBuilder: (context, index) =>
-                  _RecordTile(record: records[index]),
+        body: TabBarView(
+          children: [
+            _RecordList(
+              records: published,
+              emptyTitle: 'Nothing published yet',
+              emptyDescription: 'Publish a generated post or a card and it will show up here.',
+              onRefresh: () => _refreshInsights(published),
             ),
+            _RecordList(
+              records: scheduled,
+              emptyTitle: 'Nothing scheduled',
+              emptyDescription:
+                  'Choose Schedule in the composer to publish at a later time.',
+            ),
+          ],
+        ),
+      ),
     );
+  }
+}
+
+class _RecordList extends StatelessWidget {
+  const _RecordList({
+    required this.records,
+    required this.emptyTitle,
+    required this.emptyDescription,
+    this.onRefresh,
+  });
+
+  final List<FacebookPostRecord> records;
+  final String emptyTitle;
+  final String emptyDescription;
+  final Future<void> Function()? onRefresh;
+
+  @override
+  Widget build(BuildContext context) {
+    if (records.isEmpty) {
+      return EmptyState(
+        title: emptyTitle,
+        description: emptyDescription,
+        icon: Icons.facebook_rounded,
+      );
+    }
+    final list = ListView.separated(
+      padding: const EdgeInsets.all(AppSpacing.base),
+      itemCount: records.length,
+      separatorBuilder: (_, _) => const SizedBox(height: AppSpacing.xs),
+      itemBuilder: (context, index) => _RecordTile(record: records[index]),
+    );
+    if (onRefresh == null) return list;
+    return RefreshIndicator(onRefresh: onRefresh!, child: list);
   }
 }
 
@@ -54,23 +133,11 @@ class _RecordTile extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final theme = Theme.of(context);
     return InkWell(
-      onTap: () => _open(context),
+      onTap: record.isPublished ? () => _open(context) : null,
       onLongPress: () => _showActions(context, ref),
       child: Row(
         children: [
-          Container(
-            width: 36,
-            height: 36,
-            decoration: BoxDecoration(
-              color: theme.colorScheme.primaryContainer.withValues(alpha: 0.35),
-              borderRadius: AppSpacing.borderRadiusSm,
-            ),
-            child: Icon(
-              record.hasImage ? Icons.image_outlined : Icons.notes_rounded,
-              size: 18,
-              color: theme.colorScheme.primary,
-            ),
-          ),
+          _RecordThumbnail(record: record),
           const SizedBox(width: AppSpacing.md),
           Expanded(
             child: Column(
@@ -84,23 +151,86 @@ class _RecordTile extends ConsumerWidget {
                     fontWeight: FontWeight.w600,
                   ),
                 ),
-                Text(
-                  record.formattedTime,
-                  style: theme.textTheme.bodySmall?.copyWith(
-                    color: theme.colorScheme.onSurfaceVariant,
-                  ),
+                const SizedBox(height: 2),
+                Row(
+                  children: [
+                    if (record.isScheduled)
+                      _StatusChip(
+                        label: 'Scheduled',
+                        color: theme.colorScheme.tertiary,
+                        icon: Icons.schedule_rounded,
+                      ),
+                    if (record.isFailed)
+                      _StatusChip(
+                        label: 'Failed',
+                        color: theme.colorScheme.error,
+                        icon: Icons.error_outline_rounded,
+                      ),
+                    if (record.isScheduled) const SizedBox(width: 6),
+                    Text(
+                      record.isScheduled
+                          ? 'Due ${record.formattedScheduledTime}'
+                          : record.formattedTime,
+                      style: theme.textTheme.bodySmall?.copyWith(
+                        color: theme.colorScheme.onSurfaceVariant,
+                      ),
+                    ),
+                  ],
                 ),
+                if (record.pageName.isNotEmpty)
+                  Text(
+                    record.pageName,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: theme.textTheme.labelSmall?.copyWith(
+                      color: theme.colorScheme.onSurfaceVariant.withValues(
+                        alpha: 0.75,
+                      ),
+                    ),
+                  ),
+                if (record.hasInsights)
+                  Padding(
+                    padding: const EdgeInsets.only(top: 2),
+                    child: Text(
+                      _statsLine(record),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: theme.textTheme.labelSmall?.copyWith(
+                        color: theme.colorScheme.onSurfaceVariant,
+                      ),
+                    ),
+                  ),
               ],
             ),
           ),
           Icon(
-            Icons.chevron_right_rounded,
+            record.isScheduled
+                ? Icons.more_horiz_rounded
+                : Icons.chevron_right_rounded,
             size: 18,
             color: theme.colorScheme.onSurfaceVariant,
           ),
         ],
       ),
     );
+  }
+
+  static String _statsLine(FacebookPostRecord record) {
+    String compact(int value) {
+      if (value >= 1000000) {
+        return '${(value / 1000000).toStringAsFixed(1)}m';
+      }
+      if (value >= 1000) {
+        return '${(value / 1000).toStringAsFixed(1)}k';
+      }
+      return '$value';
+    }
+
+    return [
+      if (record.impressions != null) '👁 ${compact(record.impressions!)}',
+      if (record.reactions != null) '👍 ${compact(record.reactions!)}',
+      if (record.clicks != null) '🔗 ${compact(record.clicks!)}',
+    ].join(' · ');
   }
 
   Future<void> _open(BuildContext context) async {
@@ -127,15 +257,54 @@ class _RecordTile extends ConsumerWidget {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
+            if (record.isPublished)
+              ListTile(
+                leading: const Icon(Icons.open_in_new_rounded, size: 20),
+                title: const Text('Open post'),
+                onTap: () => Navigator.pop(sheetContext, 'open'),
+              ),
+            if (record.isPublished)
+              ListTile(
+                leading: const Icon(Icons.link_rounded, size: 20),
+                title: const Text('Copy link'),
+                onTap: () => Navigator.pop(sheetContext, 'copy'),
+              ),
+            if (record.isPublished)
+              ListTile(
+                leading: const Icon(Icons.insights_rounded, size: 20),
+                title: const Text('Refresh insights'),
+                onTap: () => Navigator.pop(sheetContext, 'insights'),
+              ),
+            if (record.isScheduled)
+              ListTile(
+                leading: const Icon(Icons.edit_calendar_rounded, size: 20),
+                title: const Text('Reschedule'),
+                onTap: () => Navigator.pop(sheetContext, 'reschedule'),
+              ),
+            if (record.isScheduled)
+              ListTile(
+                leading: Icon(
+                  Icons.event_busy_rounded,
+                  size: 20,
+                  color: Theme.of(sheetContext).colorScheme.error,
+                ),
+                title: Text(
+                  'Cancel schedule',
+                  style: TextStyle(
+                    color: Theme.of(sheetContext).colorScheme.error,
+                  ),
+                ),
+                onTap: () => Navigator.pop(sheetContext, 'cancel'),
+              ),
             ListTile(
-              leading: const Icon(Icons.open_in_new_rounded, size: 20),
-              title: const Text('Open post'),
-              onTap: () => Navigator.pop(sheetContext, 'open'),
+              leading: const Icon(Icons.copy_rounded, size: 20),
+              title: const Text('Copy caption'),
+              onTap: () => Navigator.pop(sheetContext, 'copy_caption'),
             ),
             ListTile(
-              leading: const Icon(Icons.link_rounded, size: 20),
-              title: const Text('Copy link'),
-              onTap: () => Navigator.pop(sheetContext, 'copy'),
+              leading: const Icon(Icons.edit_note_rounded, size: 20),
+              title: const Text('Reuse caption'),
+              onTap: () => Navigator.pop(sheetContext, 'reuse'),
             ),
             ListTile(
               leading: Icon(
@@ -166,8 +335,170 @@ class _RecordTile extends ConsumerWidget {
           ScaffoldMessenger.of(context)
               .showSnackBar(const SnackBar(content: Text('Post link copied')));
         }
+      case 'insights':
+        final error = await ref
+            .read(facebookHistoryProvider.notifier)
+            .refreshInsights(record.id);
+        if (context.mounted) {
+          ScaffoldMessenger.of(
+            context,
+          ).showSnackBar(SnackBar(content: Text(error ?? 'Insights updated')));
+        }
+      case 'copy_caption':
+        await Clipboard.setData(ClipboardData(text: record.reusableCaption));
+        Haptics.lightImpact();
+        if (context.mounted) {
+          ScaffoldMessenger.of(context)
+              .showSnackBar(const SnackBar(content: Text('Caption copied')));
+        }
       case 'remove':
         await ref.read(facebookHistoryProvider.notifier).remove(record.id);
+      case 'reschedule':
+        await _reschedule(context, ref);
+      case 'cancel':
+        await _cancel(context, ref);
+      case 'reuse':
+        ref
+            .read(facebookDraftProvider.notifier)
+            .startDraft(record.reusableCaption);
+        if (context.mounted) context.push(RoutePaths.facebookCompose);
     }
+  }
+
+  Future<void> _cancel(BuildContext context, WidgetRef ref) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: const Text('Cancel scheduled post?'),
+        content: const Text(
+          'Facebook will no longer publish this post. This cannot be undone.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(dialogContext).pop(false),
+            child: const Text('Keep it'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.of(dialogContext).pop(true),
+            child: const Text('Cancel post'),
+          ),
+        ],
+      ),
+    );
+    if (confirmed != true || !context.mounted) return;
+    final error = await ref
+        .read(facebookDraftProvider.notifier)
+        .cancelScheduledPost(record.postId);
+    if (!context.mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text(error ?? 'Scheduled post cancelled')),
+    );
+  }
+
+  Future<void> _reschedule(BuildContext context, WidgetRef ref) async {
+    final now = DateTime.now();
+    final initial = record.scheduledAt ?? now.add(const Duration(hours: 1));
+    final date = await showDatePicker(
+      context: context,
+      initialDate: initial.isBefore(now) ? now : initial,
+      firstDate: now,
+      lastDate: now.add(FacebookDraftNotifier.maxScheduleLead),
+      helpText: 'Reschedule post',
+    );
+    if (date == null || !context.mounted) return;
+    final time = await showTimePicker(
+      context: context,
+      initialTime: TimeOfDay.fromDateTime(initial),
+    );
+    if (time == null || !context.mounted) return;
+    final at = DateTime(
+      date.year,
+      date.month,
+      date.day,
+      time.hour,
+      time.minute,
+    );
+    final error = await ref
+        .read(facebookDraftProvider.notifier)
+        .reschedulePost(record.postId, at);
+    if (!context.mounted) return;
+    ScaffoldMessenger.of(context)
+        .showSnackBar(SnackBar(content: Text(error ?? 'Post rescheduled')));
+  }
+}
+
+class _StatusChip extends StatelessWidget {
+  const _StatusChip({
+    required this.label,
+    required this.color,
+    required this.icon,
+  });
+
+  final String label;
+  final Color color;
+  final IconData icon;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+      decoration: BoxDecoration(
+        color: color.withValues(alpha: 0.12),
+        borderRadius: AppSpacing.borderRadiusPill,
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(icon, size: 11, color: color),
+          const SizedBox(width: 3),
+          Text(
+            label,
+            style: Theme.of(context).textTheme.labelSmall
+                ?.copyWith(color: color, fontWeight: FontWeight.w600),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _RecordThumbnail extends StatelessWidget {
+  const _RecordThumbnail({required this.record});
+
+  final FacebookPostRecord record;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final path = record.localImagePath;
+    final hasThumb = path != null && path.isNotEmpty;
+
+    return ClipRRect(
+      borderRadius: AppSpacing.borderRadiusSm,
+      child: SizedBox(
+        width: 44,
+        height: 44,
+        child: hasThumb
+            ? Image.file(
+                File(path),
+                fit: BoxFit.cover,
+                cacheWidth: 132,
+                errorBuilder: (_, _, _) => _placeholder(theme),
+              )
+            : _placeholder(theme),
+      ),
+    );
+  }
+
+  Widget _placeholder(ThemeData theme) {
+    return Container(
+      color: theme.colorScheme.primaryContainer.withValues(alpha: 0.35),
+      alignment: Alignment.center,
+      child: Icon(
+        record.hasImage ? Icons.image_outlined : Icons.notes_rounded,
+        size: 18,
+        color: theme.colorScheme.primary,
+      ),
+    );
   }
 }

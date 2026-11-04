@@ -1,5 +1,24 @@
 # Changelog — Oreamnos
 
+## v10 — Facebook Photo Pipeline + Scheduling (2026-11-04)
+
+- **Crop control:** drag-to-reposition and pinch/slider zoom (1×–4×) on the inline photo preview; crop presets (Feed 1.91:1 / Square 1:1 / Portrait 4:5) and **Reset crop**. Preview and upload share the same clamped rect math (`FacebookImageCropper.cropRectFor`).
+- **Alt text:** 420-character field sent as `alt_text_custom`, plus a screen-reader label on the preview card.
+- **Smaller uploads:** JPEG q85 ≤2048 px encoded on a background isolate via the `image` package (EXIF baked, `dart:ui` PNG fallback). No re-encode when the crop is a no-op.
+- **Scheduling:** **Post now / Schedule** switch with date+time picker, validated to Graph's 10 min – 30 days window; `published=false` + `scheduled_publish_time` on feed/photo calls; scheduled success view with the due time and Cancel schedule.
+- **Scheduled history:** `FacebookPostRecord` gains `status` / `scheduledAt` / `pageId` / `pageName` / `localImagePaths` (v9 JSON migrates) and the history screen splits into **Published** / **Scheduled** tabs with Reschedule, Cancel (DELETE), and best-effort `/scheduled_posts` reconciliation.
+- **Drafts:** v9 `imagePath` drafts migrate into the new media list; the composer shows a one-shot "Draft restored" SnackBar with Discard.
+- **Tests:** 385 green (+14: zoom/offset crop math, schedule window boundaries, scheduled publish + history, missing schedule rejection, v9 draft migration, alt text/crop state, scheduled publisher form fields, DELETE/list parsing, scheduled record persistence). `dart format` 0, `flutter analyze` 0, debug APK builds.
+
+## v9 — Facebook Composer Preview + Workflow Polish (2026-11-04)
+
+* **Facebook-style composer:** Page identity row (avatar/name/Public), message-first borderless editor, compact Photo/Camera/Hashtags bar, and a **single composer card** — the photo preview and crop controls fold into it once an image is attached, instead of rendering a second text-only post section. The eye icon opens the full feed `PostPreviewCard` (avatar, "Just now · Public", message, image, Like/Comment/Share row, estimated link host).
+* **Crop/aspect control:** `FacebookImageAspect` presets (Feed 1.91:1 · Square 1:1 · Portrait 4:5) drive both the preview frame and `FacebookImageCropper` — a `dart:ui` center crop baked into the uploaded PNG (≤2048px, no new package) so Facebook can't re-crop the card.
+* **Workflow:** debounced draft autosave/restore, "Discard draft?" PopScope guard, image-file pre-flight (purged temp cards get a fixable message), Dio `onSendProgress` upload percentage, terminal published state (no duplicate posts/history), and a success view with thumbnail + View on Facebook / Copy link / Publish another / Done.
+* **History:** records now keep the full caption and a local thumbnail copy in app documents (temp files are purged), shown in `/facebook-history`; long-press gains **Reuse caption**. Removing/clearing history deletes the thumbnails.
+* **Connect:** `GET /me?fields=id,name,picture{url}` persists the Page avatar for the composer/preview.
+* **Tests:** 371 green (+13: crop-rect math, aspect change, draft autosave/restore, missing-file pre-flight, second-publish guard, hashtag append, `PostPreviewCard` image/placeholder states); `dart format` 0, `flutter analyze` 0.
+
 ## v8 — Facebook Page Publishing (2026-11-03)
 
 * **Stages 1–4:** Graph service + formatter (strict markdown→plain, hashtags kept), secure-token connection flow with `GET /me` verification, compose screen with text/photo publishing and per-kind error panels, and a capped-50 publish history with Settings integration.

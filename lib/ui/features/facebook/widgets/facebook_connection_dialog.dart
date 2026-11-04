@@ -1,17 +1,16 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:oreamnos/config/theme/app_spacing.dart';
-import 'package:oreamnos/data/services/preferences_service.dart';
-import 'package:oreamnos/core/di/injection.dart';
 import 'package:oreamnos/ui/core/utils/haptics.dart';
 import 'package:oreamnos/ui/core/widgets/app_button.dart';
 import 'package:oreamnos/ui/core/widgets/app_input.dart';
 import 'package:oreamnos/ui/features/facebook/view_models/facebook_view_model.dart';
 
-/// Facebook Page connection dialog — mirrors `ApiKeyDialog`:
-/// one token field + **Test & Save**. The connection persists only after
-/// `GET /me` verification succeeds; the resolved Page name then shows in
-/// the settings tile. Disconnect lives here, not in the settings screen.
+enum _TokenMode { user, page }
+
+/// Facebook connection dialog. A user token is exchanged for Page tokens via
+/// `/me/accounts`; only the derived Page tokens are stored. The page-token
+/// path remains for users who already have one.
 class FacebookConnectionDialog extends ConsumerStatefulWidget {
   const FacebookConnectionDialog({super.key});
 
@@ -29,24 +28,11 @@ class FacebookConnectionDialog extends ConsumerStatefulWidget {
 
 class _FacebookConnectionDialogState
     extends ConsumerState<FacebookConnectionDialog> {
-  late TextEditingController _controller;
+  final _controller = TextEditingController();
+  _TokenMode _mode = _TokenMode.user;
   bool _isLoading = false;
   bool _obscureText = true;
   String? _errorText;
-
-  @override
-  void initState() {
-    super.initState();
-    _controller = TextEditingController();
-    _loadExistingToken();
-  }
-
-  Future<void> _loadExistingToken() async {
-    final existing = await getIt<PreferencesService>().getFacebookPageToken();
-    if (mounted && existing != null && existing.isNotEmpty) {
-      setState(() => _controller.text = existing);
-    }
-  }
 
   @override
   void dispose() {
@@ -60,9 +46,10 @@ class _FacebookConnectionDialogState
       _errorText = null;
     });
     try {
-      final error = await ref
-          .read(facebookViewModelProvider.notifier)
-          .connect(_controller.text);
+      final notifier = ref.read(facebookViewModelProvider.notifier);
+      final error = _mode == _TokenMode.user
+          ? await notifier.connectWithUserToken(_controller.text)
+          : await notifier.connectPageToken(_controller.text);
       if (error != null) {
         // Never surface or log the raw token or URL — message only.
         if (mounted) setState(() => _errorText = error);
@@ -70,17 +57,53 @@ class _FacebookConnectionDialogState
       }
       if (mounted) {
         Haptics.mediumImpact();
+        final connection = ref.read(facebookViewModelProvider);
         Navigator.of(context).pop();
-        final pageName = ref.read(facebookViewModelProvider).pageName;
-        ScaffoldMessenger.of(context)
-            .showSnackBar(SnackBar(content: Text('Connected · $pageName')));
+        final message = connection.hasMultiplePages
+            ? 'Connected ${connection.pages.length} Pages · '
+                  '${connection.pageName}'
+            : 'Connected · ${connection.pageName}';
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text(message)));
       }
     } finally {
       if (mounted) setState(() => _isLoading = false);
     }
   }
 
-  Future<void> _disconnect() async {
+  Future<void> _disconnectActive() async {
+    setState(() => _isLoading = true);
+    try {
+      await ref.read(facebookViewModelProvider.notifier).disconnectActivePage();
+      if (mounted) Navigator.of(context).pop();
+    } finally {
+      if (mounted) setState(() => _isLoading = false);
+    }
+  }
+
+  Future<void> _disconnectAll() async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: const Text('Disconnect every Page?'),
+        content: const Text(
+          'This removes all Page tokens, publish history and drafts from '
+          'this device. You can reconnect at any time.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(dialogContext).pop(false),
+            child: const Text('Keep Pages'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.of(dialogContext).pop(true),
+            child: const Text('Disconnect all'),
+          ),
+        ],
+      ),
+    );
+    if (confirmed != true || !mounted) return;
     setState(() => _isLoading = true);
     try {
       await ref.read(facebookViewModelProvider.notifier).disconnect();
@@ -94,6 +117,7 @@ class _FacebookConnectionDialogState
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final connection = ref.watch(facebookViewModelProvider);
+    final isUser = _mode == _TokenMode.user;
 
     return Dialog(
       shape: const RoundedRectangleBorder(
@@ -102,8 +126,6 @@ class _FacebookConnectionDialogState
       backgroundColor: theme.colorScheme.surface,
       child: ConstrainedBox(
         constraints: const BoxConstraints(maxWidth: 420),
-        // Scrollable so short screens (landscape / big font scale) can reach
-        // the action buttons instead of overflowing.
         child: SingleChildScrollView(
           padding: const EdgeInsets.all(AppSpacing.xl),
           child: Column(
@@ -130,7 +152,7 @@ class _FacebookConnectionDialogState
                   const SizedBox(width: AppSpacing.md),
                   Expanded(
                     child: Text(
-                      'Connect Facebook Page',
+                      isUser ? 'Connect Pages' : 'Connect a Page',
                       style: theme.textTheme.titleMedium?.copyWith(
                         fontWeight: FontWeight.w700,
                       ),
@@ -142,11 +164,47 @@ class _FacebookConnectionDialogState
                   ),
                 ],
               ),
-              const SizedBox(height: AppSpacing.xs),
+              const SizedBox(height: AppSpacing.sm),
+              SegmentedButton<_TokenMode>(
+                showSelectedIcon: false,
+                segments: const [
+                  ButtonSegment(
+                    value: _TokenMode.user,
+                    label: Text('User token'),
+                  ),
+                  ButtonSegment(
+                    value: _TokenMode.page,
+                    label: Text('Page token'),
+                  ),
+                ],
+                selected: {_mode},
+                onSelectionChanged: _isLoading
+                    ? null
+                    : (selection) {
+                        setState(() {
+                          _mode = selection.first;
+                          _controller.clear();
+                          _errorText = null;
+                          _obscureText = true;
+                        });
+                      },
+              ),
+              const SizedBox(height: AppSpacing.md),
               Text(
                 connection.isConnected
-                    ? 'Connected · ${connection.pageName}. Paste a new token to switch Pages.'
-                    : 'Create a Page access token in Meta Business Suite, then paste it here. It is verified against Facebook before saving and stays in secure storage on this device — never logged. Posts are only public once the Meta app is in Live mode.',
+                    ? 'Connected · ${connection.pageName}'
+                          '${connection.hasMultiplePages ? ' (+${connection.pages.length - 1} more)' : ''}. '
+                          'Paste a token to add or refresh Pages.'
+                    : isUser
+                    ? 'Recommended. Create a user token in Meta Business Suite with '
+                          'pages_show_list, pages_read_engagement and '
+                          'pages_manage_posts, then paste it here. All your '
+                          'Pages are detected and each Page token is stored '
+                          'securely on this device. The user token itself is '
+                          'discarded immediately and never saved or logged.'
+                    : 'Paste a Page access token. It is verified against '
+                          'Facebook before saving and stays in secure storage '
+                          'on this device — never logged.',
                 style: theme.textTheme.bodySmall?.copyWith(
                   color: theme.colorScheme.onSurfaceVariant,
                 ),
@@ -154,9 +212,8 @@ class _FacebookConnectionDialogState
               const SizedBox(height: AppSpacing.lg),
               AppInput(
                 controller: _controller,
-                label: 'Page access token',
+                label: isUser ? 'User access token' : 'Page access token',
                 hint: 'EAA…',
-                // Flutter asserts `!obscureText || maxLines == 1`.
                 maxLines: _obscureText ? 1 : 2,
                 obscureText: _obscureText,
                 suffixIcon: IconButton(
@@ -181,8 +238,6 @@ class _FacebookConnectionDialogState
                 ),
               ],
               const SizedBox(height: AppSpacing.xl),
-              // OverflowBar stacks the actions vertically on narrow dialogs
-              // (a Row overflowed by 18px at default font scale).
               OverflowBar(
                 alignment: MainAxisAlignment.end,
                 overflowAlignment: OverflowBarAlignment.end,
@@ -191,15 +246,28 @@ class _FacebookConnectionDialogState
                 children: [
                   if (connection.isConnected)
                     TextButton(
-                      onPressed: _isLoading ? null : _disconnect,
-                      child: const Text('Disconnect'),
+                      onPressed: _isLoading
+                          ? null
+                          : connection.hasMultiplePages
+                          ? _disconnectActive
+                          : _disconnectAll,
+                      child: Text(
+                        connection.hasMultiplePages
+                            ? 'Disconnect this Page'
+                            : 'Disconnect',
+                      ),
+                    ),
+                  if (connection.hasMultiplePages)
+                    TextButton(
+                      onPressed: _isLoading ? null : _disconnectAll,
+                      child: const Text('Disconnect all'),
                     ),
                   TextButton(
                     onPressed: () => Navigator.of(context).pop(),
                     child: const Text('Cancel'),
                   ),
                   AppButton(
-                    label: 'Test & Save',
+                    label: isUser ? 'Find Pages' : 'Test & Save',
                     isLoading: _isLoading,
                     height: 44,
                     onPressed: _isLoading ? null : _testAndSave,

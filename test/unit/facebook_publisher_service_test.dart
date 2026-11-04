@@ -273,6 +273,82 @@ void main() {
       });
     });
 
+    group('scheduling', () {
+      test('publishText sends published=false + UTC timestamp', () async {
+        final adapter = _GraphAdapter(200, {'id': 'sched_1'});
+        final at = DateTime.now().add(const Duration(hours: 2));
+        final result = await _service(adapter).publishText(
+          pageId: '123456',
+          token: _token,
+          message: 'Later #FAM',
+          scheduledAt: at,
+        );
+        expect(result.isScheduled, isTrue);
+        expect(result.permalink, isEmpty);
+        final body = adapter.lastBody!;
+        expect(body, contains('published=false'));
+        expect(body, contains('${at.toUtc().millisecondsSinceEpoch ~/ 1000}'));
+        expect(adapter.lastRequest!.uri.toString(), isNot(contains('EAA')));
+      });
+
+      test('publishPhoto sends alt text and schedule fields', () async {
+        final path = await _tempPng();
+        final adapter = _GraphAdapter(200, {'id': 'p', 'post_id': 'q'});
+        final at = DateTime.now().add(const Duration(hours: 3));
+        await _service(adapter).publishPhoto(
+          pageId: '123456',
+          token: _token,
+          filePath: path,
+          message: 'caption',
+          altText: 'A green football pitch',
+          scheduledAt: at,
+        );
+        final fields = (adapter.lastRequest!.data as FormData).fields;
+        expect(
+          fields.firstWhere((e) => e.key == 'alt_text_custom').value,
+          'A green football pitch',
+        );
+        expect(fields.firstWhere((e) => e.key == 'published').value, 'false');
+        expect(
+          fields.firstWhere((e) => e.key == 'scheduled_publish_time').value,
+          '${at.toUtc().millisecondsSinceEpoch ~/ 1000}',
+        );
+      });
+
+      test('cancelScheduled sends DELETE with token in the body', () async {
+        final adapter = _GraphAdapter(200, {'success': true});
+        await _service(adapter)
+            .cancelScheduled(postId: '123_456', token: _token);
+        expect(adapter.lastRequest!.method, 'DELETE');
+        expect(adapter.lastRequest!.uri.toString(), contains('/123_456'));
+        expect(adapter.lastBody, contains('access_token='));
+        expect(adapter.lastRequest!.uri.toString(), isNot(contains('EAA')));
+      });
+
+      test('listScheduled parses data rows and UTC seconds', () async {
+        final adapter = _GraphAdapter(200, {
+          'data': [
+            {
+              'id': '1_2',
+              'message': 'Soon',
+              'scheduled_publish_time': 1893456000,
+            },
+          ],
+        });
+        final posts = await _service(adapter)
+            .listScheduled(pageId: '123456', token: _token);
+        expect(posts.single.id, '1_2');
+        expect(posts.single.message, 'Soon');
+        expect(
+          posts.single.scheduledAt,
+          DateTime.fromMillisecondsSinceEpoch(
+            1893456000000,
+            isUtc: true,
+          ).toLocal(),
+        );
+      });
+    });
+
     group('publishPhoto', () {
       test('multipart /photos uses post_id for the permalink', () async {
         final path = await _tempPng();
@@ -343,6 +419,130 @@ void main() {
           expect(e.kind, FacebookApiErrorKind.expiredToken);
           expect(e.needsReconnect, isTrue);
         }
+      });
+    });
+    group('multi-photo publish', () {
+      test(
+        'uploadUnpublishedPhoto sends published=false and one source',
+        () async {
+          final path = await _tempPng();
+          final adapter = _GraphAdapter(200, {'id': 'photo_1'});
+          final id = await _service(adapter).uploadUnpublishedPhoto(
+            pageId: '123456',
+            token: _token,
+            filePath: path,
+            altText: 'Stadium at night',
+          );
+
+          expect(id, 'photo_1');
+          final request = adapter.lastRequest!;
+          expect(request.uri.toString(), contains('/v23.0/123456/photos'));
+          expect(request.uri.toString(), isNot(contains('EAA')));
+          final form = request.data as FormData;
+          expect(
+            form.fields.firstWhere((e) => e.key == 'published').value,
+            'false',
+          );
+          expect(
+            form.fields.firstWhere((e) => e.key == 'alt_text_custom').value,
+            'Stadium at night',
+          );
+          expect(
+            form.fields.firstWhere((e) => e.key == 'access_token').value,
+            _token,
+          );
+          expect(form.files.map((e) => e.key), ['source']);
+          expect(request.receiveTimeout, AppConstants.photoUploadTimeout);
+        },
+      );
+
+      test('upload without a photo id maps to mediaUploadFailed', () async {
+        final path = await _tempPng();
+        final service = _service(_GraphAdapter(200, {'unexpected': 1}));
+        try {
+          await service.uploadUnpublishedPhoto(
+            pageId: '123456',
+            token: _token,
+            filePath: path,
+          );
+          fail('should throw');
+        } on FacebookApiException catch (e) {
+          expect(e.kind, FacebookApiErrorKind.mediaUploadFailed);
+        }
+      });
+
+      test(
+        'publishMultiPhoto sends attached_media JSON, token in body',
+        () async {
+          final adapter = _GraphAdapter(200, {'id': 'post_1'});
+          final result = await _service(adapter).publishMultiPhoto(
+            pageId: '123456',
+            token: _token,
+            photoIds: const ['p1', 'p2', 'p3'],
+            message: 'Four photos of the match',
+          );
+
+          final request = adapter.lastRequest!;
+          expect(request.uri.toString(), contains('/v23.0/123456/feed'));
+          expect(request.uri.toString(), isNot(contains('EAA')));
+          final body = request.data as Map<String, dynamic>;
+          expect(body['access_token'], _token);
+          expect(body['message'], 'Four photos of the match');
+          final media = body['attached_media'] as List;
+          expect(media, hasLength(3));
+          expect(media.first, {'media_fbid': 'p1'});
+          expect(media.last, {'media_fbid': 'p3'});
+
+          expect(result.id, 'post_1');
+          expect(result.postId, 'post_1');
+          expect(result.isPhoto, isTrue);
+          expect(result.permalink, 'https://www.facebook.com/post_1');
+        },
+      );
+
+      test('publishMultiPhoto adds schedule fields when scheduled', () async {
+        final adapter = _GraphAdapter(200, {'id': 'sched_multi'});
+        final at = DateTime.now().add(const Duration(hours: 5));
+        final result = await _service(adapter).publishMultiPhoto(
+          pageId: '123456',
+          token: _token,
+          photoIds: const ['p1', 'p2'],
+          message: 'Later',
+          scheduledAt: at,
+        );
+        final body = adapter.lastRequest!.data as Map<String, dynamic>;
+        expect(body['published'], 'false');
+        expect(
+          body['scheduled_publish_time'],
+          '${at.toUtc().millisecondsSinceEpoch ~/ 1000}',
+        );
+        expect(result.isScheduled, isTrue);
+        expect(result.permalink, isEmpty);
+      });
+
+      test('empty photo list throws before any request', () async {
+        final adapter = _GraphAdapter(200, {'id': 'x'});
+        final service = _service(adapter);
+        expect(
+          () => service.publishMultiPhoto(
+            pageId: '123456',
+            token: _token,
+            photoIds: const [],
+            message: 'text',
+          ),
+          throwsA(isA<FacebookApiException>()),
+        );
+        expect(adapter.lastRequest, isNull);
+      });
+
+      test('deletePhoto uses DELETE with the token in the body', () async {
+        final adapter = _GraphAdapter(200, {'success': true});
+        await _service(adapter).deletePhoto(photoId: 'p1', token: _token);
+        final request = adapter.lastRequest!;
+        expect(request.method, 'DELETE');
+        expect(request.uri.toString(), contains('/p1'));
+        expect(request.uri.toString(), isNot(contains('EAA')));
+        expect(adapter.lastBody, contains('access_token='));
       });
     });
   });

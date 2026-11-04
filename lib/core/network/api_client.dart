@@ -46,12 +46,14 @@ class ApiClient {
     Map<String, dynamic>? queryParameters,
     Options? options,
     CancelToken? cancelToken,
+    ProgressCallback? onSendProgress,
   }) => _dio.post<T>(
     path,
     data: data,
     queryParameters: queryParameters,
     options: options,
     cancelToken: cancelToken,
+    onSendProgress: onSendProgress,
   );
 
   Future<Response<T>> get<T>(
@@ -61,6 +63,20 @@ class ApiClient {
     CancelToken? cancelToken,
   }) => _dio.get<T>(
     path,
+    queryParameters: queryParameters,
+    options: options,
+    cancelToken: cancelToken,
+  );
+
+  Future<Response<T>> delete<T>(
+    String path, {
+    Object? data,
+    Map<String, dynamic>? queryParameters,
+    Options? options,
+    CancelToken? cancelToken,
+  }) => _dio.delete<T>(
+    path,
+    data: data,
     queryParameters: queryParameters,
     options: options,
     cancelToken: cancelToken,

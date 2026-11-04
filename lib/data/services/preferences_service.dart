@@ -10,6 +10,7 @@ import '../../domain/models/custom_pill.dart';
 import '../../domain/models/hashtag_group.dart';
 import '../../domain/models/vision_mode.dart';
 import '../models/ai_provider.dart';
+import 'facebook_publisher_service.dart';
 
 /// Manages user preferences and secure API key storage.
 /// Mirrors Android's PreferencesManager with EncryptedSharedPreferences.
@@ -83,12 +84,52 @@ class PreferencesService {
 
   // === Facebook Page connection ===
 
+  /// Token for the active Page (falls back to the legacy single key during
+  /// migration).
   Future<String?> getFacebookPageToken() async {
+    final active = facebookActivePageId;
+    if (active != null && active.isNotEmpty) {
+      final token = await getFacebookPageTokenFor(active);
+      if (token != null && token.isNotEmpty) return token;
+    }
     try {
       return await _secureStorage.read(key: AppConstants.keyFacebookPageToken);
     } catch (e) {
       return null;
     }
+  }
+
+  Future<String?> getFacebookPageTokenFor(String pageId) async {
+    if (pageId.isEmpty) return null;
+    try {
+      return await _secureStorage.read(
+        key: AppConstants.facebookPageTokenKey(pageId),
+      );
+    } catch (_) {
+      return null;
+    }
+  }
+
+  Future<void> setFacebookPageTokenFor(String pageId, String value) async {
+    if (pageId.isEmpty) return;
+    final key = AppConstants.facebookPageTokenKey(pageId);
+    try {
+      await _secureStorage.write(key: key, value: value);
+    } catch (_) {
+      try {
+        await _secureStorage.delete(key: key);
+        await _secureStorage.write(key: key, value: value);
+      } catch (_) {}
+    }
+  }
+
+  Future<void> deleteFacebookPageToken(String pageId) async {
+    if (pageId.isEmpty) return;
+    try {
+      await _secureStorage.delete(
+        key: AppConstants.facebookPageTokenKey(pageId),
+      );
+    } catch (_) {}
   }
 
   Future<void> setFacebookPageToken(String value) async {
@@ -108,14 +149,137 @@ class PreferencesService {
     }
   }
 
-  /// Full disconnect: token, Page identity and (stage 4) publish history.
+  // === Multi-page storage (prefs; tokens stay in secure storage) ===
+
+  List<FacebookPage> get facebookPages {
+    final raw = _prefs.getString(AppConstants.keyFacebookPages);
+    if (raw == null || raw.isEmpty) return const [];
+    try {
+      final decoded = jsonDecode(raw);
+      if (decoded is! List) return const [];
+      return decoded
+          .whereType<Map>()
+          .map((e) => e.cast<String, dynamic>())
+          .where((e) => (e['id'] as String? ?? '').isNotEmpty)
+          .map(
+            (e) => FacebookPage(
+              id: e['id'] as String,
+              name: e['name'] as String? ?? '',
+              pictureUrl: e['pictureUrl'] as String? ?? '',
+            ),
+          )
+          .toList(growable: false);
+    } catch (_) {
+      return const [];
+    }
+  }
+
+  Future<void> setFacebookPages(List<FacebookPage> pages) async {
+    await _prefs.setString(
+      AppConstants.keyFacebookPages,
+      jsonEncode([
+        for (final page in pages)
+          {
+            'id': page.id,
+            'name': page.name,
+            'pictureUrl': page.pictureUrl,
+          },
+      ]),
+    );
+  }
+
+  String? get facebookActivePageId =>
+      _prefs.getString(AppConstants.keyFacebookActivePage);
+
+  Future<void> setFacebookActivePageId(String pageId) async {
+    await _prefs.setString(AppConstants.keyFacebookActivePage, pageId);
+  }
+
+  Future<void> clearFacebookActivePage() async {
+    await _prefs.remove(AppConstants.keyFacebookActivePage);
+  }
+
+  /// Upserts a page in the list (identity only, never the token).
+  Future<void> upsertFacebookPage(FacebookPage page) async {
+    final pages = [...facebookPages];
+    final index = pages.indexWhere((p) => p.id == page.id);
+    if (index < 0) {
+      pages.add(page);
+    } else {
+      pages[index] = page;
+    }
+    await setFacebookPages(pages);
+  }
+
+  /// Removes one Page's token + entry. Promotes the next page as active and
+  /// leaves every other Page untouched.
+  Future<void> disconnectFacebookPage(String pageId) async {
+    await deleteFacebookPageToken(pageId);
+    final pages = facebookPages.where((p) => p.id != pageId).toList();
+    await setFacebookPages(pages);
+    if (facebookActivePageId == pageId) {
+      if (pages.isEmpty) {
+        await clearFacebookActivePage();
+        await _prefs.remove(AppConstants.keyFacebookPageId);
+        await _prefs.remove(AppConstants.keyFacebookPageName);
+        await _prefs.remove(AppConstants.keyFacebookPagePicture);
+      } else {
+        final next = pages.first;
+        await setFacebookActivePageId(next.id);
+        await setFacebookPageId(next.id);
+        await setFacebookPageName(next.name);
+        await setFacebookPagePicture(next.pictureUrl);
+      }
+    }
+  }
+
+  /// Full disconnect: every per-page token, Page entries, history, drafts.
   Future<void> disconnectFacebook() async {
+    for (final page in facebookPages) {
+      await deleteFacebookPageToken(page.id);
+    }
     try {
       await _secureStorage.delete(key: AppConstants.keyFacebookPageToken);
     } catch (_) {}
+    await _prefs.remove(AppConstants.keyFacebookPages);
+    await _prefs.remove(AppConstants.keyFacebookActivePage);
     await _prefs.remove(AppConstants.keyFacebookPageId);
     await _prefs.remove(AppConstants.keyFacebookPageName);
+    await _prefs.remove(AppConstants.keyFacebookPagePicture);
     await _prefs.remove(AppConstants.keyFacebookHistory);
+    await _prefs.remove(AppConstants.keyFacebookDraft);
+    await _prefs.remove(AppConstants.keyFacebookDrafts);
+    await _prefs.remove(AppConstants.keyFacebookActiveDraft);
+  }
+
+  /// Idempotent v11 → v12 migration: the legacy single token moves under
+  /// `facebook_page_token_<id>` and becomes the first Page entry.
+  Future<void> migrateLegacyFacebookPage() async {
+    if (_prefs.containsKey(AppConstants.keyFacebookPages)) return;
+    final legacyId = facebookPageId;
+    if (legacyId == null || legacyId.isEmpty) return;
+    String? legacyToken;
+    try {
+      legacyToken = await _secureStorage.read(
+        key: AppConstants.keyFacebookPageToken,
+      );
+    } catch (_) {}
+    if (legacyToken != null && legacyToken.isNotEmpty) {
+      await setFacebookPageTokenFor(legacyId, legacyToken);
+    }
+    final page = FacebookPage(
+      id: legacyId,
+      name: facebookPageName ?? '',
+      pictureUrl: facebookPagePicture ?? '',
+    );
+    await setFacebookPages([page]);
+    await setFacebookActivePageId(legacyId);
+    await _prefs.remove(AppConstants.keyFacebookPageId);
+    await _prefs.remove(AppConstants.keyFacebookPageName);
+    await _prefs.remove(AppConstants.keyFacebookPagePicture);
+    try {
+      await _secureStorage.delete(key: AppConstants.keyFacebookPageToken);
+    } catch (_) {}
   }
 
   // === Facebook Page identity (prefs) ===
@@ -132,6 +296,26 @@ class PreferencesService {
 
   Future<bool> setFacebookPageName(String value) {
     return _prefs.setString(AppConstants.keyFacebookPageName, value);
+  }
+
+  String? get facebookPagePicture =>
+      _prefs.getString(AppConstants.keyFacebookPagePicture);
+
+  Future<bool> setFacebookPagePicture(String value) {
+    return _prefs.setString(AppConstants.keyFacebookPagePicture, value);
+  }
+
+  // === Facebook compose draft (autosave) ===
+
+  String? get facebookDraftJson =>
+      _prefs.getString(AppConstants.keyFacebookDraft);
+
+  Future<bool> setFacebookDraftJson(String value) {
+    return _prefs.setString(AppConstants.keyFacebookDraft, value);
+  }
+
+  Future<bool> clearFacebookDraft() {
+    return _prefs.remove(AppConstants.keyFacebookDraft);
   }
 
   // === Theme ===

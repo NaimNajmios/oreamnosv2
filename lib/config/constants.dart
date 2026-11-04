@@ -106,5 +106,15 @@ abstract final class AppConstants {
   static const String keyFacebookPageToken = 'facebook_page_token';
   static const String keyFacebookPageId = 'facebook_page_id';
   static const String keyFacebookPageName = 'facebook_page_name';
+  static const String keyFacebookPagePicture = 'facebook_page_picture';
+  static const String keyFacebookPages = 'facebook_pages';
+  static const String keyFacebookActivePage = 'facebook_active_page';
   static const String keyFacebookHistory = 'facebook_publish_history';
+  static const String keyFacebookDraft = 'facebook_compose_draft';
+  static const String keyFacebookDrafts = 'facebook_drafts';
+  static const String keyFacebookActiveDraft = 'facebook_active_draft';
+
+  /// Per-Page token key. Only derived Page tokens ever use this shape.
+  static String facebookPageTokenKey(String pageId) =>
+      'facebook_page_token_$pageId';
 }

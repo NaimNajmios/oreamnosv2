@@ -15,6 +15,15 @@ enum FacebookApiErrorKind {
   /// Transport failure with no Graph error body (timeout, offline).
   network,
 
+  /// One or more photos failed to upload before the feed post was created.
+  mediaUploadFailed,
+
+  /// Insights are unavailable for this post/permission.
+  insightsUnavailable,
+
+  /// User-token → Page-token exchange failed (missing permission/expired).
+  pageTokenExchangeFailed,
+
   /// Anything else, including unexpected server responses.
   unknown,
 }
