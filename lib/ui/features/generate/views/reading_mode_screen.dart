@@ -18,10 +18,16 @@ import 'package:oreamnos/ui/features/settings/view_models/settings_view_model.da
 
 /// Full-screen distraction-free reading mode — now with drag-dismiss + persistent textSize.
 class ReadingModeScreen extends ConsumerStatefulWidget {
-  const ReadingModeScreen({super.key, required this.content, this.curatedPost});
+  const ReadingModeScreen({
+    super.key,
+    required this.content,
+    this.curatedPost,
+    this.uppercaseTitle = false,
+  });
 
   final String content;
   final CuratedPost? curatedPost;
+  final bool uppercaseTitle;
 
   @override
   ConsumerState<ReadingModeScreen> createState() => _ReadingModeScreenState();
@@ -118,6 +124,7 @@ class _ReadingModeScreenState extends ConsumerState<ReadingModeScreen>
                                   children: [
                                     TitleBlock(
                                       title: widget.curatedPost!.title,
+                                      uppercase: widget.uppercaseTitle,
                                     ),
                                     BodyBlock(
                                       bodyMarkdown:

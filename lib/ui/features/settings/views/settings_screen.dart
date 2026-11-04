@@ -19,10 +19,6 @@ import 'package:oreamnos/domain/models/app_theme_mode.dart';
 import 'package:oreamnos/domain/models/vision_mode.dart';
 
 import '../view_models/settings_view_model.dart';
-import '../../facebook/view_models/facebook_view_model.dart';
-import '../../../../data/services/facebook_history_service.dart';
-import '../../facebook/widgets/facebook_connection_dialog.dart';
-import '../../facebook/widgets/facebook_storage_tile.dart';
 import 'widgets/api_key_dialog.dart';
 import 'widgets/model_selection_dialog.dart';
 import 'widgets/provider_selection_dialog.dart';
@@ -73,9 +69,6 @@ class SettingsScreen extends ConsumerWidget {
         .where((g) => g.isDefault)
         .firstOrNull
         ?.name;
-
-    final facebook = ref.watch(facebookViewModelProvider);
-    final history = ref.watch(facebookHistoryProvider);
 
     Widget sectionCard({required List<Widget> children}) {
       return AppCard(
@@ -267,40 +260,6 @@ class SettingsScreen extends ConsumerWidget {
                 : '${state.customPills.length} custom pills',
             onTap: () => context.push(RoutePaths.pillManager),
           ),
-        ],
-      ),
-      const SectionHeader(title: 'Facebook'),
-      sectionCard(
-        children: [
-          SettingsTile(
-            leadingIcon: Icons.facebook_rounded,
-            title: 'Page publishing',
-            subtitle: facebook.isNotConnected
-                ? 'Publish generated posts & cards to your Page'
-                : facebook.subtitle,
-            onTap: () => FacebookConnectionDialog.show(context),
-          ),
-          SettingsTile(
-            leadingIcon: Icons.history_rounded,
-            title: 'Published Posts',
-            subtitle: history.isEmpty
-                ? 'Your recent Page posts will appear here'
-                : '${history.length} published · tap to open a post',
-            onTap: () => context.push(RoutePaths.facebookHistory),
-          ),
-          SettingsTile(
-            leadingIcon: Icons.drafts_outlined,
-            title: 'Drafts',
-            subtitle: 'Finish a post later; photos stay on this device',
-            onTap: () => context.push(RoutePaths.facebookDrafts),
-          ),
-          SettingsTile(
-            leadingIcon: Icons.account_tree_outlined,
-            title: 'Publishing workflows',
-            subtitle: 'Page post, Story, or both — set a default per Page',
-            onTap: () => context.push(RoutePaths.facebookWorkflows),
-          ),
-          const FacebookStorageTile(),
         ],
       ),
       const SectionHeader(title: 'Usage & Analytics'),

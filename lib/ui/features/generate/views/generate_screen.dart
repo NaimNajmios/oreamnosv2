@@ -1048,6 +1048,7 @@ class _GenerateScreenState extends ConsumerState<GenerateScreen> {
       final post = viewModel.curatedPost!;
       final copyText = post.toPlainTextFiltered(
         showTitle: viewModel.showTitle,
+        uppercaseTitle: viewModel.uppercaseTitle,
         showHashtags: viewModel.showHashtags,
         showSource: viewModel.showSource,
         appendSourceForCopy: true,
@@ -1163,6 +1164,7 @@ class _GenerateScreenState extends ConsumerState<GenerateScreen> {
                               extra: {
                                 'curatedPost': post,
                                 'copyText': copyText,
+                                'uppercaseTitle': viewModel.uppercaseTitle,
                               },
                             );
                           },
@@ -1196,6 +1198,20 @@ class _GenerateScreenState extends ConsumerState<GenerateScreen> {
                         onTap: ref
                             .read(generateViewModelProvider.notifier)
                             .toggleTitle,
+                      ),
+                      const SizedBox(width: AppSpacing.sm),
+                      AppChip(
+                        label: 'Uppercase',
+                        icon: viewModel.uppercaseTitle
+                            ? Icons.check_rounded
+                            : null,
+                        selected:
+                            viewModel.showTitle && viewModel.uppercaseTitle,
+                        onTap: viewModel.showTitle
+                            ? ref
+                                  .read(generateViewModelProvider.notifier)
+                                  .toggleUppercaseTitle
+                            : null,
                       ),
                       const SizedBox(width: AppSpacing.sm),
                       AppChip(
@@ -1234,7 +1250,11 @@ class _GenerateScreenState extends ConsumerState<GenerateScreen> {
                         .toggleEditMode(),
                   )
                 else ...[
-                  TitleBlock(title: post.title, visible: viewModel.showTitle),
+                  TitleBlock(
+                    title: post.title,
+                    visible: viewModel.showTitle,
+                    uppercase: viewModel.uppercaseTitle,
+                  ),
                   BodyBlock(bodyMarkdown: post.bodyMarkdown),
                 ],
                 if (viewModel.showHashtags && post.hashtags.isNotEmpty) ...[

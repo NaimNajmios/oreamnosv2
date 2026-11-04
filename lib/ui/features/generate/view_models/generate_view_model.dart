@@ -154,6 +154,7 @@ class GenerateViewModel extends Notifier<GenerateUiState>
           promptLength: length,
           isResearchModeEnabled: prefs.lastIsResearchMode,
           keepStructure: prefs.lastKeepStructure,
+          uppercaseTitle: prefs.lastUppercaseTitle,
         );
       }
     }
@@ -317,6 +318,19 @@ class GenerateViewModel extends Notifier<GenerateUiState>
 
   void toggleTitle() {
     state = state.copyWith(showTitle: !state.showTitle);
+  }
+
+  bool get uppercaseTitle => state.uppercaseTitle;
+
+  void toggleUppercaseTitle() {
+    final next = !state.uppercaseTitle;
+    state = state.copyWith(uppercaseTitle: next);
+    if (getIt.isRegistered<PreferencesService>()) {
+      final prefs = getIt<PreferencesService>();
+      if (prefs.persistGenerationOptions) {
+        prefs.setLastUppercaseTitle(next);
+      }
+    }
   }
 
   void toggleKeepStructure() {

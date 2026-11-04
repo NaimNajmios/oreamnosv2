@@ -544,6 +544,13 @@ class PreferencesService {
     return _prefs.setBool(AppConstants.keyLastKeepStructure, enabled);
   }
 
+  bool get lastUppercaseTitle =>
+      _prefs.getBool(AppConstants.keyLastUppercaseTitle) ?? false;
+
+  Future<bool> setLastUppercaseTitle(bool enabled) {
+    return _prefs.setBool(AppConstants.keyLastUppercaseTitle, enabled);
+  }
+
   // === Vision Extraction Mode (Auto cloud chain vs on-device only) ===
 
   VisionMode get visionMode =>

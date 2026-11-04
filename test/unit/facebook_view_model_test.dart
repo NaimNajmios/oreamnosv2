@@ -317,6 +317,23 @@ void main() {
       },
     );
 
+    test('startup maintenance does not form a provider cycle', () async {
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setInt(
+        'facebook_last_sweep',
+        DateTime.now().millisecondsSinceEpoch,
+      );
+      await prefs.setInt('facebook_last_reconcile', 0);
+      final container = await setUpVm(stub: _StubPublisher());
+      // Let the deferred maintenance microtask run.
+      await Future<void>.delayed(Duration.zero);
+      expect(
+        container.read(facebookDraftProvider),
+        isA<FacebookComposeState>(),
+      );
+      container.dispose();
+    });
+
     test('disconnect clears token, identity and state', () async {
       final container = await setUpVm(
         stub: _StubPublisher(

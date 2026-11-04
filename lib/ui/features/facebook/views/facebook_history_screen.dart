@@ -19,7 +19,9 @@ import 'package:oreamnos/ui/features/facebook/widgets/post_insights_sheet.dart';
 /// Tap opens a live post; long-press offers copy/reuse/remove, plus
 /// reschedule/cancel for scheduled posts.
 class FacebookHistoryScreen extends ConsumerStatefulWidget {
-  const FacebookHistoryScreen({super.key});
+  const FacebookHistoryScreen({super.key, this.initialTab = 0});
+
+  final int initialTab;
 
   @override
   ConsumerState<FacebookHistoryScreen> createState() =>
@@ -56,6 +58,7 @@ class _FacebookHistoryScreenState extends ConsumerState<FacebookHistoryScreen> {
 
     return DefaultTabController(
       length: 2,
+      initialIndex: widget.initialTab.clamp(0, 1),
       child: Scaffold(
         appBar: AppBar(
           title: Text(

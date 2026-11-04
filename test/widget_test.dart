@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
+import 'dart:convert';
+
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 
@@ -39,7 +41,7 @@ Future<Widget> _buildTestApp(
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
 
-  testWidgets('App renders with 4-tab navigation bar', (
+  testWidgets('App renders with 5-tab navigation bar', (
     WidgetTester tester,
   ) async {
     SharedPreferences.setMockInitialValues({});
@@ -54,14 +56,21 @@ void main() {
     // Verify the app title in AppBar
     expect(find.widgetWithText(AppBar, 'Oreamnos'), findsOneWidget);
 
-    // Verify 4 navigation destinations
+    // Verify 5 navigation destinations
     expect(find.text('Generate'), findsOneWidget);
     expect(find.text('Cards'), findsOneWidget);
+    expect(find.text('Publish'), findsOneWidget);
     expect(find.text('Usage'), findsOneWidget);
     expect(find.text('Settings'), findsOneWidget);
 
     // Verify the Generate CTA button
     expect(find.text('Generate Post'), findsOneWidget);
+
+    // Publish opens the hub.
+    await tester.tap(find.text('Publish'));
+    await tester.pumpAndSettle();
+    expect(find.widgetWithText(AppBar, 'Publish'), findsOneWidget);
+    expect(find.text('Connect a Page to start'), findsOneWidget);
   });
 
   testWidgets(
@@ -102,8 +111,35 @@ void main() {
       await tester.pumpAndSettle();
 
       expect(find.text('ADVANCED'), findsOneWidget);
+      // Publishing moved to its own bottom-nav tab.
+      expect(find.text('Page publishing'), findsNothing);
     },
   );
+
+  testWidgets('Publish tab shows the connected Page and create CTA', (
+    WidgetTester tester,
+  ) async {
+    SharedPreferences.setMockInitialValues({
+      'facebook_pages': jsonEncode([
+        {'id': 'p1', 'name': 'Trace Football', 'pictureUrl': ''},
+      ]),
+      'facebook_active_page': 'p1',
+    });
+    final sharedPrefs = await SharedPreferences.getInstance();
+    final preferencesService = _createTestPreferencesService(sharedPrefs);
+
+    await tester.pumpWidget(
+      await _buildTestApp(preferencesService, sharedPrefs),
+    );
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.text('Publish'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Trace Football'), findsOneWidget);
+    expect(find.text('Create a post'), findsOneWidget);
+    expect(find.text('New post'), findsWidgets);
+  });
 
   testWidgets('Navigation bar switches to Cards tab', (
     WidgetTester tester,

@@ -43,6 +43,24 @@ void main() {
       expect(plain, isNot(contains('**')));
     });
 
+    test('toPlainTextFiltered uppercases only the title when requested', () {
+      final post = CuratedPost.fromJson({
+        'title': 'Statistik Permainan Jude Bellingham',
+        'body': 'Permainan Jude Bellingham mengikut angka menentang Napoli.',
+        'hashtags': ['COYG'],
+        'source': {'label': '', 'url': ''},
+      });
+      final plain = post.toPlainTextFiltered(
+        uppercaseTitle: true,
+        showHashtags: true,
+      );
+      expect(plain, startsWith('STATISTIK PERMAINAN JUDE BELLINGHAM'));
+      expect(plain, isNot(contains('Statistik Permainan Jude')));
+      // Body and hashtags keep their original case.
+      expect(plain, contains('Permainan Jude Bellingham mengikut angka'));
+      expect(plain, contains('#COYG'));
+    });
+
     test('Bellingham golden case: 6 bullets survive paste as •', () {
       final post = CuratedPost.fromJson({
         'title': 'Statistik Permainan Jude Bellingham Lawan Napoli',

@@ -101,6 +101,7 @@ abstract final class AppConstants {
   static const String keyLastPromptLength = 'last_prompt_length';
   static const String keyLastIsResearchMode = 'last_is_research_mode';
   static const String keyLastKeepStructure = 'last_keep_structure';
+  static const String keyLastUppercaseTitle = 'last_uppercase_title';
 
   // === Facebook Publishing (secure + prefs) ===
   static const String keyFacebookPageToken = 'facebook_page_token';

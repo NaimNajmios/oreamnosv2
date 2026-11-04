@@ -44,7 +44,7 @@ class _FacebookStorageTileState extends State<FacebookStorageTile> {
       onTap: () async {
         await showDialog<void>(
           context: context,
-          builder: (_) => _StorageDialog(report: report),
+          builder: (_) => FacebookStorageDialog(report: report),
         );
         if (mounted) _load();
       },
@@ -52,16 +52,26 @@ class _FacebookStorageTileState extends State<FacebookStorageTile> {
   }
 }
 
-class _StorageDialog extends StatefulWidget {
-  const _StorageDialog({this.report});
+class FacebookStorageDialog extends StatefulWidget {
+  const FacebookStorageDialog({super.key, this.report});
 
   final FacebookStorageReport? report;
 
+  static Future<void> show(
+    BuildContext context, {
+    FacebookStorageReport? report,
+  }) {
+    return showDialog<void>(
+      context: context,
+      builder: (_) => FacebookStorageDialog(report: report),
+    );
+  }
+
   @override
-  State<_StorageDialog> createState() => _StorageDialogState();
+  State<FacebookStorageDialog> createState() => _FacebookStorageDialogState();
 }
 
-class _StorageDialogState extends State<_StorageDialog> {
+class _FacebookStorageDialogState extends State<FacebookStorageDialog> {
   late FacebookStorageReport? _report = widget.report;
   bool _loading = false;
   bool _sweeping = false;

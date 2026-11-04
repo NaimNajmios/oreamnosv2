@@ -5,7 +5,13 @@ import 'package:oreamnos/ui/core/widgets/typewriter_markdown.dart';
 class TitleBlock extends StatelessWidget {
   final String title;
   final bool visible;
-  const TitleBlock({super.key, required this.title, this.visible = true});
+  final bool uppercase;
+  const TitleBlock({
+    super.key,
+    required this.title,
+    this.visible = true,
+    this.uppercase = false,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -15,10 +21,11 @@ class TitleBlock extends StatelessWidget {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         SelectableText(
-          title,
+          uppercase ? title.toUpperCase() : title,
+          semanticsLabel: title,
           style: theme.textTheme.titleMedium?.copyWith(
             fontWeight: FontWeight.w700,
-            letterSpacing: -0.3,
+            letterSpacing: uppercase ? 0.4 : -0.3,
             height: 1.3,
             color: theme.colorScheme.onSurface,
           ),

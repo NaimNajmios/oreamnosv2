@@ -16,6 +16,7 @@ import '../../ui/features/facebook/views/facebook_comments_screen.dart';
 import '../../ui/features/facebook/views/facebook_drafts_screen.dart';
 import '../../ui/features/facebook/views/facebook_workflows_screen.dart';
 import '../../ui/features/facebook/views/facebook_history_screen.dart';
+import '../../ui/features/publish/views/publish_hub_screen.dart';
 import '../../ui/features/settings/views/debug_log_screen.dart';
 import '../../data/models/ai_provider.dart';
 import '../../domain/models/card_brief.dart';
@@ -33,6 +34,7 @@ abstract final class RoutePaths {
   static const String cardGenerator = '/card-generator';
   static const String debugLogs = '/debug-logs';
   static const String sessionHistory = '/sessions';
+  static const String publish = '/publish';
   static const String facebookCompose = '/facebook-compose';
   static const String facebookHistory = '/facebook-history';
   static const String facebookDrafts = '/facebook-drafts';
@@ -176,6 +178,11 @@ GoRouter createAppRouter({String? initialLocation}) {
             },
           ),
           GoRoute(
+            path: RoutePaths.publish,
+            pageBuilder: (context, state) =>
+                _kickoffTabPage(child: const PublishHubScreen()),
+          ),
+          GoRoute(
             path: RoutePaths.usage,
             pageBuilder: (context, state) =>
                 _kickoffTabPage(child: const UsageScreen()),
@@ -202,6 +209,7 @@ GoRouter createAppRouter({String? initialLocation}) {
                 content:
                     extra['copyText'] as String? ?? cp.toPlainTextFiltered(),
                 curatedPost: cp,
+                uppercaseTitle: extra['uppercaseTitle'] == true,
               );
             } else {
               final content =
@@ -236,8 +244,14 @@ GoRouter createAppRouter({String? initialLocation}) {
       ),
       GoRoute(
         path: RoutePaths.facebookHistory,
-        pageBuilder: (context, state) =>
-            _kickoffPage(child: const FacebookHistoryScreen()),
+        pageBuilder: (context, state) {
+          final tab = state.uri.queryParameters['tab'] ?? '';
+          return _kickoffPage(
+            child: FacebookHistoryScreen(
+              initialTab: tab == 'scheduled' ? 1 : 0,
+            ),
+          );
+        },
       ),
       GoRoute(
         path: RoutePaths.facebookDrafts,

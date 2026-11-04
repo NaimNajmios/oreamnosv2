@@ -1,5 +1,23 @@
 # Changelog — Oreamnos
 
+## v18 — Uppercase Title Toggle (2026-11-04)
+
+- **Title formatting:** the Generate output adds an **Uppercase** chip next to **Title**. When enabled, the title renders in uppercase with slightly wider tracking so it reads separately from the body.
+- **Consistent copy/share:** the uppercase title flows into copy, share, reading mode and the seeded Facebook composer draft; the body, hashtags and source keep their original case.
+- **Persistence:** the toggle is saved with the existing generation options and restored on launch when option persistence is enabled.
+- **Accessibility:** the original title remains the semantics label, so screen readers don’t spell out the uppercase text.
+- **Tests:** toggle state/persistence, copy formatting, and TitleBlock rendering.
+
+## v17 — Dedicated Publish Tab + Hub (2026-11-04)
+
+- **New bottom-nav section:** Generate · Cards · **Publish** · Usage · Settings. `/publish` opens a dedicated publishing hub.
+- **Hub UI:** Page identity/switcher, connection state, default workflow, **Create a post**, Drafts/Scheduled/Published counts, next scheduled post with countdown, continue-writing card, recent posts with insights and Story status/retry, and Manage links for Drafts, Published, Workflows and Storage.
+- **Settings cleanup:** the Facebook section (Page publishing, Published Posts, Drafts, Workflows, Storage) moved out of Settings into the Publish tab.
+- **History deep links:** `/facebook-history?tab=scheduled|published` opens the requested tab; the hub uses it for Up next and recent posts.
+- **Drafts provider:** `facebookDraftsProvider` keeps hub counts/list fresh after composer/drafts navigation and pull-to-refresh.
+- **Storage dialog:** extracted for reuse by the hub.
+- **Tests:** 5-tab navigation, Publish hub empty/connected states, Settings no longer exposes publishing, existing 466 tests still green.
+
 ## v16 — Facebook Workflows + Page Stories (2026-11-04)
 
 - **Publishing workflows:** reusable presets for Page post, Story, or Page + Story, with a default per Page. Settings gains `/facebook-workflows`; drafts auto-apply the default and the composer exposes a workflow chip, per-post toggles, and an editable Story title.

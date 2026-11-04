@@ -25,6 +25,7 @@ abstract class GenerateUiState with _$GenerateUiState {
     @Default(false) bool isResearchModeEnabled,
     @Default([]) List<String> searchSources,
     @Default(true) bool showTitle,
+    @Default(false) bool uppercaseTitle,
     @Default(true) bool showHashtags,
     @Default(true) bool showSource,
     String? twitterExtractionUrl,

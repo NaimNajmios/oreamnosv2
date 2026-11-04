@@ -66,7 +66,10 @@ class FacebookNotifier extends Notifier<FacebookUiState> {
         FacebookExpirySignal.onExpired = null;
       }
     });
-    unawaited(_runStartupMaintenance());
+    // Defer until the connection provider has finished building: the
+    // maintenance path reads the draft provider, and the draft provider reads
+    // this connection provider.
+    Future.microtask(_runStartupMaintenance);
     // Expired status starts as connected: only a failed publish (190)
     // marks it expired, and the next publish should try again first.
     return FacebookUiState(

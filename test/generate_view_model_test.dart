@@ -97,10 +97,12 @@ void main() {
       vm.setPromptLength(PromptLength.long);
       vm.toggleResearchMode();
       vm.toggleKeepStructure();
+      vm.toggleUppercaseTitle();
 
       expect(prefService.lastPromptLength, 'long');
       expect(prefService.lastIsResearchMode, isTrue);
       expect(prefService.lastKeepStructure, isTrue);
+      expect(prefService.lastUppercaseTitle, isTrue);
 
       // Rebuild container to verify initialization from persisted prefs
       final newContainer = ProviderContainer();
@@ -110,6 +112,7 @@ void main() {
       expect(newState.promptLength, PromptLength.long);
       expect(newState.isResearchModeEnabled, isTrue);
       expect(newState.keepStructure, isTrue);
+      expect(newState.uppercaseTitle, isTrue);
     });
 
     test('reset clears state and pending input', () {

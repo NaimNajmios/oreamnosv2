@@ -4,7 +4,7 @@ import 'package:go_router/go_router.dart';
 import 'package:oreamnos/config/routes/app_router.dart';
 import 'package:oreamnos/ui/core/utils/haptics.dart';
 
-/// Modern App Shell with Material 3 NavigationBar (Generate, Card Studio, Settings).
+/// Modern App Shell with Material 3 NavigationBar (Generate, Cards, Publish, Usage, Settings).
 class ModernAppShell extends StatelessWidget {
   const ModernAppShell({super.key, required this.child});
 
@@ -12,8 +12,9 @@ class ModernAppShell extends StatelessWidget {
 
   int _currentIndex(BuildContext context) {
     final location = GoRouterState.of(context).uri.path;
-    if (location.startsWith(RoutePaths.settings)) return 3;
-    if (location.startsWith(RoutePaths.usage)) return 2;
+    if (location.startsWith(RoutePaths.settings)) return 4;
+    if (location.startsWith(RoutePaths.usage)) return 3;
+    if (location.startsWith(RoutePaths.publish)) return 2;
     if (location.startsWith(RoutePaths.cardGenerator)) return 1;
     return 0; // default to generate
   }
@@ -26,8 +27,10 @@ class ModernAppShell extends StatelessWidget {
       case 1:
         context.go(RoutePaths.cardGenerator);
       case 2:
-        context.go(RoutePaths.usage);
+        context.go(RoutePaths.publish);
       case 3:
+        context.go(RoutePaths.usage);
+      case 4:
         context.go(RoutePaths.settings);
     }
   }
@@ -63,6 +66,11 @@ class ModernAppShell extends StatelessWidget {
               icon: Icon(Icons.palette_outlined, color: onSurface),
               selectedIcon: Icon(Icons.palette_rounded, color: onSurface),
               label: 'Cards',
+            ),
+            NavigationDestination(
+              icon: Icon(Icons.send_outlined, color: onSurface),
+              selectedIcon: Icon(Icons.send_rounded, color: onSurface),
+              label: 'Publish',
             ),
             NavigationDestination(
               icon: Icon(Icons.bar_chart_outlined, color: onSurface),

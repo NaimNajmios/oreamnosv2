@@ -584,13 +584,14 @@ class CuratedPost extends Equatable {
   /// For copy, we optionally append source url if requested.
   String toMarkdownFiltered({
     bool showTitle = true,
+    bool uppercaseTitle = false,
     bool showHashtags = true,
     bool showSource = false,
     bool appendSourceForCopy = false,
   }) {
     final buf = StringBuffer();
     if (showTitle && title.isNotEmpty) {
-      buf.writeln(title);
+      buf.writeln(uppercaseTitle ? title.toUpperCase() : title);
       buf.writeln();
     }
     if (bodyMarkdown.isNotEmpty) buf.writeln(bodyMarkdown);
@@ -619,12 +620,14 @@ class CuratedPost extends Equatable {
   /// paste exactly as displayed. Use for ALL copy/share callers.
   String toPlainTextFiltered({
     bool showTitle = true,
+    bool uppercaseTitle = false,
     bool showHashtags = true,
     bool showSource = false,
     bool appendSourceForCopy = false,
   }) {
     final md = toMarkdownFiltered(
       showTitle: showTitle,
+      uppercaseTitle: uppercaseTitle,
       showHashtags: showHashtags,
       showSource: showSource,
       appendSourceForCopy: appendSourceForCopy,

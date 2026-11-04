@@ -4,6 +4,24 @@ State machine, Graph calls, timezone rules, token storage, media lifecycle,
 post management, comments, storage, workflows and Story cross-posting.
 Release v16 (gap closure + configurable workflows + Page Stories).
 
+## Navigation (v17)
+
+Publishing owns the **Publish** bottom-nav tab (`/publish`). The tab root is
+`PublishHubScreen`:
+
+- Page identity + switch/manage
+- Create a post
+- Drafts / Scheduled / Published counts
+- Up next scheduled post (opens history `?tab=scheduled`)
+- Continue writing (active or newest draft)
+- Recent posts with insights and Story status/retry
+- Manage: Drafts, Published, Workflows, Storage
+
+Composer, history, drafts, workflows and comments remain full-screen pushes
+from the hub. Settings no longer contains Facebook tiles. Generate and Card
+Studio publish icons remain shortcuts into the composer and apply the Page’s
+default workflow.
+
 ## Security contract
 
 - **Page tokens** live only in `flutter_secure_storage` under
