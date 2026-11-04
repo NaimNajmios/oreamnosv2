@@ -1,5 +1,8 @@
+import 'dart:io';
+
 import 'package:flutter/painting.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:image/image.dart' as img;
 import 'package:oreamnos/data/services/facebook_image_cropper.dart';
 
 void main() {
@@ -102,6 +105,46 @@ void main() {
       );
       expect(rect.width, closeTo(250, 0.001));
       expect(rect.center, const Offset(500, 500));
+    });
+  });
+
+  group('FacebookImageCropper.cropToFile', () {
+    test('no-op crop returns the original file untouched', () async {
+      final dir = await Directory.systemTemp.createTemp('oreamnos_crop');
+      final source = File('${dir.path}/square.png');
+      final image = img.Image(width: 100, height: 100);
+      await source.writeAsBytes(img.encodePng(image));
+      FacebookImageCropper.clearCache();
+
+      final result = await FacebookImageCropper.cropToFile(
+        sourcePath: source.path,
+        targetAspect: 1.0,
+        outputDir: dir.path,
+      );
+      expect(result, source.path);
+      await dir.delete(recursive: true);
+    });
+
+    test('crop output is cached and reused', () async {
+      final dir = await Directory.systemTemp.createTemp('oreamnos_crop');
+      final source = File('${dir.path}/wide.png');
+      final image = img.Image(width: 200, height: 100);
+      await source.writeAsBytes(img.encodePng(image));
+      FacebookImageCropper.clearCache();
+
+      final first = await FacebookImageCropper.cropToFile(
+        sourcePath: source.path,
+        targetAspect: 1.0,
+        outputDir: dir.path,
+      );
+      final second = await FacebookImageCropper.cropToFile(
+        sourcePath: source.path,
+        targetAspect: 1.0,
+        outputDir: dir.path,
+      );
+      expect(first, isNotNull);
+      expect(second, first);
+      await dir.delete(recursive: true);
     });
   });
 }

@@ -113,6 +113,11 @@ abstract final class AppConstants {
   static const String keyFacebookDraft = 'facebook_compose_draft';
   static const String keyFacebookDrafts = 'facebook_drafts';
   static const String keyFacebookActiveDraft = 'facebook_active_draft';
+  static const String keyFacebookLastSweep = 'facebook_last_sweep';
+  static const String keyFacebookLastReconcile = 'facebook_last_reconcile';
+  static const String keyFacebookWorkflows = 'facebook_workflows';
+  static const String keyFacebookDefaultWorkflowPrefix =
+      'facebook_default_workflow_';
 
   /// Per-Page token key. Only derived Page tokens ever use this shape.
   static String facebookPageTokenKey(String pageId) =>

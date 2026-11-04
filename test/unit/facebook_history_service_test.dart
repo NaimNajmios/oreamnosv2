@@ -155,6 +155,53 @@ void main() {
       expect(cached.hasInsights, isTrue);
     });
 
+    test('updateMessage rewrites caption, snippet and editedAt', () async {
+      final prefs = await SharedPreferences.getInstance();
+      final service = FacebookHistoryService(prefs);
+      final record = await service.recordPublish(
+        postId: 'p1',
+        message: 'Original caption',
+        permalink: 'https://www.facebook.com/p1',
+        hasImage: false,
+      );
+      await service.updateMessage(record.id, 'New first line\nSecond line');
+
+      final updated = service.records.single;
+      expect(updated.message, 'New first line\nSecond line');
+      expect(updated.snippet, 'New first line');
+      expect(updated.editedAt, isNotNull);
+
+      final reloaded = FacebookHistoryService(prefs);
+      expect(reloaded.records.single.message, 'New first line\nSecond line');
+      expect(reloaded.records.single.editedAt, isNotNull);
+    });
+
+    test('richer insights persist across a restart', () async {
+      final prefs = await SharedPreferences.getInstance();
+      final service = FacebookHistoryService(prefs);
+      final record = await service.recordPublish(
+        postId: 'p1',
+        message: 'One',
+        permalink: 'https://www.facebook.com/p1',
+        hasImage: false,
+      );
+      await service.setInsights(
+        record.id,
+        FacebookPostInsights(
+          totalImpressions: 300,
+          engagedUsers: 45,
+          negativeFeedback: 2,
+          reactionsByType: const {'like': 10, 'love': 2},
+          fetchedAt: DateTime.now(),
+        ),
+      );
+      final reloaded = FacebookHistoryService(prefs).records.single;
+      expect(reloaded.totalImpressions, 300);
+      expect(reloaded.engagedUsers, 45);
+      expect(reloaded.negativeFeedback, 2);
+      expect(reloaded.reactionsByType, {'like': 10, 'love': 2});
+    });
+
     test('remove and clear update state and persist', () async {
       final prefs = await SharedPreferences.getInstance();
       final service = FacebookHistoryService(prefs);

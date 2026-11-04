@@ -545,5 +545,132 @@ void main() {
         expect(adapter.lastBody, contains('access_token='));
       });
     });
+
+    group('post lifecycle', () {
+      test('deletePost uses DELETE with the token in the body', () async {
+        final adapter = _GraphAdapter(200, {'success': true});
+        await _service(adapter).deletePost(postId: '123_9', token: _token);
+        final request = adapter.lastRequest!;
+        expect(request.method, 'DELETE');
+        expect(request.uri.toString(), contains('/v23.0/123_9'));
+        expect(request.uri.toString(), isNot(contains('EAA')));
+        expect(adapter.lastBody, contains('access_token='));
+      });
+
+      test('deletePost maps expired tokens', () async {
+        final service = _service(_GraphAdapter(400, _goldGraphBody));
+        try {
+          await service.deletePost(postId: '123_9', token: _token);
+          fail('should throw');
+        } on FacebookApiException catch (e) {
+          expect(e.kind, FacebookApiErrorKind.expiredToken);
+        }
+      });
+
+      test('updatePostMessage sends message + token in the body', () async {
+        final adapter = _GraphAdapter(200, {'success': true});
+        await _service(adapter).updatePostMessage(
+          postId: '123_9',
+          token: _token,
+          message: 'Updated caption',
+        );
+        final request = adapter.lastRequest!;
+        expect(request.method, 'POST');
+        expect(request.uri.toString(), contains('/v23.0/123_9'));
+        expect(request.uri.toString(), isNot(contains('EAA')));
+        expect(adapter.lastBody, contains('message=Updated+caption'));
+        expect(adapter.lastBody, contains('access_token='));
+      });
+
+      test('unsupported caption edit gets a fixable message', () async {
+        final service = _service(
+          _GraphAdapter(400, {
+            'error': {'code': 100, 'message': 'Unsupported post request'},
+          }),
+        );
+        try {
+          await service.updatePostMessage(
+            postId: '123_9',
+            token: _token,
+            message: 'New caption',
+          );
+          fail('should throw');
+        } on FacebookApiException catch (e) {
+          expect(e.kind, FacebookApiErrorKind.unknown);
+          expect(e.message, contains('Delete and repost'));
+        }
+      });
+
+      test('empty edit message is rejected before any request', () async {
+        final adapter = _GraphAdapter(200, {'success': true});
+        final service = _service(adapter);
+        expect(
+          () => service.updatePostMessage(
+            postId: '123_9',
+            token: _token,
+            message: '   ',
+          ),
+          throwsA(isA<FacebookApiException>()),
+        );
+        expect(adapter.lastRequest, isNull);
+      });
+    });
+    group('story publishing', () {
+      test(
+        'publishPhotoStory posts photo_id with the token in the body',
+        () async {
+          final adapter = _GraphAdapter(200, {
+            'success': true,
+            'post_id': 'story_1',
+          });
+          final result = await _service(adapter).publishPhotoStory(
+            pageId: '123456',
+            token: _token,
+            photoId: 'photo_1',
+          );
+          final request = adapter.lastRequest!;
+          expect(
+            request.uri.toString(),
+            contains('/v23.0/123456/photo_stories'),
+          );
+          expect(request.uri.toString(), isNot(contains('EAA')));
+          expect(adapter.lastBody, contains('photo_id=photo_1'));
+          expect(adapter.lastBody, contains('access_token='));
+          expect(result.postId, 'story_1');
+        },
+      );
+
+      test('missing Story id maps to storyUnavailable', () async {
+        final service = _service(_GraphAdapter(200, {'success': true}));
+        try {
+          await service.publishPhotoStory(
+            pageId: '123456',
+            token: _token,
+            photoId: 'photo_1',
+          );
+          fail('should throw');
+        } on FacebookApiException catch (e) {
+          expect(e.kind, FacebookApiErrorKind.storyUnavailable);
+        }
+      });
+
+      test('unsupported Story maps to storyUnavailable', () async {
+        final service = _service(
+          _GraphAdapter(400, {
+            'error': {'code': 100, 'message': 'Unsupported story request'},
+          }),
+        );
+        try {
+          await service.publishPhotoStory(
+            pageId: '123456',
+            token: _token,
+            photoId: 'photo_1',
+          );
+          fail('should throw');
+        } on FacebookApiException catch (e) {
+          expect(e.kind, FacebookApiErrorKind.storyUnavailable);
+        }
+      });
+    });
   });
 }

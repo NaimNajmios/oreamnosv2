@@ -12,6 +12,9 @@ import '../../ui/features/usage/views/session_list_screen.dart';
 import '../../ui/features/card_generator/views/card_generator_screen.dart';
 import '../../ui/features/generate/views/reading_mode_screen.dart';
 import '../../ui/features/facebook/views/facebook_compose_screen.dart';
+import '../../ui/features/facebook/views/facebook_comments_screen.dart';
+import '../../ui/features/facebook/views/facebook_drafts_screen.dart';
+import '../../ui/features/facebook/views/facebook_workflows_screen.dart';
 import '../../ui/features/facebook/views/facebook_history_screen.dart';
 import '../../ui/features/settings/views/debug_log_screen.dart';
 import '../../data/models/ai_provider.dart';
@@ -32,6 +35,9 @@ abstract final class RoutePaths {
   static const String sessionHistory = '/sessions';
   static const String facebookCompose = '/facebook-compose';
   static const String facebookHistory = '/facebook-history';
+  static const String facebookDrafts = '/facebook-drafts';
+  static const String facebookComments = '/facebook-comments';
+  static const String facebookWorkflows = '/facebook-workflows';
 }
 
 final rootNavigatorKey = GlobalKey<NavigatorState>();
@@ -232,6 +238,31 @@ GoRouter createAppRouter({String? initialLocation}) {
         path: RoutePaths.facebookHistory,
         pageBuilder: (context, state) =>
             _kickoffPage(child: const FacebookHistoryScreen()),
+      ),
+      GoRoute(
+        path: RoutePaths.facebookDrafts,
+        pageBuilder: (context, state) =>
+            _kickoffPage(child: const FacebookDraftsScreen()),
+      ),
+      GoRoute(
+        path: RoutePaths.facebookComments,
+        pageBuilder: (context, state) {
+          final extra = state.extra;
+          var postId = state.uri.queryParameters['postId'] ?? '';
+          var snippet = state.uri.queryParameters['snippet'] ?? '';
+          if (extra is Map) {
+            postId = (extra['postId'] ?? postId).toString();
+            snippet = (extra['snippet'] ?? snippet).toString();
+          }
+          return _kickoffPage(
+            child: FacebookCommentsScreen(postId: postId, postSnippet: snippet),
+          );
+        },
+      ),
+      GoRoute(
+        path: RoutePaths.facebookWorkflows,
+        pageBuilder: (context, state) =>
+            _kickoffPage(child: const FacebookWorkflowsScreen()),
       ),
       GoRoute(
         path: RoutePaths.hashtagManager,

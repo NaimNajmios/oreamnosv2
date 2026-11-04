@@ -77,6 +77,13 @@ class FacebookScheduledPost {
   final DateTime? scheduledAt;
 }
 
+/// Result of a Page Story publish.
+class FacebookStoryResult {
+  const FacebookStoryResult({required this.postId});
+
+  final String postId;
+}
+
 /// Publishes text posts and photos to a Facebook Page via maintainable
 /// Graph API calls on the pooled [ApiClient] (share timeouts, the
 /// ErrorMapping/retry pipeline and the debug LoggingInterceptor).
@@ -309,6 +316,109 @@ class FacebookPublisherService {
         options: _formOptions(),
       );
     } catch (_) {}
+  }
+
+  /// Publishes an already-uploaded unpublished photo as a Page Story.
+  /// The photo must not have been used in a published feed post.
+  Future<FacebookStoryResult> publishPhotoStory({
+    required String pageId,
+    required String token,
+    required String photoId,
+  }) async {
+    if (photoId.isEmpty) {
+      throw const FacebookApiException(
+        kind: FacebookApiErrorKind.storyUnavailable,
+        message: 'The Story image was not uploaded.',
+      );
+    }
+    try {
+      final response = await _client.post<Map<String, dynamic>>(
+        '$_pathBase/$pageId/photo_stories',
+        data: {'access_token': token, 'photo_id': photoId},
+        options: _formOptions(),
+      );
+      final data = _asMap(response.data);
+      final postId = data?['post_id']?.toString() ?? '';
+      if (postId.isEmpty) {
+        throw const FacebookApiException(
+          kind: FacebookApiErrorKind.storyUnavailable,
+          message: 'Facebook returned no Story id.',
+        );
+      }
+      return FacebookStoryResult(postId: postId);
+    } on DioException catch (e) {
+      final mapped = _map(e);
+      if (mapped.kind == FacebookApiErrorKind.unknown) {
+        throw FacebookApiException(
+          kind: FacebookApiErrorKind.storyUnavailable,
+          message:
+              "Facebook couldn't publish this Story. The Page post can still "
+              'be published.',
+          code: mapped.code,
+          subcode: mapped.subcode,
+        );
+      }
+      throw mapped;
+    }
+  }
+
+  /// Deletes a live post (or a scheduled one) on Graph. The token rides the
+  /// form body so it never appears in a URL.
+  Future<void> deletePost({
+    required String postId,
+    required String token,
+  }) async {
+    if (postId.isEmpty) {
+      throw const FacebookApiException(
+        kind: FacebookApiErrorKind.unknown,
+        message: 'Facebook returned no post id for this record.',
+      );
+    }
+    try {
+      await _client.delete<Map<String, dynamic>>(
+        '$_pathBase/$postId',
+        data: {'access_token': token},
+        options: _formOptions(),
+      );
+    } on DioException catch (e) {
+      throw _map(e);
+    }
+  }
+
+  /// Updates a published post's caption. Graph may reject this for some post
+  /// types; the caller surfaces a fixable message instead of changing local
+  /// state.
+  Future<void> updatePostMessage({
+    required String postId,
+    required String token,
+    required String message,
+  }) async {
+    if (message.trim().isEmpty) {
+      throw const FacebookApiException(
+        kind: FacebookApiErrorKind.unknown,
+        message: 'The caption cannot be empty.',
+      );
+    }
+    try {
+      await _client.post<Map<String, dynamic>>(
+        '$_pathBase/$postId',
+        data: {'access_token': token, 'message': message},
+        options: _formOptions(),
+      );
+    } on DioException catch (e) {
+      final mapped = _map(e);
+      if (mapped.kind == FacebookApiErrorKind.unknown) {
+        throw FacebookApiException(
+          kind: FacebookApiErrorKind.unknown,
+          message:
+              "Facebook doesn't allow editing this post's caption. "
+              'Delete and repost instead.',
+          code: mapped.code,
+          subcode: mapped.subcode,
+        );
+      }
+      throw mapped;
+    }
   }
 
   /// Cancels a scheduled post (`DELETE /{post-id}`). The token rides the

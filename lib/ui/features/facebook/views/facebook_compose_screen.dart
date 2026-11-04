@@ -5,6 +5,9 @@ import 'package:go_router/go_router.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:url_launcher/url_launcher.dart';
 
+import 'package:oreamnos/core/di/injection.dart';
+import 'package:oreamnos/data/services/facebook_workflow_store.dart';
+import 'package:oreamnos/config/routes/app_router.dart';
 import 'package:oreamnos/config/theme/app_spacing.dart';
 import 'package:oreamnos/ui/core/utils/haptics.dart';
 import 'package:oreamnos/ui/core/widgets/app_button.dart';
@@ -13,6 +16,7 @@ import 'package:oreamnos/ui/features/facebook/view_models/facebook_state.dart';
 import 'package:oreamnos/ui/features/facebook/view_models/facebook_view_model.dart';
 import 'package:oreamnos/ui/features/facebook/widgets/compose/facebook_compose_widgets.dart';
 import 'package:oreamnos/ui/features/facebook/widgets/facebook_connection_dialog.dart';
+import 'package:oreamnos/ui/features/facebook/widgets/page_switcher_sheet.dart';
 
 /// Facebook-style composer: page identity, message first, compact media bar,
 /// then a live feed preview that appears as soon as a photo is attached.
@@ -28,6 +32,7 @@ class _FacebookComposeScreenState extends ConsumerState<FacebookComposeScreen> {
   late final TextEditingController _textController;
   bool _previewMode = false;
   bool _allowPop = false;
+  bool _suppressPageMismatch = false;
 
   @override
   void initState() {
@@ -68,6 +73,182 @@ class _FacebookComposeScreenState extends ConsumerState<FacebookComposeScreen> {
 
   void _openConnectionDialog() {
     FacebookConnectionDialog.show(context);
+  }
+
+  Future<void> _openWorkflowSheet() async {
+    final connection = ref.read(facebookViewModelProvider);
+    final store = getIt<FacebookWorkflowStore>();
+    await showModalBottomSheet<void>(
+      context: context,
+      showDragHandle: true,
+      isScrollControlled: true,
+      builder: (sheetContext) => Consumer(
+        builder: (context, ref, _) {
+          final draft = ref.watch(facebookDraftProvider);
+          final workflows = store.forPage(connection.activePageId);
+          final defaultId = store.defaultForPage(connection.activePageId).id;
+          return SafeArea(
+            child: SingleChildScrollView(
+              padding: const EdgeInsets.fromLTRB(
+                AppSpacing.base,
+                0,
+                AppSpacing.base,
+                AppSpacing.base,
+              ),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  Text(
+                    'Publishing workflow',
+                    style: Theme.of(context).textTheme.titleMedium
+                        ?.copyWith(fontWeight: FontWeight.w700),
+                  ),
+                  const SizedBox(height: AppSpacing.xs),
+                  for (final workflow in workflows)
+                    ListTile(
+                      contentPadding: EdgeInsets.zero,
+                      leading: Icon(
+                        workflow.storyEnabled
+                            ? Icons.auto_stories_rounded
+                            : Icons.article_outlined,
+                      ),
+                      title: Text(workflow.name),
+                      subtitle: Text(workflow.destinationLabel),
+                      trailing: workflow.id == defaultId
+                          ? Icon(
+                              Icons.star_rounded,
+                              color: Theme.of(context).colorScheme.primary,
+                            )
+                          : null,
+                      onTap: () {
+                        ref
+                            .read(facebookDraftProvider.notifier)
+                            .applyWorkflow(workflow);
+                        Navigator.of(sheetContext).pop();
+                      },
+                    ),
+                  const Divider(),
+                  ListTile(
+                    contentPadding: EdgeInsets.zero,
+                    leading: const Icon(Icons.tune_rounded),
+                    title: const Text('Customize this post'),
+                    subtitle: const Text(
+                      'Toggle Page/Story and edit the title',
+                    ),
+                    onTap: () => Navigator.of(sheetContext).pop(),
+                  ),
+                  if (draft.workflowId.isNotEmpty)
+                    ListTile(
+                      contentPadding: EdgeInsets.zero,
+                      leading: const Icon(Icons.star_outline_rounded),
+                      title: const Text('Make default for this Page'),
+                      onTap: () async {
+                        await store.setDefaultForPage(
+                          connection.activePageId,
+                          draft.workflowId,
+                        );
+                        if (sheetContext.mounted) {
+                          Navigator.of(sheetContext).pop();
+                        }
+                      },
+                    ),
+                  ListTile(
+                    contentPadding: EdgeInsets.zero,
+                    leading: const Icon(Icons.settings_outlined),
+                    title: const Text('Manage workflows'),
+                    onTap: () async {
+                      Navigator.of(sheetContext).pop();
+                      await context.push(RoutePaths.facebookWorkflows);
+                    },
+                  ),
+                ],
+              ),
+            ),
+          );
+        },
+      ),
+    );
+  }
+
+  void _openPageSwitcher() {
+    final connection = ref.read(facebookViewModelProvider);
+    if (connection.pages.isEmpty) {
+      FacebookConnectionDialog.show(context);
+    } else {
+      PageSwitcherSheet.show(context);
+    }
+  }
+
+  String _pageNameFor(String pageId) {
+    for (final page in ref.read(facebookViewModelProvider).pages) {
+      if (page.id == pageId) {
+        return page.name.isEmpty ? 'this Page' : page.name;
+      }
+    }
+    return 'this Page';
+  }
+
+  Future<void> _handlePageChange(String? previous, String next) async {
+    if (next.isEmpty || _suppressPageMismatch) return;
+    final notifier = ref.read(facebookDraftProvider.notifier);
+    final draft = ref.read(facebookDraftProvider);
+    if (draft.isEmpty || draft.pageId == next || draft.pageId.isEmpty) {
+      notifier.retargetDraft(next, pageName: _pageNameFor(next));
+      return;
+    }
+    final targetName = _pageNameFor(next);
+    final draftName = _pageNameFor(draft.pageId);
+    final choice = await showDialog<String>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: const Text('Draft belongs to another Page'),
+        content: Text(
+          'This draft was written for $draftName. Posting it to $targetName '
+          'will use the new Page. What would you like to do?',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(dialogContext).pop('cancel'),
+            child: const Text('Keep original Page'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.of(dialogContext).pop('duplicate'),
+            child: const Text('Duplicate draft'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.of(dialogContext).pop('switch'),
+            child: const Text('Switch target'),
+          ),
+        ],
+      ),
+    );
+    if (!mounted) return;
+    switch (choice) {
+      case 'duplicate':
+        await notifier.duplicateDraftForPage(
+          next,
+          pageName: _pageNameFor(next),
+        );
+        if (mounted) {
+          _textController.text = ref.read(facebookDraftProvider).text;
+        }
+        break;
+      case 'switch':
+        notifier.retargetDraft(next, pageName: _pageNameFor(next));
+        break;
+      case 'cancel':
+        if (previous != null && previous.isNotEmpty) {
+          _suppressPageMismatch = true;
+          await ref
+              .read(facebookViewModelProvider.notifier)
+              .switchPage(previous);
+          _suppressPageMismatch = false;
+        }
+        break;
+      default:
+        break;
+    }
   }
 
   Future<void> _openPermalink(String permalink) async {
@@ -226,61 +407,44 @@ class _FacebookComposeScreenState extends ConsumerState<FacebookComposeScreen> {
   }
 
   Future<void> _pickSchedule() async {
-    final now = DateTime.now();
     final draft = ref.read(facebookDraftProvider);
-    final initial = draft.scheduledAt ?? now.add(const Duration(hours: 1));
-    final date = await showDatePicker(
+    final at = await showModalBottomSheet<DateTime>(
       context: context,
-      initialDate: initial,
-      firstDate: now,
-      lastDate: now.add(FacebookDraftNotifier.maxScheduleLead),
-      helpText: 'Schedule post',
+      showDragHandle: true,
+      isScrollControlled: true,
+      builder: (_) => _ScheduleSheet(
+        initial:
+            draft.scheduledAt ?? DateTime.now().add(const Duration(hours: 1)),
+      ),
     );
-    if (date == null || !mounted) return;
-    final time = await showTimePicker(
-      context: context,
-      initialTime: TimeOfDay.fromDateTime(initial),
-      helpText: 'Choose a time',
-    );
-    if (time == null || !mounted) return;
-    final at = DateTime(
-      date.year,
-      date.month,
-      date.day,
-      time.hour,
-      time.minute,
-    );
-    final error = FacebookDraftNotifier.scheduleValidationError(at);
-    if (error != null) {
-      Haptics.lightImpact();
-      ScaffoldMessenger.of(context)
-          .showSnackBar(SnackBar(content: Text(error)));
-      return;
-    }
+    if (at == null || !mounted) return;
     ref.read(facebookDraftProvider.notifier).setScheduledAt(at);
   }
 
-  Future<bool> _confirmDiscard() async {
-    final discard = await showDialog<bool>(
+  Future<String?> _promptCloseDraft() {
+    return showDialog<String>(
       context: context,
       builder: (dialogContext) => AlertDialog(
-        title: const Text('Discard draft?'),
+        title: const Text('Leave this draft?'),
         content: const Text(
-          'Your caption and photo have not been published. Discard them?',
+          'Save it to Drafts to finish later, or discard it for good.',
         ),
         actions: [
           TextButton(
-            onPressed: () => Navigator.of(dialogContext).pop(false),
+            onPressed: () => Navigator.of(dialogContext).pop('keep'),
             child: const Text('Keep editing'),
           ),
           TextButton(
-            onPressed: () => Navigator.of(dialogContext).pop(true),
+            onPressed: () => Navigator.of(dialogContext).pop('discard'),
             child: const Text('Discard'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.of(dialogContext).pop('save'),
+            child: const Text('Save draft'),
           ),
         ],
       ),
     );
-    return discard ?? false;
   }
 
   @override
@@ -298,6 +462,14 @@ class _FacebookComposeScreenState extends ConsumerState<FacebookComposeScreen> {
         }
       },
     );
+    ref.listen<String>(
+      facebookViewModelProvider.select((s) => s.activePageId),
+      (prev, next) {
+        if (prev != null && prev != next) {
+          _handlePageChange(prev, next);
+        }
+      },
+    );
 
     final published = draft.isFinished && draft.result != null;
     final hasUnsavedDraft =
@@ -310,9 +482,15 @@ class _FacebookComposeScreenState extends ConsumerState<FacebookComposeScreen> {
       canPop: _allowPop || !hasUnsavedDraft,
       onPopInvokedWithResult: (didPop, _) async {
         if (didPop) return;
-        final shouldDiscard = await _confirmDiscard();
-        if (!shouldDiscard || !mounted) return;
-        ref.read(facebookDraftProvider.notifier).clearDraft();
+        final choice = await _promptCloseDraft();
+        if (choice == null || choice == 'keep' || !mounted) return;
+        final notifier = ref.read(facebookDraftProvider.notifier);
+        if (choice == 'save') {
+          await notifier.saveDraftNow();
+        } else {
+          notifier.clearDraft();
+        }
+        if (!mounted) return;
         setState(() => _allowPop = true);
         await WidgetsBinding.instance.endOfFrame;
         if (!context.mounted) return;
@@ -334,6 +512,16 @@ class _FacebookComposeScreenState extends ConsumerState<FacebookComposeScreen> {
             ),
           ),
           actions: [
+            if (!published)
+              IconButton(
+                tooltip: 'Drafts',
+                icon: const Icon(Icons.drafts_outlined, size: 20),
+                onPressed: () async {
+                  await context.push(RoutePaths.facebookDrafts);
+                  if (!mounted) return;
+                  _textController.text = ref.read(facebookDraftProvider).text;
+                },
+              ),
             if (!published)
               IconButton(
                 tooltip: _previewMode ? 'Back to editing' : 'Preview post',
@@ -446,8 +634,19 @@ class _FacebookComposeScreenState extends ConsumerState<FacebookComposeScreen> {
                             pageName: connection.pageName,
                             pagePictureUrl: connection.pagePictureUrl,
                             needsConnection: needsConnection,
-                            onTap: _openConnectionDialog,
+                            onTap: _openPageSwitcher,
                           ),
+                          _WorkflowBar(draft: draft, onTap: _openWorkflowSheet),
+                          if (draft.storyEnabled)
+                            _StoryCard(
+                              draft: draft,
+                              onChanged: (value) => ref
+                                  .read(facebookDraftProvider.notifier)
+                                  .setStoryEnabled(value),
+                              onTitleChanged: (value) => ref
+                                  .read(facebookDraftProvider.notifier)
+                                  .setStoryTitle(value),
+                            ),
                           _ComposerCard(
                             controller: _textController,
                             draft: draft,
@@ -615,7 +814,7 @@ class _ComposerCard extends StatelessWidget {
   }
 }
 
-class _PreviewMode extends StatelessWidget {
+class _PreviewMode extends StatefulWidget {
   const _PreviewMode({
     required this.draft,
     required this.pageName,
@@ -629,32 +828,411 @@ class _PreviewMode extends StatelessWidget {
   final VoidCallback onBack;
 
   @override
+  State<_PreviewMode> createState() => _PreviewModeState();
+}
+
+class _PreviewModeState extends State<_PreviewMode> {
+  Brightness _brightness = Brightness.light;
+  bool _visitor = false;
+
+  @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final previewTheme = ThemeData(
+      useMaterial3: true,
+      colorScheme: ColorScheme.fromSeed(
+        seedColor: theme.colorScheme.primary,
+        brightness: _brightness,
+      ),
+    );
     return SingleChildScrollView(
       padding: const EdgeInsets.all(AppSpacing.base),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         spacing: AppSpacing.base,
         children: [
-          PostPreviewCard(
-            pageName: pageName,
-            pagePictureUrl: pagePictureUrl,
-            message: draft.text,
-            media: draft.media,
-            imagePath: draft.imagePath,
-            imageAspect: draft.imageAspect,
-            imageZoom: draft.mediaItem?.zoom ?? 1.0,
-            imageOffset: draft.mediaItem?.offset ?? Offset.zero,
-            imageAltText: draft.mediaItem?.altText ?? '',
-            maxMessageLines: 40,
+          Row(
+            children: [
+              SegmentedButton<Brightness>(
+                showSelectedIcon: false,
+                segments: const [
+                  ButtonSegment(
+                    value: Brightness.light,
+                    icon: Icon(Icons.light_mode_outlined, size: 16),
+                    label: Text('Light'),
+                  ),
+                  ButtonSegment(
+                    value: Brightness.dark,
+                    icon: Icon(Icons.dark_mode_outlined, size: 16),
+                    label: Text('Dark'),
+                  ),
+                ],
+                selected: {_brightness},
+                onSelectionChanged: (selection) {
+                  setState(() => _brightness = selection.first);
+                },
+              ),
+              const Spacer(),
+              FilterChip(
+                selected: _visitor,
+                label: const Text('Visitor view'),
+                onSelected: (value) => setState(() => _visitor = value),
+              ),
+            ],
+          ),
+          if (_visitor)
+            Text(
+              'Visitor view hides editing affordances.',
+              style: theme.textTheme.labelSmall?.copyWith(
+                color: theme.colorScheme.onSurfaceVariant,
+              ),
+            ),
+          Theme(
+            data: previewTheme,
+            child: PostPreviewCard(
+              pageName: widget.pageName,
+              pagePictureUrl: widget.pagePictureUrl,
+              message: widget.draft.text,
+              media: widget.draft.media,
+              imagePath: widget.draft.imagePath,
+              imageAspect: widget.draft.imageAspect,
+              imageZoom: widget.draft.mediaItem?.zoom ?? 1.0,
+              imageOffset: widget.draft.mediaItem?.offset ?? Offset.zero,
+              imageAltText: widget.draft.mediaItem?.altText ?? '',
+              maxMessageLines: 40,
+            ),
           ),
           Align(
             alignment: Alignment.centerLeft,
             child: TextButton.icon(
-              onPressed: onBack,
+              onPressed: widget.onBack,
               icon: const Icon(Icons.edit_outlined, size: 18),
               label: const Text('Back to editing'),
             ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _ScheduleSheet extends StatefulWidget {
+  const _ScheduleSheet({required this.initial});
+
+  final DateTime initial;
+
+  @override
+  State<_ScheduleSheet> createState() => _ScheduleSheetState();
+}
+
+class _ScheduleSheetState extends State<_ScheduleSheet> {
+  late DateTime _selected = widget.initial;
+
+  Future<void> _pickDate() async {
+    final now = DateTime.now();
+    final date = await showDatePicker(
+      context: context,
+      initialDate: _selected,
+      firstDate: now,
+      lastDate: now.add(FacebookDraftNotifier.maxScheduleLead),
+      helpText: 'Schedule post',
+    );
+    if (date == null || !mounted) return;
+    setState(() {
+      _selected = DateTime(
+        date.year,
+        date.month,
+        date.day,
+        _selected.hour,
+        _selected.minute,
+      );
+    });
+  }
+
+  Future<void> _pickTime() async {
+    final time = await showTimePicker(
+      context: context,
+      initialTime: TimeOfDay.fromDateTime(_selected),
+      helpText: 'Choose a time',
+    );
+    if (time == null || !mounted) return;
+    setState(() {
+      _selected = DateTime(
+        _selected.year,
+        _selected.month,
+        _selected.day,
+        time.hour,
+        time.minute,
+      );
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final error = FacebookDraftNotifier.scheduleValidationError(_selected);
+    return SafeArea(
+      child: Padding(
+        padding: const EdgeInsets.fromLTRB(
+          AppSpacing.base,
+          0,
+          AppSpacing.base,
+          AppSpacing.base,
+        ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Text(
+              'Schedule post',
+              style: theme.textTheme.titleMedium?.copyWith(
+                fontWeight: FontWeight.w700,
+              ),
+            ),
+            const SizedBox(height: 2),
+            Text(
+              'Stories can’t be scheduled. This schedules the Page post.',
+              style: theme.textTheme.labelSmall?.copyWith(
+                color: theme.colorScheme.onSurfaceVariant,
+              ),
+            ),
+            const SizedBox(height: AppSpacing.base),
+            ListTile(
+              contentPadding: EdgeInsets.zero,
+              leading: const Icon(Icons.calendar_today_outlined),
+              title: const Text('Date'),
+              trailing: Text(
+                '${_selected.month}/${_selected.day}/${_selected.year}',
+                style: theme.textTheme.bodyMedium,
+              ),
+              onTap: _pickDate,
+            ),
+            ListTile(
+              contentPadding: EdgeInsets.zero,
+              leading: const Icon(Icons.schedule_rounded),
+              title: const Text('Time'),
+              trailing: Text(
+                TimeOfDay.fromDateTime(_selected).format(context),
+                style: theme.textTheme.bodyMedium,
+              ),
+              onTap: _pickTime,
+            ),
+            Text(
+              'Device timezone: ${_selected.timeZoneName}',
+              style: theme.textTheme.labelSmall?.copyWith(
+                color: theme.colorScheme.onSurfaceVariant,
+              ),
+            ),
+            if (error != null) ...[
+              const SizedBox(height: AppSpacing.sm),
+              Text(
+                error,
+                style: theme.textTheme.bodySmall?.copyWith(
+                  color: theme.colorScheme.error,
+                ),
+              ),
+            ],
+            const SizedBox(height: AppSpacing.base),
+            AppButton(
+              label: 'Schedule post',
+              onPressed: error == null
+                  ? () => Navigator.of(context).pop(_selected)
+                  : null,
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _WorkflowBar extends StatelessWidget {
+  const _WorkflowBar({required this.draft, required this.onTap});
+
+  final FacebookComposeState draft;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final label = draft.workflowName.isNotEmpty
+        ? draft.workflowName
+        : draft.storyEnabled
+        ? 'Page + Story'
+        : 'Page post';
+    return AppCard(
+      onTap: onTap,
+      padding: const EdgeInsets.symmetric(
+        horizontal: AppSpacing.md,
+        vertical: AppSpacing.sm,
+      ),
+      child: Row(
+        children: [
+          Icon(
+            draft.storyEnabled
+                ? Icons.auto_stories_rounded
+                : Icons.article_outlined,
+            size: 20,
+            color: theme.colorScheme.primary,
+          ),
+          const SizedBox(width: AppSpacing.sm),
+          Expanded(
+            child: Text(
+              label,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: theme.textTheme.bodyMedium?.copyWith(
+                fontWeight: FontWeight.w700,
+              ),
+            ),
+          ),
+          Text(
+            draft.publishFeed && draft.storyEnabled
+                ? 'Page + Story'
+                : draft.storyEnabled
+                ? 'Story only'
+                : 'Page only',
+            style: theme.textTheme.labelSmall?.copyWith(
+              color: theme.colorScheme.onSurfaceVariant,
+            ),
+          ),
+          const SizedBox(width: 4),
+          Icon(
+            Icons.chevron_right_rounded,
+            size: 18,
+            color: theme.colorScheme.onSurfaceVariant,
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _StoryCard extends StatefulWidget {
+  const _StoryCard({
+    required this.draft,
+    required this.onChanged,
+    required this.onTitleChanged,
+  });
+
+  final FacebookComposeState draft;
+  final ValueChanged<bool> onChanged;
+  final ValueChanged<String> onTitleChanged;
+
+  @override
+  State<_StoryCard> createState() => _StoryCardState();
+}
+
+class _StoryCardState extends State<_StoryCard> {
+  late final TextEditingController _title;
+
+  @override
+  void initState() {
+    super.initState();
+    _title = TextEditingController(text: widget.draft.storyTitle);
+  }
+
+  @override
+  void didUpdateWidget(covariant _StoryCard oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (widget.draft.storyTitle != _title.text &&
+        widget.draft.storyTitle.isNotEmpty) {
+      _title.text = widget.draft.storyTitle;
+    }
+  }
+
+  @override
+  void dispose() {
+    _title.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final title = _title.text.trim();
+    return AppCard(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Row(
+            children: [
+              const Icon(Icons.auto_stories_rounded, size: 20),
+              const SizedBox(width: AppSpacing.sm),
+              Expanded(
+                child: Text(
+                  'Story',
+                  style: theme.textTheme.bodyMedium?.copyWith(
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+              ),
+              Switch(
+                value: widget.draft.storyEnabled,
+                onChanged: widget.onChanged,
+              ),
+            ],
+          ),
+          const SizedBox(height: AppSpacing.xs),
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              ClipRRect(
+                borderRadius: AppSpacing.borderRadiusMd,
+                child: Container(
+                  width: 84,
+                  height: 149,
+                  decoration: const BoxDecoration(
+                    gradient: LinearGradient(
+                      begin: Alignment.topLeft,
+                      end: Alignment.bottomRight,
+                      colors: [Color(0xFF0B3D91), Color(0xFF6D28D9)],
+                    ),
+                  ),
+                  padding: const EdgeInsets.all(8),
+                  alignment: Alignment.bottomLeft,
+                  child: Text(
+                    title.isEmpty ? 'Story title' : title,
+                    maxLines: 4,
+                    overflow: TextOverflow.ellipsis,
+                    style: theme.textTheme.labelMedium?.copyWith(
+                      color: Colors.white,
+                      fontWeight: FontWeight.w800,
+                      height: 1.1,
+                    ),
+                  ),
+                ),
+              ),
+              const SizedBox(width: AppSpacing.md),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    TextField(
+                      controller: _title,
+                      maxLength: 100,
+                      maxLines: 3,
+                      minLines: 1,
+                      onChanged: widget.onTitleChanged,
+                      decoration: const InputDecoration(
+                        labelText: 'Story title',
+                        hintText: 'Short headline, not the full caption',
+                        border: OutlineInputBorder(),
+                        counterText: '',
+                      ),
+                    ),
+                    Text(
+                      widget.draft.media.isEmpty
+                          ? 'No photo attached: a gradient Story card will be generated.'
+                          : 'Uses the cover photo. The full caption stays on the Page post.',
+                      style: theme.textTheme.labelSmall?.copyWith(
+                        color: theme.colorScheme.onSurfaceVariant,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
           ),
         ],
       ),
@@ -704,12 +1282,18 @@ class _ComposeActionBar extends StatelessWidget {
 
     final label = needsConnection
         ? 'Connect Page to post'
+        : draft.isPreparing
+        ? 'Preparing photos…'
         : draft.isPublishing
         ? (draft.media.length > 1
               ? 'Uploading photos…'
               : (draft.hasImage ? 'Uploading photo…' : 'Publishing…'))
         : scheduled
         ? 'Schedule for $scheduleLabel'
+        : !draft.publishFeed && draft.storyEnabled
+        ? 'Post Story'
+        : draft.storyEnabled
+        ? 'Post to $target + Story'
         : 'Post to $target';
 
     return SafeArea(
@@ -718,7 +1302,8 @@ class _ComposeActionBar extends StatelessWidget {
         mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          if (draft.isPublishing && progress != null) ...[
+          if ((draft.isPublishing || draft.isPreparing) &&
+              progress != null) ...[
             ClipRRect(
               borderRadius: AppSpacing.borderRadiusPill,
               child: LinearProgressIndicator(
@@ -729,7 +1314,9 @@ class _ComposeActionBar extends StatelessWidget {
             ),
             const SizedBox(height: AppSpacing.xs),
             Text(
-              _progressCopy(progress, draft.media.length),
+              draft.isPreparing
+                  ? 'Preparing photos…'
+                  : _progressCopy(progress, draft.media.length),
               textAlign: TextAlign.center,
               style: theme.textTheme.labelSmall?.copyWith(
                 color: theme.colorScheme.onSurfaceVariant,
@@ -868,12 +1455,49 @@ class _SuccessView extends StatelessWidget {
           Text(
             scheduled
                 ? 'Will publish to $target on ${_formatSchedule(at)}'
+                : draft.storyError != null
+                ? 'Page post published to $target · Story failed'
+                : draft.storyEnabled && draft.storyResult != null
+                ? draft.publishFeed
+                      ? 'Published to $target + Story'
+                      : 'Published to Story'
                 : 'Published to $target',
             textAlign: TextAlign.center,
             style: theme.textTheme.bodyMedium?.copyWith(
               color: theme.colorScheme.onSurfaceVariant,
             ),
           ),
+          if (draft.storyEnabled)
+            Padding(
+              padding: const EdgeInsets.only(top: AppSpacing.xs),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Icon(
+                    draft.storyResult != null
+                        ? Icons.check_circle_rounded
+                        : Icons.error_outline_rounded,
+                    size: 16,
+                    color: draft.storyResult != null
+                        ? theme.colorScheme.primary
+                        : theme.colorScheme.error,
+                  ),
+                  const SizedBox(width: 6),
+                  Flexible(
+                    child: Text(
+                      draft.storyResult != null
+                          ? 'Story published'
+                          : 'Story failed: ${draft.storyError ?? 'unknown error'}',
+                      style: theme.textTheme.labelSmall?.copyWith(
+                        color: draft.storyResult != null
+                            ? theme.colorScheme.primary
+                            : theme.colorScheme.error,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
           PostPreviewCard(
             pageName: pageName,
             pagePictureUrl: pagePictureUrl,

@@ -179,11 +179,7 @@ class PreferencesService {
       AppConstants.keyFacebookPages,
       jsonEncode([
         for (final page in pages)
-          {
-            'id': page.id,
-            'name': page.name,
-            'pictureUrl': page.pictureUrl,
-          },
+          {'id': page.id, 'name': page.name, 'pictureUrl': page.pictureUrl},
       ]),
     );
   }
@@ -274,12 +270,8 @@ class PreferencesService {
     );
     await setFacebookPages([page]);
     await setFacebookActivePageId(legacyId);
-    await _prefs.remove(AppConstants.keyFacebookPageId);
-    await _prefs.remove(AppConstants.keyFacebookPageName);
-    await _prefs.remove(AppConstants.keyFacebookPagePicture);
-    try {
-      await _secureStorage.delete(key: AppConstants.keyFacebookPageToken);
-    } catch (_) {}
+    // Keep legacy identity keys readable for one release; migration is
+    // guarded by `keyFacebookPages`, so they are never re-applied.
   }
 
   // === Facebook Page identity (prefs) ===
@@ -316,6 +308,30 @@ class PreferencesService {
 
   Future<bool> clearFacebookDraft() {
     return _prefs.remove(AppConstants.keyFacebookDraft);
+  }
+
+  // === Facebook maintenance throttles ===
+
+  DateTime? get lastFacebookSweep =>
+      _readMillis(AppConstants.keyFacebookLastSweep);
+
+  Future<void> setLastFacebookSweep(DateTime at) => _prefs.setInt(
+    AppConstants.keyFacebookLastSweep,
+    at.millisecondsSinceEpoch,
+  );
+
+  DateTime? get lastFacebookReconcile =>
+      _readMillis(AppConstants.keyFacebookLastReconcile);
+
+  Future<void> setLastFacebookReconcile(DateTime at) => _prefs.setInt(
+    AppConstants.keyFacebookLastReconcile,
+    at.millisecondsSinceEpoch,
+  );
+
+  DateTime? _readMillis(String key) {
+    final value = _prefs.getInt(key);
+    if (value == null) return null;
+    return DateTime.fromMillisecondsSinceEpoch(value);
   }
 
   // === Theme ===

@@ -9,13 +9,20 @@ import 'package:path_provider/path_provider.dart';
 import 'package:oreamnos/core/di/injection.dart';
 import 'package:uuid/uuid.dart';
 
+import '../../../../data/services/facebook_draft_store.dart';
+import '../../../../data/services/facebook_expiry_signal.dart';
 import '../../../../data/services/facebook_page_service.dart';
 import '../../../../data/services/facebook_image_cropper.dart';
+import '../../../../data/services/facebook_storage_service.dart';
 import '../../../../data/services/facebook_publisher_service.dart';
 import '../../../../data/services/facebook_history_service.dart';
 import '../../../../data/services/preferences_service.dart';
 import '../../../../domain/models/facebook_api_exception.dart';
+import '../../../../data/services/facebook_story_composer.dart';
+import '../../../../data/services/facebook_workflow_store.dart';
+import '../../../../domain/models/facebook_publish_workflow.dart';
 import '../../../../domain/models/facebook_post_record.dart';
+import '../../../../domain/services/facebook_story_title.dart';
 import '../../../../domain/services/facebook_text_formatter.dart';
 import 'facebook_state.dart';
 
@@ -53,6 +60,13 @@ class FacebookNotifier extends Notifier<FacebookUiState> {
           ];
     final active = _findPage(effectivePages, activeId);
     unawaited(_migrateAndRefresh());
+    FacebookExpirySignal.onExpired = _markExpiredFromSignal;
+    ref.onDispose(() {
+      if (identical(FacebookExpirySignal.onExpired, _markExpiredFromSignal)) {
+        FacebookExpirySignal.onExpired = null;
+      }
+    });
+    unawaited(_runStartupMaintenance());
     // Expired status starts as connected: only a failed publish (190)
     // marks it expired, and the next publish should try again first.
     return FacebookUiState(
@@ -62,9 +76,7 @@ class FacebookNotifier extends Notifier<FacebookUiState> {
       pageId: active?.id ?? activeId,
       pageName: active?.name ?? _preferencesService.facebookPageName ?? '',
       pagePictureUrl:
-          active?.pictureUrl ??
-          _preferencesService.facebookPagePicture ??
-          '',
+          active?.pictureUrl ?? _preferencesService.facebookPagePicture ?? '',
       pages: effectivePages,
       activePageId: activeId,
     );
@@ -128,7 +140,7 @@ class FacebookNotifier extends Notifier<FacebookUiState> {
     final trimmed = token.trim();
     if (trimmed.isEmpty) return 'Paste a Page access token first.';
     try {
-      final page = await _publisher.verify(trimmed);
+      final page = await _pageService.verifyPageToken(trimmed);
       await _preferencesService.setFacebookPageTokenFor(page.id, trimmed);
       await _preferencesService.upsertFacebookPage(page);
       await _activate(page);
@@ -185,8 +197,20 @@ class FacebookNotifier extends Notifier<FacebookUiState> {
     _syncFromStorage();
   }
 
-  /// Removes tokens, Page identities, publish history and drafts.
+  /// Removes tokens, Page identities, publish history, drafts and local files.
   Future<void> disconnect() async {
+    try {
+      await getIt<FacebookHistoryService>().clear();
+    } catch (_) {}
+    try {
+      final drafts = getIt<FacebookDraftStore>();
+      for (final draft in drafts.loadAll()) {
+        await drafts.delete(draft.id);
+      }
+    } catch (_) {}
+    try {
+      await getIt<FacebookStorageService>().sweep();
+    } catch (_) {}
     await _preferencesService.disconnectFacebook();
     state = const FacebookUiState();
   }
@@ -197,6 +221,28 @@ class FacebookNotifier extends Notifier<FacebookUiState> {
     if (state.status == FacebookConnectionStatus.connected) {
       state = state.copyWith(status: FacebookConnectionStatus.expired);
     }
+  }
+
+  void _markExpiredFromSignal() => markExpired();
+
+  /// Non-blocking startup maintenance: storage sweep (daily) and scheduled
+  /// reconciliation (15 minutes). Both are throttled and best-effort.
+  Future<void> _runStartupMaintenance() async {
+    try {
+      final now = DateTime.now();
+      final lastSweep = _preferencesService.lastFacebookSweep;
+      if (lastSweep == null ||
+          now.difference(lastSweep) > const Duration(hours: 24)) {
+        await getIt<FacebookStorageService>().sweep();
+        await _preferencesService.setLastFacebookSweep(now);
+      }
+      final lastReconcile = _preferencesService.lastFacebookReconcile;
+      if (lastReconcile == null ||
+          now.difference(lastReconcile) > const Duration(minutes: 15)) {
+        await ref.read(facebookDraftProvider.notifier).reconcileScheduled();
+        await _preferencesService.setLastFacebookReconcile(now);
+      }
+    } catch (_) {}
   }
 }
 
@@ -222,18 +268,67 @@ class FacebookDraftNotifier extends Notifier<FacebookComposeState> {
 
   late final FacebookPublisherService _publisher;
   late final PreferencesService _preferencesService;
+  late final FacebookDraftStore _draftStore;
   Timer? _autosaveTimer;
+  String? _activeDraftId;
+  String _pageId = '';
+  String _pageName = '';
+
+  String? get activeDraftId => _activeDraftId;
 
   @override
   FacebookComposeState build() {
     _publisher = getIt<FacebookPublisherService>();
     _preferencesService = getIt<PreferencesService>();
+    _draftStore = getIt<FacebookDraftStore>();
     ref.onDispose(() => _autosaveTimer?.cancel());
-    final saved = _restoreDraft();
-    return saved ?? const FacebookComposeState();
+    final connection = ref.read(facebookViewModelProvider);
+    _pageId = connection.activePageId;
+    _pageName = connection.pageName;
+    _activeDraftId = _draftStore.activeDraftId;
+    unawaited(_draftStore.pruneOrphans());
+
+    final stored = _draftStore.loadActive();
+    if (stored != null) {
+      _pageId = stored.pageId.isEmpty ? _pageId : stored.pageId;
+      _pageName = stored.pageName.isEmpty ? _pageName : stored.pageName;
+      return _fromRecord(stored, restored: true);
+    }
+
+    // v10/v9 single-draft key: restore synchronously, then migrate into the
+    // multi-draft store on the first autosave.
+    final legacy = _restoreLegacyDraft();
+    if (legacy != null) {
+      _activeDraftId ??= _newMediaId();
+      return legacy;
+    }
+    return FacebookComposeState(pageId: _pageId);
   }
 
-  FacebookComposeState? _restoreDraft() {
+  FacebookComposeState _fromRecord(
+    FacebookDraftRecord record, {
+    required bool restored,
+  }) {
+    return FacebookComposeState(
+      text: record.text,
+      media: record.media
+          .map(FacebookMediaItem.fromJson)
+          .toList(growable: false),
+      publishMode: record.mode == FacebookPublishMode.scheduled.name
+          ? FacebookPublishMode.scheduled
+          : FacebookPublishMode.now,
+      scheduledAt: record.scheduledAt,
+      restoredFromStorage: restored,
+      pageId: record.pageId,
+      workflowId: record.workflowId,
+      workflowName: record.workflowName,
+      publishFeed: record.publishFeed,
+      storyEnabled: record.storyEnabled,
+      storyTitle: record.storyTitle,
+    );
+  }
+
+  FacebookComposeState? _restoreLegacyDraft() {
     final raw = _preferencesService.facebookDraftJson;
     if (raw == null || raw.isEmpty) return null;
     try {
@@ -247,6 +342,7 @@ class FacebookDraftNotifier extends Notifier<FacebookComposeState> {
         publishMode: snapshot.publishMode,
         scheduledAt: snapshot.scheduledAt,
         restoredFromStorage: true,
+        pageId: snapshot.pageId.isEmpty ? _pageId : snapshot.pageId,
       );
     } catch (_) {
       return null;
@@ -259,9 +355,25 @@ class FacebookDraftNotifier extends Notifier<FacebookComposeState> {
     String rawMarkdown, {
     String? imagePath,
     FacebookImageAspect? imageAspect,
+    String? title,
   }) {
+    _autosaveTimer?.cancel();
+    final connection = ref.read(facebookViewModelProvider);
+    _pageId = connection.activePageId;
+    _pageName = connection.pageName;
+    if (state.isEmpty && _activeDraftId != null) {
+      // Reuse an empty active draft instead of accumulating empty records.
+    } else {
+      _activeDraftId = _newMediaId();
+    }
+    final plainText = FacebookTextFormatter.toPlainText(rawMarkdown);
+    final workflow = getIt<FacebookWorkflowStore>().defaultForPage(_pageId);
+    final storyTitle = FacebookStoryTitle.extract(
+      text: plainText,
+      headline: title,
+    );
     state = FacebookComposeState(
-      text: FacebookTextFormatter.toPlainText(rawMarkdown),
+      text: plainText,
       media: [
         if (imagePath != null && imagePath.isNotEmpty)
           FacebookMediaItem(
@@ -270,8 +382,55 @@ class FacebookDraftNotifier extends Notifier<FacebookComposeState> {
             aspect: imageAspect ?? FacebookImageAspect.portrait,
           ),
       ],
+      pageId: _pageId,
+      draftTitle: title?.trim() ?? '',
+      workflowId: workflow.id,
+      workflowName: workflow.name,
+      publishFeed: workflow.publishFeed,
+      storyEnabled: workflow.storyEnabled,
+      storyTitle: storyTitle,
     );
     _scheduleAutosave();
+  }
+
+  /// Starts an empty draft (drafts screen FAB / "new post").
+  void startEmptyDraft() {
+    _autosaveTimer?.cancel();
+    final connection = ref.read(facebookViewModelProvider);
+    _pageId = connection.activePageId;
+    _pageName = connection.pageName;
+    _activeDraftId = null;
+    final workflow = getIt<FacebookWorkflowStore>().defaultForPage(_pageId);
+    state = FacebookComposeState(
+      pageId: _pageId,
+      workflowId: workflow.id,
+      workflowName: workflow.name,
+      publishFeed: workflow.publishFeed,
+      storyEnabled: workflow.storyEnabled,
+    );
+  }
+
+  /// Loads an existing draft, saving the current one first when different.
+  Future<bool> openDraft(String id) async {
+    if (id == _activeDraftId) return true;
+    if (!state.isEmpty && _activeDraftId != null) {
+      await _saveNow();
+    }
+    FacebookDraftRecord? record;
+    for (final item in _draftStore.loadAll()) {
+      if (item.id == id) {
+        record = item;
+        break;
+      }
+    }
+    if (record == null) return false;
+    _autosaveTimer?.cancel();
+    _activeDraftId = record.id;
+    _pageId = record.pageId.isEmpty ? _pageId : record.pageId;
+    _pageName = record.pageName.isEmpty ? _pageName : record.pageName;
+    state = _fromRecord(record, restored: false);
+    await _draftStore.setActive(record.id);
+    return true;
   }
 
   void setDraftText(String value) {
@@ -285,6 +444,60 @@ class FacebookDraftNotifier extends Notifier<FacebookComposeState> {
       publishMode: mode,
       scheduledAt: mode == FacebookPublishMode.now ? null : state.scheduledAt,
     );
+    _scheduleAutosave();
+  }
+
+  /// Applies a workflow preset to this draft (does not change the default).
+  void applyWorkflow(FacebookPublishWorkflow workflow) {
+    final title = state.storyTitle.trim().isNotEmpty
+        ? state.storyTitle
+        : FacebookStoryTitle.extract(
+            text: state.text,
+            headline: state.draftTitle,
+          );
+    state = state.copyWith(
+      workflowId: workflow.id,
+      workflowName: workflow.name,
+      publishFeed: workflow.publishFeed,
+      storyEnabled: workflow.storyEnabled,
+      storyTitle:
+          workflow.storyTitleSource == FacebookStoryTitleSource.custom &&
+              workflow.customTitle.trim().isNotEmpty
+          ? workflow.customTitle.trim()
+          : title,
+    );
+    _scheduleAutosave();
+  }
+
+  void setStoryEnabled(bool value) {
+    if (state.storyEnabled == value) return;
+    final title = state.storyTitle.trim().isNotEmpty
+        ? state.storyTitle
+        : FacebookStoryTitle.extract(
+            text: state.text,
+            headline: state.draftTitle,
+          );
+    state = state.copyWith(
+      storyEnabled: value,
+      storyTitle: title,
+      workflowId: '',
+      workflowName: '',
+    );
+    _scheduleAutosave();
+  }
+
+  void setPublishFeed(bool value) {
+    if (state.publishFeed == value) return;
+    state = state.copyWith(
+      publishFeed: value,
+      workflowId: '',
+      workflowName: '',
+    );
+    _scheduleAutosave();
+  }
+
+  void setStoryTitle(String value) {
+    state = state.copyWith(storyTitle: value);
     _scheduleAutosave();
   }
 
@@ -313,36 +526,139 @@ class FacebookDraftNotifier extends Notifier<FacebookComposeState> {
 
   void clearDraft() {
     _autosaveTimer?.cancel();
-    state = const FacebookComposeState();
+    final oldId = _activeDraftId;
+    _activeDraftId = null;
+    state = FacebookComposeState(pageId: _pageId);
     unawaited(_preferencesService.clearFacebookDraft());
+    if (oldId != null) unawaited(_draftStore.delete(oldId));
   }
 
   /// "Publish another" — keeps the connection, resets text + attachment.
   void resetForAnotherPost() {
-    state = const FacebookComposeState();
-    unawaited(_preferencesService.clearFacebookDraft());
+    clearDraft();
   }
 
-  /// Saves the current draft to prefs after a short idle period.
+  /// Explicit Save draft action. Also used before opening another draft.
+  Future<void> saveDraftNow() => _saveNow();
+
+  /// Persists the current draft into the multi-draft store, copying photos
+  /// into app documents so temp cleanup cannot lose them.
+  Future<void> _saveNow() async {
+    if (state.isFinished) return;
+    if (state.isEmpty) {
+      final oldId = _activeDraftId;
+      _activeDraftId = null;
+      await _preferencesService.clearFacebookDraft();
+      if (oldId != null) await _draftStore.delete(oldId);
+      return;
+    }
+    final id = _activeDraftId ??= _newMediaId();
+    final raw = state.media.map((m) => m.toJson()).toList();
+    final media = await _draftStore.importMedia(id, raw);
+    final items = media.map(FacebookMediaItem.fromJson).toList(growable: false);
+    if (!_sameMediaPaths(state.media, items)) {
+      state = state.copyWith(media: items);
+    }
+    final pageId = state.pageId.isEmpty ? _pageId : state.pageId;
+    await _draftStore.save(
+      FacebookDraftRecord(
+        id: id,
+        text: state.text,
+        media: media,
+        pageId: pageId,
+        pageName: _pageName,
+        mode: state.publishMode.name,
+        scheduledAt: state.scheduledAt,
+        updatedAt: DateTime.now(),
+        workflowId: state.workflowId,
+        workflowName: state.workflowName,
+        publishFeed: state.publishFeed,
+        storyEnabled: state.storyEnabled,
+        storyTitle: state.storyTitle,
+      ),
+    );
+    // The legacy key is migrated into the store after the first save.
+    await _preferencesService.clearFacebookDraft();
+  }
+
+  static bool _sameMediaPaths(
+    List<FacebookMediaItem> a,
+    List<FacebookMediaItem> b,
+  ) {
+    if (a.length != b.length) return false;
+    for (var i = 0; i < a.length; i++) {
+      if (a[i].path != b[i].path) return false;
+    }
+    return true;
+  }
+
+  /// Drops the active draft after a successful publish.
+  Future<void> _discardActiveDraft() async {
+    _autosaveTimer?.cancel();
+    final id = _activeDraftId;
+    _activeDraftId = null;
+    await _preferencesService.clearFacebookDraft();
+    if (id != null) await _draftStore.delete(id);
+  }
+
+  /// Deletes another draft and clears the editor when it is the active one.
+  Future<void> deleteDraft(String id) async {
+    await _draftStore.delete(id);
+    if (_activeDraftId != id) return;
+    _autosaveTimer?.cancel();
+    _activeDraftId = null;
+    state = FacebookComposeState(pageId: _pageId);
+  }
+
+  /// Retargets the current draft to another Page (mismatch dialog choice).
+  void retargetDraft(String pageId, {String? pageName}) {
+    if (pageId.isEmpty) return;
+    _pageId = pageId;
+    if (pageName != null && pageName.isNotEmpty) _pageName = pageName;
+    state = state.copyWith(pageId: pageId);
+    if (!state.isEmpty) _scheduleAutosave();
+  }
+
+  /// Duplicates the current draft for another Page and switches to the copy.
+  Future<void> duplicateDraftForPage(String pageId, {String? pageName}) async {
+    if (pageId.isEmpty) return;
+    await _saveNow();
+    final oldId = _activeDraftId;
+    if (oldId == null) {
+      retargetDraft(pageId, pageName: pageName);
+      return;
+    }
+    final newId = await _draftStore.duplicate(oldId);
+    if (newId == null) {
+      retargetDraft(pageId, pageName: pageName);
+      return;
+    }
+    FacebookDraftRecord? copy;
+    for (final item in _draftStore.loadAll()) {
+      if (item.id == newId) {
+        copy = item;
+        break;
+      }
+    }
+    if (copy == null) return;
+    _activeDraftId = newId;
+    _pageId = pageId;
+    if (pageName != null && pageName.isNotEmpty) _pageName = pageName;
+    state = state.copyWith(pageId: pageId);
+    await _draftStore.save(
+      copy.copyWith(
+        pageId: pageId,
+        pageName: _pageName,
+        updatedAt: DateTime.now(),
+      ),
+    );
+  }
+
+  /// Saves the current draft to the store after a short idle period.
   void _scheduleAutosave() {
     _autosaveTimer?.cancel();
     _autosaveTimer = Timer(_autosaveDebounce, () {
-      if (state.isFinished) return;
-      final snapshot = FacebookDraftSnapshot(
-        text: state.text,
-        media: state.media,
-        publishMode: state.publishMode,
-        scheduledAt: state.scheduledAt,
-      );
-      if (snapshot.isEmpty) {
-        unawaited(_preferencesService.clearFacebookDraft());
-      } else {
-        unawaited(
-          _preferencesService.setFacebookDraftJson(
-            jsonEncode(snapshot.toJson()),
-          ),
-        );
-      }
+      unawaited(_saveNow());
     });
   }
 
@@ -415,6 +731,11 @@ class FacebookDraftNotifier extends Notifier<FacebookComposeState> {
   }
 
   void removeImage() {
+    clearMedia();
+  }
+
+  /// Removes every attached photo.
+  void clearMedia() {
     state = state.copyWith(media: const [], restoredFromStorage: false);
     _scheduleAutosave();
   }
@@ -535,7 +856,25 @@ class FacebookDraftNotifier extends Notifier<FacebookComposeState> {
   /// [FacebookComposePhase.published]/[FacebookComposePhase.scheduled]
   /// result or a [FacebookComposePhase.publishError].
   Future<void> publish() async {
-    if (state.isPublishing || state.isFinished || !state.hasText) return;
+    final storyOnly = state.storyEnabled && !state.publishFeed;
+    if (state.isPublishing ||
+        state.isPreparing ||
+        state.isFinished ||
+        (!state.hasText && !storyOnly)) {
+      return;
+    }
+    if (!state.publishFeed && !state.storyEnabled) {
+      _fail('Choose Page post, Story, or both.');
+      return;
+    }
+    if (state.publishMode == FacebookPublishMode.scheduled &&
+        state.storyEnabled) {
+      _fail(
+        "Facebook Stories can't be scheduled. Post now or remove the Story.",
+        kind: FacebookApiErrorKind.storySchedulingUnsupported,
+      );
+      return;
+    }
 
     final scheduled = state.publishMode == FacebookPublishMode.scheduled;
     final scheduledAt = state.scheduledAt;
@@ -551,6 +890,17 @@ class FacebookDraftNotifier extends Notifier<FacebookComposeState> {
       }
     }
 
+    final storyTitle = state.storyTitle.trim().isNotEmpty
+        ? state.storyTitle.trim()
+        : FacebookStoryTitle.extract(
+            text: state.text,
+            headline: state.draftTitle,
+          );
+    if (state.storyEnabled && storyTitle.isEmpty) {
+      _fail('Add a short title for the Story.');
+      return;
+    }
+
     // A card captured in Card Studio lives in the temp dir, which the OS
     // may purge. Fail with a fixable message instead of a Graph error.
     final mediaItems = state.media;
@@ -564,9 +914,13 @@ class FacebookDraftNotifier extends Notifier<FacebookComposeState> {
     }
 
     state = state.copyWith(
-      phase: FacebookComposePhase.publishing,
+      phase: mediaItems.isEmpty
+          ? FacebookComposePhase.publishing
+          : FacebookComposePhase.compressing,
       uploadProgress: mediaItems.isEmpty ? null : 0.0,
       error: null,
+      storyError: null,
+      storyResult: null,
       restoredFromStorage: false,
     );
 
@@ -587,48 +941,122 @@ class FacebookDraftNotifier extends Notifier<FacebookComposeState> {
     }
 
     try {
-      late FacebookPublishResult result;
-      if (mediaItems.isEmpty) {
-        result = await _publisher.publishText(
-          pageId: pageId,
-          token: token,
-          message: state.text,
-          scheduledAt: scheduled ? scheduledAt : null,
-        );
-      } else if (mediaItems.length == 1) {
-        final media = mediaItems.single;
-        final uploadPath = await _cropForUpload(media);
-        result = await _publisher.publishPhoto(
-          pageId: pageId,
-          token: token,
-          filePath: uploadPath,
-          message: state.text,
-          altText: media.altText,
-          scheduledAt: scheduled ? scheduledAt : null,
-          onSendProgress: (sent, total) {
-            if (!state.isPublishing || total <= 0) return;
-            state = state.copyWith(
-              uploadProgress: (sent / total).clamp(0.0, 1.0),
-            );
-          },
-        );
-      } else {
-        result = await _publishMultiple(
-          pageId: pageId,
-          token: token,
-          media: mediaItems,
-          scheduledAt: scheduled ? scheduledAt : null,
-        );
+      FacebookPublishResult? feedResult;
+      FacebookStoryResult? storyResult;
+      String? storyError;
+      String? storyPath;
+
+      if (state.publishFeed) {
+        if (mediaItems.isEmpty) {
+          feedResult = await _publisher.publishText(
+            pageId: pageId,
+            token: token,
+            message: state.text,
+            scheduledAt: scheduled ? scheduledAt : null,
+          );
+        } else if (mediaItems.length == 1) {
+          final media = mediaItems.single;
+          final uploadPath = await _cropForUpload(media);
+          state = state.copyWith(phase: FacebookComposePhase.publishing);
+          feedResult = await _publisher.publishPhoto(
+            pageId: pageId,
+            token: token,
+            filePath: uploadPath,
+            message: state.text,
+            altText: media.altText,
+            scheduledAt: scheduled ? scheduledAt : null,
+            onSendProgress: (sent, total) {
+              if (!state.isPublishing || total <= 0) return;
+              state = state.copyWith(
+                uploadProgress: (sent / total).clamp(0.0, 1.0),
+              );
+            },
+          );
+        } else {
+          feedResult = await _publishMultiple(
+            pageId: pageId,
+            token: token,
+            media: mediaItems,
+            scheduledAt: scheduled ? scheduledAt : null,
+          );
+        }
       }
+
+      if (state.storyEnabled) {
+        String outputDir;
+        try {
+          outputDir = (await getTemporaryDirectory()).path;
+        } catch (_) {
+          outputDir = Directory.systemTemp.path;
+        }
+        storyPath = await getIt<FacebookStoryComposer>().compose(
+          sourceImagePath: mediaItems.isEmpty ? null : mediaItems.first.path,
+          title: storyTitle,
+          outputDir: outputDir,
+        );
+        String? storyPhotoId;
+        try {
+          storyPhotoId = await _publisher.uploadUnpublishedPhoto(
+            pageId: pageId,
+            token: token,
+            filePath: storyPath,
+            altText: storyTitle,
+          );
+          storyResult = await _publisher.publishPhotoStory(
+            pageId: pageId,
+            token: token,
+            photoId: storyPhotoId,
+          );
+        } on FacebookApiException catch (e) {
+          storyError = e.message;
+          if (e.needsReconnect) {
+            ref.read(facebookViewModelProvider.notifier).markExpired();
+          }
+          if (storyPhotoId != null) {
+            await _publisher.deletePhoto(photoId: storyPhotoId, token: token);
+          }
+        }
+      }
+
+      final result =
+          feedResult ??
+          (storyResult != null
+              ? FacebookPublishResult(
+                  id: storyResult.postId,
+                  postId: storyResult.postId,
+                  permalink: '',
+                  isPhoto: true,
+                  isScheduled: false,
+                  scheduledAt: null,
+                )
+              : null);
+      if (result == null) {
+        state = state.copyWith(
+          phase: FacebookComposePhase.publishError,
+          uploadProgress: null,
+          storyError: storyError,
+          error: FacebookApiException(
+            kind: FacebookApiErrorKind.storyUnavailable,
+            message: storyError ?? 'Publishing failed. Try again.',
+          ),
+        );
+        return;
+      }
+
       state = state.copyWith(
-        phase: scheduled
+        phase: storyError != null
+            ? FacebookComposePhase.partialSuccess
+            : scheduled
             ? FacebookComposePhase.scheduled
             : FacebookComposePhase.published,
         uploadProgress: null,
         result: result,
+        storyResult: storyResult,
+        storyError: storyError,
+        storyImagePath: storyPath,
       );
       _autosaveTimer?.cancel();
-      unawaited(_preferencesService.clearFacebookDraft());
+      unawaited(_discardActiveDraft());
       // Persist for the Published / Scheduled history.
       try {
         if (getIt.isRegistered<FacebookHistoryService>()) {
@@ -637,13 +1065,25 @@ class FacebookDraftNotifier extends Notifier<FacebookComposeState> {
             message: state.text,
             permalink: result.permalink,
             hasImage: result.isPhoto || state.hasImage,
-            sourceImagePaths: state.media.map((m) => m.path).toList(),
+            sourceImagePaths: [...state.media.map((m) => m.path), ?storyPath],
             status: scheduled
                 ? FacebookPostStatus.scheduled
                 : FacebookPostStatus.published,
             scheduledAt: scheduled ? scheduledAt : null,
             pageId: pageId,
             pageName: conn.pageName,
+            mediaMetadata: state.media.map((m) => m.toJson()).toList(),
+            storyPostId: storyResult?.postId ?? '',
+            storyStatus: storyResult != null
+                ? FacebookStoryStatus.published
+                : storyError != null
+                ? FacebookStoryStatus.failed
+                : FacebookStoryStatus.none,
+            storyTitle: state.storyEnabled ? storyTitle : '',
+            storyImagePath: storyPath ?? '',
+            workflowId: state.workflowId,
+            workflowName: state.workflowName,
+            isStoryOnly: !state.publishFeed,
           );
         }
       } catch (_) {}
@@ -663,6 +1103,9 @@ class FacebookDraftNotifier extends Notifier<FacebookComposeState> {
 
   /// Uploads every photo unpublished, then creates one feed post. Any
   /// failure aborts before the feed post and deletes uploaded photos.
+  ///
+  /// Progress is byte-weighted across the prepared files; a failure names the
+  /// photo index so the user knows which attachment to fix.
   Future<FacebookPublishResult> _publishMultiple({
     required String pageId,
     required String token,
@@ -670,24 +1113,45 @@ class FacebookDraftNotifier extends Notifier<FacebookComposeState> {
     DateTime? scheduledAt,
   }) async {
     final photoIds = <String>[];
+    var currentIndex = 0;
     try {
+      state = state.copyWith(
+        phase: FacebookComposePhase.compressing,
+        uploadProgress: 0.0,
+      );
+      final uploadPaths = <String>[];
+      for (final item in media) {
+        uploadPaths.add(await _cropForUpload(item));
+      }
+      final sizes = <int>[];
+      for (final path in uploadPaths) {
+        final size = File(path).lengthSync();
+        sizes.add(size > 0 ? size : 1);
+      }
+      final totalBytes = sizes.fold<int>(0, (sum, size) => sum + size);
+      var uploadedBytes = 0;
+      state = state.copyWith(phase: FacebookComposePhase.publishing);
+
       for (var i = 0; i < media.length; i++) {
+        currentIndex = i;
         final item = media[i];
-        final uploadPath = await _cropForUpload(item);
         final id = await _publisher.uploadUnpublishedPhoto(
           pageId: pageId,
           token: token,
-          filePath: uploadPath,
+          filePath: uploadPaths[i],
           altText: item.altText,
           onSendProgress: (sent, total) {
-            if (!state.isPublishing || total <= 0) return;
-            final current = total <= 0 ? 0.0 : (sent / total).clamp(0.0, 1.0);
-            state = state.copyWith(
-              uploadProgress: ((i + current) / media.length).clamp(0.0, 1.0),
+            if (!state.isPublishing || total <= 0 || totalBytes <= 0) return;
+            final currentBytes = (sent / total) * sizes[i];
+            final overall = ((uploadedBytes + currentBytes) / totalBytes).clamp(
+              0.0,
+              1.0,
             );
+            state = state.copyWith(uploadProgress: overall);
           },
         );
         photoIds.add(id);
+        uploadedBytes += sizes[i];
       }
       return await _publisher.publishMultiPhoto(
         pageId: pageId,
@@ -695,6 +1159,17 @@ class FacebookDraftNotifier extends Notifier<FacebookComposeState> {
         photoIds: photoIds,
         message: state.text,
         scheduledAt: scheduledAt,
+      );
+    } on FacebookApiException catch (e) {
+      for (final id in photoIds) {
+        await _publisher.deletePhoto(photoId: id, token: token);
+      }
+      throw FacebookApiException(
+        kind: FacebookApiErrorKind.mediaUploadFailed,
+        message:
+            'Photo ${currentIndex + 1} of ${media.length} failed: ${e.message}',
+        code: e.code,
+        subcode: e.subcode,
       );
     } catch (e) {
       for (final id in photoIds) {
@@ -798,7 +1273,12 @@ class FacebookDraftNotifier extends Notifier<FacebookComposeState> {
     if (!getIt.isRegistered<FacebookHistoryService>()) return;
     final history = getIt<FacebookHistoryService>();
     final scheduled = history.records.where((r) => r.isScheduled).toList();
-    if (scheduled.isEmpty) return;
+    if (scheduled.isEmpty) {
+      if (state.scheduledSyncFailed) {
+        state = state.copyWith(scheduledSyncFailed: false);
+      }
+      return;
+    }
     List<FacebookScheduledPost> remote;
     try {
       remote = await _publisher.listScheduled(
@@ -806,7 +1286,13 @@ class FacebookDraftNotifier extends Notifier<FacebookComposeState> {
         token: token,
       );
     } catch (_) {
+      if (!state.scheduledSyncFailed) {
+        state = state.copyWith(scheduledSyncFailed: true);
+      }
       return;
+    }
+    if (state.scheduledSyncFailed) {
+      state = state.copyWith(scheduledSyncFailed: false);
     }
     final remoteIds = remote.map((p) => p.id).toSet();
     final now = DateTime.now();

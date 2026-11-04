@@ -8,7 +8,9 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:oreamnos/config/constants.dart';
 import 'package:oreamnos/core/di/injection.dart';
+import 'package:oreamnos/data/services/facebook_expiry_signal.dart';
 import 'package:oreamnos/data/services/facebook_insights_service.dart';
+import 'package:oreamnos/data/services/facebook_publisher_service.dart';
 import 'package:oreamnos/data/services/preferences_service.dart';
 import 'package:oreamnos/domain/models/facebook_api_exception.dart';
 import 'package:uuid/uuid.dart';
@@ -42,6 +44,109 @@ class FacebookHistoryNotifier extends Notifier<List<FacebookPostRecord>> {
 
   Future<void> removeByPostId(String postId) => _service.removeByPostId(postId);
 
+  /// Deletes a published post on Graph, then removes the local record and
+  /// thumbnails. Returns a user-facing error, or null on success.
+  Future<String?> deletePublishedPost(String recordId) async {
+    final record = _findRecord(recordId);
+    if (record == null || !record.isPublished) return null;
+    final token =
+        await getIt<PreferencesService>().getFacebookPageToken() ?? '';
+    if (token.isEmpty) return 'Connect your Page first.';
+    try {
+      await getIt<FacebookPublisherService>().deletePost(
+        postId: record.postId,
+        token: token,
+      );
+      await _service.remove(recordId);
+      return null;
+    } on FacebookApiException catch (e) {
+      if (e.needsReconnect) FacebookExpirySignal.report();
+      return e.message;
+    } catch (_) {
+      return "Couldn't delete the post on Facebook. Nothing was removed.";
+    }
+  }
+
+  /// Edits a published caption on Graph, then updates the local history.
+  Future<String?> editPublishedPost(String recordId, String message) async {
+    final record = _findRecord(recordId);
+    if (record == null || !record.isPublished) return null;
+    final trimmed = message.trim();
+    if (trimmed.isEmpty) return 'The caption cannot be empty.';
+    if (trimmed == record.reusableCaption.trim()) return null;
+    final token =
+        await getIt<PreferencesService>().getFacebookPageToken() ?? '';
+    if (token.isEmpty) return 'Connect your Page first.';
+    try {
+      await getIt<FacebookPublisherService>().updatePostMessage(
+        postId: record.postId,
+        token: token,
+        message: message,
+      );
+      await _service.updateMessage(recordId, message);
+      return null;
+    } on FacebookApiException catch (e) {
+      if (e.needsReconnect) FacebookExpirySignal.report();
+      return e.message;
+    } catch (_) {
+      return "Couldn't edit the caption. Try again.";
+    }
+  }
+
+  /// Retries only the Story for a record whose feed post already succeeded.
+  Future<String?> retryStory(String recordId) async {
+    final record = _findRecord(recordId);
+    if (record == null || !record.hasStory) return null;
+    if (record.storyImagePath.isEmpty ||
+        !File(record.storyImagePath).existsSync()) {
+      return 'The Story image is no longer available.';
+    }
+    final token =
+        await getIt<PreferencesService>().getFacebookPageToken() ?? '';
+    if (token.isEmpty) return 'Connect your Page first.';
+    final pageId = record.pageId;
+    if (pageId.isEmpty) return 'This record has no Page id.';
+    String? photoId;
+    try {
+      photoId = await getIt<FacebookPublisherService>().uploadUnpublishedPhoto(
+        pageId: pageId,
+        token: token,
+        filePath: record.storyImagePath,
+        altText: record.storyTitle,
+      );
+      final story = await getIt<FacebookPublisherService>().publishPhotoStory(
+        pageId: pageId,
+        token: token,
+        photoId: photoId,
+      );
+      await _service.update(
+        record.copyWith(
+          storyPostId: story.postId,
+          storyStatus: FacebookStoryStatus.published,
+        ),
+      );
+      return null;
+    } on FacebookApiException catch (e) {
+      if (photoId != null) {
+        await getIt<FacebookPublisherService>().deletePhoto(
+          photoId: photoId,
+          token: token,
+        );
+      }
+      if (e.needsReconnect) FacebookExpirySignal.report();
+      return e.message;
+    } catch (_) {
+      return 'Could not publish the Story. Try again.';
+    }
+  }
+
+  FacebookPostRecord? _findRecord(String recordId) {
+    for (final item in _service.records) {
+      if (item.id == recordId) return item;
+    }
+    return null;
+  }
+
   /// Fetches and caches insights for one published record. Returns a
   /// user-facing error string, or null on success. Scheduled/failed records
   /// are no-ops.
@@ -67,6 +172,7 @@ class FacebookHistoryNotifier extends Notifier<List<FacebookPostRecord>> {
           ? null
           : 'Facebook has no insights for this post yet.';
     } on FacebookApiException catch (e) {
+      if (e.needsReconnect) FacebookExpirySignal.report();
       return e.message;
     } catch (_) {
       return 'Could not load insights. Try again later.';
@@ -137,6 +243,15 @@ class FacebookHistoryService {
     DateTime? scheduledAt,
     String pageId = '',
     String pageName = '',
+    List<Map<String, dynamic>> mediaMetadata = const [],
+    String storyPostId = '',
+    String storyUrl = '',
+    FacebookStoryStatus storyStatus = FacebookStoryStatus.none,
+    String storyTitle = '',
+    String storyImagePath = '',
+    String workflowId = '',
+    String workflowName = '',
+    bool isStoryOnly = false,
   }) async {
     final snippet = message.trim().isEmpty
         ? (hasImage ? 'Card post' : 'Text post')
@@ -154,6 +269,9 @@ class FacebookHistoryService {
         if (copied != null) thumbnails.add(copied);
       }
     }
+    final storedStoryPath = storyImagePath.isEmpty
+        ? ''
+        : await _copyThumbnail(storyImagePath, '$id-story') ?? storyImagePath;
     final record = FacebookPostRecord(
       id: id,
       postId: postId,
@@ -167,14 +285,47 @@ class FacebookHistoryService {
       scheduledAt: scheduledAt,
       pageId: pageId,
       pageName: pageName,
+      mediaMetadata: mediaMetadata,
+      storyPostId: storyPostId,
+      storyUrl: storyUrl,
+      storyStatus: storyStatus,
+      storyTitle: storyTitle,
+      storyImagePath: storedStoryPath,
+      workflowId: workflowId,
+      workflowName: workflowName,
+      isStoryOnly: isStoryOnly,
     );
     _records = List.of(_records)..insert(0, record);
     if (_records.length > _maxRecords) {
+      final evicted = _records.sublist(_maxRecords);
       _records = _records.sublist(0, _maxRecords);
+      for (final old in evicted) {
+        for (final path in old.localImagePaths) {
+          await _deleteQuietly(path);
+        }
+        await _deleteQuietly(old.storyImagePath);
+      }
     }
     await _persist();
     _notify();
     return record;
+  }
+
+  /// Updates the caption of a published record and refreshes its snippet.
+  Future<void> updateMessage(String id, String message) async {
+    final trimmed = message.trim();
+    if (trimmed.isEmpty) return;
+    final index = _records.indexWhere((r) => r.id == id);
+    if (index < 0) return;
+    final line = trimmed.split('\n').first;
+    _records = List.of(_records)
+      ..[index] = _records[index].copyWith(
+        message: message,
+        snippet: line.length > 140 ? '${line.substring(0, 140)}…' : line,
+        editedAt: DateTime.now(),
+      );
+    await _persist();
+    _notify();
   }
 
   Future<void> update(FacebookPostRecord record) async {
@@ -194,6 +345,10 @@ class FacebookHistoryService {
         impressions: insights.impressions,
         reactions: insights.reactions,
         clicks: insights.clicks,
+        totalImpressions: insights.totalImpressions,
+        engagedUsers: insights.engagedUsers,
+        negativeFeedback: insights.negativeFeedback,
+        reactionsByType: insights.reactionsByType,
         insightsFetchedAt: insights.fetchedAt,
       );
     await _persist();
@@ -201,15 +356,20 @@ class FacebookHistoryService {
   }
 
   Future<void> remove(String id) async {
-    String? thumbnail;
+    FacebookPostRecord? removed;
     for (final record in _records) {
       if (record.id == id) {
-        thumbnail = record.localImagePath;
+        removed = record;
         break;
       }
     }
     _records = List.of(_records)..removeWhere((r) => r.id == id);
-    await _deleteQuietly(thumbnail);
+    if (removed != null) {
+      for (final path in removed.localImagePaths) {
+        await _deleteQuietly(path);
+      }
+      await _deleteQuietly(removed.storyImagePath);
+    }
     await _persist();
     _notify();
   }
@@ -223,6 +383,7 @@ class FacebookHistoryService {
       for (final path in record.localImagePaths) {
         await _deleteQuietly(path);
       }
+      await _deleteQuietly(record.storyImagePath);
     }
     await _persist();
     _notify();
@@ -233,6 +394,7 @@ class FacebookHistoryService {
       for (final path in record.localImagePaths) {
         await _deleteQuietly(path);
       }
+      await _deleteQuietly(record.storyImagePath);
     }
     _records = [];
     await _prefs.remove(AppConstants.keyFacebookHistory);

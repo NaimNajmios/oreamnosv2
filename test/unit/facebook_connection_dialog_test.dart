@@ -125,7 +125,7 @@ void main() {
     expect(tester.takeException(), isNull);
     expect(find.text('Disconnect'), findsOneWidget);
     expect(find.text('Cancel'), findsOneWidget);
-    expect(find.text('Test & Save'), findsOneWidget);
+    expect(find.text('Find Pages'), findsOneWidget);
   });
 
   testWidgets('actions wrap instead of overflowing at 320dp', (tester) async {

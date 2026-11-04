@@ -73,6 +73,13 @@ abstract final class FacebookImageCropper {
     return Rect.fromLTWH(left, top, cropWidth, cropHeight);
   }
 
+  /// Small in-memory cache of recent crop outputs. Keyed by source + crop
+  /// parameters, so repeated publishes reuse the encoded file.
+  static final Map<String, String> _cropCache = <String, String>{};
+  static const int _maxCachedCrops = 20;
+
+  static void clearCache() => _cropCache.clear();
+
   /// Decodes [sourcePath], applies the crop, and writes a JPEG into
   /// [outputDir]. Returns the new path, or null when the source can't be
   /// decoded/encoded (caller falls back to the original file).
@@ -84,6 +91,10 @@ abstract final class FacebookImageCropper {
     Offset offset = Offset.zero,
     int quality = jpegQuality,
   }) async {
+    final cacheKey =
+        '$sourcePath|$targetAspect|$zoom|${offset.dx}|${offset.dy}|$quality';
+    final cached = _cropCache[cacheKey];
+    if (cached != null && File(cached).existsSync()) return cached;
     try {
       final result = await Isolate.run(
         () => _encodeJpegCrop({
@@ -96,17 +107,29 @@ abstract final class FacebookImageCropper {
           'quality': quality,
         }),
       );
-      if (result != null) return result;
+      if (result != null) {
+        _remember(cacheKey, result);
+        return result;
+      }
     } catch (_) {
       // Fall through to the dart:ui PNG path.
     }
-    return _cropWithUi(
+    final fallback = await _cropWithUi(
       sourcePath: sourcePath,
       targetAspect: targetAspect,
       outputDir: outputDir,
       zoom: zoom,
       offset: offset,
     );
+    if (fallback != null) _remember(cacheKey, fallback);
+    return fallback;
+  }
+
+  static void _remember(String key, String path) {
+    if (_cropCache.length >= _maxCachedCrops) {
+      _cropCache.remove(_cropCache.keys.first);
+    }
+    _cropCache[key] = path;
   }
 
   /// Top-level isolate entry point (must not capture non-sendable state).
@@ -127,6 +150,11 @@ abstract final class FacebookImageCropper {
       final decoded = img.decodeImage(bytes);
       if (decoded == null) return null;
       final oriented = img.bakeOrientation(decoded);
+      final sourceAspect = oriented.width / oriented.height;
+      final aspectDiff = (sourceAspect - targetAspect).abs() / targetAspect;
+      if (zoom == 1.0 && offset == Offset.zero && aspectDiff <= 0.005) {
+        return sourcePath;
+      }
       final rect = cropRectFor(
         width: oriented.width,
         height: oriented.height,

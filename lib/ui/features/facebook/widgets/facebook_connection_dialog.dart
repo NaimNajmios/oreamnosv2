@@ -63,9 +63,8 @@ class _FacebookConnectionDialogState
             ? 'Connected ${connection.pages.length} Pages · '
                   '${connection.pageName}'
             : 'Connected · ${connection.pageName}';
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(SnackBar(content: Text(message)));
+        ScaffoldMessenger.of(context)
+            .showSnackBar(SnackBar(content: Text(message)));
       }
     } finally {
       if (mounted) setState(() => _isLoading = false);

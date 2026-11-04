@@ -13,6 +13,7 @@ import 'package:oreamnos/domain/models/facebook_post_record.dart';
 import 'package:oreamnos/ui/core/utils/haptics.dart';
 import 'package:oreamnos/ui/core/widgets/empty_state.dart';
 import 'package:oreamnos/ui/features/facebook/view_models/facebook_view_model.dart';
+import 'package:oreamnos/ui/features/facebook/widgets/post_insights_sheet.dart';
 
 /// Publish history (capped at 50) split into Published and Scheduled tabs.
 /// Tap opens a live post; long-press offers copy/reuse/remove, plus
@@ -51,6 +52,7 @@ class _FacebookHistoryScreenState extends ConsumerState<FacebookHistoryScreen> {
     final records = ref.watch(facebookHistoryProvider);
     final published = records.where((r) => !r.isScheduled).toList();
     final scheduled = records.where((r) => r.isScheduled).toList();
+    final syncFailed = ref.watch(facebookDraftProvider).scheduledSyncFailed;
 
     return DefaultTabController(
       length: 2,
@@ -70,19 +72,39 @@ class _FacebookHistoryScreenState extends ConsumerState<FacebookHistoryScreen> {
             ],
           ),
         ),
-        body: TabBarView(
+        body: Column(
           children: [
-            _RecordList(
-              records: published,
-              emptyTitle: 'Nothing published yet',
-              emptyDescription: 'Publish a generated post or a card and it will show up here.',
-              onRefresh: () => _refreshInsights(published),
-            ),
-            _RecordList(
-              records: scheduled,
-              emptyTitle: 'Nothing scheduled',
-              emptyDescription:
-                  'Choose Schedule in the composer to publish at a later time.',
+            if (syncFailed)
+              MaterialBanner(
+                content: const Text(
+                  'Scheduled posts are not synced with Facebook right now.',
+                ),
+                leading: const Icon(Icons.cloud_off_rounded, size: 20),
+                actions: [
+                  TextButton(
+                    onPressed: () => ref
+                        .read(facebookDraftProvider.notifier)
+                        .reconcileScheduled(),
+                    child: const Text('Retry'),
+                  ),
+                ],
+              ),
+            Expanded(
+              child: TabBarView(
+                children: [
+                  _RecordList(
+                    records: published,
+                    emptyTitle: 'Nothing published yet',
+                    emptyDescription: 'Publish a generated post or a card and it will show up here.',
+                    onRefresh: () => _refreshInsights(published),
+                  ),
+                  _RecordList(
+                    records: scheduled,
+                    emptyTitle: 'Nothing scheduled',
+                    emptyDescription: 'Choose Schedule in the composer to publish at a later time.',
+                  ),
+                ],
+              ),
             ),
           ],
         ),
@@ -160,11 +182,25 @@ class _RecordTile extends ConsumerWidget {
                         color: theme.colorScheme.tertiary,
                         icon: Icons.schedule_rounded,
                       ),
+                    if (record.isPublished)
+                      _StatusChip(
+                        label: 'Published',
+                        color: theme.colorScheme.primary,
+                        icon: Icons.check_circle_outline_rounded,
+                      ),
                     if (record.isFailed)
                       _StatusChip(
                         label: 'Failed',
                         color: theme.colorScheme.error,
                         icon: Icons.error_outline_rounded,
+                      ),
+                    if (record.hasStory)
+                      _StatusChip(
+                        label: record.storyPublished ? 'Story' : 'Story failed',
+                        color: record.storyPublished
+                            ? theme.colorScheme.primary
+                            : theme.colorScheme.error,
+                        icon: Icons.auto_stories_rounded,
                       ),
                     if (record.isScheduled) const SizedBox(width: 6),
                     Text(
@@ -175,6 +211,15 @@ class _RecordTile extends ConsumerWidget {
                         color: theme.colorScheme.onSurfaceVariant,
                       ),
                     ),
+                    if (record.isScheduled) ...[
+                      const SizedBox(width: 6),
+                      Text(
+                        _countdown(record.scheduledAt),
+                        style: theme.textTheme.labelSmall?.copyWith(
+                          color: theme.colorScheme.tertiary,
+                        ),
+                      ),
+                    ],
                   ],
                 ),
                 if (record.pageName.isNotEmpty)
@@ -191,12 +236,19 @@ class _RecordTile extends ConsumerWidget {
                 if (record.hasInsights)
                   Padding(
                     padding: const EdgeInsets.only(top: 2),
-                    child: Text(
-                      _statsLine(record),
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: theme.textTheme.labelSmall?.copyWith(
-                        color: theme.colorScheme.onSurfaceVariant,
+                    child: GestureDetector(
+                      onTap: () => PostInsightsSheet.show(context, record.id),
+                      child: Semantics(
+                        button: true,
+                        label: 'View post insights',
+                        child: Text(
+                          _statsLine(record),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: theme.textTheme.labelSmall?.copyWith(
+                            color: theme.colorScheme.onSurfaceVariant,
+                          ),
+                        ),
                       ),
                     ),
                   ),
@@ -213,6 +265,19 @@ class _RecordTile extends ConsumerWidget {
         ],
       ),
     );
+  }
+
+  static String _countdown(DateTime? at) {
+    if (at == null) return '';
+    final diff = at.difference(DateTime.now());
+    if (diff.isNegative) return 'due now';
+    if (diff.inDays > 0) {
+      return 'in ${diff.inDays}d ${diff.inHours % 24}h';
+    }
+    if (diff.inHours > 0) {
+      return 'in ${diff.inHours}h ${diff.inMinutes % 60}m';
+    }
+    return 'in ${diff.inMinutes}m';
   }
 
   static String _statsLine(FacebookPostRecord record) {
@@ -271,9 +336,42 @@ class _RecordTile extends ConsumerWidget {
               ),
             if (record.isPublished)
               ListTile(
+                leading: const Icon(Icons.edit_outlined, size: 20),
+                title: const Text('Edit caption'),
+                onTap: () => Navigator.pop(sheetContext, 'edit_caption'),
+              ),
+            if (record.isPublished)
+              ListTile(
                 leading: const Icon(Icons.insights_rounded, size: 20),
-                title: const Text('Refresh insights'),
-                onTap: () => Navigator.pop(sheetContext, 'insights'),
+                title: const Text('View insights'),
+                onTap: () => Navigator.pop(sheetContext, 'view_insights'),
+              ),
+            if (record.isPublished && record.storyFailed)
+              ListTile(
+                leading: const Icon(Icons.refresh_rounded, size: 20),
+                title: const Text('Retry Story'),
+                onTap: () => Navigator.pop(sheetContext, 'retry_story'),
+              ),
+            if (record.isPublished)
+              ListTile(
+                leading: const Icon(Icons.comment_outlined, size: 20),
+                title: const Text('Comments'),
+                onTap: () => Navigator.pop(sheetContext, 'comments'),
+              ),
+            if (record.isPublished)
+              ListTile(
+                leading: Icon(
+                  Icons.delete_forever_rounded,
+                  size: 20,
+                  color: Theme.of(sheetContext).colorScheme.error,
+                ),
+                title: Text(
+                  'Delete post',
+                  style: TextStyle(
+                    color: Theme.of(sheetContext).colorScheme.error,
+                  ),
+                ),
+                onTap: () => Navigator.pop(sheetContext, 'delete_post'),
               ),
             if (record.isScheduled)
               ListTile(
@@ -335,15 +433,27 @@ class _RecordTile extends ConsumerWidget {
           ScaffoldMessenger.of(context)
               .showSnackBar(const SnackBar(content: Text('Post link copied')));
         }
-      case 'insights':
+      case 'edit_caption':
+        await _editCaption(context, ref);
+      case 'delete_post':
+        await _deletePost(context, ref);
+      case 'view_insights':
+        await PostInsightsSheet.show(context, record.id);
+      case 'retry_story':
         final error = await ref
             .read(facebookHistoryProvider.notifier)
-            .refreshInsights(record.id);
+            .retryStory(record.id);
         if (context.mounted) {
           ScaffoldMessenger.of(
             context,
-          ).showSnackBar(SnackBar(content: Text(error ?? 'Insights updated')));
+          ).showSnackBar(SnackBar(content: Text(error ?? 'Story published')));
         }
+      case 'comments':
+        if (!context.mounted) return;
+        await context.push(
+          RoutePaths.facebookComments,
+          extra: {'postId': record.postId, 'snippet': record.snippet},
+        );
       case 'copy_caption':
         await Clipboard.setData(ClipboardData(text: record.reusableCaption));
         Haptics.lightImpact();
@@ -363,6 +473,76 @@ class _RecordTile extends ConsumerWidget {
             .startDraft(record.reusableCaption);
         if (context.mounted) context.push(RoutePaths.facebookCompose);
     }
+  }
+
+  Future<void> _editCaption(BuildContext context, WidgetRef ref) async {
+    final controller = TextEditingController(text: record.reusableCaption);
+    final message = await showDialog<String>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: const Text('Edit caption'),
+        content: TextField(
+          controller: controller,
+          autofocus: true,
+          minLines: 3,
+          maxLines: 8,
+          textCapitalization: TextCapitalization.sentences,
+          decoration: const InputDecoration(
+            hintText: 'Write a caption',
+            border: OutlineInputBorder(),
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(dialogContext).pop(),
+            child: const Text('Cancel'),
+          ),
+          TextButton(
+            onPressed: () =>
+                Navigator.of(dialogContext).pop(controller.text.trim()),
+            child: const Text('Save'),
+          ),
+        ],
+      ),
+    );
+    controller.dispose();
+    if (message == null || message.isEmpty || !context.mounted) return;
+    final error = await ref
+        .read(facebookHistoryProvider.notifier)
+        .editPublishedPost(record.id, message);
+    if (!context.mounted) return;
+    ScaffoldMessenger.of(context)
+        .showSnackBar(SnackBar(content: Text(error ?? 'Caption updated')));
+  }
+
+  Future<void> _deletePost(BuildContext context, WidgetRef ref) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: const Text('Delete this Facebook post?'),
+        content: const Text(
+          "It will be removed from Facebook and from this device's history. "
+          'This cannot be undone.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(dialogContext).pop(false),
+            child: const Text('Keep it'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.of(dialogContext).pop(true),
+            child: const Text('Delete post'),
+          ),
+        ],
+      ),
+    );
+    if (confirmed != true || !context.mounted) return;
+    final error = await ref
+        .read(facebookHistoryProvider.notifier)
+        .deletePublishedPost(record.id);
+    if (!context.mounted) return;
+    ScaffoldMessenger.of(context)
+        .showSnackBar(SnackBar(content: Text(error ?? 'Post deleted')));
   }
 
   Future<void> _cancel(BuildContext context, WidgetRef ref) async {

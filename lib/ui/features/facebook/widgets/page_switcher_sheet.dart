@@ -3,7 +3,6 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import 'package:oreamnos/config/theme/app_spacing.dart';
 import 'package:oreamnos/ui/core/utils/haptics.dart';
-import 'package:oreamnos/ui/features/facebook/view_models/facebook_state.dart';
 import 'package:oreamnos/ui/features/facebook/view_models/facebook_view_model.dart';
 import 'package:oreamnos/ui/features/facebook/widgets/compose/facebook_compose_widgets.dart';
 import 'package:oreamnos/ui/features/facebook/widgets/facebook_connection_dialog.dart';
@@ -49,9 +48,7 @@ class PageSwitcherSheet extends ConsumerWidget {
             const SizedBox(height: AppSpacing.xs),
             if (pages.isEmpty)
               Padding(
-                padding: const EdgeInsets.symmetric(
-                  vertical: AppSpacing.base,
-                ),
+                padding: const EdgeInsets.symmetric(vertical: AppSpacing.base),
                 child: Text(
                   'No Page connected yet. Add one to start posting.',
                   style: theme.textTheme.bodySmall?.copyWith(
@@ -110,6 +107,60 @@ class PageSwitcherSheet extends ConsumerWidget {
                 FacebookConnectionDialog.show(context);
               },
             ),
+            if (connection.isExpired)
+              ListTile(
+                contentPadding: EdgeInsets.zero,
+                leading: const Icon(Icons.sync_rounded),
+                title: const Text('Re-import from user token'),
+                subtitle: const Text(
+                  'Add or refresh Pages after the Page token expired',
+                ),
+                onTap: () {
+                  Navigator.of(context).pop();
+                  FacebookConnectionDialog.show(context);
+                },
+              ),
+            if (connection.isConnected)
+              ListTile(
+                contentPadding: EdgeInsets.zero,
+                leading: Icon(
+                  Icons.link_off_rounded,
+                  color: theme.colorScheme.error,
+                ),
+                title: Text(
+                  'Disconnect this Page',
+                  style: TextStyle(color: theme.colorScheme.error),
+                ),
+                onTap: () async {
+                  final confirmed = await showDialog<bool>(
+                    context: context,
+                    builder: (dialogContext) => AlertDialog(
+                      title: const Text('Disconnect this Page?'),
+                      content: Text(
+                        'Only ${connection.pageName} will be removed. Other '
+                        'Pages, posts and drafts stay on this device.',
+                      ),
+                      actions: [
+                        TextButton(
+                          onPressed: () =>
+                              Navigator.of(dialogContext).pop(false),
+                          child: const Text('Keep it'),
+                        ),
+                        TextButton(
+                          onPressed: () =>
+                              Navigator.of(dialogContext).pop(true),
+                          child: const Text('Disconnect'),
+                        ),
+                      ],
+                    ),
+                  );
+                  if (confirmed != true || !context.mounted) return;
+                  await ref
+                      .read(facebookViewModelProvider.notifier)
+                      .disconnectActivePage();
+                  if (context.mounted) Navigator.of(context).pop();
+                },
+              ),
           ],
         ),
       ),

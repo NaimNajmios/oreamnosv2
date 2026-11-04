@@ -24,6 +24,18 @@ enum FacebookApiErrorKind {
   /// User-token → Page-token exchange failed (missing permission/expired).
   pageTokenExchangeFailed,
 
+  /// The token/Page cannot schedule posts.
+  schedulingNotAllowed,
+
+  /// The local or Graph schedule time is invalid.
+  invalidScheduleTime,
+
+  /// A workflow included a Story but the post is scheduled.
+  storySchedulingUnsupported,
+
+  /// Stories are unavailable for this Page/app.
+  storyUnavailable,
+
   /// Anything else, including unexpected server responses.
   unknown,
 }
@@ -115,6 +127,15 @@ class FacebookApiException implements Exception {
       FacebookApiErrorKind.duplicate =>
         'An identical post was already published. Edit the text a little, '
             'then publish.',
+      FacebookApiErrorKind.schedulingNotAllowed =>
+        "This Page can't schedule posts with the current token.",
+      FacebookApiErrorKind.invalidScheduleTime =>
+        'Choose a valid time between 10 minutes and 30 days from now.',
+      FacebookApiErrorKind.storySchedulingUnsupported =>
+        "Facebook Stories can't be scheduled. Post now or remove the Story.",
+      FacebookApiErrorKind.storyUnavailable =>
+        'Stories are unavailable for this Page. The Page post can still be '
+            'published.',
       _ => rawMessage,
     };
   }

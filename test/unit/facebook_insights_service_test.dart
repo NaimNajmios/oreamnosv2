@@ -101,6 +101,55 @@ void main() {
       },
     );
 
+    test('parses the richer v13 metric set', () async {
+      final insights = await _service(
+        _GraphAdapter(
+          200,
+          _insights([
+            {
+              'name': 'post_impressions_unique',
+              'values': [
+                {'value': 120},
+              ],
+            },
+            {
+              'name': 'post_impressions',
+              'values': [
+                {'value': 300},
+              ],
+            },
+            {
+              'name': 'post_engaged_users',
+              'values': [
+                {'value': 45},
+              ],
+            },
+            {
+              'name': 'post_negative_feedback',
+              'values': [
+                {'value': 2},
+              ],
+            },
+            {
+              'name': 'post_reactions_by_type_total',
+              'values': [
+                {
+                  'value': {'like': 10, 'love': 2},
+                },
+              ],
+            },
+          ]),
+        ),
+      ).fetch(postId: 'p', token: _token);
+      expect(insights.impressions, 120);
+      expect(insights.totalImpressions, 300);
+      expect(insights.engagedUsers, 45);
+      expect(insights.negativeFeedback, 2);
+      expect(insights.reactions, 12);
+      expect(insights.reactionsByType, {'like': 10, 'love': 2});
+      expect(insights.clicks, isNull);
+    });
+
     test('missing metrics stay null, never zero', () async {
       final adapter = _GraphAdapter(
         200,

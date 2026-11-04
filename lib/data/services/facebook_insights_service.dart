@@ -42,7 +42,8 @@ class FacebookInsightsService {
         queryParameters: const {
           'fields':
               'insights.metric('
-              'post_impressions_unique,post_reactions_by_type_total,'
+              'post_impressions,post_impressions_unique,post_engaged_users,'
+              'post_negative_feedback,post_reactions_by_type_total,'
               'post_clicks)',
         },
         options: Options(headers: {'Authorization': 'Bearer $token'}),
@@ -88,28 +89,36 @@ class FacebookInsightsService {
       return _asInt(value);
     }
 
-    int? reactions() {
+    Map<String, int>? reactionMap() {
       final values = metrics['post_reactions_by_type_total'];
       if (values is! List || values.isEmpty) return null;
       final first = values.first;
       final value = first is Map ? first['value'] : first;
-      if (value is! Map) return _asInt(value);
-      var sum = 0;
-      var found = false;
-      for (final entry in value.values) {
-        final count = _asInt(entry);
+      if (value is! Map) return null;
+      final result = <String, int>{};
+      for (final entry in value.entries) {
+        final count = _asInt(entry.value);
         if (count != null) {
-          sum += count;
-          found = true;
+          result[entry.key.toString()] = count;
         }
       }
-      return found ? sum : null;
+      return result.isEmpty ? null : result;
     }
+
+    final reactionsByType = reactionMap();
+    final reactions = reactionsByType?.values.fold<int>(
+      0,
+      (sum, count) => sum + count,
+    );
 
     return FacebookPostInsights(
       impressions: single('post_impressions_unique'),
-      reactions: reactions(),
+      reactions: reactions,
       clicks: single('post_clicks'),
+      totalImpressions: single('post_impressions'),
+      engagedUsers: single('post_engaged_users'),
+      negativeFeedback: single('post_negative_feedback'),
+      reactionsByType: reactionsByType,
       fetchedAt: fetchedAt,
     );
   }

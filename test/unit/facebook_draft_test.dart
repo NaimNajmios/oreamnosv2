@@ -8,10 +8,13 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:oreamnos/core/di/injection.dart';
 import 'package:oreamnos/core/network/api_client.dart';
+import 'package:oreamnos/data/services/facebook_draft_store.dart';
 import 'package:oreamnos/data/services/facebook_history_service.dart';
 import 'package:oreamnos/data/services/facebook_publisher_service.dart';
+import 'package:oreamnos/data/services/facebook_story_composer.dart';
 import 'package:oreamnos/data/services/preferences_service.dart';
 import 'package:oreamnos/domain/models/facebook_api_exception.dart';
+import 'package:oreamnos/domain/models/facebook_post_record.dart';
 import 'package:oreamnos/ui/features/facebook/view_models/facebook_state.dart';
 import 'package:oreamnos/ui/features/facebook/view_models/facebook_view_model.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -106,6 +109,82 @@ class _FailingMultiPublisher extends FacebookPublisherService {
     DateTime? scheduledAt,
   }) async {
     throw StateError('feed must not be created after a failed upload');
+  }
+}
+
+class _StoryPublisher extends FacebookPublisherService {
+  _StoryPublisher({this.failStory = false}) : super(ApiClient());
+
+  final bool failStory;
+  int storyUploads = 0;
+
+  @override
+  Future<FacebookPage> verify(String token) async =>
+      const FacebookPage(id: '123456', name: 'Trace');
+
+  @override
+  Future<FacebookPublishResult> publishText({
+    required String pageId,
+    required String token,
+    required String message,
+    DateTime? scheduledAt,
+  }) async {
+    return FacebookPublishResult(
+      id: 'feed_1',
+      postId: 'feed_1',
+      permalink: 'https://www.facebook.com/feed_1',
+      isPhoto: false,
+      isScheduled: scheduledAt != null,
+      scheduledAt: scheduledAt,
+    );
+  }
+
+  @override
+  Future<String> uploadUnpublishedPhoto({
+    required String pageId,
+    required String token,
+    required String filePath,
+    String? altText,
+    ProgressCallback? onSendProgress,
+  }) async {
+    storyUploads++;
+    return 'story_photo';
+  }
+
+  @override
+  Future<FacebookStoryResult> publishPhotoStory({
+    required String pageId,
+    required String token,
+    required String photoId,
+  }) async {
+    if (failStory) {
+      throw const FacebookApiException(
+        kind: FacebookApiErrorKind.storyUnavailable,
+        message: 'Story unavailable',
+      );
+    }
+    return const FacebookStoryResult(postId: 'story_1');
+  }
+
+  @override
+  Future<void> deletePhoto({
+    required String photoId,
+    required String token,
+  }) async {}
+}
+
+class _FakeStoryComposer extends FacebookStoryComposer {
+  @override
+  Future<String> compose({
+    String? sourceImagePath,
+    required String title,
+    required String outputDir,
+  }) async {
+    final file = File(
+      '$outputDir/story_${DateTime.now().microsecondsSinceEpoch}.jpg',
+    );
+    await file.writeAsBytes([1, 2, 3]);
+    return file.path;
   }
 }
 
@@ -337,8 +416,8 @@ void main() {
           .setDraftText('Saved caption #FAM');
       await Future<void>.delayed(const Duration(milliseconds: 700));
       expect(
-        getIt<PreferencesService>().facebookDraftJson,
-        contains('Saved caption #FAM'),
+        getIt<FacebookDraftStore>().loadAll().single.text,
+        'Saved caption #FAM',
       );
       container.dispose();
 
@@ -583,6 +662,80 @@ void main() {
         container.dispose();
       },
     );
+
+    test('feed + Story publishes both in one action', () async {
+      getIt.unregister<FacebookStoryComposer>();
+      getIt.registerLazySingleton<FacebookStoryComposer>(
+        () => _FakeStoryComposer(),
+      );
+      final publisher = _StoryPublisher();
+      final container = await buildContainer(publisher);
+      final notifier = container.read(facebookDraftProvider.notifier);
+      notifier.startDraft('Matchday caption #FAM');
+      notifier.setStoryEnabled(true);
+      notifier.setStoryTitle('Matchday');
+      await notifier.publish();
+
+      final draft = container.read(facebookDraftProvider);
+      expect(draft.phase, FacebookComposePhase.published);
+      expect(draft.result?.postId, 'feed_1');
+      expect(draft.storyResult?.postId, 'story_1');
+      expect(draft.storyError, isNull);
+      expect(publisher.storyUploads, 1);
+
+      final record = getIt<FacebookHistoryService>().records.single;
+      expect(record.postId, 'feed_1');
+      expect(record.storyStatus, FacebookStoryStatus.published);
+      expect(record.storyPostId, 'story_1');
+      container.dispose();
+    });
+
+    test(
+      'Story failure leaves the feed post and marks partial success',
+      () async {
+        getIt.unregister<FacebookStoryComposer>();
+        getIt.registerLazySingleton<FacebookStoryComposer>(
+          () => _FakeStoryComposer(),
+        );
+        final container = await buildContainer(
+          _StoryPublisher(failStory: true),
+        );
+        final notifier = container.read(facebookDraftProvider.notifier);
+        notifier.startDraft('Caption');
+        notifier.setStoryEnabled(true);
+        notifier.setStoryTitle('Title');
+        await notifier.publish();
+
+        final draft = container.read(facebookDraftProvider);
+        expect(draft.phase, FacebookComposePhase.partialSuccess);
+        expect(draft.result?.postId, 'feed_1');
+        expect(draft.storyError, isNotNull);
+        final record = getIt<FacebookHistoryService>().records.single;
+        expect(record.storyStatus, FacebookStoryStatus.failed);
+        container.dispose();
+      },
+    );
+
+    test('Story workflows cannot be scheduled', () async {
+      getIt.unregister<FacebookStoryComposer>();
+      getIt.registerLazySingleton<FacebookStoryComposer>(
+        () => _FakeStoryComposer(),
+      );
+      final container = await buildContainer(_StoryPublisher());
+      final notifier = container.read(facebookDraftProvider.notifier);
+      notifier.startDraft('Caption');
+      notifier.setStoryEnabled(true);
+      notifier.setStoryTitle('Title');
+      notifier.setScheduledAt(DateTime.now().add(const Duration(hours: 2)));
+      await notifier.publish();
+      final draft = container.read(facebookDraftProvider);
+      expect(draft.phase, FacebookComposePhase.publishError);
+      expect(
+        draft.error?.kind,
+        FacebookApiErrorKind.storySchedulingUnsupported,
+      );
+      container.dispose();
+    });
 
     test('v9 draft JSON migrates into a media item and restores', () async {
       final prefs = getIt<PreferencesService>();

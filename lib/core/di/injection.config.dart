@@ -18,9 +18,15 @@ import '../../data/repositories/tavily_search_repository.dart' as _i389;
 import '../../data/services/card_data_extractor.dart' as _i633;
 import '../../data/services/daily_usage_service.dart' as _i267;
 import '../../data/services/export_service.dart' as _i496;
+import '../../data/services/facebook_comments_service.dart' as _i500;
+import '../../data/services/facebook_draft_store.dart' as _i217;
 import '../../data/services/facebook_history_service.dart' as _i278;
 import '../../data/services/facebook_insights_service.dart' as _i919;
+import '../../data/services/facebook_page_service.dart' as _i9;
 import '../../data/services/facebook_publisher_service.dart' as _i493;
+import '../../data/services/facebook_storage_service.dart' as _i141;
+import '../../data/services/facebook_story_composer.dart' as _i282;
+import '../../data/services/facebook_workflow_store.dart' as _i703;
 import '../../data/services/free_tier_guard.dart' as _i200;
 import '../../data/services/log_service.dart' as _i713;
 import '../../data/services/ml_kit_vision_extractor.dart' as _i560;
@@ -58,6 +64,9 @@ extension GetItInjectableX on _i174.GetIt {
     gh.lazySingleton<_i557.ApiClient>(() => _i557.ApiClient());
     gh.lazySingleton<_i633.CardDataExtractor>(() => _i633.CardDataExtractor());
     gh.lazySingleton<_i496.ExportService>(() => _i496.ExportService());
+    gh.lazySingleton<_i282.FacebookStoryComposer>(
+      () => _i282.FacebookStoryComposer(),
+    );
     gh.lazySingleton<_i952.TokenUsageSideChannel>(
       () => _i952.TokenUsageSideChannel(),
     );
@@ -89,14 +98,23 @@ extension GetItInjectableX on _i174.GetIt {
     gh.lazySingleton<_i267.DailyUsageService>(
       () => _i267.DailyUsageService(gh<_i460.SharedPreferences>()),
     );
+    gh.lazySingleton<_i217.FacebookDraftStore>(
+      () => _i217.FacebookDraftStore(gh<_i460.SharedPreferences>()),
+    );
     gh.lazySingleton<_i278.FacebookHistoryService>(
       () => _i278.FacebookHistoryService(gh<_i460.SharedPreferences>()),
+    );
+    gh.lazySingleton<_i703.FacebookWorkflowStore>(
+      () => _i703.FacebookWorkflowStore(gh<_i460.SharedPreferences>()),
     );
     gh.lazySingleton<_i200.FreeTierGuard>(
       () => _i200.FreeTierGuard(gh<_i460.SharedPreferences>()),
     );
     gh.lazySingleton<_i713.LogService>(
       () => _i713.LogService(gh<_i460.SharedPreferences>()),
+    );
+    gh.lazySingleton<_i500.FacebookCommentsService>(
+      () => _i500.FacebookCommentsService(gh<_i557.ApiClient>()),
     );
     gh.lazySingleton<_i919.FacebookInsightsService>(
       () => _i919.FacebookInsightsService(gh<_i557.ApiClient>()),
@@ -114,6 +132,18 @@ extension GetItInjectableX on _i174.GetIt {
       () => _i389.TavilySearchRepository(
         gh<_i557.ApiClient>(),
         gh<_i867.PreferencesService>(),
+      ),
+    );
+    gh.lazySingleton<_i9.FacebookPageService>(
+      () => _i9.FacebookPageService(
+        gh<_i557.ApiClient>(),
+        gh<_i493.FacebookPublisherService>(),
+      ),
+    );
+    gh.lazySingleton<_i141.FacebookStorageService>(
+      () => _i141.FacebookStorageService(
+        gh<_i278.FacebookHistoryService>(),
+        gh<_i217.FacebookDraftStore>(),
       ),
     );
     gh.factory<_i253.EnrichContextUseCase>(

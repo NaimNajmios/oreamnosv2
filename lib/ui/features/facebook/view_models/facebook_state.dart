@@ -83,6 +83,9 @@ enum FacebookComposePhase {
   /// Editing text/attachment.
   editing,
 
+  /// Preparing/cropping photos before upload.
+  compressing,
+
   /// Publish call in flight (includes photo preparation/upload).
   publishing,
 
@@ -91,6 +94,9 @@ enum FacebookComposePhase {
 
   /// Scheduled — no permalink yet; success panel shows the schedule time.
   scheduled,
+
+  /// Feed succeeded but a Story failed; retry the Story only.
+  partialSuccess,
 
   /// Last publish attempt failed; [FacebookComposeState.error] holds why.
   publishError,
@@ -215,6 +221,17 @@ class FacebookComposeState {
     this.result,
     this.error,
     this.restoredFromStorage = false,
+    this.pageId = '',
+    this.scheduledSyncFailed = false,
+    this.draftTitle = '',
+    this.workflowId = '',
+    this.workflowName = '',
+    this.publishFeed = true,
+    this.storyEnabled = false,
+    this.storyTitle = '',
+    this.storyImagePath,
+    this.storyResult,
+    this.storyError,
   });
 
   /// Plain text ready for the feed (markdown already stripped at
@@ -233,8 +250,32 @@ class FacebookComposeState {
   /// True when `build()` restored an autosaved draft (one-shot UI hint).
   final bool restoredFromStorage;
 
+  /// Page the draft belongs to. Used to block publishing to the wrong Page
+  /// after switching accounts.
+  final String pageId;
+
+  /// True when the last scheduled-post reconcile failed (history shows a
+  /// "Not synced" hint until the next success).
+  final bool scheduledSyncFailed;
+
+  /// Generated headline / first line used as the default Story title.
+  final String draftTitle;
+
+  final String workflowId;
+  final String workflowName;
+  final bool publishFeed;
+  final bool storyEnabled;
+  final String storyTitle;
+  final String? storyImagePath;
+  final FacebookStoryResult? storyResult;
+  final String? storyError;
+
+  bool get hasStory => storyEnabled;
+  bool get storyFailed => storyError != null;
+
   bool get hasText => text.trim().isNotEmpty;
   bool get hasImage => media.isNotEmpty;
+  bool get isEmpty => !hasText && media.isEmpty;
   bool get canAddMoreMedia => media.length < FacebookLimits.maxPhotos;
   bool get hasMultipleMedia => media.length > 1;
 
@@ -252,14 +293,21 @@ class FacebookComposeState {
       media.isEmpty ? FacebookImageAspect.portrait : media.first.aspect;
 
   bool get isPublishing => phase == FacebookComposePhase.publishing;
+  bool get isPreparing => phase == FacebookComposePhase.compressing;
   bool get isPublished => phase == FacebookComposePhase.published;
   bool get isScheduled => phase == FacebookComposePhase.scheduled;
-  bool get isFinished => isPublished || isScheduled;
+  bool get isFinished =>
+      isPublished ||
+      isScheduled ||
+      phase == FacebookComposePhase.partialSuccess;
 
   /// Gate for the Post/Schedule button. Time validation lives in the
   /// notifier (`publish` rejects past/immediate times with a message).
   bool get canPublish {
-    if (!hasText || isPublishing || isFinished) return false;
+    if (isPublishing || isPreparing || isFinished) return false;
+    if (!publishFeed && !storyEnabled) return false;
+    if (publishFeed && !hasText) return false;
+    if (storyEnabled && storyTitle.trim().isEmpty) return false;
     if (publishMode == FacebookPublishMode.scheduled) {
       return scheduledAt != null && scheduledAt!.isAfter(DateTime.now());
     }
@@ -276,6 +324,17 @@ class FacebookComposeState {
     Object? result = _sentinel,
     Object? error = _sentinel,
     bool? restoredFromStorage,
+    String? pageId,
+    bool? scheduledSyncFailed,
+    String? draftTitle,
+    String? workflowId,
+    String? workflowName,
+    bool? publishFeed,
+    bool? storyEnabled,
+    String? storyTitle,
+    Object? storyImagePath = _sentinel,
+    Object? storyResult = _sentinel,
+    Object? storyError = _sentinel,
   }) {
     return FacebookComposeState(
       text: text ?? this.text,
@@ -295,6 +354,23 @@ class FacebookComposeState {
           : result as FacebookPublishResult?,
       error: error == _sentinel ? this.error : error as FacebookApiException?,
       restoredFromStorage: restoredFromStorage ?? this.restoredFromStorage,
+      pageId: pageId ?? this.pageId,
+      scheduledSyncFailed: scheduledSyncFailed ?? this.scheduledSyncFailed,
+      draftTitle: draftTitle ?? this.draftTitle,
+      workflowId: workflowId ?? this.workflowId,
+      workflowName: workflowName ?? this.workflowName,
+      publishFeed: publishFeed ?? this.publishFeed,
+      storyEnabled: storyEnabled ?? this.storyEnabled,
+      storyTitle: storyTitle ?? this.storyTitle,
+      storyImagePath: storyImagePath == _sentinel
+          ? this.storyImagePath
+          : storyImagePath as String?,
+      storyResult: storyResult == _sentinel
+          ? this.storyResult
+          : storyResult as FacebookStoryResult?,
+      storyError: storyError == _sentinel
+          ? this.storyError
+          : storyError as String?,
     );
   }
 
@@ -310,12 +386,24 @@ class FacebookDraftSnapshot {
     this.media = const [],
     this.publishMode = FacebookPublishMode.now,
     this.scheduledAt,
+    this.pageId = '',
+    this.workflowId = '',
+    this.workflowName = '',
+    this.publishFeed = true,
+    this.storyEnabled = false,
+    this.storyTitle = '',
   });
 
   final String text;
   final List<FacebookMediaItem> media;
   final FacebookPublishMode publishMode;
   final DateTime? scheduledAt;
+  final String pageId;
+  final String workflowId;
+  final String workflowName;
+  final bool publishFeed;
+  final bool storyEnabled;
+  final String storyTitle;
 
   bool get isEmpty =>
       text.trim().isEmpty && media.every((item) => item.path.isEmpty);
@@ -325,6 +413,12 @@ class FacebookDraftSnapshot {
     'media': media.map((item) => item.toJson()).toList(),
     'mode': publishMode.name,
     'scheduledAt': scheduledAt?.toUtc().toIso8601String(),
+    'pageId': pageId,
+    'workflowId': workflowId,
+    'workflowName': workflowName,
+    'publishFeed': publishFeed,
+    'storyEnabled': storyEnabled,
+    'storyTitle': storyTitle,
   };
 
   factory FacebookDraftSnapshot.fromJson(Map<String, dynamic> json) {
@@ -351,6 +445,12 @@ class FacebookDraftSnapshot {
           : FacebookPublishMode.now,
       scheduledAt: DateTime.tryParse(json['scheduledAt'] as String? ?? '')
           ?.toLocal(),
+      pageId: json['pageId'] as String? ?? '',
+      workflowId: json['workflowId'] as String? ?? '',
+      workflowName: json['workflowName'] as String? ?? '',
+      publishFeed: json['publishFeed'] as bool? ?? true,
+      storyEnabled: json['storyEnabled'] as bool? ?? false,
+      storyTitle: json['storyTitle'] as String? ?? '',
     );
   }
 }

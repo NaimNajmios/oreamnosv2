@@ -10,6 +10,9 @@ enum FacebookPostStatus {
   failed,
 }
 
+/// Story result attached to a feed record.
+enum FacebookStoryStatus { none, published, failed }
+
 /// One successful publish (or scheduled post), persisted locally (capped at
 /// 50, mirrors [UsageLog]'s prefs-JSON shape). Permalink is built from
 /// `post_id` (photo posts) or the object id (text posts).
@@ -32,6 +35,20 @@ class FacebookPostRecord {
     this.reactions,
     this.clicks,
     this.insightsFetchedAt,
+    this.totalImpressions,
+    this.engagedUsers,
+    this.negativeFeedback,
+    this.reactionsByType,
+    this.editedAt,
+    this.mediaMetadata = const [],
+    this.storyPostId = '',
+    this.storyUrl = '',
+    this.storyStatus = FacebookStoryStatus.none,
+    this.storyTitle = '',
+    this.storyImagePath = '',
+    this.workflowId = '',
+    this.workflowName = '',
+    this.isStoryOnly = false,
   });
 
   final String id;
@@ -64,8 +81,42 @@ class FacebookPostRecord {
   final int? clicks;
   final DateTime? insightsFetchedAt;
 
+  /// Additional v13 insight metrics (null when Facebook omits them).
+  final int? totalImpressions;
+  final int? engagedUsers;
+  final int? negativeFeedback;
+  final Map<String, int>? reactionsByType;
+
+  /// When the caption was last edited from the app.
+  final DateTime? editedAt;
+
+  /// Raw per-photo settings (path/aspect/zoom/offset/altText) for future
+  /// reuse. UI renders thumbnails from [localImagePaths].
+  final List<Map<String, dynamic>> mediaMetadata;
+
+  final String storyPostId;
+  final String storyUrl;
+  final FacebookStoryStatus storyStatus;
+  final String storyTitle;
+  final String storyImagePath;
+  final String workflowId;
+  final String workflowName;
+  final bool isStoryOnly;
+
+  bool get hasStory => storyStatus != FacebookStoryStatus.none;
+  bool get storyPublished => storyStatus == FacebookStoryStatus.published;
+  bool get storyFailed => storyStatus == FacebookStoryStatus.failed;
+
   bool get hasInsights =>
-      impressions != null || reactions != null || clicks != null;
+      impressions != null ||
+      reactions != null ||
+      clicks != null ||
+      totalImpressions != null ||
+      engagedUsers != null ||
+      negativeFeedback != null ||
+      (reactionsByType?.isNotEmpty ?? false);
+  bool get canEdit => isPublished;
+  bool get canDelete => isPublished;
 
   /// Legacy single-thumbnail accessor.
   String? get localImagePath =>
@@ -109,6 +160,20 @@ class FacebookPostRecord {
     Object? reactions = _sentinel,
     Object? clicks = _sentinel,
     Object? insightsFetchedAt = _sentinel,
+    Object? totalImpressions = _sentinel,
+    Object? engagedUsers = _sentinel,
+    Object? negativeFeedback = _sentinel,
+    Object? reactionsByType = _sentinel,
+    Object? editedAt = _sentinel,
+    List<Map<String, dynamic>>? mediaMetadata,
+    String? storyPostId,
+    String? storyUrl,
+    FacebookStoryStatus? storyStatus,
+    String? storyTitle,
+    String? storyImagePath,
+    String? workflowId,
+    String? workflowName,
+    bool? isStoryOnly,
   }) {
     return FacebookPostRecord(
       id: id,
@@ -136,6 +201,28 @@ class FacebookPostRecord {
       insightsFetchedAt: insightsFetchedAt == _sentinel
           ? this.insightsFetchedAt
           : insightsFetchedAt as DateTime?,
+      totalImpressions: totalImpressions == _sentinel
+          ? this.totalImpressions
+          : totalImpressions as int?,
+      engagedUsers: engagedUsers == _sentinel
+          ? this.engagedUsers
+          : engagedUsers as int?,
+      negativeFeedback: negativeFeedback == _sentinel
+          ? this.negativeFeedback
+          : negativeFeedback as int?,
+      reactionsByType: reactionsByType == _sentinel
+          ? this.reactionsByType
+          : reactionsByType as Map<String, int>?,
+      editedAt: editedAt == _sentinel ? this.editedAt : editedAt as DateTime?,
+      mediaMetadata: mediaMetadata ?? this.mediaMetadata,
+      storyPostId: storyPostId ?? this.storyPostId,
+      storyUrl: storyUrl ?? this.storyUrl,
+      storyStatus: storyStatus ?? this.storyStatus,
+      storyTitle: storyTitle ?? this.storyTitle,
+      storyImagePath: storyImagePath ?? this.storyImagePath,
+      workflowId: workflowId ?? this.workflowId,
+      workflowName: workflowName ?? this.workflowName,
+      isStoryOnly: isStoryOnly ?? this.isStoryOnly,
     );
   }
 
@@ -159,6 +246,20 @@ class FacebookPostRecord {
     'reactions': reactions,
     'clicks': clicks,
     'insightsFetchedAt': insightsFetchedAt?.toUtc().toIso8601String(),
+    'totalImpressions': totalImpressions,
+    'engagedUsers': engagedUsers,
+    'negativeFeedback': negativeFeedback,
+    'reactionsByType': reactionsByType,
+    'editedAt': editedAt?.toUtc().toIso8601String(),
+    'mediaMetadata': mediaMetadata,
+    'storyPostId': storyPostId,
+    'storyUrl': storyUrl,
+    'storyStatus': storyStatus.name,
+    'storyTitle': storyTitle,
+    'storyImagePath': storyImagePath,
+    'workflowId': workflowId,
+    'workflowName': workflowName,
+    'isStoryOnly': isStoryOnly,
   };
 
   factory FacebookPostRecord.fromJson(Map<String, dynamic> json) {
@@ -193,7 +294,45 @@ class FacebookPostRecord {
       insightsFetchedAt: DateTime.tryParse(
         json['insightsFetchedAt'] as String? ?? '',
       )?.toLocal(),
+      totalImpressions: (json['totalImpressions'] as num?)?.toInt(),
+      engagedUsers: (json['engagedUsers'] as num?)?.toInt(),
+      negativeFeedback: (json['negativeFeedback'] as num?)?.toInt(),
+      reactionsByType: _reactionsFromJson(json['reactionsByType']),
+      editedAt: DateTime.tryParse(json['editedAt'] as String? ?? '')?.toLocal(),
+      mediaMetadata: _mediaFromJson(json['mediaMetadata']),
+      storyPostId: json['storyPostId']?.toString() ?? '',
+      storyUrl: json['storyUrl']?.toString() ?? '',
+      storyStatus: FacebookStoryStatus.values.firstWhere(
+        (s) => s.name == json['storyStatus'],
+        orElse: () => FacebookStoryStatus.none,
+      ),
+      storyTitle: json['storyTitle']?.toString() ?? '',
+      storyImagePath: json['storyImagePath']?.toString() ?? '',
+      workflowId: json['workflowId']?.toString() ?? '',
+      workflowName: json['workflowName']?.toString() ?? '',
+      isStoryOnly: json['isStoryOnly'] as bool? ?? false,
     );
+  }
+
+  static List<Map<String, dynamic>> _mediaFromJson(Object? raw) {
+    if (raw is! List) return const [];
+    return raw
+        .whereType<Map>()
+        .map((e) => e.cast<String, dynamic>())
+        .toList(growable: false);
+  }
+
+  static Map<String, int>? _reactionsFromJson(Object? raw) {
+    if (raw is! Map) return null;
+    final result = <String, int>{};
+    for (final entry in raw.entries) {
+      final value = entry.value;
+      final count = value is num
+          ? value.toInt()
+          : int.tryParse(value?.toString() ?? '');
+      if (count != null) result[entry.key.toString()] = count;
+    }
+    return result.isEmpty ? null : result;
   }
 
   static const Object _sentinel = Object();

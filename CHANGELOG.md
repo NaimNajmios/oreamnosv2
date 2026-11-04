@@ -1,5 +1,59 @@
 # Changelog — Oreamnos
 
+## v16 — Facebook Workflows + Page Stories (2026-11-04)
+
+- **Publishing workflows:** reusable presets for Page post, Story, or Page + Story, with a default per Page. Settings gains `/facebook-workflows`; drafts auto-apply the default and the composer exposes a workflow chip, per-post toggles, and an editable Story title.
+- **Page Stories:** `POST /{page-id}/photos` (`published=false`) followed by `POST /{page-id}/photo_stories` via `photo_id`. Stories use a dedicated 1080×1920 JPEG with the **short title baked into the image** (the API has no caption field), never the published feed photo.
+- **Partial success:** feed + Story publishes as two destinations. If the Story fails after the feed succeeds, the feed stays live, history marks **Story failed**, and **Retry Story** publishes only the Story.
+- **Automation:** per-Page defaults mean Generate → Publish can post to Page + Story in one action. Story-only posts and generated gradient cards are supported.
+- **Constraints handled:** Stories are post-now only (scheduling is blocked with clear choices); permission/unsupported errors surface `storyUnavailable` without retry loops.
+- **Tests:** workflow store/defaults/cap, title extraction, 1080×1920 composer output, Story Graph bodies, feed+Story success, partial failure, retry isolation, and scheduling rejection.
+
+## v15 — Facebook Gap Closure (2026-11-04)
+
+- **Preview modes:** Light/Dark + Visitor view in the feed preview, scoped to a brand theme.
+- **Crop pipeline:** no-op crops return the original file; repeated crops reuse a bounded in-memory cache.
+- **Progress:** byte-weighted multi-photo progress and “Photo n of m failed” errors; new `compressing`/`partialSuccess` phases.
+- **Scheduling UX:** date/time sheet with timezone, scheduled row countdown, published/Story status chips, and a **Not synced** history banner with retry.
+- **Lifecycle/security:** full disconnect now deletes history thumbnails, draft images and temp uploads; 190 errors mark the connection expired from history, insights and comments; comments permission errors no longer loop on retry.
+- **Maintenance:** daily storage sweep + 15-minute scheduled reconcile on app start (both throttled).
+- **Pages:** Page switcher gains **Disconnect this Page** and **Re-import from user token**; legacy Page keys remain readable for one release.
+- **Drafts:** creating a new draft at the 20-draft cap asks before deleting the oldest; history records store per-photo metadata.
+- **Tests:** storage eviction/sweep, workflow/title/composer, cropper cache, story Graph calls, partial success, and 190 propagation.
+
+## v14 — Facebook Comment Moderation (2026-11-04)
+
+- **Comments service:** `FacebookCommentsService` lists `/{post-id}/comments` with pagination (`after` cursor, 25 per page, reverse chronological), replies via `POST /{comment-id}/comments`, hides/unhides via `POST /{comment-id}` (`is_hidden`), and deletes via `DELETE /{comment-id}`. Tokens stay in form bodies or `Authorization: Bearer`.
+- **Comments screen:** new `/facebook-comments` route with author avatars/initials, relative time, hidden badges, reply sheet, load-more, pull-to-refresh, and confirmed deletion. Missing `pages_manage_engagement` and expired tokens show explicit states; comment text is never persisted or logged.
+- **History entry point:** published rows gain **Comments** in the long-press menu.
+- **Tests:** comment parsing (missing authors, cursors), reply/hide/delete request bodies, permission/expired mapping, pagination dedupe, and controller action behavior.
+
+## v13 — Facebook Post Lifecycle + Richer Insights + Storage Hygiene (2026-11-04)
+
+- **Delete published posts:** `DELETE /{post-id}` with confirmation; local history and thumbnails are removed only after Graph success.
+- **Edit captions:** `POST /{post-id}` with `message`; `FacebookPostRecord` gains `editedAt` and the history row/snippet updates. Unsupported edits show “delete and repost” guidance without mutating local state.
+- **Richer insights:** adds total impressions, engaged users, negative feedback, and per-reaction-type counts to the existing reach/reactions/clicks model. The new `PostInsightsSheet` renders only metrics Facebook returned and exposes refresh; no fake zeros.
+- **Storage hygiene:** history eviction now deletes evicted thumbnails; draft saves prune files for removed photos; `FacebookStorageService` reports thumbnail/draft/temp usage and sweeps orphans plus cropped uploads older than 24 hours. Settings → Facebook gains a **Storage** tile with **Clean up**.
+- **Tests:** publisher delete/edit calls, unsupported-edit mapping, history `updateMessage`/richer-insight persistence, eviction thumbnail cleanup, draft pruning, storage report/sweep idempotence, and expanded insights parsing.
+
+## v12 — Facebook Multi-Page + Drafts (2026-11-04)
+
+- **User-token connect:** one user token is exchanged via `GET /me/accounts`; every Page is discovered and only the derived Page tokens are persisted under `facebook_page_token_<pageId>`. The user token is discarded immediately and never written to prefs, secure storage, logs or drafts.
+- **Page switcher:** `PageSwitcherSheet` from the composer header changes the active Page; `FacebookConnectionDialog` keeps the Page-token path plus "Disconnect this Page" / "Disconnect all".
+- **Draft ownership guard:** drafts are stamped with `pageId`; switching Pages with a non-empty draft offers **Switch target / Duplicate draft / Keep original Page**.
+- **Multi-draft store:** `facebook_drafts` (cap 20, newest first) with photos copied into `<appDocs>/facebook_drafts/<draftId>/` so temp cleanup cannot break them. Autosave writes through the store; the back gesture offers **Save draft / Discard / Keep editing**; publishing or discarding deletes only that draft.
+- **Drafts screen:** new `/facebook-drafts` route with thumbnail, caption, Page, photo count and relative time; open, duplicate, swipe/long-press delete, `New post` FAB, and orphan pruning. v9/v10 single-draft prefs migrate into the store.
+- **Legacy migration:** the v11 single-Page connection moves idempotently into a Page entry + per-Page token.
+- **Tests:** 421 green (+36 across multi-photo state/publish/cleanup, insights parsing/cache, per-Page token storage/migration, user-token exchange (asserting the user token is never persisted), Page service parsing/error mapping, Page switching/disconnect, draft store cap/duplication/image copying/legacy migration). `dart format` 0, `flutter analyze` 0.
+
+## v11 — Facebook Multi-Photo + Insights (2026-11-04)
+
+- **Multi-photo composer (up to 4):** gallery picker adds multiple images; swipeable `MediaCarousel` with `1/4` and **Cover** badges; per-photo edit sheet for crop/aspect/zoom/alt text, make cover, move left/right and remove; screen-reader index announcements.
+- **Multi-photo publish:** each photo uploads with `published=false`, then one `POST /{page}/feed` carries `attached_media` (JSON body, token never in the URL). Progress aggregates across photos; any upload/feed failure aborts before/after the feed post and best-effort `DELETE`s uploaded photos.
+- **Insights:** `FacebookInsightsService` reads `post_impressions_unique`, `post_reactions_by_type_total` and `post_clicks`; `FacebookPostRecord` caches them and the history row shows `👁 · 👍 · 🔗` only when data exists (never fake zeros). Long-press **Refresh insights** + pull-to-refresh (capped), no requests for scheduled posts.
+- **Models/errors:** stable media ids, `FacebookLimits` (4 photos, 420 alt chars), record insights fields (v10 JSON loads as null), and `mediaUploadFailed` / `insightsUnavailable` / `pageTokenExchangeFailed` kinds.
+- **Tests:** multi-photo Graph bodies, failed-upload cleanup, progress aggregation, insights parsing/cache, media cap/reorder/cover. `dart format` 0, `flutter analyze` 0.
+
 ## v10 — Facebook Photo Pipeline + Scheduling (2026-11-04)
 
 - **Crop control:** drag-to-reposition and pinch/slider zoom (1×–4×) on the inline photo preview; crop presets (Feed 1.91:1 / Square 1:1 / Portrait 4:5) and **Reset crop**. Preview and upload share the same clamped rect math (`FacebookImageCropper.cropRectFor`).
