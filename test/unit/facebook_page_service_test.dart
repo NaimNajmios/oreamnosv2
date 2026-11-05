@@ -180,7 +180,7 @@ void main() {
         await service.listPagesFromUserToken(_userToken);
         fail('should throw');
       } on FacebookApiException catch (e) {
-        expect(e.kind, FacebookApiErrorKind.pageTokenExchangeFailed);
+        expect(e.kind, FacebookApiErrorKind.unexpectedResponse);
         expect(e.message, contains('web page'));
         expect(e.kind, isNot(FacebookApiErrorKind.network));
       }

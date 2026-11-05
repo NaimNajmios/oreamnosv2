@@ -145,6 +145,7 @@ class GenerateViewModel extends Notifier<GenerateUiState>
 
     if (getIt.isRegistered<PreferencesService>()) {
       final prefs = getIt<PreferencesService>();
+      final uppercaseTitle = prefs.lastUppercaseTitle;
       if (prefs.persistGenerationOptions) {
         final length = PromptLength.values.firstWhere(
           (e) => e.name == prefs.lastPromptLength,
@@ -154,9 +155,12 @@ class GenerateViewModel extends Notifier<GenerateUiState>
           promptLength: length,
           isResearchModeEnabled: prefs.lastIsResearchMode,
           keepStructure: prefs.lastKeepStructure,
-          uppercaseTitle: prefs.lastUppercaseTitle,
+          uppercaseTitle: uppercaseTitle,
         );
       }
+      // Uppercase is a display preference: remember it even when the broader
+      // generation-options persistence is disabled.
+      return GenerateUiState(uppercaseTitle: uppercaseTitle);
     }
 
     return const GenerateUiState();
@@ -326,10 +330,9 @@ class GenerateViewModel extends Notifier<GenerateUiState>
     final next = !state.uppercaseTitle;
     state = state.copyWith(uppercaseTitle: next);
     if (getIt.isRegistered<PreferencesService>()) {
-      final prefs = getIt<PreferencesService>();
-      if (prefs.persistGenerationOptions) {
-        prefs.setLastUppercaseTitle(next);
-      }
+      // Always persist this one: it is a reading/display preference, not a
+      // generation option.
+      getIt<PreferencesService>().setLastUppercaseTitle(next);
     }
   }
 

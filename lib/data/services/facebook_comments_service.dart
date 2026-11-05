@@ -9,6 +9,7 @@ import '../../config/constants.dart';
 import '../../domain/models/facebook_api_exception.dart';
 import '../../domain/models/facebook_comment.dart';
 import 'facebook_network_error.dart';
+import 'facebook_response_guard.dart';
 
 /// Page comment moderation through Graph v23.0.
 ///
@@ -38,7 +39,7 @@ class FacebookCommentsService {
       );
     }
     try {
-      final response = await _client.get<Map<String, dynamic>>(
+      final response = await _client.get<dynamic>(
         '$_pathBase/${Uri.encodeComponent(postId)}/comments',
         queryParameters: {
           'fields':
@@ -48,9 +49,14 @@ class FacebookCommentsService {
           'order': 'reverse_chronological',
           if (after != null && after.isNotEmpty) 'after': after,
         },
-        options: Options(headers: {'Authorization': 'Bearer $token'}),
+        options: Options(
+          headers: {'Authorization': 'Bearer $token'},
+          receiveTimeout: AppConstants.facebookWriteTimeout,
+        ),
       );
-      return _parsePage(_asMap(response.data));
+      return _parsePage(
+        facebookRequireObject(response.data, action: 'comments'),
+      );
     } on FacebookApiException {
       rethrow;
     } on DioException catch (e) {
@@ -75,7 +81,7 @@ class FacebookCommentsService {
       );
     }
     try {
-      await _client.post<Map<String, dynamic>>(
+      await _client.post<dynamic>(
         '$_pathBase/${Uri.encodeComponent(commentId)}/comments',
         data: {'access_token': token, 'message': message},
         options: _formOptions(),
@@ -91,7 +97,7 @@ class FacebookCommentsService {
     required bool hidden,
   }) async {
     try {
-      await _client.post<Map<String, dynamic>>(
+      await _client.post<dynamic>(
         '$_pathBase/${Uri.encodeComponent(commentId)}',
         data: {'access_token': token, 'is_hidden': hidden ? 'true' : 'false'},
         options: _formOptions(),
@@ -106,7 +112,7 @@ class FacebookCommentsService {
     required String token,
   }) async {
     try {
-      await _client.delete<Map<String, dynamic>>(
+      await _client.delete<dynamic>(
         '$_pathBase/${Uri.encodeComponent(commentId)}',
         data: {'access_token': token},
         options: _formOptions(),
@@ -116,8 +122,8 @@ class FacebookCommentsService {
     }
   }
 
-  static FacebookCommentPage _parsePage(Map<String, dynamic>? body) {
-    final rows = body?['data'];
+  static FacebookCommentPage _parsePage(Map<String, dynamic> body) {
+    final rows = body['data'];
     final comments = <FacebookComment>[];
     if (rows is List) {
       for (final row in rows) {
@@ -148,7 +154,7 @@ class FacebookCommentsService {
       }
     }
     String? nextCursor;
-    final paging = body?['paging'];
+    final paging = body['paging'];
     if (paging is Map) {
       final cursors = paging['cursors'];
       if (cursors is Map) {
@@ -188,8 +194,12 @@ class FacebookCommentsService {
     return e;
   }
 
-  static Options _formOptions() =>
-      Options(contentType: 'application/x-www-form-urlencoded');
+  static Options _formOptions() => Options(
+    contentType: 'application/x-www-form-urlencoded',
+    sendTimeout: AppConstants.facebookWriteTimeout,
+    receiveTimeout: AppConstants.facebookWriteTimeout,
+    extra: const {'graphWrite': true},
+  );
 
   static Map<String, dynamic>? _asMap(Object? data) {
     if (data is Map) return data.cast<String, dynamic>();

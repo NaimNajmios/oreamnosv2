@@ -18,6 +18,9 @@ enum FacebookApiErrorKind {
   /// Transport failure with no Graph error body (timeout, offline).
   network,
 
+  /// A 200 response whose body was not the expected JSON object.
+  unexpectedResponse,
+
   /// One or more photos failed to upload before the feed post was created.
   mediaUploadFailed,
 
@@ -131,6 +134,7 @@ class FacebookApiException implements Exception {
       return FacebookApiErrorKind.rateLimit;
     }
     if (code == 506 || subcode == 506) return FacebookApiErrorKind.duplicate;
+    if (code == 324) return FacebookApiErrorKind.mediaUploadFailed;
     return FacebookApiErrorKind.unknown;
   }
 
@@ -172,6 +176,11 @@ class FacebookApiException implements Exception {
       FacebookApiErrorKind.storyUnavailable =>
         'Stories are unavailable for this Page. The Page post can still be '
             'published.',
+      FacebookApiErrorKind.mediaUploadFailed =>
+        'Facebook rejected the image. Try a JPEG or PNG under 10 MB.',
+      FacebookApiErrorKind.unexpectedResponse =>
+        'Facebook returned an unexpected response. Check Published before '
+            'trying again.',
       _ => rawMessage,
     };
   }

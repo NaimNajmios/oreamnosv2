@@ -163,8 +163,16 @@ draft.
 - `facebook_compose_draft` (v9/v10 single draft) migrates into the store; the
   v9 `{text,imagePath,aspect}` shape is accepted.
 
-## Workflows + Page Stories (v16)
+## Write safety (v20)
 
+- Publish/upload/schedule calls use `post<dynamic>` / `delete<dynamic>` and `_requireObject`, so a 200 HTML/plain/proxy body becomes `unexpectedResponse` instead of `network`.
+- Photo uploads use the real extension/content type, validate non-empty/≤10 MB locally, and only skip re-encode for JPEG/PNG. Graph 400 bodies log code/subcode/user messages in debug builds.
+- Timeouts: feed/multi-photo/schedule 60 s receive; photo upload 120 s send + receive.
+- Graph writes carry `extra: {'graphWrite': true}`; `RetryInterceptor` never auto-retries them. Only GETs retry, avoiding duplicate posts when a response is lost.
+- A transport/unexpected failure during a write enters `publishUncertain`: draft preserved, no history row, and the UI offers View Published / View Scheduled / Try again (duplicate warning) / Discard.
+- The same `facebookRequireObject` guard applies to Page verification, insights and comments. Comment writes are `graphWrite` (no auto-retry) with 60 s windows; a non-JSON comments/insights 200 shows the unexpected-response message instead of a network error.
+
+## Workflows + Page Stories (v16)
 Workflows are reusable destination presets:
 
 - Page post only

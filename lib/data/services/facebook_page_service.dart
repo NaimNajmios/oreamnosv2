@@ -84,7 +84,7 @@ class FacebookPageService {
       }());
       if (data == null) {
         throw FacebookApiException(
-          kind: FacebookApiErrorKind.pageTokenExchangeFailed,
+          kind: FacebookApiErrorKind.unexpectedResponse,
           message: facebookUnexpectedResponseMessage(response.data),
         );
       }

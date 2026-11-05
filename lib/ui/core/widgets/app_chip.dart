@@ -47,18 +47,25 @@ class _AppChipState extends State<AppChip> {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final enabled = widget.onTap != null;
+
+    final selectedFg =
+        widget.selectedTextColor ??
+        (widget.selectedColor != null
+            ? theme.colorScheme.onPrimary
+            : theme.colorScheme.onPrimaryContainer);
 
     final bg = widget.selected
         ? (widget.selectedColor ?? theme.colorScheme.primaryContainer)
         : theme.colorScheme.surface;
 
     final border = widget.selected
-        ? (widget.selectedColor ?? theme.colorScheme.primary)
-        : theme.colorScheme.outline;
+        ? (widget.selectedColor ?? selectedFg.withValues(alpha: 0.5))
+        : theme.colorScheme.outline.withValues(alpha: enabled ? 1.0 : 0.45);
 
     final textCol = widget.selected
-        ? (widget.selectedTextColor ?? theme.colorScheme.primary)
-        : theme.colorScheme.onSurface;
+        ? selectedFg
+        : theme.colorScheme.onSurface.withValues(alpha: enabled ? 1.0 : 0.45);
 
     return Material(
       color: Colors.transparent,
@@ -118,7 +125,12 @@ class _AppChipState extends State<AppChip> {
                   const SizedBox(width: 8),
                 Text(
                   widget.label,
-                  style: theme.textTheme.labelMedium?.copyWith(color: textCol),
+                  style: theme.textTheme.labelMedium?.copyWith(
+                    color: textCol,
+                    fontWeight: widget.selected
+                        ? FontWeight.w600
+                        : FontWeight.w500,
+                  ),
                 ),
                 if (widget.count != null) ...[
                   const SizedBox(width: 6),

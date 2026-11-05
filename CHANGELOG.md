@@ -1,5 +1,36 @@
 # Changelog — Oreamnos
 
+## v23 — Uppercase Persistence + Chip Contrast (2026-11-05)
+
+- **Uppercase always persists:** the title-uppercase display preference is saved/restored independently of the broader “Persist generation options” setting. `reset()` keeps it.
+- **Dark-theme chip contrast:** selected `AppChip` pills now use `onPrimaryContainer` for text/icons (white in dark themes) and a foreground-derived border instead of accent-on-accent. Selected labels use heavier weight; disabled pills are visibly muted.
+- **Tests:** uppercase persistence with options off, reset retention, and AppChip selected/disabled/custom-color contrast.
+
+## v22 — Facebook Photo Upload 400 Diagnostics (2026-11-05)
+
+- **Graph error details:** the publisher now logs `error.code`, `error_subcode`, `message`, `error_user_title` and `error_user_msg` (debug only, no token/caption).
+- **MIME/filename correctness:** multipart uploads use the real extension and content type (`oreamnos_card.jpg`/`image/jpeg` or `.png`/`image/png`) instead of always claiming `.png`.
+- **Graph-safe formats:** no-op crops return the original only for JPEG/PNG; HEIC/WebP/unknown files are re-encoded to JPEG.
+- **Upload preflight:** missing/empty files and files over 10 MB fail locally with a fixable message before any request.
+- **Image rejection mapping:** Graph code 324 maps to `mediaUploadFailed` with “Facebook rejected the image. Try a JPEG or PNG under 10 MB.”
+- **Tests:** multipart filename/content type, code 324 mapping, empty-file preflight, and unsupported-extension re-encode.
+
+## v21 — Facebook Publishing Response Audit (2026-11-05)
+
+- **Shared Graph response guard:** publisher, Page verification, insights and comments all use `facebookRequireObject`; a 200 HTML/plain/proxy body becomes `unexpectedResponse`, never a fake network failure or an empty result.
+- **Insights:** `GET /{post-id}` now uses dynamic parsing with a 60 s window; non-JSON 200s show the unexpected-response message instead of “no insights”/network.
+- **Comments:** list/reply/hide/delete use dynamic parsing. Comment writes are marked `graphWrite` (never auto-retried) with 60 s send/receive windows. A non-JSON comments 200 shows the unexpected-response message instead of an empty list.
+- **Page/verify taxonomy:** non-JSON 200s in `/me` and `/me/accounts` now use `unexpectedResponse` consistently.
+- **Tests:** HTML 200 coverage for insights/comments/Page verification, plus comment-write `graphWrite`/timeout assertions.
+
+## v20 — Facebook Publish Write Hardening (2026-11-05)
+
+- **Non-JSON 200 responses:** all publish/upload/story/schedule writes now use `post<dynamic>`/`delete<dynamic>` and parse defensively. An HTML/proxy/captive-portal body becomes **unexpectedResponse**, not a fake network failure.
+- **Write timeouts:** feed/multi-photo/schedule writes get 60 s receive windows; photo uploads get 120 s send + receive windows (previously the 15 s BaseOptions send timeout could abort large uploads).
+- **No auto-retry for writes:** Graph `POST`/`DELETE` requests are marked `graphWrite` and never retried by `RetryInterceptor`, avoiding duplicate posts when a response is lost. Only safe GETs retry; the dialog/composer offers manual retry.
+- **Publish uncertainty:** transport/unexpected-response failures during a write enter **publishUncertain** instead of “failed”. The draft is preserved, no history row is written, and the UI offers View Published / View Scheduled / Try again (with duplicate warning) / Discard.
+- **Tests:** HTML 200 publish responses, write timeout values, no Graph-write auto-retry, and uncertain-state draft preservation.
+
 ## v19 — Facebook Connect Network Diagnostics (2026-11-04)
 
 - **Accurate transport errors:** connection failures now distinguish timeout, DNS/connection, TLS/certificate, cancellation and unknown instead of showing “No connection” for everything.

@@ -125,6 +125,24 @@ void main() {
       await dir.delete(recursive: true);
     });
 
+    test('unsupported source extension is re-encoded to JPEG', () async {
+      final dir = await Directory.systemTemp.createTemp('oreamnos_crop');
+      final source = File('${dir.path}/photo.webp');
+      final image = img.Image(width: 100, height: 100);
+      await source.writeAsBytes(img.encodePng(image));
+      FacebookImageCropper.clearCache();
+
+      final result = await FacebookImageCropper.cropToFile(
+        sourcePath: source.path,
+        targetAspect: 1.0,
+        outputDir: dir.path,
+      );
+      expect(result, isNotNull);
+      expect(result, isNot(source.path));
+      expect(result!.endsWith('.jpg'), isTrue);
+      await dir.delete(recursive: true);
+    });
+
     test('crop output is cached and reused', () async {
       final dir = await Directory.systemTemp.createTemp('oreamnos_crop');
       final source = File('${dir.path}/wide.png');

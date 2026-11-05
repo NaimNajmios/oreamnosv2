@@ -1094,8 +1094,13 @@ class FacebookDraftNotifier extends Notifier<FacebookComposeState> {
       if (e.needsReconnect) {
         ref.read(facebookViewModelProvider.notifier).markExpired();
       }
+      final uncertain =
+          e.kind == FacebookApiErrorKind.network ||
+          e.kind == FacebookApiErrorKind.unexpectedResponse;
       state = state.copyWith(
-        phase: FacebookComposePhase.publishError,
+        phase: uncertain
+            ? FacebookComposePhase.publishUncertain
+            : FacebookComposePhase.publishError,
         uploadProgress: null,
         error: e,
       );

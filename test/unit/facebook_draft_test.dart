@@ -173,6 +173,21 @@ class _StoryPublisher extends FacebookPublisherService {
   }) async {}
 }
 
+class _NetworkFailPublisher extends _StoryPublisher {
+  @override
+  Future<FacebookPublishResult> publishText({
+    required String pageId,
+    required String token,
+    required String message,
+    DateTime? scheduledAt,
+  }) async {
+    throw const FacebookApiException(
+      kind: FacebookApiErrorKind.network,
+      message: "Can't reach Facebook. Check your internet, DNS or VPN.",
+    );
+  }
+}
+
 class _FakeStoryComposer extends FacebookStoryComposer {
   @override
   Future<String> compose({
@@ -715,6 +730,20 @@ void main() {
         container.dispose();
       },
     );
+
+    test('a transport write failure becomes publishUncertain', () async {
+      final container = await buildContainer(_NetworkFailPublisher());
+      final notifier = container.read(facebookDraftProvider.notifier);
+      notifier.startDraft('Caption stays in the draft');
+      await notifier.publish();
+
+      final draft = container.read(facebookDraftProvider);
+      expect(draft.phase, FacebookComposePhase.publishUncertain);
+      expect(draft.error?.kind, FacebookApiErrorKind.network);
+      expect(draft.text, 'Caption stays in the draft');
+      expect(getIt<FacebookHistoryService>().records, isEmpty);
+      container.dispose();
+    });
 
     test('Story workflows cannot be scheduled', () async {
       getIt.unregister<FacebookStoryComposer>();

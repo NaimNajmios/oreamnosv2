@@ -2,6 +2,7 @@ import 'dart:convert';
 
 import 'package:dio/dio.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:oreamnos/config/constants.dart';
 import 'package:oreamnos/core/network/api_client.dart';
 import 'package:oreamnos/data/services/facebook_comments_service.dart';
 import 'package:oreamnos/domain/models/facebook_api_exception.dart';
@@ -47,7 +48,32 @@ class _GraphAdapter implements HttpClientAdapter {
   void close({bool force = false}) {}
 }
 
-FacebookCommentsService _service(_GraphAdapter adapter) {
+class _RawAdapter implements HttpClientAdapter {
+  _RawAdapter(this.status, this.body);
+
+  final int status;
+  final String body;
+
+  @override
+  Future<ResponseBody> fetch(
+    RequestOptions options,
+    Stream<List<int>>? requestStream,
+    Future<void>? cancelFuture,
+  ) async {
+    return ResponseBody.fromBytes(
+      utf8.encode(body),
+      status,
+      headers: {
+        Headers.contentTypeHeader: ['text/html; charset=utf-8'],
+      },
+    );
+  }
+
+  @override
+  void close({bool force = false}) {}
+}
+
+FacebookCommentsService _service(HttpClientAdapter adapter) {
   final client = ApiClient();
   client.dio.httpClientAdapter = adapter;
   client.dio.interceptors.clear();
@@ -98,6 +124,29 @@ void main() {
         expect(request.uri.queryParameters['limit'], '25');
       },
     );
+
+    test('HTML 200 comments response becomes unexpectedResponse', () async {
+      final service = _service(
+        _RawAdapter(200, '<!doctype html><html>Blocked</html>'),
+      );
+      try {
+        await service.list(postId: 'p', token: _token);
+        fail('should throw');
+      } on FacebookApiException catch (e) {
+        expect(e.kind, FacebookApiErrorKind.unexpectedResponse);
+        expect(e.message, contains('web page'));
+      }
+    });
+
+    test('comment writes are marked graphWrite with 60s windows', () async {
+      final adapter = _GraphAdapter(200, {'id': 'reply1'});
+      await _service(adapter)
+          .reply(commentId: 'c1', token: _token, message: 'Thanks');
+      final request = adapter.lastRequest!;
+      expect(request.extra['graphWrite'], isTrue);
+      expect(request.sendTimeout, AppConstants.facebookWriteTimeout);
+      expect(request.receiveTimeout, AppConstants.facebookWriteTimeout);
+    });
 
     test(
       'list sends the after cursor and omits it on the first page',

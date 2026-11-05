@@ -152,7 +152,15 @@ abstract final class FacebookImageCropper {
       final oriented = img.bakeOrientation(decoded);
       final sourceAspect = oriented.width / oriented.height;
       final aspectDiff = (sourceAspect - targetAspect).abs() / targetAspect;
-      if (zoom == 1.0 && offset == Offset.zero && aspectDiff <= 0.005) {
+      final lowerPath = sourcePath.toLowerCase();
+      final graphSafe =
+          lowerPath.endsWith('.jpg') ||
+          lowerPath.endsWith('.jpeg') ||
+          lowerPath.endsWith('.png');
+      if (graphSafe &&
+          zoom == 1.0 &&
+          offset == Offset.zero &&
+          aspectDiff <= 0.005) {
         return sourcePath;
       }
       final rect = cropRectFor(

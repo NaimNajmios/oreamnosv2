@@ -75,6 +75,35 @@ class _FacebookComposeScreenState extends ConsumerState<FacebookComposeScreen> {
     FacebookConnectionDialog.show(context);
   }
 
+  void _openHistoryTab(String tab) {
+    context.push('${RoutePaths.facebookHistory}?tab=$tab');
+  }
+
+  Future<void> _retryAfterUncertain() async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: const Text('Try publishing again?'),
+        content: const Text(
+          'If the previous attempt actually reached Facebook, retrying can '
+          'create a duplicate post. Check Published first if unsure.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(dialogContext).pop(false),
+            child: const Text('Check first'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.of(dialogContext).pop(true),
+            child: const Text('Publish again'),
+          ),
+        ],
+      ),
+    );
+    if (confirmed != true || !mounted) return;
+    ref.read(facebookDraftProvider.notifier).publish();
+  }
+
   Future<void> _openWorkflowSheet() async {
     final connection = ref.read(facebookViewModelProvider);
     final store = getIt<FacebookWorkflowStore>();
@@ -672,6 +701,20 @@ class _FacebookComposeScreenState extends ConsumerState<FacebookComposeScreen> {
                                   .read(facebookDraftProvider.notifier)
                                   .publish(),
                               onReconnect: _openConnectionDialog,
+                            ),
+                          if (draft.phase ==
+                                  FacebookComposePhase.publishUncertain &&
+                              draft.error != null)
+                            _UncertainPanel(
+                              message: draft.error!.message,
+                              onViewPublished: () =>
+                                  _openHistoryTab('published'),
+                              onViewScheduled: () =>
+                                  _openHistoryTab('scheduled'),
+                              onRetry: _retryAfterUncertain,
+                              onDiscard: () => ref
+                                  .read(facebookDraftProvider.notifier)
+                                  .clearDraft(),
                             ),
                         ],
                       ),
@@ -1617,6 +1660,84 @@ class _ErrorPanel extends StatelessWidget {
                   icon: const Icon(Icons.refresh_rounded, size: 18),
                   label: const Text('Retry'),
                 ),
+        ],
+      ),
+    );
+  }
+}
+
+class _UncertainPanel extends StatelessWidget {
+  const _UncertainPanel({
+    required this.message,
+    required this.onViewPublished,
+    required this.onViewScheduled,
+    required this.onRetry,
+    required this.onDiscard,
+  });
+
+  final String message;
+  final VoidCallback onViewPublished;
+  final VoidCallback onViewScheduled;
+  final VoidCallback onRetry;
+  final VoidCallback onDiscard;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    return AppCard(
+      borderRadius: AppSpacing.borderRadiusLg,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        spacing: AppSpacing.xs,
+        children: [
+          Row(
+            children: [
+              Icon(
+                Icons.help_outline_rounded,
+                size: 18,
+                color: theme.colorScheme.tertiary,
+              ),
+              const SizedBox(width: AppSpacing.sm),
+              Expanded(
+                child: Text(
+                  message,
+                  style: theme.textTheme.bodySmall?.copyWith(
+                    color: theme.colorScheme.onSurface,
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
+              ),
+            ],
+          ),
+          Text(
+            'We didn’t get a confirmation from Facebook. The post may or may '
+            'not be live. Check Published before trying again.',
+            style: theme.textTheme.labelSmall?.copyWith(
+              color: theme.colorScheme.onSurfaceVariant,
+            ),
+          ),
+          Wrap(
+            spacing: AppSpacing.xs,
+            runSpacing: AppSpacing.xs,
+            children: [
+              TextButton(
+                onPressed: onViewPublished,
+                child: const Text('View Published'),
+              ),
+              TextButton(
+                onPressed: onViewScheduled,
+                child: const Text('View Scheduled'),
+              ),
+              TextButton(onPressed: onRetry, child: const Text('Try again')),
+              TextButton(
+                onPressed: onDiscard,
+                child: Text(
+                  'Discard',
+                  style: TextStyle(color: theme.colorScheme.error),
+                ),
+              ),
+            ],
+          ),
         ],
       ),
     );

@@ -90,6 +90,28 @@ void main() {
       expect(container.read(generateViewModelProvider).isEditMode, isFalse);
     });
 
+    test('uppercase persists even when generation options are not', () async {
+      final prefs = getIt<PreferencesService>();
+      expect(prefs.persistGenerationOptions, isFalse);
+
+      vm.toggleUppercaseTitle();
+      expect(prefs.lastUppercaseTitle, isTrue);
+
+      final newContainer = ProviderContainer();
+      addTearDown(newContainer.dispose);
+      expect(
+        newContainer.read(generateViewModelProvider).uppercaseTitle,
+        isTrue,
+      );
+    });
+
+    test('reset keeps the uppercase preference', () async {
+      vm.toggleUppercaseTitle();
+      vm.reset();
+      expect(container.read(generateViewModelProvider).uppercaseTitle, isTrue);
+      expect(getIt<PreferencesService>().lastUppercaseTitle, isTrue);
+    });
+
     test('options persistence when enabled', () async {
       final prefService = getIt<PreferencesService>();
       await prefService.setPersistGenerationOptions(true);

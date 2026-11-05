@@ -9,6 +9,7 @@ import '../../config/constants.dart';
 import '../../domain/models/facebook_api_exception.dart';
 import '../../domain/models/facebook_post_insights.dart';
 import 'facebook_network_error.dart';
+import 'facebook_response_guard.dart';
 
 /// Fetches post insights with a single Graph call.
 ///
@@ -38,7 +39,7 @@ class FacebookInsightsService {
       );
     }
     try {
-      final response = await _client.get<Map<String, dynamic>>(
+      final response = await _client.get<dynamic>(
         '$_pathBase/${Uri.encodeComponent(postId)}',
         queryParameters: const {
           'fields':
@@ -47,9 +48,15 @@ class FacebookInsightsService {
               'post_negative_feedback,post_reactions_by_type_total,'
               'post_clicks)',
         },
-        options: Options(headers: {'Authorization': 'Bearer $token'}),
+        options: Options(
+          headers: {'Authorization': 'Bearer $token'},
+          receiveTimeout: AppConstants.facebookWriteTimeout,
+        ),
       );
-      final data = _asMap(response.data);
+      final data = facebookRequireObject(
+        response.data,
+        action: 'post insights',
+      );
       return _parse(data, DateTime.now());
     } on FacebookApiException {
       rethrow;
@@ -69,10 +76,10 @@ class FacebookInsightsService {
   }
 
   static FacebookPostInsights _parse(
-    Map<String, dynamic>? body,
+    Map<String, dynamic> body,
     DateTime fetchedAt,
   ) {
-    final insights = body?['insights'];
+    final insights = body['insights'];
     final raw = insights is Map ? insights['data'] : null;
     final metrics = <String, Object?>{};
     if (raw is List) {

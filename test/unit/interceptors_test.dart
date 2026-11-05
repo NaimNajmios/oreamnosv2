@@ -282,6 +282,24 @@ void main() {
       expect(handler.nextErr, isNotNull);
     });
 
+    test('Graph writes are never auto-retried', () async {
+      final interceptor = RetryInterceptor(dio: _neverDio());
+      final options = RequestOptions(
+        path: '/v23.0/page/feed',
+        method: 'POST',
+        extra: {'graphWrite': true},
+      );
+      final dioEx = DioException(
+        requestOptions: options,
+        type: DioExceptionType.connectionError,
+      );
+      final handler = _CapturingErrorHandler();
+      await interceptor.onError(dioEx, handler);
+      expect(handler.nextErr, isNotNull);
+      expect(handler.resolvedResponse, isNull);
+      expect(dioEx.requestOptions.extra['retryCount'], isNull);
+    });
+
     test(
       '429 with short Retry-After retries exactly once via injected client',
       () async {

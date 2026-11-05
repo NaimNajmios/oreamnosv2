@@ -47,6 +47,11 @@ abstract final class AppConstants {
   // receive window, mirroring `generationReceiveTimeout` for Gemini.
   static const Duration photoUploadTimeout = Duration(seconds: 60);
 
+  /// Graph writes can take longer than the pooled 15s read window on mobile
+  /// networks. Uploads get a larger send + receive window.
+  static const Duration facebookWriteTimeout = Duration(seconds: 60);
+  static const Duration facebookUploadTimeout = Duration(seconds: 120);
+
   // === 429 Retry Policy ===
   // 429s get at most one honoring retry, and only when the provider-supplied
   // wait is short. Longer/unknown quota windows propagate immediately so the

@@ -1,6 +1,7 @@
-import 'dart:convert';
+import 'dart:io';
 
 import 'package:dio/dio.dart';
+import 'package:flutter/foundation.dart';
 import 'package:injectable/injectable.dart';
 import 'package:oreamnos/core/di/injection.dart';
 import 'package:oreamnos/core/network/api_client.dart';
@@ -123,7 +124,7 @@ class FacebookPublisherService {
       final data = _asMap(response.data);
       if (data == null) {
         throw FacebookApiException(
-          kind: FacebookApiErrorKind.unknown,
+          kind: FacebookApiErrorKind.unexpectedResponse,
           message: facebookUnexpectedResponseMessage(response.data),
         );
       }
@@ -159,17 +160,19 @@ class FacebookPublisherService {
       );
     }
     try {
-      final response = await _client.post<Map<String, dynamic>>(
+      final response = await _client.post<dynamic>(
         '$_pathBase/$pageId/feed',
         data: {
           'message': message,
           'access_token': token,
           ...?_scheduleFields(scheduledAt),
         },
-        options: _formOptions(),
+        options: _formOptions(
+          receiveOverride: AppConstants.facebookWriteTimeout,
+        ),
       );
       return _resultFrom(
-        _asMap(response.data),
+        _requireObject(response.data, action: 'publish'),
         isPhoto: false,
         scheduledAt: scheduledAt,
       );
@@ -194,27 +197,26 @@ class FacebookPublisherService {
   }) async {
     final caption = message?.trim() ?? '';
     final alt = altText?.trim() ?? '';
+    _validateUploadFile(filePath);
     final form = FormData.fromMap(<String, String>{
       if (caption.isNotEmpty) 'message': caption,
       if (alt.isNotEmpty) 'alt_text_custom': alt,
       ...?_scheduleFields(scheduledAt),
       'access_token': token,
     });
-    form.files.add(
-      MapEntry(
-        'source',
-        await MultipartFile.fromFile(filePath, filename: 'oreamnos_card.png'),
-      ),
-    );
+    form.files.add(MapEntry('source', await _imagePart(filePath)));
     try {
-      final response = await _client.post<Map<String, dynamic>>(
+      final response = await _client.post<dynamic>(
         '$_pathBase/$pageId/photos',
         data: form,
-        options: _formOptions(receiveOverride: AppConstants.photoUploadTimeout),
+        options: _formOptions(
+          sendOverride: AppConstants.facebookUploadTimeout,
+          receiveOverride: AppConstants.facebookUploadTimeout,
+        ),
         onSendProgress: onSendProgress,
       );
       return _resultFrom(
-        _asMap(response.data),
+        _requireObject(response.data, action: 'publish photo'),
         isPhoto: true,
         scheduledAt: scheduledAt,
       );
@@ -234,25 +236,29 @@ class FacebookPublisherService {
     ProgressCallback? onSendProgress,
   }) async {
     final alt = altText?.trim() ?? '';
+    _validateUploadFile(filePath);
     final form = FormData.fromMap(<String, String>{
       'published': 'false',
       if (alt.isNotEmpty) 'alt_text_custom': alt,
       'access_token': token,
     });
-    form.files.add(
-      MapEntry(
-        'source',
-        await MultipartFile.fromFile(filePath, filename: 'oreamnos_card.jpg'),
-      ),
-    );
+    form.files.add(MapEntry('source', await _imagePart(filePath)));
     try {
-      final response = await _client.post<Map<String, dynamic>>(
+      final response = await _client.post<dynamic>(
         '$_pathBase/$pageId/photos',
         data: form,
-        options: _formOptions(receiveOverride: AppConstants.photoUploadTimeout),
+        options: _formOptions(
+          sendOverride: AppConstants.facebookUploadTimeout,
+          receiveOverride: AppConstants.facebookUploadTimeout,
+        ),
         onSendProgress: onSendProgress,
       );
-      final id = _asMap(response.data)?['id']?.toString() ?? '';
+      final id =
+          _requireObject(
+            response.data,
+            action: 'upload photo',
+          )['id']?.toString() ??
+          '';
       if (id.isEmpty) {
         throw const FacebookApiException(
           kind: FacebookApiErrorKind.mediaUploadFailed,
@@ -288,7 +294,7 @@ class FacebookPublisherService {
       );
     }
     try {
-      final response = await _client.post<Map<String, dynamic>>(
+      final response = await _client.post<dynamic>(
         '$_pathBase/$pageId/feed',
         data: {
           'message': message,
@@ -298,10 +304,14 @@ class FacebookPublisherService {
           'access_token': token,
           ...?_scheduleFields(scheduledAt),
         },
-        options: Options(contentType: 'application/json'),
+        options: Options(
+          contentType: 'application/json',
+          receiveTimeout: AppConstants.facebookWriteTimeout,
+          extra: const {'graphWrite': true},
+        ),
       );
       return _resultFrom(
-        _asMap(response.data),
+        _requireObject(response.data, action: 'publish multi-photo'),
         isPhoto: true,
         scheduledAt: scheduledAt,
       );
@@ -318,7 +328,7 @@ class FacebookPublisherService {
   }) async {
     if (photoId.isEmpty) return;
     try {
-      await _client.delete<Map<String, dynamic>>(
+      await _client.delete<dynamic>(
         '$_pathBase/$photoId',
         data: {'access_token': token},
         options: _formOptions(),
@@ -340,13 +350,15 @@ class FacebookPublisherService {
       );
     }
     try {
-      final response = await _client.post<Map<String, dynamic>>(
+      final response = await _client.post<dynamic>(
         '$_pathBase/$pageId/photo_stories',
         data: {'access_token': token, 'photo_id': photoId},
-        options: _formOptions(),
+        options: _formOptions(
+          receiveOverride: AppConstants.facebookWriteTimeout,
+        ),
       );
-      final data = _asMap(response.data);
-      final postId = data?['post_id']?.toString() ?? '';
+      final data = _requireObject(response.data, action: 'publish Story');
+      final postId = data['post_id']?.toString() ?? '';
       if (postId.isEmpty) {
         throw const FacebookApiException(
           kind: FacebookApiErrorKind.storyUnavailable,
@@ -383,10 +395,12 @@ class FacebookPublisherService {
       );
     }
     try {
-      await _client.delete<Map<String, dynamic>>(
+      await _client.delete<dynamic>(
         '$_pathBase/$postId',
         data: {'access_token': token},
-        options: _formOptions(),
+        options: _formOptions(
+          receiveOverride: AppConstants.facebookWriteTimeout,
+        ),
       );
     } on DioException catch (e) {
       throw _map(e);
@@ -408,10 +422,12 @@ class FacebookPublisherService {
       );
     }
     try {
-      await _client.post<Map<String, dynamic>>(
+      await _client.post<dynamic>(
         '$_pathBase/$postId',
         data: {'access_token': token, 'message': message},
-        options: _formOptions(),
+        options: _formOptions(
+          receiveOverride: AppConstants.facebookWriteTimeout,
+        ),
       );
     } on DioException catch (e) {
       final mapped = _map(e);
@@ -436,10 +452,12 @@ class FacebookPublisherService {
     required String token,
   }) async {
     try {
-      await _client.delete<Map<String, dynamic>>(
+      await _client.delete<dynamic>(
         '$_pathBase/$postId',
         data: {'access_token': token},
-        options: _formOptions(),
+        options: _formOptions(
+          receiveOverride: AppConstants.facebookWriteTimeout,
+        ),
       );
     } on DioException catch (e) {
       throw _map(e);
@@ -453,14 +471,16 @@ class FacebookPublisherService {
     required DateTime scheduledAt,
   }) async {
     try {
-      await _client.post<Map<String, dynamic>>(
+      await _client.post<dynamic>(
         '$_pathBase/$postId',
         data: {
           'access_token': token,
           'scheduled_publish_time':
               '${scheduledAt.toUtc().millisecondsSinceEpoch ~/ 1000}',
         },
-        options: _formOptions(),
+        options: _formOptions(
+          receiveOverride: AppConstants.facebookWriteTimeout,
+        ),
       );
     } on DioException catch (e) {
       throw _map(e);
@@ -474,7 +494,7 @@ class FacebookPublisherService {
     required String token,
   }) async {
     try {
-      final response = await _client.get<Map<String, dynamic>>(
+      final response = await _client.get<dynamic>(
         '$_pathBase/$pageId/scheduled_posts',
         queryParameters: const {
           'fields': 'id,message,scheduled_publish_time',
@@ -513,19 +533,92 @@ class FacebookPublisherService {
   /// Form-encoded POSTs: Graph's canonical OAuth body shape. JSON content
   /// type from the pooled BaseOptions is overridden here so `access_token`
   /// rides the body without URL encoding pitfalls.
-  static Options _formOptions({Duration? receiveOverride}) => Options(
+  static Options _formOptions({
+    Duration? sendOverride,
+    Duration? receiveOverride,
+  }) => Options(
     contentType: 'application/x-www-form-urlencoded',
+    sendTimeout: sendOverride,
     receiveTimeout: receiveOverride,
+    extra: const {'graphWrite': true},
   );
+
+  /// Graph answers should be JSON objects. A 200 HTML/plain/proxy body must
+  /// become `unexpectedResponse`, not a fake network failure.
+  static Map<String, dynamic> _requireObject(
+    Object? data, {
+    required String action,
+  }) => facebookRequireObject(data, action: action);
+
+  /// Prefer the real file extension/content type; Graph validates the image.
+  static Future<MultipartFile> _imagePart(String filePath) async {
+    final ext = _imageExtension(filePath);
+    final mime = ext == '.png'
+        ? DioMediaType('image', 'png')
+        : DioMediaType('image', 'jpeg');
+    return MultipartFile.fromFile(
+      filePath,
+      filename: 'oreamnos_card$ext',
+      contentType: mime,
+    );
+  }
+
+  static String _imageExtension(String filePath) {
+    final lower = filePath.toLowerCase();
+    if (lower.endsWith('.png')) return '.png';
+    if (lower.endsWith('.jpg') || lower.endsWith('.jpeg')) return '.jpg';
+    // Cropper output is JPEG by default; never claim an unknown extension.
+    return '.jpg';
+  }
+
+  static const int _maxUploadBytes = 10 * 1024 * 1024;
+
+  /// Cheap local preflight so invalid files fail with a fixable message
+  /// instead of a Graph 400.
+  static void _validateUploadFile(String filePath) {
+    final file = File(filePath);
+    if (!file.existsSync()) {
+      throw const FacebookApiException(
+        kind: FacebookApiErrorKind.mediaUploadFailed,
+        message: 'The image file is missing. Re-attach it and try again.',
+      );
+    }
+    final size = file.lengthSync();
+    if (size <= 0) {
+      throw const FacebookApiException(
+        kind: FacebookApiErrorKind.mediaUploadFailed,
+        message: 'The image file is empty. Re-attach it and try again.',
+      );
+    }
+    if (size > _maxUploadBytes) {
+      throw const FacebookApiException(
+        kind: FacebookApiErrorKind.mediaUploadFailed,
+        message: 'The image is too large for Facebook (max 10 MB).',
+      );
+    }
+  }
 
   /// Prefers our Graph-specific mapping over the interceptor's decorated
   /// `extra['failure']`: Graph error bodies carry code/subcode, which the
   /// generic AI-provider texts can't express (and `ErrorMappingInterceptor`
   /// only decorates — the response body stays intact for us).
   FacebookApiException _map(DioException e) {
+    final body = _asMap(e.response?.data);
+    assert(() {
+      final error = body?['error'];
+      final map = error is Map ? error : const {};
+      debugPrint(
+        '[FB] graph error status=${e.response?.statusCode} '
+        'code=${map['code']} subcode=${map['error_subcode']} '
+        'message=${map['message']} '
+        'userTitle=${map['error_user_title']} '
+        'userMsg=${map['error_user_msg']}',
+      );
+      return true;
+    }());
     return FacebookApiException.fromGraph(
       e.response?.statusCode,
-      _asMap(e.response?.data),
+      body,
       isNetworkFailure: e.response == null,
       networkIssue: e.response == null ? facebookNetworkIssueFor(e) : null,
     );
@@ -581,14 +674,6 @@ class FacebookPublisherService {
 
   /// Graph answers are always JSON objects, but a proxy/parse hiccup can
   /// leave `data` as a String (ResponseType.json fallback) — decode defensively.
-  static Map<String, dynamic>? _asMap(Object? data) {
-    if (data is Map) return data.cast<String, dynamic>();
-    if (data is String) {
-      try {
-        final decoded = jsonDecode(data);
-        if (decoded is Map) return decoded.cast<String, dynamic>();
-      } catch (_) {}
-    }
-    return null;
-  }
+  static Map<String, dynamic>? _asMap(Object? data) =>
+      facebookObjectOrNull(data);
 }

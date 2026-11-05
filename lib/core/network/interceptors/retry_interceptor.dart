@@ -57,6 +57,14 @@ class RetryInterceptor extends Interceptor {
     final extra = err.requestOptions.extra;
     final retries = (extra['retryCount'] as int?) ?? 0;
 
+    // Graph writes are not idempotent: a retry after a lost response can
+    // create a duplicate post. They never auto-retry; the UI offers manual
+    // retry with a duplicate warning.
+    if (extra['graphWrite'] == true) {
+      handler.next(err);
+      return;
+    }
+
     // Do not retry on auth errors — Android GeminiService.java:902 early throw
     final status = err.response?.statusCode;
     if (status == 401 || status == 403 || status == 400) {

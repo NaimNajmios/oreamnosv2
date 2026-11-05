@@ -100,6 +100,10 @@ enum FacebookComposePhase {
 
   /// Last publish attempt failed; [FacebookComposeState.error] holds why.
   publishError,
+
+  /// A write may have reached Facebook but the response was lost/unexpected.
+  /// Keep the draft and ask the user to verify Published before retrying.
+  publishUncertain,
 }
 
 /// Whether the CTA posts now or schedules the post.
@@ -296,6 +300,7 @@ class FacebookComposeState {
   bool get isPreparing => phase == FacebookComposePhase.compressing;
   bool get isPublished => phase == FacebookComposePhase.published;
   bool get isScheduled => phase == FacebookComposePhase.scheduled;
+  bool get isUncertain => phase == FacebookComposePhase.publishUncertain;
   bool get isFinished =>
       isPublished ||
       isScheduled ||

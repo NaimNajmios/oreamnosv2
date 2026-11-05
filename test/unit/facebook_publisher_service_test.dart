@@ -256,6 +256,38 @@ void main() {
         },
       );
 
+      test('HTML 200 publish response is unexpected, not network', () async {
+        final apiClient = ApiClient();
+        apiClient.dio.httpClientAdapter = _RawAdapter(
+          200,
+          '<!doctype html><html><body>Blocked</body></html>',
+        );
+        apiClient.dio.interceptors.clear();
+        final service = FacebookPublisherService(apiClient);
+        try {
+          await service.publishText(
+            pageId: '123456',
+            token: _token,
+            message: 'text',
+          );
+          fail('should throw');
+        } on FacebookApiException catch (e) {
+          expect(e.kind, FacebookApiErrorKind.unexpectedResponse);
+          expect(e.kind, isNot(FacebookApiErrorKind.network));
+          expect(e.message, contains('web page'));
+        }
+      });
+
+      test('text feed uses the 60s write receive window', () async {
+        final adapter = _GraphAdapter(200, {'id': 'p1'});
+        await _service(adapter)
+            .publishText(pageId: '123456', token: _token, message: 'text');
+        expect(
+          adapter.lastRequest!.receiveTimeout,
+          AppConstants.facebookWriteTimeout,
+        );
+      });
+
       test('transport failure with no response maps to network', () async {
         final service = _service(_GraphAdapter(200, null));
         try {
@@ -429,20 +461,20 @@ void main() {
         expect(result.isPhoto, isTrue);
       });
 
-      test(
-        'photo upload overrides receiveTimeout to photoUploadTimeout',
-        () async {
-          final path = await _tempPng();
-          final adapter = _GraphAdapter(200, {'id': 'p', 'post_id': 'q'});
-          await _service(adapter)
-              .publishPhoto(pageId: '123456', token: _token, filePath: path);
-          // After the interceptor chain, the per-request override survives.
-          expect(
-            adapter.lastRequest!.receiveTimeout,
-            AppConstants.photoUploadTimeout,
-          );
-        },
-      );
+      test('photo upload uses send + receive upload timeouts', () async {
+        final path = await _tempPng();
+        final adapter = _GraphAdapter(200, {'id': 'p', 'post_id': 'q'});
+        await _service(adapter)
+            .publishPhoto(pageId: '123456', token: _token, filePath: path);
+        expect(
+          adapter.lastRequest!.receiveTimeout,
+          AppConstants.facebookUploadTimeout,
+        );
+        expect(
+          adapter.lastRequest!.sendTimeout,
+          AppConstants.facebookUploadTimeout,
+        );
+      });
 
       test('falls back to photo id when post_id is absent', () async {
         final path = await _tempPng();
@@ -450,6 +482,66 @@ void main() {
         final result = await _service(adapter)
             .publishPhoto(pageId: '123456', token: _token, filePath: path);
         expect(result.permalink, 'https://www.facebook.com/photo_only');
+      });
+
+      test(
+        'multipart filename and content type match the real extension',
+        () async {
+          final dir = await Directory.systemTemp.createTemp('oreamnos_fb_jpg');
+          final path = '${dir.path}/card.jpg';
+          await File(path).writeAsBytes(List<int>.generate(32, (i) => i));
+          final adapter = _GraphAdapter(200, {'id': 'p', 'post_id': 'q'});
+          await _service(adapter)
+              .publishPhoto(pageId: '123456', token: _token, filePath: path);
+          final file = (adapter.lastRequest!.data as FormData).files.single;
+          expect(file.value.filename, 'oreamnos_card.jpg');
+          expect(file.value.contentType?.mimeType, 'image/jpeg');
+          await dir.delete(recursive: true);
+        },
+      );
+
+      test('Graph code 324 maps to a friendly image rejection', () async {
+        final path = await _tempPng();
+        final service = _service(
+          _GraphAdapter(400, {
+            'error': {'code': 324, 'message': 'Missing or invalid image file'},
+          }),
+        );
+        try {
+          await service.publishPhoto(
+            pageId: '123456',
+            token: _token,
+            filePath: path,
+          );
+          fail('should throw');
+        } on FacebookApiException catch (e) {
+          expect(e.kind, FacebookApiErrorKind.mediaUploadFailed);
+          expect(e.message, contains('rejected the image'));
+        }
+      });
+
+      test('empty upload file fails before any request', () async {
+        final dir = await Directory.systemTemp.createTemp('oreamnos_fb_empty');
+        final path = '${dir.path}/empty.png';
+        await File(path).writeAsBytes([]);
+        final adapter = _GraphAdapter(200, {'id': 'p'});
+        final service = _service(adapter);
+        expect(
+          () => service.publishPhoto(
+            pageId: '123456',
+            token: _token,
+            filePath: path,
+          ),
+          throwsA(
+            isA<FacebookApiException>().having(
+              (e) => e.kind,
+              'kind',
+              FacebookApiErrorKind.mediaUploadFailed,
+            ),
+          ),
+        );
+        expect(adapter.lastRequest, isNull);
+        await dir.delete(recursive: true);
       });
 
       test('photo upload failure maps Graph errors unchanged', () async {
@@ -499,7 +591,8 @@ void main() {
             _token,
           );
           expect(form.files.map((e) => e.key), ['source']);
-          expect(request.receiveTimeout, AppConstants.photoUploadTimeout);
+          expect(request.receiveTimeout, AppConstants.facebookUploadTimeout);
+          expect(request.sendTimeout, AppConstants.facebookUploadTimeout);
         },
       );
 

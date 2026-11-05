@@ -39,7 +39,32 @@ class _GraphAdapter implements HttpClientAdapter {
   void close({bool force = false}) {}
 }
 
-FacebookInsightsService _service(_GraphAdapter adapter) {
+class _RawAdapter implements HttpClientAdapter {
+  _RawAdapter(this.status, this.body);
+
+  final int status;
+  final String body;
+
+  @override
+  Future<ResponseBody> fetch(
+    RequestOptions options,
+    Stream<List<int>>? requestStream,
+    Future<void>? cancelFuture,
+  ) async {
+    return ResponseBody.fromBytes(
+      utf8.encode(body),
+      status,
+      headers: {
+        Headers.contentTypeHeader: ['text/html; charset=utf-8'],
+      },
+    );
+  }
+
+  @override
+  void close({bool force = false}) {}
+}
+
+FacebookInsightsService _service(HttpClientAdapter adapter) {
   final apiClient = ApiClient();
   apiClient.dio.httpClientAdapter = adapter;
   apiClient.dio.interceptors.clear();
@@ -148,6 +173,19 @@ void main() {
       expect(insights.reactions, 12);
       expect(insights.reactionsByType, {'like': 10, 'love': 2});
       expect(insights.clicks, isNull);
+    });
+
+    test('HTML 200 response becomes unexpectedResponse', () async {
+      final service = _service(
+        _RawAdapter(200, '<!doctype html><html></html>'),
+      );
+      try {
+        await service.fetch(postId: 'p', token: _token);
+        fail('should throw');
+      } on FacebookApiException catch (e) {
+        expect(e.kind, FacebookApiErrorKind.unexpectedResponse);
+        expect(e.message, contains('web page'));
+      }
     });
 
     test('missing metrics stay null, never zero', () async {
