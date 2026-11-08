@@ -22,12 +22,14 @@ class FacebookPerformanceState {
     this.monetization,
     this.loading = false,
     this.error,
+    this.days = 28,
   });
 
   final FacebookPageInsights? data;
   final FacebookMonetizationSnapshot? monetization;
   final bool loading;
   final String? error;
+  final int days;
 
   bool get hasData => data?.hasAny ?? false;
 }
@@ -43,6 +45,7 @@ class FacebookPerformanceNotifier extends Notifier<FacebookPerformanceState> {
   late final FacebookMonetizationService _monetization;
   late final PreferencesService _prefs;
   String _pageId = '';
+  int _generation = 0;
 
   @override
   FacebookPerformanceState build() {
@@ -56,7 +59,7 @@ class FacebookPerformanceNotifier extends Notifier<FacebookPerformanceState> {
   }
 
   Future<void> ensureLoaded({bool force = false}) async {
-    if (state.loading) return;
+    if (state.loading && !force) return;
     final cached = state.data;
     if (!force &&
         cached != null &&
@@ -66,25 +69,33 @@ class FacebookPerformanceNotifier extends Notifier<FacebookPerformanceState> {
     await refresh();
   }
 
-  Future<String?> refresh() async {
+  Future<String?> refresh({int? days}) async {
+    final requestedDays = days ?? state.days;
     final pageId = ref.read(facebookViewModelProvider).activePageId;
+    final pageChanged = pageId != _pageId;
+    _pageId = pageId;
+    final generation = ++_generation;
     if (pageId.isEmpty) {
-      state = const FacebookPerformanceState(
+      state = FacebookPerformanceState(
+        days: requestedDays,
         error: 'Connect your Page to load performance.',
       );
       return state.error;
     }
     final token = await _prefs.getFacebookPageToken() ?? '';
+    if (generation != _generation) return null;
     if (token.isEmpty) {
-      state = const FacebookPerformanceState(
+      state = FacebookPerformanceState(
+        days: requestedDays,
         error: 'Reconnect your Page to load performance.',
       );
       return state.error;
     }
     state = FacebookPerformanceState(
-      data: state.data,
-      monetization: state.monetization,
+      data: pageChanged ? null : state.data,
+      monetization: pageChanged ? null : state.monetization,
       loading: true,
+      days: requestedDays,
     );
     FacebookMonetizationSnapshot? monetization;
     try {
@@ -97,24 +108,42 @@ class FacebookPerformanceNotifier extends Notifier<FacebookPerformanceState> {
       // Earnings are optional; a failure must not hide performance.
       monetization = state.monetization;
     }
+    if (generation != _generation) return null;
     try {
-      final data = await _service.fetch(pageId: pageId, token: token, days: 28);
+      final data = await _service.fetch(
+        pageId: pageId,
+        token: token,
+        days: requestedDays,
+      );
+      if (generation != _generation) return null;
       await _store.save(data);
-      state = FacebookPerformanceState(data: data, monetization: monetization);
+      if (generation != _generation) return null;
+      state = FacebookPerformanceState(
+        data: data,
+        monetization: monetization,
+        days: requestedDays,
+      );
       return null;
     } on FacebookApiException catch (e) {
+      if (generation != _generation) return null;
+      if (e.needsReconnect) {
+        ref.read(facebookViewModelProvider.notifier).markExpired();
+      }
       state = FacebookPerformanceState(
         data: state.data,
         monetization: monetization,
         error: e.message,
+        days: requestedDays,
       );
       return e.message;
     } catch (_) {
+      if (generation != _generation) return null;
       const message = 'Could not load Page performance.';
       state = FacebookPerformanceState(
         data: state.data,
         monetization: monetization,
         error: message,
+        days: requestedDays,
       );
       return message;
     }

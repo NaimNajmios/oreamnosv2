@@ -24,6 +24,7 @@ class _FacebookPerformanceScreenState
   @override
   void initState() {
     super.initState();
+    _days = ref.read(facebookPerformanceProvider).days;
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (mounted) {
         ref.read(facebookPerformanceProvider.notifier).ensureLoaded();
@@ -53,15 +54,18 @@ class _FacebookPerformanceScreenState
             tooltip: 'Refresh',
             onPressed: state.loading
                 ? null
-                : () =>
-                      ref.read(facebookPerformanceProvider.notifier).refresh(),
+                : () => ref
+                      .read(facebookPerformanceProvider.notifier)
+                      .refresh(days: _days),
             icon: const Icon(Icons.refresh_rounded, size: 20),
           ),
         ],
       ),
       body: RefreshIndicator(
         onRefresh: () async {
-          await ref.read(facebookPerformanceProvider.notifier).refresh();
+          await ref
+              .read(facebookPerformanceProvider.notifier)
+              .refresh(days: _days);
         },
         child: ListView(
           padding: const EdgeInsets.fromLTRB(
@@ -76,13 +80,13 @@ class _FacebookPerformanceScreenState
                 AppChip(
                   label: '7D',
                   selected: _days == 7,
-                  onTap: () => setState(() => _days = 7),
+                  onTap: () => _selectDays(7),
                 ),
                 const SizedBox(width: AppSpacing.xs),
                 AppChip(
                   label: '28D',
                   selected: _days == 28,
-                  onTap: () => setState(() => _days = 28),
+                  onTap: () => _selectDays(28),
                 ),
                 const Spacer(),
                 if (state.loading)
@@ -101,6 +105,17 @@ class _FacebookPerformanceScreenState
                   state.error!,
                   style: theme.textTheme.bodySmall?.copyWith(
                     color: theme.colorScheme.error,
+                  ),
+                ),
+              )
+            else if (data != null && data.unavailableMetrics.isNotEmpty)
+              Padding(
+                padding: const EdgeInsets.only(bottom: AppSpacing.sm),
+                child: Text(
+                  'Some metrics are unavailable: '
+                  '${data.unavailableMetrics.map(_metricLabel).join(', ')}.',
+                  style: theme.textTheme.bodySmall?.copyWith(
+                    color: theme.colorScheme.onSurfaceVariant,
                   ),
                 ),
               ),
@@ -133,7 +148,7 @@ class _FacebookPerformanceScreenState
                     child: points.isEmpty
                         ? Center(
                             child: Text(
-                              'No Page insights yet. Data can lag up to 24h.',
+                              state.error != null ? 'Insights unavailable.' : 'No Page insights yet. Data can lag up to 24h.',
                               style: theme.textTheme.bodySmall?.copyWith(
                                 color: theme.colorScheme.onSurfaceVariant,
                               ),
@@ -255,6 +270,21 @@ class _FacebookPerformanceScreenState
               !p.day.isBefore(DateTime(cutoff.year, cutoff.month, cutoff.day)),
         )
         .toList(growable: false);
+  }
+
+  void _selectDays(int days) {
+    if (_days == days) return;
+    setState(() => _days = days);
+    ref.read(facebookPerformanceProvider.notifier).refresh(days: days);
+  }
+
+  static String _metricLabel(String metric) {
+    return switch (metric) {
+      'page_media_view' => 'media views',
+      'page_follows' => 'followers',
+      'page_post_engagements' => 'engagements',
+      _ => metric,
+    };
   }
 
   static int? _latestFollows(List<PageInsightPoint> points) {

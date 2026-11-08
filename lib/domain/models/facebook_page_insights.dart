@@ -50,6 +50,7 @@ class FacebookPageInsights {
     this.hasMediaViews = false,
     this.hasFollows = false,
     this.hasEngagements = false,
+    this.unavailableMetrics = const [],
   });
 
   final String pageId;
@@ -58,6 +59,10 @@ class FacebookPageInsights {
   final bool hasMediaViews;
   final bool hasFollows;
   final bool hasEngagements;
+
+  /// Metrics Meta rejected for this Page/range. The rest of the snapshot is
+  /// still valid, so the UI can show partial data instead of nothing.
+  final List<String> unavailableMetrics;
 
   bool get hasAny =>
       hasMediaViews || hasFollows || hasEngagements || points.isNotEmpty;
@@ -85,6 +90,7 @@ class FacebookPageInsights {
     'hasMediaViews': hasMediaViews,
     'hasFollows': hasFollows,
     'hasEngagements': hasEngagements,
+    'unavailableMetrics': unavailableMetrics,
   };
 
   factory FacebookPageInsights.fromJson(Map<String, dynamic> json) {
@@ -105,6 +111,11 @@ class FacebookPageInsights {
       hasMediaViews: json['hasMediaViews'] as bool? ?? false,
       hasFollows: json['hasFollows'] as bool? ?? false,
       hasEngagements: json['hasEngagements'] as bool? ?? false,
+      unavailableMetrics:
+          (json['unavailableMetrics'] as List?)
+              ?.map((e) => e.toString())
+              .toList(growable: false) ??
+          const [],
     );
   }
 }

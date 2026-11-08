@@ -1,6 +1,7 @@
 import 'dart:convert';
 
 import 'package:dio/dio.dart';
+import 'package:flutter/foundation.dart';
 import 'package:injectable/injectable.dart';
 import 'package:oreamnos/core/di/injection.dart';
 import 'package:oreamnos/core/network/api_client.dart';
@@ -38,82 +39,148 @@ class FacebookPageInsightsService {
         message: 'Connect your Page to load performance.',
       );
     }
-    final until = DateTime.now();
-    final since = until.subtract(Duration(days: days));
-    try {
-      final response = await _client.get<dynamic>(
-        '$_pathBase/${Uri.encodeComponent(pageId)}/insights',
-        queryParameters: {
-          'metric': [
-            FacebookMetricNames.pageMediaView,
-            FacebookMetricNames.pageFollows,
-            FacebookMetricNames.pagePostEngagements,
-          ].join(','),
-          'period': 'day',
-          'since': '${since.toUtc().millisecondsSinceEpoch ~/ 1000}',
-          'until': '${until.toUtc().millisecondsSinceEpoch ~/ 1000}',
-        },
-        options: Options(
-          headers: {'Authorization': 'Bearer $token'},
-          receiveTimeout: AppConstants.facebookWriteTimeout,
-        ),
-      );
-      final data = facebookRequireObject(
-        response.data,
-        action: 'page performance',
-      );
-      return _parse(data, pageId, DateTime.now());
-    } on FacebookApiException {
-      rethrow;
-    } on DioException catch (e) {
-      final mapped = FacebookApiException.fromGraph(
-        e.response?.statusCode,
-        _asMap(e.response?.data),
-        isNetworkFailure: e.response == null,
-        networkIssue: e.response == null ? facebookNetworkIssueFor(e) : null,
-      );
-      if (mapped.kind == FacebookApiErrorKind.permission ||
-          e.response?.statusCode == 403) {
-        throw FacebookApiException(
-          kind: FacebookApiErrorKind.permission,
-          message:
-              'Page performance needs read_insights + pages_read_engagement '
-              'and the ANALYZE Page task. Reconnect the Page token.',
-          code: mapped.code,
-          subcode: mapped.subcode,
+    final preset = days <= 7 ? 'last_7d' : 'last_28d';
+    const metrics = [
+      FacebookMetricNames.pageMediaView,
+      FacebookMetricNames.pageFollows,
+      FacebookMetricNames.pagePostEngagements,
+    ];
+
+    // Meta rejects the whole request when any single metric is invalid. Fetch
+    // them independently so one bad metric cannot hide the other two.
+    final rows = <Map<String, dynamic>>[];
+    final unavailable = <String>[];
+    FacebookApiException? firstFailure;
+    var succeeded = 0;
+
+    for (final metric in metrics) {
+      try {
+        final response = await _client.get<dynamic>(
+          '$_pathBase/${Uri.encodeComponent(pageId)}/insights',
+          queryParameters: {
+            'metric': metric,
+            'period': 'day',
+            'date_preset': preset,
+          },
+          options: Options(
+            headers: {'Authorization': 'Bearer $token'},
+            receiveTimeout: AppConstants.facebookWriteTimeout,
+          ),
         );
-      }
-      if (mapped.kind == FacebookApiErrorKind.unknown &&
-          e.response?.statusCode == 400) {
-        throw FacebookApiException(
+        final data = facebookRequireObject(
+          response.data,
+          action: 'page performance',
+        );
+        final metricRows = data['data'];
+        if (metricRows is List) {
+          rows.addAll(
+            metricRows.whereType<Map>().map((e) => e.cast<String, dynamic>()),
+          );
+        }
+        succeeded++;
+      } on FacebookApiException catch (e) {
+        if (_isFatal(e)) rethrow;
+        unavailable.add(metric);
+        firstFailure ??= e;
+      } on DioException catch (e) {
+        final mapped = _mapGraphError(e);
+        if (_isFatal(mapped)) throw mapped;
+        unavailable.add(metric);
+        firstFailure ??= mapped;
+      } catch (_) {
+        final e = const FacebookApiException(
           kind: FacebookApiErrorKind.insightsUnavailable,
-          message:
-              'Meta reports these Page metrics are unavailable. The metric '
-              'names may have changed.',
-          code: mapped.code,
-          subcode: mapped.subcode,
+          message: 'Could not load Page performance.',
         );
+        unavailable.add(metric);
+        firstFailure ??= e;
       }
-      throw mapped;
-    } catch (_) {
-      throw const FacebookApiException(
-        kind: FacebookApiErrorKind.insightsUnavailable,
-        message: 'Could not load Page performance.',
+    }
+
+    if (succeeded == 0 && firstFailure != null) throw firstFailure;
+    return _parse(
+      {'data': rows},
+      pageId,
+      DateTime.now(),
+      unavailableMetrics: unavailable,
+    );
+  }
+
+  static bool _isFatal(FacebookApiException e) {
+    return e.kind == FacebookApiErrorKind.network ||
+        e.kind == FacebookApiErrorKind.expiredToken ||
+        e.kind == FacebookApiErrorKind.pageTokenRequired ||
+        e.kind == FacebookApiErrorKind.permission ||
+        e.kind == FacebookApiErrorKind.rateLimit;
+  }
+
+  FacebookApiException _mapGraphError(DioException e) {
+    final mapped = FacebookApiException.fromGraph(
+      e.response?.statusCode,
+      _asMap(e.response?.data),
+      isNetworkFailure: e.response == null,
+      networkIssue: e.response == null ? facebookNetworkIssueFor(e) : null,
+    );
+    assert(() {
+      debugPrint(
+        '[FB] insights failed status=${e.response?.statusCode} '
+        'code=${mapped.code} subcode=${mapped.subcode} '
+        'message=${mapped.graphMessage}',
+      );
+      return true;
+    }());
+    if (mapped.kind == FacebookApiErrorKind.permission ||
+        e.response?.statusCode == 403) {
+      return FacebookApiException(
+        kind: FacebookApiErrorKind.permission,
+        message:
+            'Page performance needs read_insights + pages_read_engagement '
+            'and the ANALYZE Page task. Reconnect the Page token.',
+        code: mapped.code,
+        subcode: mapped.subcode,
+        graphMessage: mapped.graphMessage,
       );
     }
+    if (mapped.kind == FacebookApiErrorKind.unknown &&
+        e.response?.statusCode == 400) {
+      return FacebookApiException(
+        kind: FacebookApiErrorKind.insightsUnavailable,
+        message: _insightsUnavailableMessage(mapped.graphMessage),
+        code: mapped.code,
+        subcode: mapped.subcode,
+        graphMessage: mapped.graphMessage,
+      );
+    }
+    return mapped;
+  }
+
+  /// Keeps Meta's real explanation visible instead of guessing that metric
+  /// names changed. Adds the documented 100-like minimum when present.
+  static String _insightsUnavailableMessage(String? detail) {
+    final text = detail?.trim() ?? '';
+    if (text.isEmpty) {
+      return 'Meta rejected the Page insights request.';
+    }
+    final lower = text.toLowerCase();
+    if (lower.contains('100 likes') || lower.contains('100 or more likes')) {
+      return 'Page Insights requires at least 100 Page likes. Meta: $text';
+    }
+    return 'Meta rejected the Page insights request. $text';
   }
 
   static FacebookPageInsights _parse(
     Map<String, dynamic> body,
     String pageId,
-    DateTime fetchedAt,
-  ) {
+    DateTime fetchedAt, {
+    List<String> unavailableMetrics = const [],
+  }) {
     final rows = body['data'];
     if (rows is! List) {
       return FacebookPageInsights(
         pageId: pageId,
         points: const [],
         fetchedAt: fetchedAt,
+        unavailableMetrics: unavailableMetrics,
       );
     }
     final byDay = <String, PageInsightPoint>{};
@@ -158,6 +225,7 @@ class FacebookPageInsightsService {
       hasMediaViews: hasMediaViews,
       hasFollows: hasFollows,
       hasEngagements: hasEngagements,
+      unavailableMetrics: unavailableMetrics,
     );
   }
 

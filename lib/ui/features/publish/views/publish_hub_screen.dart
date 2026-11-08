@@ -44,11 +44,13 @@ class _PublishHubScreenState extends ConsumerState<PublishHubScreen> {
     });
   }
 
-  Future<void> _refresh() async {
+  Future<void> _refresh({bool force = false}) async {
     ref.read(facebookDraftsProvider.notifier).refresh();
     if (ref.read(facebookViewModelProvider).isConnected) {
       await ref.read(facebookDraftProvider.notifier).reconcileScheduled();
-      await ref.read(facebookPerformanceProvider.notifier).ensureLoaded();
+      await ref
+          .read(facebookPerformanceProvider.notifier)
+          .ensureLoaded(force: force);
     }
   }
 
@@ -164,6 +166,18 @@ class _PublishHubScreenState extends ConsumerState<PublishHubScreen> {
     final bestReason = ref.watch(bestTimeToPostReasonProvider);
     final store = getIt<FacebookWorkflowStore>();
     final workflow = store.defaultForPage(connection.activePageId);
+
+    // Reconnect/Page switch changes the token behind the cached performance
+    // snapshot. Force a refresh instead of waiting for the 30-minute TTL.
+    ref.listen(facebookViewModelProvider, (previous, next) {
+      if (previous == null ||
+          previous.connectionRevision == next.connectionRevision) {
+        return;
+      }
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) _refresh(force: next.isConnected);
+      });
+    });
 
     final scheduled = history.where((r) => r.isScheduled).toList()
       ..sort(
@@ -709,6 +723,25 @@ class _PerformanceCard extends StatelessWidget {
               Text(
                 'Estimated earnings · '
                 '${_money(earnings.totalEarnings)} (Page currency)',
+                style: theme.textTheme.labelSmall?.copyWith(
+                  color: theme.colorScheme.onSurfaceVariant,
+                ),
+              ),
+            ],
+            if (state.error != null) ...[
+              const SizedBox(height: AppSpacing.sm),
+              Text(
+                state.error!,
+                maxLines: 2,
+                overflow: TextOverflow.ellipsis,
+                style: theme.textTheme.labelSmall?.copyWith(
+                  color: theme.colorScheme.error,
+                ),
+              ),
+            ] else if (data.unavailableMetrics.isNotEmpty) ...[
+              const SizedBox(height: AppSpacing.sm),
+              Text(
+                'Some metrics are unavailable.',
                 style: theme.textTheme.labelSmall?.copyWith(
                   color: theme.colorScheme.onSurfaceVariant,
                 ),

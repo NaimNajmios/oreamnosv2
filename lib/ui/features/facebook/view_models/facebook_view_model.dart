@@ -105,6 +105,7 @@ class FacebookNotifier extends Notifier<FacebookUiState> {
       pagePictureUrl: active?.pictureUrl ?? '',
       pages: pages,
       activePageId: activeId,
+      connectionRevision: state.connectionRevision + 1,
     );
   }
 
@@ -130,6 +131,7 @@ class FacebookNotifier extends Notifier<FacebookUiState> {
       pagePictureUrl: page.pictureUrl,
       pages: pages,
       activePageId: page.id,
+      connectionRevision: state.connectionRevision + 1,
     );
   }
 
@@ -215,14 +217,17 @@ class FacebookNotifier extends Notifier<FacebookUiState> {
       await getIt<FacebookStorageService>().sweep();
     } catch (_) {}
     await _preferencesService.disconnectFacebook();
-    state = const FacebookUiState();
+    state = FacebookUiState(connectionRevision: state.connectionRevision + 1);
   }
 
   /// Marks the stored token as expired after a 190 publish failure; the
   /// compose screen then offers Reconnect instead of plain Retry.
   void markExpired() {
     if (state.status == FacebookConnectionStatus.connected) {
-      state = state.copyWith(status: FacebookConnectionStatus.expired);
+      state = state.copyWith(
+        status: FacebookConnectionStatus.expired,
+        connectionRevision: state.connectionRevision + 1,
+      );
     }
   }
 

@@ -6,6 +6,9 @@ enum FacebookApiErrorKind {
   /// Token rejected or expired (code 190) — user must reconnect the Page.
   expiredToken,
 
+  /// A User access token was supplied where Meta requires a Page token.
+  pageTokenRequired,
+
   /// Missing Page roles or publish permission (codes 200, 10).
   permission,
 
@@ -56,6 +59,7 @@ class FacebookApiException implements Exception {
     this.code,
     this.subcode,
     this.networkIssue,
+    this.graphMessage,
   });
 
   final FacebookApiErrorKind kind;
@@ -72,8 +76,15 @@ class FacebookApiException implements Exception {
   /// More specific transport cause when [kind] is [FacebookApiErrorKind.network].
   final FacebookNetworkIssue? networkIssue;
 
-  /// True when the fix is reconnecting the Page (token expired/invalidated).
-  bool get needsReconnect => kind == FacebookApiErrorKind.expiredToken;
+  /// Raw Graph `error.message`, retained for diagnostics and precise UI copy.
+  /// Never contains the access token.
+  final String? graphMessage;
+
+  /// True when the fix is reconnecting the Page (token expired/invalidated or
+  /// the wrong token type was stored).
+  bool get needsReconnect =>
+      kind == FacebookApiErrorKind.expiredToken ||
+      kind == FacebookApiErrorKind.pageTokenRequired;
 
   /// Safe to retry once: GET verification/connect calls are idempotent.
   bool get isTransientNetwork =>
@@ -114,12 +125,13 @@ class FacebookApiException implements Exception {
     final subcode = (error['error_subcode'] as num?)?.toInt();
     final rawMessage =
         error['message']?.toString() ?? 'Facebook request failed.';
-    final kind = _classify(code, subcode, statusCode);
+    final kind = _classify(code, subcode, statusCode, rawMessage);
     return FacebookApiException(
       kind: kind,
       message: _friendly(kind, rawMessage),
       code: code,
       subcode: subcode,
+      graphMessage: rawMessage,
     );
   }
 
@@ -127,8 +139,17 @@ class FacebookApiException implements Exception {
     int? code,
     int? subcode,
     int? statusCode,
+    String rawMessage,
   ) {
-    if (code == 190) return FacebookApiErrorKind.expiredToken;
+    if (code == 190) {
+      // Meta uses 190 for both expired tokens and "wrong token type". They
+      // need different copy: one asks for a fresh token, the other tells the
+      // user to connect with a User token so Page tokens can be derived.
+      if (rawMessage.toLowerCase().contains('page access token')) {
+        return FacebookApiErrorKind.pageTokenRequired;
+      }
+      return FacebookApiErrorKind.expiredToken;
+    }
     if (code == 200 || code == 10) return FacebookApiErrorKind.permission;
     if (code == 4 || code == 17 || code == 32 || code == 613) {
       return FacebookApiErrorKind.rateLimit;
@@ -159,9 +180,12 @@ class FacebookApiException implements Exception {
   static String _friendly(FacebookApiErrorKind kind, String rawMessage) {
     return switch (kind) {
       FacebookApiErrorKind.expiredToken =>
-        'Facebook connection expired. Reconnect your Page in Settings.',
+        'Facebook connection expired. Reconnect from the Publish tab.',
+      FacebookApiErrorKind.pageTokenRequired =>
+        'This is a User token, but Meta requires a Page token here. '
+            'Reconnect with Connect Pages (User token).',
       FacebookApiErrorKind.permission =>
-        "The token can't post to this Page. Update it in Settings → Facebook.",
+        "The token can't do this on this Page. Reconnect from the Publish tab.",
       FacebookApiErrorKind.rateLimit =>
         'Facebook is rate-limiting posts. Wait a moment and try again.',
       FacebookApiErrorKind.duplicate =>

@@ -27,6 +27,7 @@ class FacebookUiState {
     this.pagePictureUrl = '',
     this.pages = const [],
     this.activePageId = '',
+    this.connectionRevision = 0,
   });
 
   final FacebookConnectionStatus status;
@@ -37,6 +38,10 @@ class FacebookUiState {
   /// Every connected Page (identity only — tokens live in secure storage).
   final List<FacebookPage> pages;
   final String activePageId;
+
+  /// Monotonic counter bumped whenever the connection or active Page changes.
+  /// Consumers use it to drop cached results tied to an older token/Page.
+  final int connectionRevision;
 
   bool get isConnected => status == FacebookConnectionStatus.connected;
   bool get isNotConnected => status == FacebookConnectionStatus.notConnected;
@@ -66,6 +71,7 @@ class FacebookUiState {
     String? pagePictureUrl,
     List<FacebookPage>? pages,
     String? activePageId,
+    int? connectionRevision,
   }) {
     return FacebookUiState(
       status: status ?? this.status,
@@ -74,6 +80,7 @@ class FacebookUiState {
       pagePictureUrl: pagePictureUrl ?? this.pagePictureUrl,
       pages: pages ?? this.pages,
       activePageId: activePageId ?? this.activePageId,
+      connectionRevision: connectionRevision ?? this.connectionRevision,
     );
   }
 }
