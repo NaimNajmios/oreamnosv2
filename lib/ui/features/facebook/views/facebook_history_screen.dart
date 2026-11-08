@@ -4,7 +4,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart' show Clipboard, ClipboardData;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
-import 'package:url_launcher/url_launcher.dart';
 
 import 'package:oreamnos/config/routes/app_router.dart';
 import 'package:oreamnos/config/theme/app_spacing.dart';
@@ -13,6 +12,7 @@ import 'package:oreamnos/domain/models/facebook_post_record.dart';
 import 'package:oreamnos/ui/core/utils/haptics.dart';
 import 'package:oreamnos/ui/core/widgets/empty_state.dart';
 import 'package:oreamnos/ui/features/facebook/view_models/facebook_view_model.dart';
+import 'package:oreamnos/ui/features/facebook/utils/facebook_external_links.dart';
 import 'package:oreamnos/ui/features/facebook/widgets/post_insights_sheet.dart';
 
 /// Publish history (capped at 50) split into Published and Scheduled tabs.
@@ -206,6 +206,21 @@ class _RecordTile extends ConsumerWidget {
                             ? theme.colorScheme.primary
                             : theme.colorScheme.error,
                         icon: Icons.auto_stories_rounded,
+                        trailingIcon:
+                            record.storyPublished && feedPostUri(record) != null
+                            ? const Icon(Icons.open_in_new_rounded, size: 10)
+                            : null,
+                        semanticsLabel: record.storyPublished
+                            ? 'Open the Facebook post for this Story'
+                            : null,
+                        onTap: record.storyPublished
+                            ? () => openFacebookPost(
+                                context,
+                                record,
+                                missingMessage:
+                                    'This Story has no feed post to open.',
+                              )
+                            : null,
                       ),
                     if (record.isScheduled) const SizedBox(width: 6),
                     Text(
@@ -309,19 +324,9 @@ class _RecordTile extends ConsumerWidget {
   }
 
   Future<void> _open(BuildContext context) async {
-    if (record.permalink.isEmpty) return;
-    try {
-      await launchUrl(
-        Uri.parse(record.permalink),
-        mode: LaunchMode.externalApplication,
-      );
-    } catch (_) {
-      if (context.mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Could not open the link')),
-        );
-      }
-    }
+    // The full row opens the feed post; Story-only records have no permalink
+    // and are intentionally a no-op here (the Story chip explains why).
+    await openFacebookPost(context, record);
   }
 
   Future<void> _showActions(BuildContext context, WidgetRef ref) async {
@@ -622,15 +627,21 @@ class _StatusChip extends StatelessWidget {
     required this.label,
     required this.color,
     required this.icon,
+    this.trailingIcon,
+    this.onTap,
+    this.semanticsLabel,
   });
 
   final String label;
   final Color color;
   final IconData icon;
+  final Widget? trailingIcon;
+  final VoidCallback? onTap;
+  final String? semanticsLabel;
 
   @override
   Widget build(BuildContext context) {
-    return Container(
+    final chip = Container(
       padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
       decoration: BoxDecoration(
         color: color.withValues(alpha: 0.12),
@@ -646,7 +657,24 @@ class _StatusChip extends StatelessWidget {
             style: Theme.of(context).textTheme.labelSmall
                 ?.copyWith(color: color, fontWeight: FontWeight.w600),
           ),
+          if (trailingIcon != null) ...[
+            const SizedBox(width: 2),
+            IconTheme.merge(
+              data: IconThemeData(color: color),
+              child: trailingIcon!,
+            ),
+          ],
         ],
+      ),
+    );
+    if (onTap == null) return chip;
+    return Semantics(
+      button: true,
+      label: semanticsLabel ?? label,
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: AppSpacing.borderRadiusPill,
+        child: chip,
       ),
     );
   }

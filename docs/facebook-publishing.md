@@ -246,6 +246,15 @@ Constraints:
 - The API has no Story caption field. `FacebookStoryTitle` extracts the
   headline/first line (max 100 chars) and `FacebookStoryComposer` bakes it into
   a **1080×1920** JPEG with a scrim and optional generated gradient background.
+- `POST /{page-id}/photo_stories` accepts only `photo_id`. Organic Stories
+  published through the API cannot carry a link sticker, CTA, or tappable URL,
+  so the Story image never shows a link. Instead, the app makes the Story
+  affordances tappable: the Story chip in Published history, the Story icon on
+  the Publish hub, and the “Story published” line on the success screen open the
+  associated **feed post** externally via `openFacebookPost`.
+- Story-only workflows have no feed post (`permalink` is empty). Those Story
+  affordances are static and explain “This Story has no feed post to open.”
+  instead of opening an empty URI.
 - Stories cannot be scheduled through this API.
 - Feed failure aborts before the Story. Story failure after a successful feed is
   a partial success; `Retry Story` re-uploads/republishes only the Story.

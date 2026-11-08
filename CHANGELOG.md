@@ -1,5 +1,13 @@
 # Changelog — Oreamnos
 
+## v25 — Story Redirect to Feed Post (2026-11-08)
+
+- **Story redirect:** the Story chip in Published history, the Story icon on the Publish hub, and the “Story published” status line on the compose success screen are now tappable and open the associated Facebook **feed post** externally.
+- **Story-only handling:** Meta’s `photo_stories` API accepts only `photo_id`, so an organic Story cannot carry a tappable link. Story-only records have no feed post; their Story affordances stay static and explain “This Story has no feed post to open.” instead of launching an empty URI.
+- **No dead link buttons:** `View on Facebook` and `Copy link` are hidden when the result has no valid permalink. Permalinks are accepted only when they are valid `http`/`https` URLs.
+- **Shared helper:** new `facebook_external_links.dart` centralizes URI validation and external launching without logging URLs or tokens.
+- **Tests:** new `facebook_external_links_test.dart` covers valid, empty, malformed, non-web, and Story-only permalinks.
+
 ## v24 — Publishing Handoff, Performance & Best Times (2026-11-08)
 
 - **Generate → Publish handoff:** generated content now appears automatically in the Publish tab (`publishHandoffProvider` derived from the Generate tab). The shell shows a dot on the Publish tab while content is waiting. **Publish now** opens the composer for review; scheduling or publishing consumes the handoff. The Generate screen’s header Facebook icon became a full-width bottom CTA landing on Publish.

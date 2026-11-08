@@ -3,7 +3,6 @@ import 'package:flutter/services.dart' show Clipboard, ClipboardData;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:image_picker/image_picker.dart';
-import 'package:url_launcher/url_launcher.dart';
 
 import 'package:oreamnos/core/di/injection.dart';
 import 'package:oreamnos/data/services/facebook_workflow_store.dart';
@@ -16,6 +15,7 @@ import 'package:oreamnos/ui/core/widgets/app_button.dart';
 import 'package:oreamnos/ui/core/widgets/app_card.dart';
 import 'package:oreamnos/ui/features/facebook/view_models/facebook_state.dart';
 import 'package:oreamnos/ui/features/facebook/view_models/facebook_view_model.dart';
+import 'package:oreamnos/ui/features/facebook/utils/facebook_external_links.dart';
 import 'package:oreamnos/ui/features/facebook/widgets/compose/facebook_compose_widgets.dart';
 import 'package:oreamnos/ui/features/facebook/widgets/facebook_connection_dialog.dart';
 import 'package:oreamnos/ui/features/facebook/widgets/page_switcher_sheet.dart';
@@ -285,25 +285,11 @@ class _FacebookComposeScreenState extends ConsumerState<FacebookComposeScreen> {
   }
 
   Future<void> _openPermalink(String permalink) async {
-    final uri = Uri.parse(permalink);
-    try {
-      final launched = await launchUrl(
-        uri,
-        mode: LaunchMode.externalApplication,
-      );
-      if (!launched && mounted) {
-        Haptics.lightImpact();
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Could not open the link')),
-        );
-      }
-    } catch (_) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Could not open the link')),
-        );
-      }
-    }
+    await openFacebookPermalink(
+      context,
+      permalink,
+      missingMessage: 'This Story has no feed post to open.',
+    );
   }
 
   Future<void> _copyLink(String permalink) async {
@@ -1502,6 +1488,8 @@ class _SuccessView extends StatelessWidget {
     final target = pageName.trim().isEmpty ? 'your Page' : pageName;
     final scheduled = draft.isScheduled;
     final at = draft.scheduledAt;
+    final permalink = draft.result?.permalink ?? '';
+    final canOpenFeedPost = facebookPostUri(permalink) != null;
 
     return SingleChildScrollView(
       padding: const EdgeInsets.all(AppSpacing.base),
@@ -1548,35 +1536,72 @@ class _SuccessView extends StatelessWidget {
             ),
           ),
           if (draft.storyEnabled)
-            Padding(
-              padding: const EdgeInsets.only(top: AppSpacing.xs),
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  Icon(
-                    draft.storyResult != null
-                        ? Icons.check_circle_rounded
-                        : Icons.error_outline_rounded,
-                    size: 16,
-                    color: draft.storyResult != null
-                        ? theme.colorScheme.primary
-                        : theme.colorScheme.error,
-                  ),
-                  const SizedBox(width: 6),
-                  Flexible(
-                    child: Text(
-                      draft.storyResult != null
-                          ? 'Story published'
-                          : 'Story failed: ${draft.storyError ?? 'unknown error'}',
-                      style: theme.textTheme.labelSmall?.copyWith(
-                        color: draft.storyResult != null
+            Builder(
+              builder: (rowContext) {
+                final storyPublished = draft.storyResult != null;
+                final row = Padding(
+                  padding: const EdgeInsets.only(top: AppSpacing.xs),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Icon(
+                        storyPublished
+                            ? Icons.check_circle_rounded
+                            : Icons.error_outline_rounded,
+                        size: 16,
+                        color: storyPublished
                             ? theme.colorScheme.primary
                             : theme.colorScheme.error,
                       ),
-                    ),
+                      const SizedBox(width: 6),
+                      Flexible(
+                        child: Text(
+                          storyPublished
+                              ? 'Story published'
+                              : 'Story failed: ${draft.storyError ?? 'unknown error'}',
+                          style: theme.textTheme.labelSmall?.copyWith(
+                            color: storyPublished
+                                ? theme.colorScheme.primary
+                                : theme.colorScheme.error,
+                          ),
+                        ),
+                      ),
+                      if (storyPublished && canOpenFeedPost) ...[
+                        const SizedBox(width: 4),
+                        Icon(
+                          Icons.open_in_new_rounded,
+                          size: 12,
+                          color: theme.colorScheme.primary,
+                        ),
+                      ],
+                    ],
                   ),
-                ],
-              ),
+                );
+                if (!storyPublished) return row;
+                return Semantics(
+                  button: true,
+                  label: canOpenFeedPost
+                      ? 'Open the Facebook post for this Story'
+                      : 'Story link unavailable',
+                  child: InkWell(
+                    borderRadius: AppSpacing.borderRadiusPill,
+                    onTap: () {
+                      if (canOpenFeedPost) {
+                        onView();
+                      } else {
+                        ScaffoldMessenger.of(rowContext).showSnackBar(
+                          const SnackBar(
+                            content: Text(
+                              'This Story has no feed post to open.',
+                            ),
+                          ),
+                        );
+                      }
+                    },
+                    child: row,
+                  ),
+                );
+              },
             ),
           PostPreviewCard(
             pageName: pageName,
@@ -1590,7 +1615,7 @@ class _SuccessView extends StatelessWidget {
             imageAltText: draft.mediaItem?.altText ?? '',
             maxMessageLines: 6,
           ),
-          if (!scheduled)
+          if (!scheduled && canOpenFeedPost)
             AppButton(
               label: 'View on Facebook',
               icon: Icons.open_in_new_rounded,
@@ -1599,13 +1624,14 @@ class _SuccessView extends StatelessWidget {
           Row(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              if (!scheduled)
+              if (!scheduled && canOpenFeedPost)
                 TextButton.icon(
                   onPressed: onCopy,
                   icon: const Icon(Icons.link_rounded, size: 18),
                   label: const Text('Copy link'),
                 ),
-              if (!scheduled) const SizedBox(width: AppSpacing.sm),
+              if (!scheduled && canOpenFeedPost)
+                const SizedBox(width: AppSpacing.sm),
               TextButton.icon(
                 onPressed: onCopyCaption,
                 icon: const Icon(Icons.copy_rounded, size: 18),

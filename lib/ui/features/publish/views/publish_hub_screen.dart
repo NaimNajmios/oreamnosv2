@@ -16,6 +16,7 @@ import 'package:oreamnos/ui/core/utils/haptics.dart';
 import 'package:oreamnos/ui/core/widgets/app_button.dart';
 import 'package:oreamnos/ui/core/widgets/app_card.dart';
 import 'package:oreamnos/ui/features/facebook/view_models/facebook_state.dart';
+import 'package:oreamnos/ui/features/facebook/utils/facebook_external_links.dart';
 import 'package:oreamnos/ui/features/facebook/view_models/facebook_view_model.dart';
 import 'package:oreamnos/ui/features/facebook/widgets/compose/facebook_compose_widgets.dart';
 import 'package:oreamnos/ui/features/facebook/widgets/facebook_connection_dialog.dart';
@@ -1139,11 +1140,28 @@ class _RecentPostRow extends StatelessWidget {
             else if (record.storyPublished)
               Padding(
                 padding: const EdgeInsets.only(left: 4),
-                child: Icon(
-                  Icons.auto_stories_rounded,
-                  size: 16,
-                  color: theme.colorScheme.primary,
-                ),
+                child: feedPostUri(record) == null
+                    ? Icon(
+                        Icons.auto_stories_rounded,
+                        size: 16,
+                        color: theme.colorScheme.primary,
+                      )
+                    : Semantics(
+                        button: true,
+                        label: 'Open the Facebook post for this Story',
+                        child: InkResponse(
+                          onTap: () => openFacebookPost(context, record),
+                          radius: 20,
+                          child: Padding(
+                            padding: const EdgeInsets.all(4),
+                            child: Icon(
+                              Icons.auto_stories_rounded,
+                              size: 16,
+                              color: theme.colorScheme.primary,
+                            ),
+                          ),
+                        ),
+                      ),
               ),
           ],
         ),
