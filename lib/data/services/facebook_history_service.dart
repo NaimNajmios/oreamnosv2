@@ -178,6 +178,36 @@ class FacebookHistoryNotifier extends Notifier<List<FacebookPostRecord>> {
       return 'Could not load insights. Try again later.';
     }
   }
+
+  /// Fetches stable engagement summary counts (reactions/comments/shares)
+  /// independently from insights metrics, so a retired insight metric can
+  /// never hide the badges.
+  Future<String?> refreshEngagement(String recordId) async {
+    FacebookPostRecord? record;
+    for (final item in _service.records) {
+      if (item.id == recordId) {
+        record = item;
+        break;
+      }
+    }
+    if (record == null || !record.isPublished) return null;
+    final token =
+        await getIt<PreferencesService>().getFacebookPageToken() ?? '';
+    if (token.isEmpty) return 'Connect your Page first.';
+    try {
+      final engagement = await getIt<FacebookInsightsService>().fetchEngagement(
+        postId: record.postId,
+        token: token,
+      );
+      await _service.setInsights(recordId, engagement, engagementOnly: true);
+      return null;
+    } on FacebookApiException catch (e) {
+      if (e.needsReconnect) FacebookExpirySignal.report();
+      return e.message;
+    } catch (_) {
+      return 'Could not load engagement. Try again later.';
+    }
+  }
 }
 
 /// Persisted publish history (newest first, capped at 50 — the same ring
@@ -336,21 +366,63 @@ class FacebookHistoryService {
     _notify();
   }
 
-  /// Caches fetched insights on a record. Null metrics stay null.
-  Future<void> setInsights(String id, FacebookPostInsights insights) async {
+  /// Caches fetched insights on a record. Null metrics never wipe an
+  /// existing cached value. Engagement-only refreshes do not move the
+  /// insights timestamp.
+  Future<void> setInsights(
+    String id,
+    FacebookPostInsights insights, {
+    bool engagementOnly = false,
+  }) async {
     final index = _records.indexWhere((r) => r.id == id);
     if (index < 0) return;
-    _records = List.of(_records)
-      ..[index] = _records[index].copyWith(
-        impressions: insights.impressions,
-        reactions: insights.reactions,
-        clicks: insights.clicks,
-        totalImpressions: insights.totalImpressions,
-        engagedUsers: insights.engagedUsers,
-        negativeFeedback: insights.negativeFeedback,
-        reactionsByType: insights.reactionsByType,
-        insightsFetchedAt: insights.fetchedAt,
+    var updated = _records[index];
+    if (insights.impressions != null) {
+      updated = updated.copyWith(impressions: insights.impressions);
+    }
+    if (insights.reactions != null) {
+      updated = updated.copyWith(reactions: insights.reactions);
+    }
+    if (insights.clicks != null) {
+      updated = updated.copyWith(clicks: insights.clicks);
+    }
+    if (insights.totalImpressions != null) {
+      updated = updated.copyWith(totalImpressions: insights.totalImpressions);
+    }
+    if (insights.engagedUsers != null) {
+      updated = updated.copyWith(engagedUsers: insights.engagedUsers);
+    }
+    if (insights.negativeFeedback != null) {
+      updated = updated.copyWith(negativeFeedback: insights.negativeFeedback);
+    }
+    if (insights.reactionsByType != null) {
+      updated = updated.copyWith(reactionsByType: insights.reactionsByType);
+    }
+    if (insights.uniqueViewers != null) {
+      updated = updated.copyWith(uniqueViewers: insights.uniqueViewers);
+    }
+    if (insights.comments != null) {
+      updated = updated.copyWith(comments: insights.comments);
+    }
+    if (insights.shares != null) {
+      updated = updated.copyWith(shares: insights.shares);
+    }
+    if (insights.activityByActionType != null) {
+      updated = updated.copyWith(
+        activityByActionType: insights.activityByActionType,
       );
+    }
+    final hasEngagement =
+        insights.reactions != null ||
+        insights.comments != null ||
+        insights.shares != null;
+    if (hasEngagement) {
+      updated = updated.copyWith(engagementFetchedAt: insights.fetchedAt);
+    }
+    if (!engagementOnly && insights.hasAny) {
+      updated = updated.copyWith(insightsFetchedAt: insights.fetchedAt);
+    }
+    _records = List.of(_records)..[index] = updated;
     await _persist();
     _notify();
   }

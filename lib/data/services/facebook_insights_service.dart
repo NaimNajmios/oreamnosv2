@@ -8,6 +8,7 @@ import 'package:oreamnos/core/network/api_client.dart';
 import '../../config/constants.dart';
 import '../../domain/models/facebook_api_exception.dart';
 import '../../domain/models/facebook_post_insights.dart';
+import 'facebook_metric_names.dart';
 import 'facebook_network_error.dart';
 import 'facebook_response_guard.dart';
 
@@ -44,9 +45,9 @@ class FacebookInsightsService {
         queryParameters: const {
           'fields':
               'insights.metric('
-              'post_impressions,post_impressions_unique,post_engaged_users,'
-              'post_negative_feedback,post_reactions_by_type_total,'
-              'post_clicks)',
+              '${FacebookMetricNames.postTotalMediaViewUnique},'
+              '${FacebookMetricNames.postReactionsByTypeTotal},'
+              '${FacebookMetricNames.postActivityByActionType})',
         },
         options: Options(
           headers: {'Authorization': 'Bearer $token'},
@@ -61,6 +62,65 @@ class FacebookInsightsService {
     } on FacebookApiException {
       rethrow;
     } on DioException catch (e) {
+      final body = _asMap(e.response?.data);
+      final mapped = FacebookApiException.fromGraph(
+        e.response?.statusCode,
+        body,
+        isNetworkFailure: e.response == null,
+        networkIssue: e.response == null ? facebookNetworkIssueFor(e) : null,
+      );
+      if (mapped.kind == FacebookApiErrorKind.unknown &&
+          e.response?.statusCode == 400) {
+        throw FacebookApiException(
+          kind: FacebookApiErrorKind.insightsUnavailable,
+          message:
+              'Meta reports these post insights are unavailable. The metric '
+              'names may have changed.',
+          code: mapped.code,
+          subcode: mapped.subcode,
+        );
+      }
+      throw mapped;
+    } catch (_) {
+      throw const FacebookApiException(
+        kind: FacebookApiErrorKind.insightsUnavailable,
+        message: 'Insights are unavailable for this post.',
+      );
+    }
+  }
+
+  /// Stable engagement summary fields. Kept separate from [fetch] so a
+  /// retired insight metric cannot take the reaction/comment/share badges
+  /// down with it.
+  Future<FacebookPostInsights> fetchEngagement({
+    required String postId,
+    required String token,
+  }) async {
+    if (postId.trim().isEmpty || token.trim().isEmpty) {
+      throw const FacebookApiException(
+        kind: FacebookApiErrorKind.insightsUnavailable,
+        message: 'Engagement is unavailable for this post.',
+      );
+    }
+    try {
+      final response = await _client.get<dynamic>(
+        '$_pathBase/${Uri.encodeComponent(postId)}',
+        queryParameters: const {
+          'fields': 'reactions.summary(true),comments.summary(true),shares',
+        },
+        options: Options(
+          headers: {'Authorization': 'Bearer $token'},
+          receiveTimeout: AppConstants.facebookWriteTimeout,
+        ),
+      );
+      final data = facebookRequireObject(
+        response.data,
+        action: 'post engagement',
+      );
+      return _parseEngagement(data, DateTime.now());
+    } on FacebookApiException {
+      rethrow;
+    } on DioException catch (e) {
       throw FacebookApiException.fromGraph(
         e.response?.statusCode,
         _asMap(e.response?.data),
@@ -70,7 +130,7 @@ class FacebookInsightsService {
     } catch (_) {
       throw const FacebookApiException(
         kind: FacebookApiErrorKind.insightsUnavailable,
-        message: 'Insights are unavailable for this post.',
+        message: 'Engagement is unavailable for this post.',
       );
     }
   }
@@ -99,19 +159,8 @@ class FacebookInsightsService {
     }
 
     Map<String, int>? reactionMap() {
-      final values = metrics['post_reactions_by_type_total'];
-      if (values is! List || values.isEmpty) return null;
-      final first = values.first;
-      final value = first is Map ? first['value'] : first;
-      if (value is! Map) return null;
-      final result = <String, int>{};
-      for (final entry in value.entries) {
-        final count = _asInt(entry.value);
-        if (count != null) {
-          result[entry.key.toString()] = count;
-        }
-      }
-      return result.isEmpty ? null : result;
+      final values = metrics[FacebookMetricNames.postReactionsByTypeTotal];
+      return _intMap(values);
     }
 
     final reactionsByType = reactionMap();
@@ -121,15 +170,50 @@ class FacebookInsightsService {
     );
 
     return FacebookPostInsights(
-      impressions: single('post_impressions_unique'),
+      uniqueViewers: single(FacebookMetricNames.postTotalMediaViewUnique),
       reactions: reactions,
-      clicks: single('post_clicks'),
-      totalImpressions: single('post_impressions'),
-      engagedUsers: single('post_engaged_users'),
-      negativeFeedback: single('post_negative_feedback'),
       reactionsByType: reactionsByType,
+      activityByActionType: _intMap(
+        metrics[FacebookMetricNames.postActivityByActionType],
+      ),
       fetchedAt: fetchedAt,
     );
+  }
+
+  /// Reads Graph's `summary.total_count` shape, accepting `count` too.
+  static FacebookPostInsights _parseEngagement(
+    Map<String, dynamic> body,
+    DateTime fetchedAt,
+  ) {
+    int? summary(Object? section) {
+      if (section is! Map) return null;
+      final nested = section['summary'];
+      if (nested is Map) {
+        final count = _asInt(nested['total_count']);
+        if (count != null) return count;
+      }
+      return _asInt(section['count']);
+    }
+
+    return FacebookPostInsights(
+      reactions: summary(body['reactions']),
+      comments: summary(body['comments']),
+      shares: summary(body['shares']),
+      fetchedAt: fetchedAt,
+    );
+  }
+
+  static Map<String, int>? _intMap(Object? values) {
+    if (values is! List || values.isEmpty) return null;
+    final first = values.first;
+    final value = first is Map ? first['value'] : first;
+    if (value is! Map) return null;
+    final result = <String, int>{};
+    for (final entry in value.entries) {
+      final count = _asInt(entry.value);
+      if (count != null) result[entry.key.toString()] = count;
+    }
+    return result.isEmpty ? null : result;
   }
 
   static int? _asInt(Object? value) {

@@ -9,6 +9,8 @@ import 'package:oreamnos/core/di/injection.dart';
 import 'package:oreamnos/data/services/facebook_workflow_store.dart';
 import 'package:oreamnos/config/routes/app_router.dart';
 import 'package:oreamnos/config/theme/app_spacing.dart';
+import 'package:oreamnos/domain/models/posting_time_slot.dart';
+import 'package:oreamnos/domain/services/best_time_to_post.dart';
 import 'package:oreamnos/ui/core/utils/haptics.dart';
 import 'package:oreamnos/ui/core/widgets/app_button.dart';
 import 'package:oreamnos/ui/core/widgets/app_card.dart';
@@ -17,6 +19,8 @@ import 'package:oreamnos/ui/features/facebook/view_models/facebook_view_model.da
 import 'package:oreamnos/ui/features/facebook/widgets/compose/facebook_compose_widgets.dart';
 import 'package:oreamnos/ui/features/facebook/widgets/facebook_connection_dialog.dart';
 import 'package:oreamnos/ui/features/facebook/widgets/page_switcher_sheet.dart';
+import 'package:oreamnos/ui/features/publish/view_models/facebook_performance_view_model.dart';
+import 'package:oreamnos/ui/features/publish/view_models/publish_handoff_view_model.dart';
 
 /// Facebook-style composer: page identity, message first, compact media bar,
 /// then a live feed preview that appears as soon as a photo is attached.
@@ -437,6 +441,7 @@ class _FacebookComposeScreenState extends ConsumerState<FacebookComposeScreen> {
 
   Future<void> _pickSchedule() async {
     final draft = ref.read(facebookDraftProvider);
+    final slots = ref.read(bestTimeToPostProvider);
     final at = await showModalBottomSheet<DateTime>(
       context: context,
       showDragHandle: true,
@@ -444,6 +449,7 @@ class _FacebookComposeScreenState extends ConsumerState<FacebookComposeScreen> {
       builder: (_) => _ScheduleSheet(
         initial:
             draft.scheduledAt ?? DateTime.now().add(const Duration(hours: 1)),
+        suggestions: slots,
       ),
     );
     if (at == null || !mounted) return;
@@ -488,6 +494,13 @@ class _FacebookComposeScreenState extends ConsumerState<FacebookComposeScreen> {
         if (next == FacebookComposePhase.published &&
             prev != FacebookComposePhase.published) {
           Haptics.mediumImpact();
+        }
+        final finished =
+            next == FacebookComposePhase.published ||
+            next == FacebookComposePhase.scheduled ||
+            next == FacebookComposePhase.partialSuccess;
+        if (finished && prev != next) {
+          ref.read(publishHandoffProvider.notifier).consume();
         }
       },
     );
@@ -960,9 +973,10 @@ class _PreviewModeState extends State<_PreviewMode> {
 }
 
 class _ScheduleSheet extends StatefulWidget {
-  const _ScheduleSheet({required this.initial});
+  const _ScheduleSheet({required this.initial, this.suggestions = const []});
 
   final DateTime initial;
+  final List<PostingTimeSlot> suggestions;
 
   @override
   State<_ScheduleSheet> createState() => _ScheduleSheetState();
@@ -1040,6 +1054,29 @@ class _ScheduleSheetState extends State<_ScheduleSheet> {
               ),
             ),
             const SizedBox(height: AppSpacing.base),
+            if (widget.suggestions.isNotEmpty) ...[
+              Text(
+                'Suggested from your own posts',
+                style: theme.textTheme.labelMedium?.copyWith(
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
+              const SizedBox(height: AppSpacing.xs),
+              Wrap(
+                spacing: AppSpacing.xs,
+                runSpacing: AppSpacing.xs,
+                children: [
+                  for (final slot in widget.suggestions)
+                    ActionChip(
+                      label: Text(slot.label),
+                      onPressed: () => setState(
+                        () => _selected = BestTimeToPost.nextOccurrence(slot),
+                      ),
+                    ),
+                ],
+              ),
+              const SizedBox(height: AppSpacing.base),
+            ],
             ListTile(
               contentPadding: EdgeInsets.zero,
               leading: const Icon(Icons.calendar_today_outlined),

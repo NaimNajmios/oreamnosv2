@@ -48,6 +48,7 @@ import '../view_models/generate_view_model.dart';
 import '../view_models/generate_state.dart';
 
 import 'package:oreamnos/ui/features/facebook/view_models/facebook_view_model.dart';
+import 'package:oreamnos/ui/features/facebook/widgets/facebook_connection_dialog.dart';
 
 class GenerateScreen extends ConsumerStatefulWidget {
   const GenerateScreen({super.key});
@@ -450,6 +451,27 @@ class _GenerateScreenState extends ConsumerState<GenerateScreen> {
                               ),
                               if (hasPost) ...[
                                 const SizedBox(height: AppSpacing.xl),
+                                AppButton(
+                                  label:
+                                      ref
+                                          .watch(facebookViewModelProvider)
+                                          .isConnected
+                                      ? 'Publish on Facebook'
+                                      : 'Connect Page to publish',
+                                  icon: Icons.facebook_rounded,
+                                  onPressed: () {
+                                    Haptics.lightImpact();
+                                    final connected = ref
+                                        .read(facebookViewModelProvider)
+                                        .isConnected;
+                                    if (!connected) {
+                                      FacebookConnectionDialog.show(context);
+                                      return;
+                                    }
+                                    context.go(RoutePaths.publish);
+                                  },
+                                ),
+                                const SizedBox(height: AppSpacing.sm),
                                 Row(
                                   children: [
                                     Expanded(
@@ -1167,18 +1189,6 @@ class _GenerateScreenState extends ConsumerState<GenerateScreen> {
                                 'uppercaseTitle': viewModel.uppercaseTitle,
                               },
                             );
-                          },
-                        ),
-                        IconButton(
-                          icon: const Icon(Icons.facebook_rounded, size: 20),
-                          tooltip: 'Publish to Facebook',
-                          onPressed: () {
-                            // Seed the draft (markdown stripped) first —
-                            // the router needs no `extra`.
-                            ref
-                                .read(facebookDraftProvider.notifier)
-                                .startDraft(copyText);
-                            context.push(RoutePaths.facebookCompose);
                           },
                         ),
                         AppCopyButton(textToCopy: copyText),

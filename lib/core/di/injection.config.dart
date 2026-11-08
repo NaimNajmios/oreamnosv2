@@ -22,6 +22,9 @@ import '../../data/services/facebook_comments_service.dart' as _i500;
 import '../../data/services/facebook_draft_store.dart' as _i217;
 import '../../data/services/facebook_history_service.dart' as _i278;
 import '../../data/services/facebook_insights_service.dart' as _i919;
+import '../../data/services/facebook_monetization_service.dart' as _i219;
+import '../../data/services/facebook_page_insights_service.dart' as _i36;
+import '../../data/services/facebook_page_insights_store.dart' as _i922;
 import '../../data/services/facebook_page_service.dart' as _i9;
 import '../../data/services/facebook_publisher_service.dart' as _i493;
 import '../../data/services/facebook_storage_service.dart' as _i141;
@@ -104,6 +107,9 @@ extension GetItInjectableX on _i174.GetIt {
     gh.lazySingleton<_i278.FacebookHistoryService>(
       () => _i278.FacebookHistoryService(gh<_i460.SharedPreferences>()),
     );
+    gh.lazySingleton<_i922.FacebookPageInsightsStore>(
+      () => _i922.FacebookPageInsightsStore(gh<_i460.SharedPreferences>()),
+    );
     gh.lazySingleton<_i703.FacebookWorkflowStore>(
       () => _i703.FacebookWorkflowStore(gh<_i460.SharedPreferences>()),
     );
@@ -118,6 +124,12 @@ extension GetItInjectableX on _i174.GetIt {
     );
     gh.lazySingleton<_i919.FacebookInsightsService>(
       () => _i919.FacebookInsightsService(gh<_i557.ApiClient>()),
+    );
+    gh.lazySingleton<_i219.FacebookMonetizationService>(
+      () => _i219.FacebookMonetizationService(gh<_i557.ApiClient>()),
+    );
+    gh.lazySingleton<_i36.FacebookPageInsightsService>(
+      () => _i36.FacebookPageInsightsService(gh<_i557.ApiClient>()),
     );
     gh.lazySingleton<_i493.FacebookPublisherService>(
       () => _i493.FacebookPublisherService(gh<_i557.ApiClient>()),

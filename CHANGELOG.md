@@ -1,5 +1,15 @@
 # Changelog — Oreamnos
 
+## v24 — Publishing Handoff, Performance & Best Times (2026-11-08)
+
+- **Generate → Publish handoff:** generated content now appears automatically in the Publish tab (`publishHandoffProvider` derived from the Generate tab). The shell shows a dot on the Publish tab while content is waiting. **Publish now** opens the composer for review; scheduling or publishing consumes the handoff. The Generate screen’s header Facebook icon became a full-width bottom CTA landing on Publish.
+- **Publish hub redesign:** ready-to-publish card, Page performance card, best posting windows, and compact Drafts/Scheduled/Published counts replace the three stat cards.
+- **Current post metrics:** replaced retired June-2026 metrics with `post_total_media_view_unique`, `post_reactions_by_type_total` and `post_activity_by_action_type`; legacy cached values stay visible but labelled. Engagement (`reactions`, `comments`, `shares`) is fetched separately so it cannot be taken down by a retired insight metric. Metric names are centralized in `FacebookMetricNames`.
+- **Page performance:** new `/facebook-performance` screen with 7/28-day filter, daily chart, media views/follows/engagements KPIs, recent posts and a 30-minute cache. Requires `read_insights` + `pages_read_engagement` and ANALYZE.
+- **Estimated earnings:** Content Monetization earnings shown as estimated in Page currency with restatement/payout caveats; a zero is never treated as “no earnings”.
+- **Best time to post:** deterministic, local, non-AI weekday/hour scoring from the Page’s own published history (comments ×2, shares ×3, 21-day half-life). Needs 2+ samples per bucket; suggests times in the schedule sheet and hub.
+- **Tests:** 517 tests, including new insight/engagement parsing, Page insights, best-time heuristic, handoff lifecycle, and token-out-of-URL assertions.
+
 ## v23 — Uppercase Persistence + Chip Contrast (2026-11-05)
 
 - **Uppercase always persists:** the title-uppercase display preference is saved/restored independently of the broader “Persist generation options” setting. `reset()` keeps it.

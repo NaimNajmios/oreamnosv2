@@ -44,6 +44,8 @@ class _FacebookHistoryScreenState extends ConsumerState<FacebookHistoryScreen> {
     final notifier = ref.read(facebookHistoryProvider.notifier);
     for (final record in records.take(10)) {
       if (!mounted) return;
+      await notifier.refreshEngagement(record.id);
+      if (!mounted) return;
       await notifier.refreshInsights(record.id);
     }
   }
@@ -295,9 +297,14 @@ class _RecordTile extends ConsumerWidget {
     }
 
     return [
-      if (record.impressions != null) '👁 ${compact(record.impressions!)}',
+      if (record.uniqueViewers != null)
+        '👁 ${compact(record.uniqueViewers!)}'
+      else if (record.impressions != null)
+        '👁 ${compact(record.impressions!)} (cached)',
       if (record.reactions != null) '👍 ${compact(record.reactions!)}',
-      if (record.clicks != null) '🔗 ${compact(record.clicks!)}',
+      if (record.comments != null) '💬 ${compact(record.comments!)}',
+      if (record.shares != null) '↗ ${compact(record.shares!)}',
+      if (record.clicks != null) '🔗 ${compact(record.clicks!)} (cached)',
     ].join(' · ');
   }
 

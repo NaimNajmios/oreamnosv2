@@ -8,16 +8,22 @@ import 'package:oreamnos/core/di/injection.dart';
 import 'package:oreamnos/data/services/facebook_draft_store.dart';
 import 'package:oreamnos/data/services/facebook_workflow_store.dart';
 import 'package:oreamnos/data/services/facebook_history_service.dart';
+import 'package:oreamnos/domain/models/facebook_page_insights.dart';
 import 'package:oreamnos/domain/models/facebook_post_record.dart';
+import 'package:oreamnos/domain/models/posting_time_slot.dart';
+import 'package:oreamnos/domain/services/best_time_to_post.dart';
 import 'package:oreamnos/ui/core/utils/haptics.dart';
 import 'package:oreamnos/ui/core/widgets/app_button.dart';
 import 'package:oreamnos/ui/core/widgets/app_card.dart';
+import 'package:oreamnos/ui/features/facebook/view_models/facebook_state.dart';
 import 'package:oreamnos/ui/features/facebook/view_models/facebook_view_model.dart';
 import 'package:oreamnos/ui/features/facebook/widgets/compose/facebook_compose_widgets.dart';
 import 'package:oreamnos/ui/features/facebook/widgets/facebook_connection_dialog.dart';
 import 'package:oreamnos/ui/features/facebook/widgets/facebook_storage_tile.dart';
 import 'package:oreamnos/ui/features/facebook/widgets/page_switcher_sheet.dart';
 import 'package:oreamnos/ui/features/publish/view_models/facebook_drafts_view_model.dart';
+import 'package:oreamnos/ui/features/publish/view_models/facebook_performance_view_model.dart';
+import 'package:oreamnos/ui/features/publish/view_models/publish_handoff_view_model.dart';
 
 /// Tab-level home for publishing: Page, new post, drafts, schedule and
 /// recent posts. Detail screens stay full-screen pushes.
@@ -41,7 +47,50 @@ class _PublishHubScreenState extends ConsumerState<PublishHubScreen> {
     ref.read(facebookDraftsProvider.notifier).refresh();
     if (ref.read(facebookViewModelProvider).isConnected) {
       await ref.read(facebookDraftProvider.notifier).reconcileScheduled();
+      await ref.read(facebookPerformanceProvider.notifier).ensureLoaded();
     }
+  }
+
+  Future<void> _openHandoff(
+    PublishHandoff handoff, {
+    bool schedule = false,
+  }) async {
+    final draft = ref.read(facebookDraftProvider);
+    final notifier = ref.read(facebookDraftProvider.notifier);
+    if (draft.isEmpty || draft.text.trim() != handoff.text.trim()) {
+      notifier.startDraft(handoff.text, title: handoff.title);
+      if (schedule) {
+        final slots = ref.read(bestTimeToPostProvider);
+        notifier.setScheduledAt(
+          slots.isEmpty
+              ? DateTime.now().add(const Duration(hours: 1))
+              : BestTimeToPost.nextOccurrence(slots.first),
+        );
+      }
+    } else if (schedule && draft.publishMode != FacebookPublishMode.scheduled) {
+      final slots = ref.read(bestTimeToPostProvider);
+      notifier.setScheduledAt(
+        slots.isEmpty
+            ? DateTime.now().add(const Duration(hours: 1))
+            : BestTimeToPost.nextOccurrence(slots.first),
+      );
+    }
+    if (!mounted) return;
+    await context.push(RoutePaths.facebookCompose);
+    if (mounted) _refresh();
+  }
+
+  Future<void> _scheduleAt(DateTime at) async {
+    final notifier = ref.read(facebookDraftProvider.notifier);
+    final handoff = ref.read(publishHandoffProvider);
+    if (handoff != null) {
+      notifier.startDraft(handoff.text, title: handoff.title);
+    } else if (ref.read(facebookDraftProvider).isEmpty) {
+      notifier.startEmptyDraft();
+    }
+    notifier.setScheduledAt(at);
+    await context.push(RoutePaths.facebookCompose);
+    if (mounted) _refresh();
   }
 
   Future<void> _newPost() async {
@@ -87,6 +136,11 @@ class _PublishHubScreenState extends ConsumerState<PublishHubScreen> {
     }
   }
 
+  Future<void> _openPerformance() async {
+    await context.push(RoutePaths.facebookPerformance);
+    if (mounted) _refresh();
+  }
+
   Future<void> _retryStory(FacebookPostRecord record) async {
     final error = await ref
         .read(facebookHistoryProvider.notifier)
@@ -103,6 +157,10 @@ class _PublishHubScreenState extends ConsumerState<PublishHubScreen> {
     final history = ref.watch(facebookHistoryProvider);
     final drafts = ref.watch(facebookDraftsProvider);
     final activeDraft = ref.watch(facebookDraftProvider);
+    final handoff = ref.watch(publishHandoffProvider);
+    final performance = ref.watch(facebookPerformanceProvider);
+    final bestSlots = ref.watch(bestTimeToPostProvider);
+    final bestReason = ref.watch(bestTimeToPostReasonProvider);
     final store = getIt<FacebookWorkflowStore>();
     final workflow = store.defaultForPage(connection.activePageId);
 
@@ -158,42 +216,38 @@ class _PublishHubScreenState extends ConsumerState<PublishHubScreen> {
               onConnect: () => FacebookConnectionDialog.show(context),
             ),
             const SizedBox(height: AppSpacing.base),
-            _CreateCard(
-              enabled: connection.isConnected,
-              workflowLabel: workflow.destinationLabel,
-              onCreate: _newPost,
-              onConnect: () => FacebookConnectionDialog.show(context),
+            if (handoff != null)
+              _ReadyToPublishCard(
+                handoff: handoff,
+                pageName: connection.pageName,
+                workflowLabel: workflow.destinationLabel,
+                onPublish: () => _openHandoff(handoff),
+                onSchedule: () => _openHandoff(handoff, schedule: true),
+                onDismiss: () =>
+                    ref.read(publishHandoffProvider.notifier).consume(),
+              )
+            else
+              _CreateCard(
+                enabled: connection.isConnected,
+                workflowLabel: workflow.destinationLabel,
+                onCreate: _newPost,
+                onConnect: () => FacebookConnectionDialog.show(context),
+              ),
+            const SizedBox(height: AppSpacing.base),
+            _PerformanceCard(state: performance, onTap: _openPerformance),
+            const SizedBox(height: AppSpacing.base),
+            _BestTimeCard(
+              slots: bestSlots,
+              reason: bestReason,
+              onSlot: _scheduleAt,
             ),
             const SizedBox(height: AppSpacing.base),
-            Row(
-              children: [
-                Expanded(
-                  child: _StatCard(
-                    label: 'Drafts',
-                    value: '${drafts.length}',
-                    icon: Icons.drafts_outlined,
-                    onTap: _openDrafts,
-                  ),
-                ),
-                const SizedBox(width: AppSpacing.sm),
-                Expanded(
-                  child: _StatCard(
-                    label: 'Scheduled',
-                    value: '${scheduled.length}',
-                    icon: Icons.schedule_rounded,
-                    onTap: () => _openHistory(tab: 'scheduled'),
-                  ),
-                ),
-                const SizedBox(width: AppSpacing.sm),
-                Expanded(
-                  child: _StatCard(
-                    label: 'Published',
-                    value: '${published.length}',
-                    icon: Icons.public_rounded,
-                    onTap: () => _openHistory(tab: 'published'),
-                  ),
-                ),
-              ],
+            _QuickActions(
+              drafts: drafts.length,
+              scheduled: scheduled.length,
+              published: published.length,
+              onDrafts: _openDrafts,
+              onScheduled: () => _openHistory(tab: 'scheduled'),
             ),
             if (nextScheduled != null) ...[
               const SizedBox(height: AppSpacing.lg),
@@ -468,48 +522,406 @@ class _CreateCard extends StatelessWidget {
   }
 }
 
-class _StatCard extends StatelessWidget {
-  const _StatCard({
-    required this.label,
-    required this.value,
-    required this.icon,
-    required this.onTap,
+class _ReadyToPublishCard extends StatelessWidget {
+  const _ReadyToPublishCard({
+    required this.handoff,
+    required this.pageName,
+    required this.workflowLabel,
+    required this.onPublish,
+    required this.onSchedule,
+    required this.onDismiss,
   });
 
-  final String label;
-  final String value;
-  final IconData icon;
-  final VoidCallback onTap;
+  final PublishHandoff handoff;
+  final String pageName;
+  final String workflowLabel;
+  final VoidCallback onPublish;
+  final VoidCallback onSchedule;
+  final VoidCallback onDismiss;
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     return AppCard(
-      onTap: onTap,
-      padding: const EdgeInsets.symmetric(
-        horizontal: AppSpacing.sm,
-        vertical: AppSpacing.md,
+      backgroundColor: theme.colorScheme.primaryContainer.withValues(
+        alpha: 0.35,
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Icon(icon, size: 18, color: theme.colorScheme.onSurfaceVariant),
-          const SizedBox(height: 6),
-          Text(
-            value,
-            style: theme.textTheme.titleLarge?.copyWith(
-              fontWeight: FontWeight.w800,
-            ),
+          Row(
+            children: [
+              Icon(
+                Icons.mark_email_unread_rounded,
+                color: theme.colorScheme.primary,
+                size: 20,
+              ),
+              const SizedBox(width: AppSpacing.sm),
+              Expanded(
+                child: Text(
+                  'Ready to publish',
+                  style: theme.textTheme.titleSmall?.copyWith(
+                    fontWeight: FontWeight.w800,
+                  ),
+                ),
+              ),
+              IconButton(
+                tooltip: 'Dismiss',
+                visualDensity: VisualDensity.compact,
+                onPressed: onDismiss,
+                icon: const Icon(Icons.close_rounded, size: 18),
+              ),
+            ],
           ),
           Text(
-            label,
+            handoff.snippet.isEmpty ? 'Generated post' : handoff.snippet,
+            maxLines: 3,
+            overflow: TextOverflow.ellipsis,
+            style: theme.textTheme.bodyMedium?.copyWith(
+              fontWeight: FontWeight.w600,
+              height: 1.35,
+            ),
+          ),
+          const SizedBox(height: AppSpacing.xs),
+          Text(
+            [
+              if (pageName.isNotEmpty) pageName,
+              workflowLabel,
+              if (handoff.uppercaseTitle) 'Uppercase title',
+              if (handoff.hashtagCount > 0) '${handoff.hashtagCount} hashtags',
+            ].join(' · '),
             maxLines: 1,
             overflow: TextOverflow.ellipsis,
             style: theme.textTheme.labelSmall?.copyWith(
               color: theme.colorScheme.onSurfaceVariant,
             ),
           ),
+          const SizedBox(height: AppSpacing.md),
+          Row(
+            children: [
+              Expanded(
+                child: AppButton(
+                  label: 'Publish now',
+                  icon: Icons.facebook_rounded,
+                  onPressed: onPublish,
+                ),
+              ),
+              const SizedBox(width: AppSpacing.sm),
+              TextButton.icon(
+                onPressed: onSchedule,
+                icon: const Icon(Icons.schedule_rounded, size: 18),
+                label: const Text('Schedule'),
+              ),
+            ],
+          ),
         ],
+      ),
+    );
+  }
+}
+
+class _PerformanceCard extends StatelessWidget {
+  const _PerformanceCard({required this.state, required this.onTap});
+
+  final FacebookPerformanceState state;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final data = state.data;
+    final earnings = state.monetization;
+    return AppCard(
+      onTap: onTap,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Icon(
+                Icons.insights_rounded,
+                size: 20,
+                color: theme.colorScheme.primary,
+              ),
+              const SizedBox(width: AppSpacing.sm),
+              Expanded(
+                child: Text(
+                  'Performance · 28 days',
+                  style: theme.textTheme.titleSmall?.copyWith(
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+              ),
+              if (state.loading)
+                const SizedBox(
+                  width: 16,
+                  height: 16,
+                  child: CircularProgressIndicator(strokeWidth: 2),
+                )
+              else
+                Icon(
+                  Icons.chevron_right_rounded,
+                  color: theme.colorScheme.onSurfaceVariant,
+                ),
+            ],
+          ),
+          const SizedBox(height: AppSpacing.sm),
+          if (state.error != null && data == null)
+            Text(
+              state.error!,
+              style: theme.textTheme.bodySmall?.copyWith(
+                color: theme.colorScheme.error,
+              ),
+            )
+          else if (data == null || !data.hasAny)
+            Text(
+              'No Page insights yet. They can take up to 24 hours.',
+              style: theme.textTheme.bodySmall?.copyWith(
+                color: theme.colorScheme.onSurfaceVariant,
+              ),
+            )
+          else ...[
+            Row(
+              children: [
+                Expanded(
+                  child: _Metric(
+                    label: 'Media views',
+                    value: _compact(data.totalMediaViews),
+                  ),
+                ),
+                Expanded(
+                  child: _Metric(
+                    label: 'Followers',
+                    value: _compact(_latest(data)),
+                  ),
+                ),
+                Expanded(
+                  child: _Metric(
+                    label: 'Engagements',
+                    value: _compact(data.totalEngagements),
+                  ),
+                ),
+              ],
+            ),
+            if (earnings != null && earnings.hasAny) ...[
+              const SizedBox(height: AppSpacing.sm),
+              Text(
+                'Estimated earnings · '
+                '${_money(earnings.totalEarnings)} (Page currency)',
+                style: theme.textTheme.labelSmall?.copyWith(
+                  color: theme.colorScheme.onSurfaceVariant,
+                ),
+              ),
+            ],
+          ],
+        ],
+      ),
+    );
+  }
+
+  static String _compact(int? value) {
+    if (value == null) return '—';
+    if (value >= 1000000) return '${(value / 1000000).toStringAsFixed(1)}m';
+    if (value >= 1000) return '${(value / 1000).toStringAsFixed(1)}k';
+    return '$value';
+  }
+
+  static int? _latest(FacebookPageInsights data) {
+    for (final point in data.points.reversed) {
+      if (point.follows != null) return point.follows;
+    }
+    return null;
+  }
+
+  static String _money(double? value) {
+    if (value == null) return '—';
+    return value.toStringAsFixed(2);
+  }
+}
+
+class _Metric extends StatelessWidget {
+  const _Metric({required this.label, required this.value});
+
+  final String label;
+  final String value;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          value,
+          style: theme.textTheme.titleMedium?.copyWith(
+            fontWeight: FontWeight.w800,
+          ),
+        ),
+        Text(
+          label,
+          maxLines: 1,
+          overflow: TextOverflow.ellipsis,
+          style: theme.textTheme.labelSmall?.copyWith(
+            color: theme.colorScheme.onSurfaceVariant,
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+class _BestTimeCard extends StatelessWidget {
+  const _BestTimeCard({
+    required this.slots,
+    required this.reason,
+    required this.onSlot,
+  });
+
+  final List<PostingTimeSlot> slots;
+  final String? reason;
+  final ValueChanged<DateTime> onSlot;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    return AppCard(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Icon(
+                Icons.schedule_rounded,
+                size: 20,
+                color: theme.colorScheme.tertiary,
+              ),
+              const SizedBox(width: AppSpacing.sm),
+              Expanded(
+                child: Text(
+                  'Best posting windows',
+                  style: theme.textTheme.titleSmall?.copyWith(
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 2),
+          Text(
+            'Suggested from your own published posts · device time',
+            style: theme.textTheme.labelSmall?.copyWith(
+              color: theme.colorScheme.onSurfaceVariant,
+            ),
+          ),
+          const SizedBox(height: AppSpacing.sm),
+          if (slots.isEmpty)
+            Text(
+              reason ?? 'Not enough history yet.',
+              style: theme.textTheme.bodySmall?.copyWith(
+                color: theme.colorScheme.onSurfaceVariant,
+              ),
+            )
+          else
+            Wrap(
+              spacing: AppSpacing.xs,
+              runSpacing: AppSpacing.xs,
+              children: [
+                for (final slot in slots)
+                  ActionChip(
+                    avatar: Icon(
+                      slot.confidence
+                          ? Icons.trending_up_rounded
+                          : Icons.hourglass_bottom_rounded,
+                      size: 16,
+                    ),
+                    label: Text('${slot.label} · ${slot.detail}'),
+                    onPressed: () =>
+                        onSlot(BestTimeToPost.nextOccurrence(slot)),
+                  ),
+              ],
+            ),
+        ],
+      ),
+    );
+  }
+}
+
+class _QuickActions extends StatelessWidget {
+  const _QuickActions({
+    required this.drafts,
+    required this.scheduled,
+    required this.published,
+    required this.onDrafts,
+    required this.onScheduled,
+  });
+
+  final int drafts;
+  final int scheduled;
+  final int published;
+  final VoidCallback onDrafts;
+  final VoidCallback onScheduled;
+
+  @override
+  Widget build(BuildContext context) {
+    return AppCard(
+      padding: const EdgeInsets.symmetric(
+        horizontal: AppSpacing.md,
+        vertical: AppSpacing.xs,
+      ),
+      child: Row(
+        children: [
+          _CountAction(label: 'Drafts', value: drafts, onTap: onDrafts),
+          _CountAction(
+            label: 'Scheduled',
+            value: scheduled,
+            onTap: onScheduled,
+          ),
+          _CountAction(label: 'Published', value: published, onTap: null),
+        ],
+      ),
+    );
+  }
+}
+
+class _CountAction extends StatelessWidget {
+  const _CountAction({
+    required this.label,
+    required this.value,
+    required this.onTap,
+  });
+
+  final String label;
+  final int value;
+  final VoidCallback? onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    return Expanded(
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: AppSpacing.borderRadiusSm,
+        child: Padding(
+          padding: const EdgeInsets.symmetric(vertical: AppSpacing.sm),
+          child: Column(
+            children: [
+              Text(
+                '$value',
+                style: theme.textTheme.titleMedium?.copyWith(
+                  fontWeight: FontWeight.w800,
+                ),
+              ),
+              Text(
+                label,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: theme.textTheme.labelSmall?.copyWith(
+                  color: theme.colorScheme.onSurfaceVariant,
+                ),
+              ),
+            ],
+          ),
+        ),
       ),
     );
   }
@@ -855,9 +1267,12 @@ String _statsLine(FacebookPostRecord record) {
   }
 
   final parts = <String>[
-    if (record.impressions != null) '👁 ${compact(record.impressions!)}',
+    if (record.uniqueViewers != null) '👁 ${compact(record.uniqueViewers!)}',
+    if (record.impressions != null && record.uniqueViewers == null)
+      '👁 ${compact(record.impressions!)} (cached)',
     if (record.reactions != null) '👍 ${compact(record.reactions!)}',
-    if (record.clicks != null) '🔗 ${compact(record.clicks!)}',
+    if (record.comments != null) '💬 ${compact(record.comments!)}',
+    if (record.shares != null) '↗ ${compact(record.shares!)}',
   ];
   return parts.join(' · ');
 }

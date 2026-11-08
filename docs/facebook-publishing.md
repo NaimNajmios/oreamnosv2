@@ -4,23 +4,36 @@ State machine, Graph calls, timezone rules, token storage, media lifecycle,
 post management, comments, storage, workflows and Story cross-posting.
 Release v16 (gap closure + configurable workflows + Page Stories).
 
-## Navigation (v17)
+## Navigation (v17, handoff v24)
 
 Publishing owns the **Publish** bottom-nav tab (`/publish`). The tab root is
 `PublishHubScreen`:
 
 - Page identity + switch/manage
-- Create a post
+- **Ready to publish** card (generated content from the Generate tab)
+- Performance card + detailed `/facebook-performance` view
+- Best posting windows (local, non-AI)
 - Drafts / Scheduled / Published counts
 - Up next scheduled post (opens history `?tab=scheduled`)
 - Continue writing (active or newest draft)
 - Recent posts with insights and Story status/retry
 - Manage: Drafts, Published, Workflows, Storage
 
+Generated content flows to Publish without router `extra`:
+`publishHandoffProvider` derives a `PublishHandoff` from
+`generateViewModelProvider`. The shell shows a small dot on the Publish tab
+while a handoff is waiting. **Publish now** opens the composer for final review;
+it never posts immediately. Scheduling or publishing consumes the handoff, and
+a new generation surfaces again.
+
+The Generate screen keeps a full-width **Publish on Facebook** CTA below the
+generated card (previously a header icon) that lands on the Publish tab. When
+no Page is connected it opens the connection dialog instead.
+
 Composer, history, drafts, workflows and comments remain full-screen pushes
-from the hub. Settings no longer contains Facebook tiles. Generate and Card
-Studio publish icons remain shortcuts into the composer and apply the Page’s
-default workflow.
+from the hub. Settings no longer contains Facebook tiles. Card Studio's publish
+icon remains a shortcut into the composer and applies the Page's default
+workflow.
 
 ## Security contract
 
@@ -90,24 +103,56 @@ Published history rows support:
 
 Scheduled rows keep Reschedule/Cancel; failed rows keep local-only removal.
 
-## Insights (v11, expanded v13)
+## Insights (v11, expanded v13, migrated v24)
 
-`GET /{post-id}?fields=insights.metric(post_impressions,post_impressions_unique,post_engaged_users,post_negative_feedback,post_reactions_by_type_total,post_clicks)`
+`GET /{post-id}?fields=insights.metric(post_total_media_view_unique,post_reactions_by_type_total,post_activity_by_action_type)`
 with the token in `Authorization: Bearer`. `FacebookInsightsService` parses the
 nested `insights.data[]` defensively:
 
-- `post_impressions_unique` → reach (`impressions`)
-- `post_impressions` → `totalImpressions`
-- `post_engaged_users` → `engagedUsers`
-- `post_negative_feedback` → `negativeFeedback`
+- `post_total_media_view_unique` → `uniqueViewers`
 - `post_reactions_by_type_total` → per-type map + summed `reactions`
-- `post_clicks` → `clicks`
+- `post_activity_by_action_type` → `activityByActionType`
 
-Missing or malformed metrics stay `null`. `FacebookPostRecord` caches all
-fields. The history stats line only renders when `hasInsights`; the
-`PostInsightsSheet` hides unavailable rows, shows per-reaction chips, and
-refreshes in place. Scheduled records never request insights. Pull-to-refresh is
-sequential and capped at 10.
+Meta retired `post_impressions`, `post_impressions_unique`, `post_engaged_users`,
+`post_negative_feedback` and `post_clicks` in June 2026. Those fields remain on
+`FacebookPostRecord` only for records cached before the change and are labelled
+"(earlier metric)" in the UI. Metric names live in `FacebookMetricNames`.
+
+Engagement is fetched separately:
+`GET /{post-id}?fields=reactions.summary(true),comments.summary(true),shares`
+→ `reactions`, `comments`, `shares`. A retired insight metric can therefore
+never take the engagement badges down. Missing or malformed values stay `null`.
+`FacebookPostRecord` caches all fields. Pull-to-refresh runs engagement then
+insights for the newest 10 records; insight refreshes merge non-null values and
+never wipe cached data.
+
+## Page performance + earnings (v24)
+
+`FacebookPageInsightsService` calls `GET /{page-id}/insights` with
+`metric=page_media_view,page_follows,page_post_engagements&period=day`, a
+28-day range, and the token in `Authorization: Bearer`. Results merge per day,
+tolerate a missing metric, and cache in `facebook_page_insights_<pageId>` (30 min
+TTL, no tokens). Requires `read_insights` + `pages_read_engagement` and the
+ANALYZE Page task; a 403 explains that.
+
+`FacebookMonetizationService` requests
+`content_monetization_earnings,monetization_approximate_earnings`. Earnings are
+shown as **estimated**, in Page currency, with restatement and payout caveats.
+A zero never means “no earnings” — it can also mean not enrolled.
+
+The hub card and `/facebook-performance` screen present media views, follows,
+engagements, a daily chart (7/28-day filter) and recent posts. `refresh()`
+fetches earnings first and treats failure as optional so performance still
+loads.
+
+## Best time to post (v24)
+
+`BestTimeToPost` is deterministic, local and non-AI: it scores weekday/hour
+buckets from the Page's own published records, weighting comments ×2 and shares
+×3, with a 21-day half-life. A bucket needs at least 2 samples; 3+ is
+“confident”. No network or model is involved. `nextOccurrence` returns the next
+device-local slot at least 10 minutes ahead. With too little history the UI
+explains why instead of inventing a time.
 
 ## Comments (v14)
 
@@ -244,7 +289,10 @@ PNG crop is used. The output filename extension reflects the real format.
 | Cancel / delete | `DELETE /{post-id}` with token in the body |
 | Edit caption | `POST /{post-id}` (`message`) |
 | Reschedule | `POST /{post-id}` with `scheduled_publish_time` |
-| Insights | `GET /{post-id}?fields=insights.metric(...)` |
+| Insights | `GET /{post-id}?fields=insights.metric(post_total_media_view_unique,post_reactions_by_type_total,post_activity_by_action_type)` |
+| Engagement | `GET /{post-id}?fields=reactions.summary(true),comments.summary(true),shares` |
+| Page performance | `GET /{page-id}/insights?metric=page_media_view,page_follows,page_post_engagements&period=day&since=…&until=…` |
+| Estimated earnings | `GET /{page-id}/insights?metric=content_monetization_earnings,monetization_approximate_earnings` |
 | List comments | `GET /{post-id}/comments?fields=…&limit=25&after=<cursor>` |
 | Reply to comment | `POST /{comment-id}/comments` (`message`) |
 | Hide comment | `POST /{comment-id}` (`is_hidden`) |
@@ -269,9 +317,10 @@ success view shows the due time instead of a link.
 
 `FacebookPostRecord` stores `status` (`published | scheduled | failed`),
 `scheduledAt`, `pageId`, `pageName`, `localImagePaths`, `errorMessage` and the
-optional insights cache (`impressions`, `reactions`, `clicks`,
-`insightsFetchedAt`). History is capped at 50. Removing a record deletes its
-local thumbnails.
+optional insights cache (`uniqueViewers`, `reactions`, `comments`, `shares`,
+`impressions`/`clicks` for earlier cached records, `reactionsByType`,
+`activityByActionType`, `insightsFetchedAt`, `engagementFetchedAt`). History is
+capped at 50. Removing a record deletes its local thumbnails.
 
 On opening history, the app best-effort fetches `/{page}/scheduled_posts`. A
 local scheduled record whose time has passed and that is absent from Graph is
@@ -294,6 +343,8 @@ rows never fetch insights. Long-press **Refresh insights** and pull-to-refresh
 | 506 | `duplicate` | Edit the caption |
 | local upload failure | `mediaUploadFailed` | Retry the photos |
 | insights missing | `insightsUnavailable` | Hide the stats line |
+| Page insights/metrics changed | `insightsUnavailable` | Explain metric names may have changed |
+| Page insights permission | `permission` | Reconnect with `read_insights` + ANALYZE |
 | `/me/accounts` failure | `pageTokenExchangeFailed` | Check permissions/token |
 | caption edit rejected | `unknown` | Delete and repost guidance |
 | comment action denied | `permission` | Reconnect with `pages_manage_engagement` |

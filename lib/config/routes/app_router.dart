@@ -16,6 +16,7 @@ import '../../ui/features/facebook/views/facebook_comments_screen.dart';
 import '../../ui/features/facebook/views/facebook_drafts_screen.dart';
 import '../../ui/features/facebook/views/facebook_workflows_screen.dart';
 import '../../ui/features/facebook/views/facebook_history_screen.dart';
+import '../../ui/features/facebook/views/facebook_performance_screen.dart';
 import '../../ui/features/publish/views/publish_hub_screen.dart';
 import '../../ui/features/settings/views/debug_log_screen.dart';
 import '../../data/models/ai_provider.dart';
@@ -37,6 +38,7 @@ abstract final class RoutePaths {
   static const String publish = '/publish';
   static const String facebookCompose = '/facebook-compose';
   static const String facebookHistory = '/facebook-history';
+  static const String facebookPerformance = '/facebook-performance';
   static const String facebookDrafts = '/facebook-drafts';
   static const String facebookComments = '/facebook-comments';
   static const String facebookWorkflows = '/facebook-workflows';
@@ -252,6 +254,11 @@ GoRouter createAppRouter({String? initialLocation}) {
             ),
           );
         },
+      ),
+      GoRoute(
+        path: RoutePaths.facebookPerformance,
+        pageBuilder: (context, state) =>
+            _kickoffPage(child: const FacebookPerformanceScreen()),
       ),
       GoRoute(
         path: RoutePaths.facebookDrafts,

@@ -122,6 +122,7 @@ abstract final class AppConstants {
   static const String keyFacebookLastSweep = 'facebook_last_sweep';
   static const String keyFacebookLastReconcile = 'facebook_last_reconcile';
   static const String keyFacebookWorkflows = 'facebook_workflows';
+  static const String keyFacebookPageInsights = 'facebook_page_insights';
   static const String keyFacebookDefaultWorkflowPrefix =
       'facebook_default_workflow_';
 

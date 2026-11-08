@@ -164,6 +164,36 @@ class _PostInsightsSheetState extends ConsumerState<PostInsightsSheet> {
                 ],
               ),
             ],
+            if (record.activityByActionType != null &&
+                record.activityByActionType!.isNotEmpty) ...[
+              const Divider(height: AppSpacing.lg),
+              Text(
+                'Activity by action',
+                style: theme.textTheme.labelMedium?.copyWith(
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
+              const SizedBox(height: AppSpacing.xs),
+              Wrap(
+                spacing: AppSpacing.xs,
+                runSpacing: AppSpacing.xs,
+                children: [
+                  for (final entry in record.activityByActionType!.entries)
+                    Chip(
+                      visualDensity: VisualDensity.compact,
+                      label: Text('${entry.key} ${entry.value}'),
+                    ),
+                ],
+              ),
+            ],
+            const SizedBox(height: AppSpacing.sm),
+            Text(
+              'Meta changed post metrics in June 2026; earlier cached values '
+              'are not directly comparable.',
+              style: theme.textTheme.labelSmall?.copyWith(
+                color: theme.colorScheme.onSurfaceVariant,
+              ),
+            ),
           ],
         ),
       ),
@@ -182,17 +212,17 @@ class _PostInsightsSheetState extends ConsumerState<PostInsightsSheet> {
 
   static List<_MetricRow> _rows(FacebookPostRecord record) {
     return [
-      if (record.impressions != null)
+      if (record.uniqueViewers != null)
         _MetricRow(
           icon: Icons.visibility_outlined,
-          label: 'Reach',
-          value: record.impressions!,
-        ),
-      if (record.totalImpressions != null)
+          label: 'Unique viewers',
+          value: record.uniqueViewers!,
+        )
+      else if (record.impressions != null)
         _MetricRow(
-          icon: Icons.remove_red_eye_outlined,
-          label: 'Impressions',
-          value: record.totalImpressions!,
+          icon: Icons.visibility_outlined,
+          label: 'Reach (earlier metric)',
+          value: record.impressions!,
         ),
       if (record.reactions != null)
         _MetricRow(
@@ -200,22 +230,40 @@ class _PostInsightsSheetState extends ConsumerState<PostInsightsSheet> {
           label: 'Reactions',
           value: record.reactions!,
         ),
+      if (record.comments != null)
+        _MetricRow(
+          icon: Icons.mode_comment_outlined,
+          label: 'Comments',
+          value: record.comments!,
+        ),
+      if (record.shares != null)
+        _MetricRow(
+          icon: Icons.share_outlined,
+          label: 'Shares',
+          value: record.shares!,
+        ),
+      if (record.totalImpressions != null)
+        _MetricRow(
+          icon: Icons.remove_red_eye_outlined,
+          label: 'Impressions (earlier metric)',
+          value: record.totalImpressions!,
+        ),
       if (record.clicks != null)
         _MetricRow(
           icon: Icons.link_rounded,
-          label: 'Clicks',
+          label: 'Clicks (earlier metric)',
           value: record.clicks!,
         ),
       if (record.engagedUsers != null)
         _MetricRow(
           icon: Icons.groups_outlined,
-          label: 'Engaged users',
+          label: 'Engaged users (earlier metric)',
           value: record.engagedUsers!,
         ),
       if (record.negativeFeedback != null)
         _MetricRow(
           icon: Icons.thumb_down_alt_outlined,
-          label: 'Negative feedback',
+          label: 'Negative feedback (earlier metric)',
           value: record.negativeFeedback!,
         ),
     ];

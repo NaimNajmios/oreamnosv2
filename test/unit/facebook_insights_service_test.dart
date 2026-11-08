@@ -80,13 +80,13 @@ Map<String, dynamic> _insights(List<Map<String, dynamic>> data) => {
 void main() {
   group('FacebookInsightsService', () {
     test(
-      'parses all three metrics and keeps the token out of the URL',
+      'parses the current metrics and keeps the token out of the URL',
       () async {
         final adapter = _GraphAdapter(
           200,
           _insights([
             {
-              'name': 'post_impressions_unique',
+              'name': 'post_total_media_view_unique',
               'values': [
                 {'value': 1200},
               ],
@@ -100,9 +100,11 @@ void main() {
               ],
             },
             {
-              'name': 'post_clicks',
+              'name': 'post_activity_by_action_type',
               'values': [
-                {'value': '31'},
+                {
+                  'value': {'post_reaction': 84, 'comment': 9, 'share': 3},
+                },
               ],
             },
           ]),
@@ -110,90 +112,39 @@ void main() {
         final insights = await _service(adapter)
             .fetch(postId: '123_456', token: _token);
 
-        expect(insights.impressions, 1200);
+        expect(insights.uniqueViewers, 1200);
         expect(insights.reactions, 84);
-        expect(insights.clicks, 31);
+        expect(insights.reactionsByType, {'like': 80, 'love': 4});
+        expect(insights.activityByActionType, {
+          'post_reaction': 84,
+          'comment': 9,
+          'share': 3,
+        });
+        // Retired metrics are never populated from a fresh response.
+        expect(insights.impressions, isNull);
+        expect(insights.clicks, isNull);
         expect(insights.hasAny, isTrue);
 
         final request = adapter.lastRequest!;
         expect(request.uri.toString(), contains('/v23.0/123_456'));
         expect(request.headers['Authorization'], contains(_token));
         expect(request.uri.queryParameters.values, isNot(contains(_token)));
-        expect(
-          request.uri.queryParameters['fields'],
-          contains('post_impressions_unique'),
-        );
+        final fields = request.uri.queryParameters['fields']!;
+        expect(fields, contains('post_total_media_view_unique'));
+        expect(fields, contains('post_reactions_by_type_total'));
+        expect(fields, contains('post_activity_by_action_type'));
+        // Retired names must never be requested.
+        expect(fields, isNot(contains('post_impressions')));
+        expect(fields, isNot(contains('post_clicks')));
       },
     );
-
-    test('parses the richer v13 metric set', () async {
-      final insights = await _service(
-        _GraphAdapter(
-          200,
-          _insights([
-            {
-              'name': 'post_impressions_unique',
-              'values': [
-                {'value': 120},
-              ],
-            },
-            {
-              'name': 'post_impressions',
-              'values': [
-                {'value': 300},
-              ],
-            },
-            {
-              'name': 'post_engaged_users',
-              'values': [
-                {'value': 45},
-              ],
-            },
-            {
-              'name': 'post_negative_feedback',
-              'values': [
-                {'value': 2},
-              ],
-            },
-            {
-              'name': 'post_reactions_by_type_total',
-              'values': [
-                {
-                  'value': {'like': 10, 'love': 2},
-                },
-              ],
-            },
-          ]),
-        ),
-      ).fetch(postId: 'p', token: _token);
-      expect(insights.impressions, 120);
-      expect(insights.totalImpressions, 300);
-      expect(insights.engagedUsers, 45);
-      expect(insights.negativeFeedback, 2);
-      expect(insights.reactions, 12);
-      expect(insights.reactionsByType, {'like': 10, 'love': 2});
-      expect(insights.clicks, isNull);
-    });
-
-    test('HTML 200 response becomes unexpectedResponse', () async {
-      final service = _service(
-        _RawAdapter(200, '<!doctype html><html></html>'),
-      );
-      try {
-        await service.fetch(postId: 'p', token: _token);
-        fail('should throw');
-      } on FacebookApiException catch (e) {
-        expect(e.kind, FacebookApiErrorKind.unexpectedResponse);
-        expect(e.message, contains('web page'));
-      }
-    });
 
     test('missing metrics stay null, never zero', () async {
       final adapter = _GraphAdapter(
         200,
         _insights([
           {
-            'name': 'post_impressions_unique',
+            'name': 'post_total_media_view_unique',
             'values': [
               {'value': 5},
             ],
@@ -202,9 +153,11 @@ void main() {
       );
       final insights = await _service(adapter)
           .fetch(postId: 'p', token: _token);
-      expect(insights.impressions, 5);
+      expect(insights.uniqueViewers, 5);
       expect(insights.reactions, isNull);
-      expect(insights.clicks, isNull);
+      expect(insights.comments, isNull);
+      expect(insights.shares, isNull);
+      expect(insights.activityByActionType, isNull);
       expect(insights.hasAny, isTrue);
     });
 
@@ -212,7 +165,7 @@ void main() {
       final insights = await _service(_GraphAdapter(200, {'id': 'p'}))
           .fetch(postId: 'p', token: _token);
       expect(insights.hasAny, isFalse);
-      expect(insights.impressions, isNull);
+      expect(insights.uniqueViewers, isNull);
       expect(insights.reactions, isNull);
       expect(insights.clicks, isNull);
     });
@@ -223,7 +176,7 @@ void main() {
           200,
           _insights([
             {
-              'name': 'post_impressions_unique',
+              'name': 'post_total_media_view_unique',
               'values': [
                 {'value': 'not-a-number'},
               ],
@@ -234,13 +187,13 @@ void main() {
                 {'value': 'nope'},
               ],
             },
-            {'name': 'post_clicks', 'values': 'nope'},
+            {'name': 'post_activity_by_action_type', 'values': 'nope'},
           ]),
         ),
       ).fetch(postId: 'p', token: _token);
-      expect(insights.impressions, isNull);
+      expect(insights.uniqueViewers, isNull);
       expect(insights.reactions, isNull);
-      expect(insights.clicks, isNull);
+      expect(insights.activityByActionType, isNull);
     });
 
     test('empty post id or token throws insightsUnavailable', () async {
@@ -275,6 +228,111 @@ void main() {
       } on FacebookApiException catch (e) {
         expect(e.kind, FacebookApiErrorKind.expiredToken);
         expect(e.needsReconnect, isTrue);
+      }
+    });
+
+    test('Graph 400 on insights maps to insightsUnavailable', () async {
+      final service = _service(
+        _GraphAdapter(400, {
+          'error': {'code': 100, 'message': 'Unknown metric'},
+        }),
+      );
+      try {
+        await service.fetch(postId: 'p', token: _token);
+        fail('should throw');
+      } on FacebookApiException catch (e) {
+        expect(e.kind, FacebookApiErrorKind.insightsUnavailable);
+        expect(e.message, contains('metric names may have changed'));
+      }
+    });
+
+    test('HTML 200 response becomes unexpectedResponse', () async {
+      final service = _service(
+        _RawAdapter(200, '<!doctype html><html></html>'),
+      );
+      try {
+        await service.fetch(postId: 'p', token: _token);
+        fail('should throw');
+      } on FacebookApiException catch (e) {
+        expect(e.kind, FacebookApiErrorKind.unexpectedResponse);
+        expect(e.message, contains('web page'));
+      }
+    });
+  });
+
+  group('FacebookInsightsService.fetchEngagement', () {
+    test('parses summary counts and keeps the token out of the URL', () async {
+      final adapter = _GraphAdapter(200, {
+        'reactions': {
+          'data': [
+            {'name': 'like', 'id': '1'},
+          ],
+          'summary': {'total_count': 42},
+        },
+        'comments': {
+          'summary': {'total_count': 7},
+        },
+        'shares': {'count': 3},
+      });
+      final engagement = await _service(adapter)
+          .fetchEngagement(postId: 'p', token: _token);
+
+      expect(engagement.reactions, 42);
+      expect(engagement.comments, 7);
+      expect(engagement.shares, 3);
+      // Engagement is separate from insights; no reach values here.
+      expect(engagement.uniqueViewers, isNull);
+      expect(engagement.hasAny, isTrue);
+
+      final request = adapter.lastRequest!;
+      expect(request.headers['Authorization'], contains(_token));
+      expect(request.uri.queryParameters.values, isNot(contains(_token)));
+      expect(request.uri.queryParameters['fields'], contains('reactions'));
+      expect(request.uri.queryParameters['fields'], contains('comments'));
+      expect(request.uri.queryParameters['fields'], contains('shares'));
+    });
+
+    test('missing summary fields stay null, never zero', () async {
+      final engagement = await _service(_GraphAdapter(200, {'id': 'p'}))
+          .fetchEngagement(postId: 'p', token: _token);
+
+      expect(engagement.reactions, isNull);
+      expect(engagement.comments, isNull);
+      expect(engagement.shares, isNull);
+      expect(engagement.hasAny, isFalse);
+    });
+
+    test('empty post id or token throws insightsUnavailable', () async {
+      final adapter = _GraphAdapter(200, {'id': 'p'});
+      final service = _service(adapter);
+      expect(
+        () => service.fetchEngagement(postId: '', token: _token),
+        throwsA(
+          isA<FacebookApiException>().having(
+            (e) => e.kind,
+            'kind',
+            FacebookApiErrorKind.insightsUnavailable,
+          ),
+        ),
+      );
+      expect(
+        () => service.fetchEngagement(postId: 'p', token: ' '),
+        throwsA(isA<FacebookApiException>()),
+      );
+      expect(adapter.lastRequest, isNull);
+    });
+
+    test('Graph 190 maps to expiredToken', () async {
+      final service = _service(
+        _GraphAdapter(400, {
+          'error': {'code': 190, 'message': 'Error validating access token'},
+        }),
+      );
+      try {
+        await service.fetchEngagement(postId: 'p', token: _token);
+        fail('should throw');
+      } on FacebookApiException catch (e) {
+        expect(e.kind, FacebookApiErrorKind.expiredToken);
       }
     });
   });

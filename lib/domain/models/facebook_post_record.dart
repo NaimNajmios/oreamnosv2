@@ -39,6 +39,11 @@ class FacebookPostRecord {
     this.engagedUsers,
     this.negativeFeedback,
     this.reactionsByType,
+    this.uniqueViewers,
+    this.comments,
+    this.shares,
+    this.activityByActionType,
+    this.engagementFetchedAt,
     this.editedAt,
     this.mediaMetadata = const [],
     this.storyPostId = '',
@@ -87,6 +92,18 @@ class FacebookPostRecord {
   final int? negativeFeedback;
   final Map<String, int>? reactionsByType;
 
+  /// Current post metric: unique viewers. Legacy [impressions] stays for
+  /// records cached before Meta retired it in June 2026.
+  final int? uniqueViewers;
+
+  /// Engagement counts from the post's summary fields.
+  final int? comments;
+  final int? shares;
+  final Map<String, int>? activityByActionType;
+
+  /// Last time engagement summary fields were refreshed.
+  final DateTime? engagementFetchedAt;
+
   /// When the caption was last edited from the app.
   final DateTime? editedAt;
 
@@ -108,13 +125,21 @@ class FacebookPostRecord {
   bool get storyFailed => storyStatus == FacebookStoryStatus.failed;
 
   bool get hasInsights =>
+      uniqueViewers != null ||
       impressions != null ||
       reactions != null ||
+      comments != null ||
+      shares != null ||
       clicks != null ||
       totalImpressions != null ||
       engagedUsers != null ||
       negativeFeedback != null ||
-      (reactionsByType?.isNotEmpty ?? false);
+      (reactionsByType?.isNotEmpty ?? false) ||
+      (activityByActionType?.isNotEmpty ?? false);
+
+  /// Engagement total used by the best-time-to-post heuristic.
+  int get engagementScore =>
+      (reactions ?? 0) + (comments ?? 0) * 2 + (shares ?? 0) * 3;
   bool get canEdit => isPublished;
   bool get canDelete => isPublished;
 
@@ -164,6 +189,11 @@ class FacebookPostRecord {
     Object? engagedUsers = _sentinel,
     Object? negativeFeedback = _sentinel,
     Object? reactionsByType = _sentinel,
+    Object? uniqueViewers = _sentinel,
+    Object? comments = _sentinel,
+    Object? shares = _sentinel,
+    Object? activityByActionType = _sentinel,
+    Object? engagementFetchedAt = _sentinel,
     Object? editedAt = _sentinel,
     List<Map<String, dynamic>>? mediaMetadata,
     String? storyPostId,
@@ -213,6 +243,17 @@ class FacebookPostRecord {
       reactionsByType: reactionsByType == _sentinel
           ? this.reactionsByType
           : reactionsByType as Map<String, int>?,
+      uniqueViewers: uniqueViewers == _sentinel
+          ? this.uniqueViewers
+          : uniqueViewers as int?,
+      comments: comments == _sentinel ? this.comments : comments as int?,
+      shares: shares == _sentinel ? this.shares : shares as int?,
+      activityByActionType: activityByActionType == _sentinel
+          ? this.activityByActionType
+          : activityByActionType as Map<String, int>?,
+      engagementFetchedAt: engagementFetchedAt == _sentinel
+          ? this.engagementFetchedAt
+          : engagementFetchedAt as DateTime?,
       editedAt: editedAt == _sentinel ? this.editedAt : editedAt as DateTime?,
       mediaMetadata: mediaMetadata ?? this.mediaMetadata,
       storyPostId: storyPostId ?? this.storyPostId,
@@ -250,6 +291,11 @@ class FacebookPostRecord {
     'engagedUsers': engagedUsers,
     'negativeFeedback': negativeFeedback,
     'reactionsByType': reactionsByType,
+    'uniqueViewers': uniqueViewers,
+    'comments': comments,
+    'shares': shares,
+    'activityByActionType': activityByActionType,
+    'engagementFetchedAt': engagementFetchedAt?.toUtc().toIso8601String(),
     'editedAt': editedAt?.toUtc().toIso8601String(),
     'mediaMetadata': mediaMetadata,
     'storyPostId': storyPostId,
@@ -298,6 +344,13 @@ class FacebookPostRecord {
       engagedUsers: (json['engagedUsers'] as num?)?.toInt(),
       negativeFeedback: (json['negativeFeedback'] as num?)?.toInt(),
       reactionsByType: _reactionsFromJson(json['reactionsByType']),
+      uniqueViewers: (json['uniqueViewers'] as num?)?.toInt(),
+      comments: (json['comments'] as num?)?.toInt(),
+      shares: (json['shares'] as num?)?.toInt(),
+      activityByActionType: _reactionsFromJson(json['activityByActionType']),
+      engagementFetchedAt: DateTime.tryParse(
+        json['engagementFetchedAt'] as String? ?? '',
+      )?.toLocal(),
       editedAt: DateTime.tryParse(json['editedAt'] as String? ?? '')?.toLocal(),
       mediaMetadata: _mediaFromJson(json['mediaMetadata']),
       storyPostId: json['storyPostId']?.toString() ?? '',

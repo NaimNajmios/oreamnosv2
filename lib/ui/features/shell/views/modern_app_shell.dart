@@ -1,11 +1,13 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import 'package:oreamnos/config/routes/app_router.dart';
 import 'package:oreamnos/ui/core/utils/haptics.dart';
+import 'package:oreamnos/ui/features/publish/view_models/publish_handoff_view_model.dart';
 
 /// Modern App Shell with Material 3 NavigationBar (Generate, Cards, Publish, Usage, Settings).
-class ModernAppShell extends StatelessWidget {
+class ModernAppShell extends ConsumerWidget {
   const ModernAppShell({super.key, required this.child});
 
   final Widget child;
@@ -36,10 +38,11 @@ class ModernAppShell extends StatelessWidget {
   }
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     final theme = Theme.of(context);
     final currentIndex = _currentIndex(context);
     final onSurface = theme.colorScheme.onSurface;
+    final hasHandoff = ref.watch(publishHandoffProvider) != null;
 
     // NOTE: tab-switch motion lives in the per-tab CustomTransitionPage
     // (app_router.dart) — wrapping the shell `child` Navigator in an
@@ -68,8 +71,16 @@ class ModernAppShell extends StatelessWidget {
               label: 'Cards',
             ),
             NavigationDestination(
-              icon: Icon(Icons.send_outlined, color: onSurface),
-              selectedIcon: Icon(Icons.send_rounded, color: onSurface),
+              icon: Badge(
+                isLabelVisible: hasHandoff,
+                smallSize: 8,
+                child: Icon(Icons.send_outlined, color: onSurface),
+              ),
+              selectedIcon: Badge(
+                isLabelVisible: hasHandoff,
+                smallSize: 8,
+                child: Icon(Icons.send_rounded, color: onSurface),
+              ),
               label: 'Publish',
             ),
             NavigationDestination(
