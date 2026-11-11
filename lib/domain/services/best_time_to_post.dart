@@ -35,27 +35,52 @@ class BestTimeToPost {
       final weight = math.pow(0.5, ageDays / _halfLifeDays).toDouble();
       final key = record.timestamp.weekday * 24 + record.timestamp.hour;
       final bucket = buckets.putIfAbsent(key, _Bucket.new);
-      bucket.weightedScore += record.engagementScore * weight;
+      bucket.weightedScore += _rate(record) * weight;
       bucket.weight += weight;
       bucket.sampleSize += 1;
     }
 
     if (buckets.isEmpty) return const [];
 
-    final slots = <PostingTimeSlot>[];
+    final ownScores = <int, PostingTimeSlot>{};
     for (final entry in buckets.entries) {
       final bucket = entry.value;
       if (bucket.sampleSize < minBucketSample) continue;
       final score = bucket.weight == 0
           ? 0.0
           : bucket.weightedScore / bucket.weight;
+      ownScores[entry.key] = PostingTimeSlot(
+        weekday: entry.key ~/ 24,
+        hour: entry.key % 24,
+        score: score,
+        sampleSize: bucket.sampleSize,
+        confidence: bucket.sampleSize >= confidentSample,
+      );
+    }
+
+    final slots = <PostingTimeSlot>[];
+    for (final entry in ownScores.entries) {
+      final own = entry.value;
+      var weighted = own.score * 0.6;
+      var weight = 0.6;
+      final prev = ownScores[entry.key - 1];
+      if (prev != null) {
+        weighted += prev.score * 0.2;
+        weight += 0.2;
+      }
+      final next = ownScores[entry.key + 1];
+      if (next != null) {
+        weighted += next.score * 0.2;
+        weight += 0.2;
+      }
       slots.add(
         PostingTimeSlot(
-          weekday: entry.key ~/ 24,
-          hour: entry.key % 24,
-          score: score,
-          sampleSize: bucket.sampleSize,
-          confidence: bucket.sampleSize >= confidentSample,
+          weekday: own.weekday,
+          hour: own.hour,
+          score: weighted / weight,
+          // Confidence always reflects this hour's own history.
+          sampleSize: own.sampleSize,
+          confidence: own.confidence,
         ),
       );
     }
@@ -66,6 +91,17 @@ class BestTimeToPost {
       return b.sampleSize.compareTo(a.sampleSize);
     });
     return slots.take(limit).toList(growable: false);
+  }
+
+  /// Engagement per 1,000 viewers, so a high-reach post does not dominate a
+  /// smaller but more engaged bucket. Posts without reach stay on raw
+  /// engagement and are therefore never zeroed out.
+  static double _rate(FacebookPostRecord record) {
+    final reach = record.uniqueViewers ?? record.impressions;
+    if (reach != null && reach > 0) {
+      return record.engagementScore / reach * 1000;
+    }
+    return record.engagementScore.toDouble();
   }
 
   /// Next occurrence of [slot] in device-local time, at least 10 minutes

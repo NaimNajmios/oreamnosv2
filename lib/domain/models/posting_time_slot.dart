@@ -40,5 +40,6 @@ class PostingTimeSlot {
   String get label => '$weekdayName · $hourLabel';
 
   String get detail =>
-      'Based on $sampleSize ${sampleSize == 1 ? 'post' : 'posts'}';
+      'Based on $sampleSize ${sampleSize == 1 ? 'post' : 'posts'} · '
+      '${confidence ? 'high' : 'medium'} confidence';
 }

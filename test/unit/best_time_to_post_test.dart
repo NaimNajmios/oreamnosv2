@@ -8,6 +8,8 @@ FacebookPostRecord _record({
   int? reactions,
   int? comments,
   int? shares,
+  int? uniqueViewers,
+  int? impressions,
   FacebookPostStatus status = FacebookPostStatus.published,
 }) {
   return FacebookPostRecord(
@@ -21,6 +23,8 @@ FacebookPostRecord _record({
     reactions: reactions,
     comments: comments,
     shares: shares,
+    uniqueViewers: uniqueViewers,
+    impressions: impressions,
   );
 }
 
@@ -92,6 +96,145 @@ void main() {
       ]);
 
       expect(reason, contains('more published posts'));
+    });
+
+    test('reach-normalized engagement beats a high-reach raw winner', () {
+      final slots = BestTimeToPost.compute([
+        // Raw engagement 50 each, but spread over 1,000 viewers.
+        _record(
+          id: 'a1',
+          timestamp: DateTime(2026, 10, 18, 10),
+          reactions: 50,
+          uniqueViewers: 1000,
+        ),
+        _record(
+          id: 'a2',
+          timestamp: DateTime(2026, 10, 25, 10),
+          reactions: 50,
+          uniqueViewers: 1000,
+        ),
+        // Smaller raw engagement, but far higher engagement rate.
+        _record(
+          id: 'b1',
+          timestamp: DateTime(2026, 10, 19, 15),
+          reactions: 20,
+          uniqueViewers: 100,
+        ),
+        _record(
+          id: 'b2',
+          timestamp: DateTime(2026, 10, 26, 15),
+          reactions: 20,
+          uniqueViewers: 100,
+        ),
+      ], now: now);
+
+      expect(slots.first.weekday, DateTime.monday);
+      expect(slots.first.hour, 15);
+      expect(slots.first.score, greaterThan(slots[1].score));
+    });
+
+    test('posts without reach fall back to raw engagement', () {
+      final slots = BestTimeToPost.compute([
+        _record(
+          id: 'reach1',
+          timestamp: DateTime(2026, 10, 18, 10),
+          reactions: 5,
+          impressions: 1000,
+        ),
+        _record(
+          id: 'reach2',
+          timestamp: DateTime(2026, 10, 25, 10),
+          reactions: 5,
+          impressions: 1000,
+        ),
+        _record(
+          id: 'raw1',
+          timestamp: DateTime(2026, 10, 19, 15),
+          reactions: 10,
+        ),
+        _record(
+          id: 'raw2',
+          timestamp: DateTime(2026, 10, 26, 15),
+          reactions: 10,
+        ),
+      ], now: now);
+
+      expect(slots.first.hour, 15);
+    });
+
+    test('adjacent-hour smoothing blends neighbours on the same weekday', () {
+      final slots = BestTimeToPost.compute([
+        _record(
+          id: '10a',
+          timestamp: DateTime(2026, 10, 18, 10),
+          reactions: 10,
+        ),
+        _record(
+          id: '10b',
+          timestamp: DateTime(2026, 10, 25, 10),
+          reactions: 10,
+        ),
+        _record(
+          id: '11a',
+          timestamp: DateTime(2026, 10, 18, 11),
+          reactions: 20,
+        ),
+        _record(
+          id: '11b',
+          timestamp: DateTime(2026, 10, 25, 11),
+          reactions: 20,
+        ),
+        _record(
+          id: '12a',
+          timestamp: DateTime(2026, 10, 18, 12),
+          reactions: 40,
+        ),
+        _record(
+          id: '12b',
+          timestamp: DateTime(2026, 10, 25, 12),
+          reactions: 40,
+        ),
+      ], now: now);
+
+      double score(int hour) =>
+          slots.firstWhere((slot) => slot.hour == hour).score;
+
+      expect(score(10), closeTo(12.5, 0.001));
+      expect(score(11), closeTo(22.0, 0.001));
+      expect(score(12), closeTo(35.0, 0.001));
+    });
+
+    test('confidence and sample size stay tied to the hour own history', () {
+      final slots = BestTimeToPost.compute([
+        _record(
+          id: '10a',
+          timestamp: DateTime(2026, 10, 18, 10),
+          reactions: 10,
+        ),
+        _record(
+          id: '10b',
+          timestamp: DateTime(2026, 10, 25, 10),
+          reactions: 10,
+        ),
+        _record(id: '10c', timestamp: DateTime(2026, 11, 1, 10), reactions: 10),
+        _record(
+          id: '11a',
+          timestamp: DateTime(2026, 10, 18, 11),
+          reactions: 20,
+        ),
+        _record(
+          id: '11b',
+          timestamp: DateTime(2026, 10, 25, 11),
+          reactions: 20,
+        ),
+      ], now: now);
+
+      final ten = slots.firstWhere((slot) => slot.hour == 10);
+      final eleven = slots.firstWhere((slot) => slot.hour == 11);
+      expect(ten.sampleSize, 3);
+      expect(ten.confidence, isTrue);
+      expect(eleven.sampleSize, 2);
+      expect(eleven.confidence, isFalse);
     });
   });
 
