@@ -88,57 +88,63 @@ class _AppOutlinedButtonState extends State<AppOutlinedButton>
             ? theme.colorScheme.onSurface
             : theme.colorScheme.onSurface.withValues(alpha: 0.4));
 
-    return GestureDetector(
-      onTapDown: _handleTapDown,
-      onTapUp: _handleTapUp,
-      onTapCancel: _handleTapCancel,
-      behavior: HitTestBehavior.opaque,
-      child: AnimatedBuilder(
-        animation: _scaleAnimation,
-        builder: (context, child) => Transform.scale(
-          scale: AppMotion.shouldReduceMotion(context)
-              ? 1.0
-              : _scaleAnimation.value,
-          child: child,
-        ),
-        child: Container(
-          height: widget.height,
-          decoration: BoxDecoration(
-            color: Colors.transparent,
-            borderRadius: AppSpacing.borderRadiusPill,
-            border: Border.all(color: outlineColor, width: 1),
+    return Semantics(
+      button: true,
+      enabled: enabled,
+      label: widget.label,
+      child: GestureDetector(
+        onTapDown: _handleTapDown,
+        onTapUp: _handleTapUp,
+        onTapCancel: _handleTapCancel,
+        behavior: HitTestBehavior.opaque,
+        child: AnimatedBuilder(
+          animation: _scaleAnimation,
+          builder: (context, child) => Transform.scale(
+            scale: AppMotion.shouldReduceMotion(context)
+                ? 1.0
+                : _scaleAnimation.value,
+            child: child,
           ),
-          padding: widget.padding ?? const EdgeInsets.symmetric(horizontal: 16),
-          child: Center(
-            child: widget.isLoading
-                ? SizedBox(
-                    width: 20,
-                    height: 20,
-                    child: KickoffLoadingIndicator(size: 20),
-                  )
-                : Row(
-                    mainAxisSize: MainAxisSize.min,
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      if (widget.icon != null) ...[
-                        Icon(widget.icon, size: 18, color: fgColor),
-                        const SizedBox(width: 8),
-                      ],
-                      Flexible(
-                        child: FittedBox(
-                          fit: BoxFit.scaleDown,
-                          child: Text(
-                            widget.label,
-                            style: theme.textTheme.labelLarge?.copyWith(
-                              color: fgColor,
+          child: Container(
+            height: widget.height,
+            decoration: BoxDecoration(
+              color: Colors.transparent,
+              borderRadius: AppSpacing.borderRadiusPill,
+              border: Border.all(color: outlineColor, width: 1),
+            ),
+            padding:
+                widget.padding ?? const EdgeInsets.symmetric(horizontal: 16),
+            child: Center(
+              child: widget.isLoading
+                  ? SizedBox(
+                      width: 20,
+                      height: 20,
+                      child: KickoffLoadingIndicator(size: 20),
+                    )
+                  : Row(
+                      mainAxisSize: MainAxisSize.min,
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        if (widget.icon != null) ...[
+                          Icon(widget.icon, size: 18, color: fgColor),
+                          const SizedBox(width: 8),
+                        ],
+                        Flexible(
+                          child: FittedBox(
+                            fit: BoxFit.scaleDown,
+                            child: Text(
+                              widget.label,
+                              style: theme.textTheme.labelLarge?.copyWith(
+                                color: fgColor,
+                              ),
+                              maxLines: 1,
+                              textAlign: TextAlign.center,
                             ),
-                            maxLines: 1,
-                            textAlign: TextAlign.center,
                           ),
                         ),
-                      ),
-                    ],
-                  ),
+                      ],
+                    ),
+            ),
           ),
         ),
       ),
