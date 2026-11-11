@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart' show Clipboard, ClipboardData;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:oreamnos/config/theme/app_spacing.dart';
 import 'package:oreamnos/ui/core/utils/haptics.dart';
@@ -45,11 +46,12 @@ class _FacebookConnectionDialogState
       _isLoading = true;
       _errorText = null;
     });
+    final token = _controller.text.trim();
     try {
       final notifier = ref.read(facebookViewModelProvider.notifier);
       final error = _mode == _TokenMode.user
-          ? await notifier.connectWithUserToken(_controller.text)
-          : await notifier.connectPageToken(_controller.text);
+          ? await notifier.connectWithUserToken(token)
+          : await notifier.connectPageToken(token);
       if (error != null) {
         // Never surface or log the raw token or URL — message only.
         if (mounted) setState(() => _errorText = error);
@@ -58,16 +60,34 @@ class _FacebookConnectionDialogState
       if (mounted) {
         Haptics.mediumImpact();
         final connection = ref.read(facebookViewModelProvider);
+        final cleared = await _clearClipboardIfToken(token);
+        if (!mounted) return;
         Navigator.of(context).pop();
-        final message = connection.hasMultiplePages
+        final base = connection.hasMultiplePages
             ? 'Connected ${connection.pages.length} Pages · '
                   '${connection.pageName}'
             : 'Connected · ${connection.pageName}';
+        final message = cleared ? '$base · Clipboard cleared' : base;
         ScaffoldMessenger.of(context)
             .showSnackBar(SnackBar(content: Text(message)));
       }
     } finally {
       if (mounted) setState(() => _isLoading = false);
+    }
+  }
+
+  /// Clears the clipboard only when it still holds the token just submitted,
+  /// so unrelated clipboard content is never destroyed.
+  Future<bool> _clearClipboardIfToken(String token) async {
+    if (token.isEmpty) return false;
+    try {
+      final data = await Clipboard.getData(Clipboard.kTextPlain);
+      final current = data?.text?.trim();
+      if (current != token) return false;
+      await Clipboard.setData(const ClipboardData(text: ''));
+      return true;
+    } catch (_) {
+      return false;
     }
   }
 

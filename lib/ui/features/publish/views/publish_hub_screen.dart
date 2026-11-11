@@ -19,6 +19,7 @@ import 'package:oreamnos/ui/features/facebook/view_models/facebook_state.dart';
 import 'package:oreamnos/ui/features/facebook/utils/facebook_external_links.dart';
 import 'package:oreamnos/ui/features/facebook/view_models/facebook_view_model.dart';
 import 'package:oreamnos/ui/features/facebook/widgets/compose/facebook_compose_widgets.dart';
+import 'package:oreamnos/ui/features/facebook/widgets/facebook_connection_banner.dart';
 import 'package:oreamnos/ui/features/facebook/widgets/facebook_connection_dialog.dart';
 import 'package:oreamnos/ui/features/facebook/widgets/facebook_storage_tile.dart';
 import 'package:oreamnos/ui/features/facebook/widgets/page_switcher_sheet.dart';
@@ -47,6 +48,9 @@ class _PublishHubScreenState extends ConsumerState<PublishHubScreen> {
   Future<void> _refresh({bool force = false}) async {
     ref.read(facebookDraftsProvider.notifier).refresh();
     if (ref.read(facebookViewModelProvider).isConnected) {
+      ref
+          .read(facebookViewModelProvider.notifier)
+          .checkConnectionHealth(force: force);
       await ref.read(facebookDraftProvider.notifier).reconcileScheduled();
       await ref
           .read(facebookPerformanceProvider.notifier)
@@ -231,6 +235,15 @@ class _PublishHubScreenState extends ConsumerState<PublishHubScreen> {
               onConnect: () => FacebookConnectionDialog.show(context),
             ),
             const SizedBox(height: AppSpacing.base),
+            if (connection.offline || connection.isExpired) ...[
+              FacebookConnectionBanner(
+                offline: connection.offline,
+                expired: connection.isExpired,
+                onRetry: () => _refresh(force: true),
+                onReconnect: () => FacebookConnectionDialog.show(context),
+              ),
+              const SizedBox(height: AppSpacing.base),
+            ],
             if (handoff != null)
               _ReadyToPublishCard(
                 handoff: handoff,

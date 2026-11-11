@@ -28,6 +28,7 @@ class FacebookUiState {
     this.pages = const [],
     this.activePageId = '',
     this.connectionRevision = 0,
+    this.offline = false,
   });
 
   final FacebookConnectionStatus status;
@@ -42,6 +43,10 @@ class FacebookUiState {
   /// Monotonic counter bumped whenever the connection or active Page changes.
   /// Consumers use it to drop cached results tied to an older token/Page.
   final int connectionRevision;
+
+  /// True when the last health probe failed for transport reasons. Drafts are
+  /// unaffected; the UI shows a non-blocking offline notice.
+  final bool offline;
 
   bool get isConnected => status == FacebookConnectionStatus.connected;
   bool get isNotConnected => status == FacebookConnectionStatus.notConnected;
@@ -72,6 +77,7 @@ class FacebookUiState {
     List<FacebookPage>? pages,
     String? activePageId,
     int? connectionRevision,
+    bool? offline,
   }) {
     return FacebookUiState(
       status: status ?? this.status,
@@ -81,6 +87,7 @@ class FacebookUiState {
       pages: pages ?? this.pages,
       activePageId: activePageId ?? this.activePageId,
       connectionRevision: connectionRevision ?? this.connectionRevision,
+      offline: offline ?? this.offline,
     );
   }
 }

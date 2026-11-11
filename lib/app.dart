@@ -16,6 +16,7 @@ import 'domain/models/curated_post.dart';
 
 import 'ui/features/settings/view_models/settings_view_model.dart';
 import 'ui/features/generate/view_models/generate_view_model.dart';
+import 'ui/features/facebook/view_models/facebook_view_model.dart';
 import 'data/services/share_intent_service.dart';
 import 'data/services/notification_service.dart';
 
@@ -29,6 +30,7 @@ class OreamnosApp extends ConsumerStatefulWidget {
 
 class _OreamnosAppState extends ConsumerState<OreamnosApp> {
   late final GoRouter _router;
+  late final AppLifecycleListener _lifecycleListener;
 
   /// Content of the share currently being processed — guards against a
   /// slow double-delivery (stream bounce after the service dedup window)
@@ -40,6 +42,15 @@ class _OreamnosAppState extends ConsumerState<OreamnosApp> {
   void initState() {
     super.initState();
     _router = createAppRouter();
+    _lifecycleListener = AppLifecycleListener(
+      onResume: () {
+        // Cheap presence probe: a stale token or lost connection should be
+        // visible before the user spends a minute composing a post.
+        try {
+          ref.read(facebookViewModelProvider.notifier).checkConnectionHealth();
+        } catch (_) {}
+      },
+    );
 
     // Request notification permissions after app launch
     Future.microtask(() {
@@ -155,6 +166,7 @@ class _OreamnosAppState extends ConsumerState<OreamnosApp> {
 
   @override
   void dispose() {
+    _lifecycleListener.dispose();
     ShareIntentService().dispose();
     _router.dispose();
     super.dispose();

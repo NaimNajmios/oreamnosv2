@@ -233,6 +233,44 @@ class FacebookNotifier extends Notifier<FacebookUiState> {
 
   void _markExpiredFromSignal() => markExpired();
 
+  /// Five-minute floor between automatic presence probes. Pulled-to-refresh
+  /// and explicit retries bypass it.
+  static const Duration _healthCheckInterval = Duration(minutes: 5);
+  DateTime? _lastHealthCheck;
+  bool _healthCheckInFlight = false;
+
+  /// Cheap `GET /me` pre-flight, run when the Publish tab opens and when the
+  /// app resumes. It never blocks editing:
+  /// - transport failure sets [FacebookUiState.offline] and keeps the token;
+  /// - a 190/permission failure marks the connection expired so Reconnect is
+  ///   offered before the user loses a long caption to a failed publish.
+  Future<void> checkConnectionHealth({bool force = false}) async {
+    if (!state.isConnected || _healthCheckInFlight) return;
+    final now = DateTime.now();
+    final last = _lastHealthCheck;
+    if (!force && last != null && now.difference(last) < _healthCheckInterval) {
+      return;
+    }
+    _healthCheckInFlight = true;
+    _lastHealthCheck = now;
+    try {
+      final token = await _preferencesService.getFacebookPageToken() ?? '';
+      if (token.isEmpty) return;
+      await _pageService.verifyPageToken(token);
+      if (state.offline) state = state.copyWith(offline: false);
+    } on FacebookApiException catch (e) {
+      if (e.kind == FacebookApiErrorKind.network) {
+        if (!state.offline) state = state.copyWith(offline: true);
+      } else if (e.needsReconnect) {
+        markExpired();
+      }
+    } catch (_) {
+      // Unknown failure: leave the connection untouched rather than guess.
+    } finally {
+      _healthCheckInFlight = false;
+    }
+  }
+
   /// Non-blocking startup maintenance: storage sweep (daily) and scheduled
   /// reconciliation (15 minutes). Both are throttled and best-effort.
   Future<void> _runStartupMaintenance() async {
@@ -278,6 +316,8 @@ class FacebookDraftNotifier extends Notifier<FacebookComposeState> {
   late final PreferencesService _preferencesService;
   late final FacebookDraftStore _draftStore;
   Timer? _autosaveTimer;
+  Timer? _reconcileRetryTimer;
+  int _reconcileRetryAttempt = 0;
   String? _activeDraftId;
   String _pageId = '';
   String _pageName = '';
@@ -289,7 +329,10 @@ class FacebookDraftNotifier extends Notifier<FacebookComposeState> {
     _publisher = getIt<FacebookPublisherService>();
     _preferencesService = getIt<PreferencesService>();
     _draftStore = getIt<FacebookDraftStore>();
-    ref.onDispose(() => _autosaveTimer?.cancel());
+    ref.onDispose(() {
+      _autosaveTimer?.cancel();
+      _reconcileRetryTimer?.cancel();
+    });
     final connection = ref.read(facebookViewModelProvider);
     _pageId = connection.activePageId;
     _pageName = connection.pageName;
@@ -1287,6 +1330,7 @@ class FacebookDraftNotifier extends Notifier<FacebookComposeState> {
     final history = getIt<FacebookHistoryService>();
     final scheduled = history.records.where((r) => r.isScheduled).toList();
     if (scheduled.isEmpty) {
+      _cancelReconcileRetry();
       if (state.scheduledSyncFailed) {
         state = state.copyWith(scheduledSyncFailed: false);
       }
@@ -1302,8 +1346,10 @@ class FacebookDraftNotifier extends Notifier<FacebookComposeState> {
       if (!state.scheduledSyncFailed) {
         state = state.copyWith(scheduledSyncFailed: true);
       }
+      _scheduleReconcileRetry();
       return;
     }
+    _cancelReconcileRetry();
     if (state.scheduledSyncFailed) {
       state = state.copyWith(scheduledSyncFailed: false);
     }
@@ -1321,6 +1367,32 @@ class FacebookDraftNotifier extends Notifier<FacebookComposeState> {
         ),
       );
     }
+  }
+
+  /// Retries a failed reconciliation without hammering Graph: 2s, 8s, 30s,
+  /// then give up until the next app/hub refresh. The banner clears on the
+  /// first success.
+  static const List<Duration> _reconcileBackoff = [
+    Duration(seconds: 2),
+    Duration(seconds: 8),
+    Duration(seconds: 30),
+  ];
+
+  void _cancelReconcileRetry() {
+    _reconcileRetryTimer?.cancel();
+    _reconcileRetryTimer = null;
+    _reconcileRetryAttempt = 0;
+  }
+
+  void _scheduleReconcileRetry() {
+    if (_reconcileRetryTimer != null) return;
+    if (_reconcileRetryAttempt >= _reconcileBackoff.length) return;
+    final delay = _reconcileBackoff[_reconcileRetryAttempt];
+    _reconcileRetryAttempt++;
+    _reconcileRetryTimer = Timer(delay, () {
+      _reconcileRetryTimer = null;
+      unawaited(reconcileScheduled());
+    });
   }
 
   /// Lightweight offline probe (no connectivity_* dependency): resolves the
