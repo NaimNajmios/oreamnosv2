@@ -301,7 +301,7 @@ class _FacebookConnectionDialogState
                   AppButton(
                     label: isUser ? 'Find Pages' : 'Test & Save',
                     isLoading: _isLoading,
-                    height: 44,
+                    height: 48,
                     onPressed: _isLoading ? null : _testAndSave,
                   ),
                 ],

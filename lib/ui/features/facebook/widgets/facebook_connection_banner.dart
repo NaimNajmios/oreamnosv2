@@ -82,7 +82,7 @@ class FacebookConnectionBanner extends StatelessWidget {
                 onPressed: action,
                 style: TextButton.styleFrom(
                   foregroundColor: foreground,
-                  visualDensity: VisualDensity.compact,
+                  minimumSize: const Size(48, 48),
                 ),
                 child: Text(expired ? 'Reconnect' : 'Retry'),
               ),

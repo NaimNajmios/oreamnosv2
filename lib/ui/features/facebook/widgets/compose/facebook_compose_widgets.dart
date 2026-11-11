@@ -373,7 +373,6 @@ class CropZoomSlider extends StatelessWidget {
         ),
         IconButton(
           tooltip: 'Reset crop',
-          visualDensity: VisualDensity.compact,
           onPressed: zoom <= 1.0 ? null : onReset,
           icon: const Icon(Icons.restart_alt_rounded, size: 18),
         ),
@@ -838,9 +837,8 @@ class _OverlayButton extends StatelessWidget {
           onTap();
         },
         icon: Icon(icon, size: 18, color: Colors.white),
-        constraints: const BoxConstraints(minWidth: 36, minHeight: 36),
+        constraints: const BoxConstraints(minWidth: 48, minHeight: 48),
         padding: EdgeInsets.zero,
-        visualDensity: VisualDensity.compact,
       ),
     );
   }

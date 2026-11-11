@@ -183,7 +183,7 @@ class FacebookSuccessView extends StatelessWidget {
                   child: AppOutlinedButton(
                     label: 'Copy link',
                     icon: Icons.link_rounded,
-                    height: 44,
+                    height: 48,
                     onPressed: onCopy,
                   ),
                 ),
@@ -193,7 +193,7 @@ class FacebookSuccessView extends StatelessWidget {
                 child: AppOutlinedButton(
                   label: 'Copy caption',
                   icon: Icons.copy_rounded,
-                  height: 44,
+                  height: 48,
                   onPressed: onCopyCaption,
                 ),
               ),
@@ -203,7 +203,7 @@ class FacebookSuccessView extends StatelessWidget {
             AppOutlinedButton(
               label: 'Cancel schedule',
               icon: Icons.event_busy_rounded,
-              height: 44,
+              height: 48,
               foregroundColor: theme.colorScheme.error,
               borderColor: theme.colorScheme.error,
               onPressed: onCancelSchedule,

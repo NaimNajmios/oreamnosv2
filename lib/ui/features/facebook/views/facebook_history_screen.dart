@@ -259,7 +259,7 @@ class _RecordTile extends ConsumerWidget {
                   Padding(
                     padding: const EdgeInsets.only(top: 2),
                     child: FacebookStatLine(
-                      stats: _stats(record),
+                      stats: facebookStatsFor(record),
                       onTap: () => PostInsightsSheet.show(context, record.id),
                     ),
                   ),
@@ -268,7 +268,7 @@ class _RecordTile extends ConsumerWidget {
           ),
           IconButton(
             tooltip: 'Post actions',
-            visualDensity: VisualDensity.compact,
+            constraints: const BoxConstraints.tightFor(width: 48, height: 48),
             onPressed: () => _showActions(context, ref),
             icon: Icon(
               Icons.more_horiz_rounded,
@@ -292,52 +292,6 @@ class _RecordTile extends ConsumerWidget {
       return 'in ${diff.inHours}h ${diff.inMinutes % 60}m';
     }
     return 'in ${diff.inMinutes}m';
-  }
-
-  static List<FacebookStat> _stats(FacebookPostRecord record) {
-    String compact(int value) {
-      if (value >= 1000000) {
-        return 'm';
-      }
-      if (value >= 1000) {
-        return 'k';
-      }
-      return '';
-    }
-
-    final views = record.uniqueViewers ?? record.impressions;
-    return [
-      if (views != null)
-        FacebookStat(
-          icon: Icons.visibility_outlined,
-          label: 'Views',
-          value: compact(views),
-        ),
-      if (record.reactions != null)
-        FacebookStat(
-          icon: Icons.thumb_up_outlined,
-          label: 'Reactions',
-          value: compact(record.reactions!),
-        ),
-      if (record.comments != null)
-        FacebookStat(
-          icon: Icons.chat_bubble_outline_rounded,
-          label: 'Comments',
-          value: compact(record.comments!),
-        ),
-      if (record.shares != null)
-        FacebookStat(
-          icon: Icons.ios_share_rounded,
-          label: 'Shares',
-          value: compact(record.shares!),
-        ),
-      if (record.clicks != null)
-        FacebookStat(
-          icon: Icons.link_rounded,
-          label: 'Clicks',
-          value: compact(record.clicks!),
-        ),
-    ];
   }
 
   Future<void> _open(BuildContext context) async {

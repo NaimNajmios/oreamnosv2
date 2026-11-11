@@ -157,10 +157,7 @@ class _PostInsightsSheetState extends ConsumerState<PostInsightsSheet> {
                 runSpacing: AppSpacing.xs,
                 children: [
                   for (final entry in record.reactionsByType!.entries)
-                    Chip(
-                      visualDensity: VisualDensity.compact,
-                      label: Text('${entry.key} ${entry.value}'),
-                    ),
+                    Chip(label: Text('${entry.key} ${entry.value}')),
                 ],
               ),
             ],
@@ -179,10 +176,7 @@ class _PostInsightsSheetState extends ConsumerState<PostInsightsSheet> {
                 runSpacing: AppSpacing.xs,
                 children: [
                   for (final entry in record.activityByActionType!.entries)
-                    Chip(
-                      visualDensity: VisualDensity.compact,
-                      label: Text('${entry.key} ${entry.value}'),
-                    ),
+                    Chip(label: Text('${entry.key} ${entry.value}')),
                 ],
               ),
             ],

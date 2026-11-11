@@ -6,6 +6,10 @@ import 'package:oreamnos/domain/models/facebook_page_insights.dart';
 import 'package:oreamnos/domain/models/facebook_post_record.dart';
 import 'package:oreamnos/ui/core/widgets/app_card.dart';
 import 'package:oreamnos/ui/core/widgets/app_chip.dart';
+import 'package:oreamnos/ui/features/facebook/view_models/facebook_view_model.dart';
+import 'package:oreamnos/ui/features/facebook/widgets/facebook_connection_banner.dart';
+import 'package:oreamnos/ui/features/facebook/widgets/facebook_connection_dialog.dart';
+import 'package:oreamnos/ui/features/facebook/widgets/facebook_stat_line.dart';
 import 'package:oreamnos/ui/features/publish/view_models/facebook_performance_view_model.dart';
 
 /// Full performance view behind the Publish hub card.
@@ -36,6 +40,7 @@ class _FacebookPerformanceScreenState
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final state = ref.watch(facebookPerformanceProvider);
+    final connection = ref.watch(facebookViewModelProvider);
     final data = state.data;
     final points = _points(data);
     final posts = ref.watch(recentPublishedPostsProvider);
@@ -98,6 +103,17 @@ class _FacebookPerformanceScreenState
               ],
             ),
             const SizedBox(height: AppSpacing.base),
+            if (connection.offline || connection.isExpired) ...[
+              FacebookConnectionBanner(
+                offline: connection.offline,
+                expired: connection.isExpired,
+                onRetry: () => ref
+                    .read(facebookViewModelProvider.notifier)
+                    .checkConnectionHealth(force: true),
+                onReconnect: () => FacebookConnectionDialog.show(context),
+              ),
+              const SizedBox(height: AppSpacing.base),
+            ],
             if (state.error != null)
               Padding(
                 padding: const EdgeInsets.only(bottom: AppSpacing.sm),
@@ -154,28 +170,34 @@ class _FacebookPerformanceScreenState
                               ),
                             ),
                           )
-                        : CustomPaint(
-                            painter: _PerfChartPainter(
-                              points: points,
-                              lineColor: theme.colorScheme.primary,
-                              fillColor: theme.colorScheme.primary.withValues(
-                                alpha: 0.12,
-                              ),
-                              gridColor: theme.colorScheme.outline.withValues(
-                                alpha: 0.3,
+                        : Semantics(
+                            label: _chartLabel(points),
+                            child: ExcludeSemantics(
+                              child: CustomPaint(
+                                painter: _PerfChartPainter(
+                                  points: points,
+                                  lineColor: theme.colorScheme.primary,
+                                  fillColor: theme.colorScheme.primary
+                                      .withValues(alpha: 0.12),
+                                  gridColor: theme.colorScheme.outline
+                                      .withValues(alpha: 0.3),
+                                ),
+                                child: const SizedBox.expand(),
                               ),
                             ),
-                            child: const SizedBox.expand(),
                           ),
                   ),
                 ],
               ),
             ),
             const SizedBox(height: AppSpacing.base),
-            Row(
-              children: [
-                Expanded(
-                  child: _KpiCard(
+            LayoutBuilder(
+              builder: (context, constraints) {
+                final stacked =
+                    constraints.maxWidth < 380 ||
+                    MediaQuery.textScalerOf(context).scale(1) > 1.3;
+                final cards = [
+                  _KpiCard(
                     label: 'Engagements',
                     value: _compact(
                       points.fold<int?>(
@@ -186,15 +208,29 @@ class _FacebookPerformanceScreenState
                       ),
                     ),
                   ),
-                ),
-                const SizedBox(width: AppSpacing.sm),
-                Expanded(
-                  child: _KpiCard(
+                  _KpiCard(
                     label: 'Followers',
                     value: _compact(_latestFollows(points)),
                   ),
-                ),
-              ],
+                ];
+                if (stacked) {
+                  return Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      cards[0],
+                      const SizedBox(height: AppSpacing.sm),
+                      cards[1],
+                    ],
+                  );
+                }
+                return Row(
+                  children: [
+                    Expanded(child: cards[0]),
+                    const SizedBox(width: AppSpacing.sm),
+                    Expanded(child: cards[1]),
+                  ],
+                );
+              },
             ),
             if (state.monetization != null && state.monetization!.hasAny) ...[
               const SizedBox(height: AppSpacing.base),
@@ -305,6 +341,26 @@ class _FacebookPerformanceScreenState
     if (value == null) return '—';
     return value.toStringAsFixed(2);
   }
+
+  String _chartLabel(List<PageInsightPoint> points) {
+    final values = <({DateTime day, int value})>[];
+    for (final point in points) {
+      final value = point.mediaViews;
+      if (value != null) values.add((day: point.day, value: value));
+    }
+    if (values.isEmpty) {
+      return 'Media views over the last $_days days. No data yet.';
+    }
+    var total = 0;
+    var best = values.first;
+    for (final entry in values) {
+      total += entry.value;
+      if (entry.value > best.value) best = entry;
+    }
+    return 'Media views over the last $_days days. Total ${_compact(total)}. '
+        'Best day ${best.day.month}/${best.day.day} with '
+        '${_compact(best.value)}.';
+  }
 }
 
 class _KpiCard extends StatelessWidget {
@@ -346,13 +402,7 @@ class _PostRow extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final stats = [
-      if (record.uniqueViewers != null) '👁 ${record.uniqueViewers}',
-      if (record.reactions != null) '👍 ${record.reactions}',
-      if (record.comments != null) '💬 ${record.comments}',
-      if (record.shares != null) '↗ ${record.shares}',
-      if (record.impressions != null) '👁 ${record.impressions} (cached)',
-    ];
+    final stats = facebookStatsFor(record);
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: AppSpacing.sm),
       child: Row(
@@ -375,14 +425,20 @@ class _PostRow extends StatelessWidget {
                     fontWeight: FontWeight.w600,
                   ),
                 ),
-                Text(
-                  stats.isEmpty ? 'No insights yet' : stats.join(' · '),
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: theme.textTheme.labelSmall?.copyWith(
-                    color: theme.colorScheme.onSurfaceVariant,
+                if (stats.isEmpty)
+                  Text(
+                    'No insights yet',
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: theme.textTheme.labelSmall?.copyWith(
+                      color: theme.colorScheme.onSurfaceVariant,
+                    ),
+                  )
+                else
+                  Padding(
+                    padding: const EdgeInsets.only(top: 2),
+                    child: FacebookStatLine(stats: stats),
                   ),
-                ),
               ],
             ),
           ),
