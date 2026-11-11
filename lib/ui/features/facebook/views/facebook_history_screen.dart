@@ -13,6 +13,8 @@ import 'package:oreamnos/ui/core/utils/haptics.dart';
 import 'package:oreamnos/ui/core/widgets/empty_state.dart';
 import 'package:oreamnos/ui/features/facebook/view_models/facebook_view_model.dart';
 import 'package:oreamnos/ui/features/facebook/utils/facebook_external_links.dart';
+import 'package:oreamnos/ui/features/facebook/widgets/facebook_post_actions_sheet.dart';
+import 'package:oreamnos/ui/features/facebook/widgets/facebook_stat_line.dart';
 import 'package:oreamnos/ui/features/facebook/widgets/post_insights_sheet.dart';
 
 /// Publish history (capped at 50) split into Published and Scheduled tabs.
@@ -256,31 +258,23 @@ class _RecordTile extends ConsumerWidget {
                 if (record.hasInsights)
                   Padding(
                     padding: const EdgeInsets.only(top: 2),
-                    child: GestureDetector(
+                    child: FacebookStatLine(
+                      stats: _stats(record),
                       onTap: () => PostInsightsSheet.show(context, record.id),
-                      child: Semantics(
-                        button: true,
-                        label: 'View post insights',
-                        child: Text(
-                          _statsLine(record),
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                          style: theme.textTheme.labelSmall?.copyWith(
-                            color: theme.colorScheme.onSurfaceVariant,
-                          ),
-                        ),
-                      ),
                     ),
                   ),
               ],
             ),
           ),
-          Icon(
-            record.isScheduled
-                ? Icons.more_horiz_rounded
-                : Icons.chevron_right_rounded,
-            size: 18,
-            color: theme.colorScheme.onSurfaceVariant,
+          IconButton(
+            tooltip: 'Post actions',
+            visualDensity: VisualDensity.compact,
+            onPressed: () => _showActions(context, ref),
+            icon: Icon(
+              Icons.more_horiz_rounded,
+              size: 20,
+              color: theme.colorScheme.onSurfaceVariant,
+            ),
           ),
         ],
       ),
@@ -300,27 +294,50 @@ class _RecordTile extends ConsumerWidget {
     return 'in ${diff.inMinutes}m';
   }
 
-  static String _statsLine(FacebookPostRecord record) {
+  static List<FacebookStat> _stats(FacebookPostRecord record) {
     String compact(int value) {
       if (value >= 1000000) {
-        return '${(value / 1000000).toStringAsFixed(1)}m';
+        return 'm';
       }
       if (value >= 1000) {
-        return '${(value / 1000).toStringAsFixed(1)}k';
+        return 'k';
       }
-      return '$value';
+      return '';
     }
 
+    final views = record.uniqueViewers ?? record.impressions;
     return [
-      if (record.uniqueViewers != null)
-        '👁 ${compact(record.uniqueViewers!)}'
-      else if (record.impressions != null)
-        '👁 ${compact(record.impressions!)} (cached)',
-      if (record.reactions != null) '👍 ${compact(record.reactions!)}',
-      if (record.comments != null) '💬 ${compact(record.comments!)}',
-      if (record.shares != null) '↗ ${compact(record.shares!)}',
-      if (record.clicks != null) '🔗 ${compact(record.clicks!)} (cached)',
-    ].join(' · ');
+      if (views != null)
+        FacebookStat(
+          icon: Icons.visibility_outlined,
+          label: 'Views',
+          value: compact(views),
+        ),
+      if (record.reactions != null)
+        FacebookStat(
+          icon: Icons.thumb_up_outlined,
+          label: 'Reactions',
+          value: compact(record.reactions!),
+        ),
+      if (record.comments != null)
+        FacebookStat(
+          icon: Icons.chat_bubble_outline_rounded,
+          label: 'Comments',
+          value: compact(record.comments!),
+        ),
+      if (record.shares != null)
+        FacebookStat(
+          icon: Icons.ios_share_rounded,
+          label: 'Shares',
+          value: compact(record.shares!),
+        ),
+      if (record.clicks != null)
+        FacebookStat(
+          icon: Icons.link_rounded,
+          label: 'Clicks',
+          value: compact(record.clicks!),
+        ),
+    ];
   }
 
   Future<void> _open(BuildContext context) async {
@@ -331,112 +348,7 @@ class _RecordTile extends ConsumerWidget {
 
   Future<void> _showActions(BuildContext context, WidgetRef ref) async {
     Haptics.lightImpact();
-    final action = await showModalBottomSheet<String>(
-      context: context,
-      builder: (sheetContext) => SafeArea(
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            if (record.isPublished)
-              ListTile(
-                leading: const Icon(Icons.open_in_new_rounded, size: 20),
-                title: const Text('Open post'),
-                onTap: () => Navigator.pop(sheetContext, 'open'),
-              ),
-            if (record.isPublished)
-              ListTile(
-                leading: const Icon(Icons.link_rounded, size: 20),
-                title: const Text('Copy link'),
-                onTap: () => Navigator.pop(sheetContext, 'copy'),
-              ),
-            if (record.isPublished)
-              ListTile(
-                leading: const Icon(Icons.edit_outlined, size: 20),
-                title: const Text('Edit caption'),
-                onTap: () => Navigator.pop(sheetContext, 'edit_caption'),
-              ),
-            if (record.isPublished)
-              ListTile(
-                leading: const Icon(Icons.insights_rounded, size: 20),
-                title: const Text('View insights'),
-                onTap: () => Navigator.pop(sheetContext, 'view_insights'),
-              ),
-            if (record.isPublished && record.storyFailed)
-              ListTile(
-                leading: const Icon(Icons.refresh_rounded, size: 20),
-                title: const Text('Retry Story'),
-                onTap: () => Navigator.pop(sheetContext, 'retry_story'),
-              ),
-            if (record.isPublished)
-              ListTile(
-                leading: const Icon(Icons.comment_outlined, size: 20),
-                title: const Text('Comments'),
-                onTap: () => Navigator.pop(sheetContext, 'comments'),
-              ),
-            if (record.isPublished)
-              ListTile(
-                leading: Icon(
-                  Icons.delete_forever_rounded,
-                  size: 20,
-                  color: Theme.of(sheetContext).colorScheme.error,
-                ),
-                title: Text(
-                  'Delete post',
-                  style: TextStyle(
-                    color: Theme.of(sheetContext).colorScheme.error,
-                  ),
-                ),
-                onTap: () => Navigator.pop(sheetContext, 'delete_post'),
-              ),
-            if (record.isScheduled)
-              ListTile(
-                leading: const Icon(Icons.edit_calendar_rounded, size: 20),
-                title: const Text('Reschedule'),
-                onTap: () => Navigator.pop(sheetContext, 'reschedule'),
-              ),
-            if (record.isScheduled)
-              ListTile(
-                leading: Icon(
-                  Icons.event_busy_rounded,
-                  size: 20,
-                  color: Theme.of(sheetContext).colorScheme.error,
-                ),
-                title: Text(
-                  'Cancel schedule',
-                  style: TextStyle(
-                    color: Theme.of(sheetContext).colorScheme.error,
-                  ),
-                ),
-                onTap: () => Navigator.pop(sheetContext, 'cancel'),
-              ),
-            ListTile(
-              leading: const Icon(Icons.copy_rounded, size: 20),
-              title: const Text('Copy caption'),
-              onTap: () => Navigator.pop(sheetContext, 'copy_caption'),
-            ),
-            ListTile(
-              leading: const Icon(Icons.edit_note_rounded, size: 20),
-              title: const Text('Reuse caption'),
-              onTap: () => Navigator.pop(sheetContext, 'reuse'),
-            ),
-            ListTile(
-              leading: Icon(
-                Icons.delete_outline_rounded,
-                size: 20,
-                color: Theme.of(sheetContext).colorScheme.error,
-              ),
-              title: Text(
-                'Remove from history',
-                style: TextStyle(
-                  color: Theme.of(sheetContext).colorScheme.error,
-                ),
-              ),
-              onTap: () => Navigator.pop(sheetContext, 'remove'),
-            ),
-          ],
-        ),
-      ),
-    );
+    final action = await FacebookPostActionsSheet.show(context, record);
     if (action == null || !context.mounted) return;
     switch (action) {
       case 'open':
