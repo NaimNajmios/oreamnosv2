@@ -8,6 +8,7 @@ import 'package:oreamnos/core/network/api_client.dart';
 import '../../config/constants.dart';
 import '../../domain/models/facebook_api_exception.dart';
 import '../../domain/models/facebook_monetization.dart';
+import 'facebook_diagnostics.dart';
 import 'facebook_metric_names.dart';
 import 'facebook_network_error.dart';
 import 'facebook_response_guard.dart';
@@ -68,6 +69,11 @@ class FacebookMonetizationService {
         _asMap(e.response?.data),
         isNetworkFailure: e.response == null,
         networkIssue: e.response == null ? facebookNetworkIssueFor(e) : null,
+      );
+      FacebookDiagnostics.failure(
+        'Monetization earnings',
+        mapped,
+        statusCode: e.response?.statusCode,
       );
       if (mapped.kind == FacebookApiErrorKind.unknown &&
           e.response?.statusCode == 400) {

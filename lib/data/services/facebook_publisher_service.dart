@@ -8,6 +8,7 @@ import 'package:oreamnos/core/network/api_client.dart';
 
 import '../../config/constants.dart';
 import '../../domain/models/facebook_api_exception.dart';
+import 'facebook_diagnostics.dart';
 import 'facebook_network_error.dart';
 import 'facebook_response_guard.dart';
 
@@ -616,12 +617,18 @@ class FacebookPublisherService {
       );
       return true;
     }());
-    return FacebookApiException.fromGraph(
+    final mapped = FacebookApiException.fromGraph(
       e.response?.statusCode,
       body,
       isNetworkFailure: e.response == null,
       networkIssue: e.response == null ? facebookNetworkIssueFor(e) : null,
     );
+    FacebookDiagnostics.failure(
+      'Graph request',
+      mapped,
+      statusCode: e.response?.statusCode,
+    );
+    return mapped;
   }
 
   FacebookPublishResult _resultFrom(

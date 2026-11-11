@@ -90,7 +90,16 @@ abstract class ILogService {
   void debug(String message, {String tag = 'App', String? details});
   void info(String message, {String tag = 'App', String? details});
   void warning(String message, {String tag = 'App', String? details});
-  void error(String message, [dynamic error, StackTrace? stackTrace]);
+  void error(
+    String message, {
+    dynamic error,
+    StackTrace? stackTrace,
+    String tag = 'App',
+    String? details,
+  });
+
+  /// Removes every entry with [tag] (used by the diagnostics screen).
+  void clearTag(String tag);
   void clear();
 }
 
@@ -118,8 +127,20 @@ class LogNotifier extends Notifier<List<LogEntry>> {
       _service.info(message, tag: tag, details: details);
   void warning(String message, {String tag = 'App', String? details}) =>
       _service.warning(message, tag: tag, details: details);
-  void error(String message, [dynamic error, StackTrace? stackTrace]) =>
-      _service.error(message, error, stackTrace);
+  void error(
+    String message, {
+    dynamic error,
+    StackTrace? stackTrace,
+    String tag = 'App',
+    String? details,
+  }) => _service.error(
+    message,
+    error: error,
+    stackTrace: stackTrace,
+    tag: tag,
+    details: details,
+  );
+  void clearTag(String tag) => _service.clearTag(tag);
   void clear() => _service.clear();
 }
 
@@ -191,13 +212,31 @@ class LogService implements ILogService {
   }
 
   @override
-  void error(String message, [dynamic error, StackTrace? stackTrace]) {
+  void error(
+    String message, {
+    dynamic error,
+    StackTrace? stackTrace,
+    String tag = 'App',
+    String? details,
+  }) {
     _addLog(
       level: 'ERROR',
       message: message,
-      error: '$error\n$stackTrace',
-      tag: 'App',
+      error: error == null && stackTrace == null ? null : '$error\n$stackTrace',
+      tag: tag,
+      details: details,
     );
+  }
+
+  @override
+  void clearTag(String tag) {
+    _logs.removeWhere((entry) => entry.tag == tag);
+    _persistTimer?.cancel();
+    _prefs.setStringList(
+      _keyLogs,
+      _logs.take(100).map((e) => jsonEncode(e.toJson())).toList(),
+    );
+    _scheduleThrottledNotify();
   }
 
   @override

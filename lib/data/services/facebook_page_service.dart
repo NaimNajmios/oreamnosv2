@@ -8,6 +8,7 @@ import 'package:oreamnos/core/network/api_client.dart';
 
 import '../../config/constants.dart';
 import '../../domain/models/facebook_api_exception.dart';
+import 'facebook_diagnostics.dart';
 import 'facebook_network_error.dart';
 import 'facebook_response_guard.dart';
 import 'facebook_publisher_service.dart';
@@ -138,6 +139,11 @@ class FacebookPageService {
         _asMap(e.response?.data),
         isNetworkFailure: e.response == null,
         networkIssue: e.response == null ? facebookNetworkIssueFor(e) : null,
+      );
+      FacebookDiagnostics.failure(
+        'Load Pages',
+        mapped,
+        statusCode: e.response?.statusCode,
       );
       if (e.response == null) throw mapped;
       throw FacebookApiException(

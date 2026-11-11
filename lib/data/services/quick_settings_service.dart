@@ -44,7 +44,10 @@ class QuickSettingsService {
         drawableName: "ic_launcher",
       );
     } on PlatformException catch (e) {
-      getIt<LogService>().error('Quick Settings not supported or error', e);
+      getIt<LogService>().error(
+        'Quick Settings not supported or error',
+        error: e,
+      );
     }
   }
 }

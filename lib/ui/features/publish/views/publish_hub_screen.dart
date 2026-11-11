@@ -51,7 +51,9 @@ class _PublishHubScreenState extends ConsumerState<PublishHubScreen> {
       ref
           .read(facebookViewModelProvider.notifier)
           .checkConnectionHealth(force: force);
-      await ref.read(facebookDraftProvider.notifier).reconcileScheduled();
+      await ref
+          .read(facebookDraftProvider.notifier)
+          .reconcileScheduled(force: force);
       await ref
           .read(facebookPerformanceProvider.notifier)
           .ensureLoaded(force: force);
@@ -145,6 +147,11 @@ class _PublishHubScreenState extends ConsumerState<PublishHubScreen> {
 
   Future<void> _openPerformance() async {
     await context.push(RoutePaths.facebookPerformance);
+    if (mounted) _refresh();
+  }
+
+  Future<void> _openDiagnostics() async {
+    await context.push(RoutePaths.facebookDiagnostics);
     if (mounted) _refresh();
   }
 
@@ -390,6 +397,12 @@ class _PublishHubScreenState extends ConsumerState<PublishHubScreen> {
                     detail: 'Thumbnails, drafts and temp photos',
                     onTap: () => FacebookStorageDialog.show(context),
                   ),
+                  _ManageRow(
+                    icon: Icons.monitor_heart_outlined,
+                    label: 'Connection diagnostics',
+                    detail: 'Redacted connection and sync events',
+                    onTap: _openDiagnostics,
+                  ),
                 ],
               ),
             ),
@@ -595,7 +608,10 @@ class _ReadyToPublishCard extends StatelessWidget {
               ),
               IconButton(
                 tooltip: 'Dismiss',
-                visualDensity: VisualDensity.compact,
+                constraints: const BoxConstraints.tightFor(
+                  width: 48,
+                  height: 48,
+                ),
                 onPressed: onDismiss,
                 icon: const Icon(Icons.close_rounded, size: 18),
               ),

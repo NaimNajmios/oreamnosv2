@@ -765,7 +765,11 @@ class GenerateViewModel extends Notifier<GenerateUiState>
             isSuccess: false,
           ),
         );
-        getIt<LogService>().error('Failed to generate post', failure, null);
+        getIt<LogService>().error(
+          'Failed to generate post',
+          error: failure,
+          stackTrace: null,
+        );
         final isTransientShareFailure =
             isFromShare &&
             shareAttempt < _maxShareRetries &&
@@ -945,7 +949,11 @@ class GenerateViewModel extends Notifier<GenerateUiState>
         ),
       );
 
-      getIt<LogService>().error('Failed to generate post', e, st);
+      getIt<LogService>().error(
+        'Failed to generate post',
+        error: e,
+        stackTrace: st,
+      );
 
       // Share-initiated transient failures (flaky FxTwitter/VxTwitter,
       // network gap right after app resume): auto-retry in the background.
@@ -1184,7 +1192,11 @@ class GenerateViewModel extends Notifier<GenerateUiState>
         ),
       );
 
-      getIt<LogService>().error('Failed to refine post', e, st);
+      getIt<LogService>().error(
+        'Failed to refine post',
+        error: e,
+        stackTrace: st,
+      );
 
       if (e is RateLimitFailure || e is PaymentRequiredFailure) {
         if (e is RateLimitFailure) {
@@ -1402,8 +1414,8 @@ class GenerateViewModel extends Notifier<GenerateUiState>
         } catch (e, st) {
           getIt<LogService>().error(
             'Cloud vision failed, trying on-device',
-            e,
-            st,
+            error: e,
+            stackTrace: st,
           );
           // Fall through to on-device floor unless auth errors with no
           // on-device available (ML Kit always available, so continue).
@@ -1413,7 +1425,11 @@ class GenerateViewModel extends Notifier<GenerateUiState>
     } catch (e, st) {
       if (sessionId != _generationSessionId) return;
       stopwatch.stop();
-      getIt<LogService>().error('Failed to extract text from image', e, st);
+      getIt<LogService>().error(
+        'Failed to extract text from image',
+        error: e,
+        stackTrace: st,
+      );
       final msg = e.toString().replaceAll(RegExp(r'\s+'), ' ').trim();
       state = state.copyWith(
         errorMessage: msg.length > 220 ? '${msg.substring(0, 220)}…' : msg,

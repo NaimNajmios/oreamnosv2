@@ -22,7 +22,7 @@ void main() {
       logService.debug('Debug message', tag: 'TestTag', details: 'details');
       logService.info('Info message', tag: 'Network');
       logService.warning('Warning message');
-      logService.error('Error message', Exception('Test Exception'));
+      logService.error('Error message', error: Exception('Test Exception'));
 
       // Microtask for throttled notification
       await Future.delayed(const Duration(milliseconds: 10));
@@ -39,6 +39,30 @@ void main() {
 
       expect(logService.logs[3].level, 'ERROR');
       expect(logService.logs[3].error, contains('Test Exception'));
+    });
+
+    test('error accepts a tag and clearTag removes only that tag', () async {
+      logService.error(
+        'Graph failed',
+        tag: 'Facebook',
+        details: 'kind=expiredToken',
+      );
+      logService.info('Other');
+      await Future.delayed(const Duration(milliseconds: 10));
+
+      expect(
+        logService.logs.firstWhere((e) => e.tag == 'Facebook').tag,
+        'Facebook',
+      );
+      expect(
+        logService.logs.firstWhere((e) => e.tag == 'Facebook').details,
+        'kind=expiredToken',
+      );
+
+      logService.clearTag('Facebook');
+      await Future.delayed(const Duration(milliseconds: 10));
+      expect(logService.logs.length, 1);
+      expect(logService.logs.single.message, 'Other');
     });
 
     test('log entry formatting functions work properly', () {

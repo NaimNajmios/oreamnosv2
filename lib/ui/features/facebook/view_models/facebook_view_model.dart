@@ -10,6 +10,7 @@ import 'package:oreamnos/core/di/injection.dart';
 import 'package:uuid/uuid.dart';
 
 import '../../../../data/services/facebook_draft_store.dart';
+import '../../../../data/services/facebook_diagnostics.dart';
 import '../../../../data/services/facebook_expiry_signal.dart';
 import '../../../../data/services/facebook_page_service.dart';
 import '../../../../data/services/facebook_image_cropper.dart';
@@ -253,12 +254,19 @@ class FacebookNotifier extends Notifier<FacebookUiState> {
     }
     _healthCheckInFlight = true;
     _lastHealthCheck = now;
+    state = state.copyWith(lastHealthCheckAt: now);
     try {
       final token = await _preferencesService.getFacebookPageToken() ?? '';
       if (token.isEmpty) return;
       await _pageService.verifyPageToken(token);
-      if (state.offline) state = state.copyWith(offline: false);
+      state = state.copyWith(offline: false, lastHealthErrorKind: null);
     } on FacebookApiException catch (e) {
+      FacebookDiagnostics.failure(
+        'Connection health check',
+        e,
+        pageId: state.activePageId,
+      );
+      state = state.copyWith(lastHealthErrorKind: e.kind.name);
       if (e.kind == FacebookApiErrorKind.network) {
         if (!state.offline) state = state.copyWith(offline: true);
       } else if (e.needsReconnect) {
@@ -266,6 +274,7 @@ class FacebookNotifier extends Notifier<FacebookUiState> {
       }
     } catch (_) {
       // Unknown failure: leave the connection untouched rather than guess.
+      state = state.copyWith(lastHealthErrorKind: 'unexpected');
     } finally {
       _healthCheckInFlight = false;
     }
@@ -318,6 +327,7 @@ class FacebookDraftNotifier extends Notifier<FacebookComposeState> {
   Timer? _autosaveTimer;
   Timer? _reconcileRetryTimer;
   int _reconcileRetryAttempt = 0;
+  int _saveSequence = 0;
   String? _activeDraftId;
   String _pageId = '';
   String _pageName = '';
@@ -601,35 +611,54 @@ class FacebookDraftNotifier extends Notifier<FacebookComposeState> {
       _activeDraftId = null;
       await _preferencesService.clearFacebookDraft();
       if (oldId != null) await _draftStore.delete(oldId);
+      if (state.draftSaveState != FacebookDraftSaveState.idle) {
+        state = state.copyWith(draftSaveState: FacebookDraftSaveState.idle);
+      }
       return;
     }
-    final id = _activeDraftId ??= _newMediaId();
-    final raw = state.media.map((m) => m.toJson()).toList();
-    final media = await _draftStore.importMedia(id, raw);
-    final items = media.map(FacebookMediaItem.fromJson).toList(growable: false);
-    if (!_sameMediaPaths(state.media, items)) {
-      state = state.copyWith(media: items);
+    final sequence = ++_saveSequence;
+    state = state.copyWith(draftSaveState: FacebookDraftSaveState.saving);
+    try {
+      final id = _activeDraftId ??= _newMediaId();
+      final raw = state.media.map((m) => m.toJson()).toList();
+      final media = await _draftStore.importMedia(id, raw);
+      final items = media
+          .map(FacebookMediaItem.fromJson)
+          .toList(growable: false);
+      if (!_sameMediaPaths(state.media, items)) {
+        state = state.copyWith(media: items);
+      }
+      final pageId = state.pageId.isEmpty ? _pageId : state.pageId;
+      await _draftStore.save(
+        FacebookDraftRecord(
+          id: id,
+          text: state.text,
+          media: media,
+          pageId: pageId,
+          pageName: _pageName,
+          mode: state.publishMode.name,
+          scheduledAt: state.scheduledAt,
+          updatedAt: DateTime.now(),
+          workflowId: state.workflowId,
+          workflowName: state.workflowName,
+          publishFeed: state.publishFeed,
+          storyEnabled: state.storyEnabled,
+          storyTitle: state.storyTitle,
+        ),
+      );
+      // The legacy key is migrated into the store after the first save.
+      await _preferencesService.clearFacebookDraft();
+      if (sequence == _saveSequence) {
+        state = state.copyWith(
+          draftSaveState: FacebookDraftSaveState.saved,
+          lastDraftSavedAt: DateTime.now(),
+        );
+      }
+    } catch (_) {
+      if (sequence == _saveSequence) {
+        state = state.copyWith(draftSaveState: FacebookDraftSaveState.failed);
+      }
     }
-    final pageId = state.pageId.isEmpty ? _pageId : state.pageId;
-    await _draftStore.save(
-      FacebookDraftRecord(
-        id: id,
-        text: state.text,
-        media: media,
-        pageId: pageId,
-        pageName: _pageName,
-        mode: state.publishMode.name,
-        scheduledAt: state.scheduledAt,
-        updatedAt: DateTime.now(),
-        workflowId: state.workflowId,
-        workflowName: state.workflowName,
-        publishFeed: state.publishFeed,
-        storyEnabled: state.storyEnabled,
-        storyTitle: state.storyTitle,
-      ),
-    );
-    // The legacy key is migrated into the store after the first save.
-    await _preferencesService.clearFacebookDraft();
   }
 
   static bool _sameMediaPaths(
@@ -708,6 +737,9 @@ class FacebookDraftNotifier extends Notifier<FacebookComposeState> {
   /// Saves the current draft to the store after a short idle period.
   void _scheduleAutosave() {
     _autosaveTimer?.cancel();
+    if (!state.isEmpty && !state.isFinished) {
+      state = state.copyWith(draftSaveState: FacebookDraftSaveState.pending);
+    }
     _autosaveTimer = Timer(_autosaveDebounce, () {
       unawaited(_saveNow());
     });
@@ -1108,6 +1140,10 @@ class FacebookDraftNotifier extends Notifier<FacebookComposeState> {
       );
       _autosaveTimer?.cancel();
       unawaited(_discardActiveDraft());
+      FacebookDiagnostics.event(
+        scheduled ? 'Scheduled post' : 'Published post',
+        pageId: pageId,
+      );
       // Persist for the Published / Scheduled history.
       try {
         if (getIt.isRegistered<FacebookHistoryService>()) {
@@ -1139,6 +1175,7 @@ class FacebookDraftNotifier extends Notifier<FacebookComposeState> {
         }
       } catch (_) {}
     } on FacebookApiException catch (e) {
+      FacebookDiagnostics.failure('Publish', e, pageId: pageId);
       if (e.needsReconnect) {
         ref.read(facebookViewModelProvider.notifier).markExpired();
       }
@@ -1318,10 +1355,27 @@ class FacebookDraftNotifier extends Notifier<FacebookComposeState> {
     }
   }
 
+  /// Retries reconciliation when the last attempt is older than [maxAge].
+  /// Called from the app-resume hook to recover from a backoff that expired
+  /// while the app was backgrounded.
+  Future<void> reconcileIfStale({
+    Duration maxAge = const Duration(minutes: 15),
+  }) async {
+    final conn = ref.read(facebookViewModelProvider);
+    if (!conn.isConnected) return;
+    final last = _preferencesService.lastFacebookReconcile;
+    if (last != null && DateTime.now().difference(last) < maxAge) return;
+    await reconcileScheduled();
+    if (!state.scheduledSyncFailed) {
+      await _preferencesService.setLastFacebookReconcile(DateTime.now());
+    }
+  }
+
   /// Best-effort reconciliation with `/{page}/scheduled_posts`: any local
   /// scheduled record whose time has passed and is no longer scheduled on
   /// Graph is promoted to published. Fetch failures leave records untouched.
-  Future<void> reconcileScheduled() async {
+  Future<void> reconcileScheduled({bool force = false}) async {
+    if (force) _cancelReconcileRetry();
     final conn = ref.read(facebookViewModelProvider);
     if (!conn.isConnected) return;
     final token = await _preferencesService.getFacebookPageToken() ?? '';
@@ -1342,7 +1396,12 @@ class FacebookDraftNotifier extends Notifier<FacebookComposeState> {
         pageId: conn.pageId,
         token: token,
       );
-    } catch (_) {
+    } catch (e) {
+      FacebookDiagnostics.failure(
+        'Scheduled post sync',
+        e,
+        pageId: conn.pageId,
+      );
       if (!state.scheduledSyncFailed) {
         state = state.copyWith(scheduledSyncFailed: true);
       }

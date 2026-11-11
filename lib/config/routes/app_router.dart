@@ -14,6 +14,7 @@ import '../../ui/features/generate/views/reading_mode_screen.dart';
 import '../../ui/features/facebook/views/facebook_compose_screen.dart';
 import '../../ui/features/facebook/views/facebook_comments_screen.dart';
 import '../../ui/features/facebook/views/facebook_drafts_screen.dart';
+import '../../ui/features/facebook/views/facebook_diagnostics_screen.dart';
 import '../../ui/features/facebook/views/facebook_workflows_screen.dart';
 import '../../ui/features/facebook/views/facebook_history_screen.dart';
 import '../../ui/features/facebook/views/facebook_performance_screen.dart';
@@ -42,6 +43,7 @@ abstract final class RoutePaths {
   static const String facebookDrafts = '/facebook-drafts';
   static const String facebookComments = '/facebook-comments';
   static const String facebookWorkflows = '/facebook-workflows';
+  static const String facebookDiagnostics = '/facebook-diagnostics';
 }
 
 final rootNavigatorKey = GlobalKey<NavigatorState>();
@@ -259,6 +261,11 @@ GoRouter createAppRouter({String? initialLocation}) {
         path: RoutePaths.facebookPerformance,
         pageBuilder: (context, state) =>
             _kickoffPage(child: const FacebookPerformanceScreen()),
+      ),
+      GoRoute(
+        path: RoutePaths.facebookDiagnostics,
+        pageBuilder: (context, state) =>
+            _kickoffPage(child: const FacebookDiagnosticsScreen()),
       ),
       GoRoute(
         path: RoutePaths.facebookDrafts,

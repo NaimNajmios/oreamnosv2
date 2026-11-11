@@ -29,6 +29,8 @@ class FacebookUiState {
     this.activePageId = '',
     this.connectionRevision = 0,
     this.offline = false,
+    this.lastHealthCheckAt,
+    this.lastHealthErrorKind,
   });
 
   final FacebookConnectionStatus status;
@@ -47,6 +49,13 @@ class FacebookUiState {
   /// True when the last health probe failed for transport reasons. Drafts are
   /// unaffected; the UI shows a non-blocking offline notice.
   final bool offline;
+
+  /// When the last presence probe finished, for the diagnostics screen.
+  final DateTime? lastHealthCheckAt;
+
+  /// Failure taxonomy name from the last probe (e.g. `network`,
+  /// `expiredToken`). Never the exception message.
+  final String? lastHealthErrorKind;
 
   bool get isConnected => status == FacebookConnectionStatus.connected;
   bool get isNotConnected => status == FacebookConnectionStatus.notConnected;
@@ -78,6 +87,8 @@ class FacebookUiState {
     String? activePageId,
     int? connectionRevision,
     bool? offline,
+    Object? lastHealthCheckAt = _unset,
+    Object? lastHealthErrorKind = _unset,
   }) {
     return FacebookUiState(
       status: status ?? this.status,
@@ -88,8 +99,16 @@ class FacebookUiState {
       activePageId: activePageId ?? this.activePageId,
       connectionRevision: connectionRevision ?? this.connectionRevision,
       offline: offline ?? this.offline,
+      lastHealthCheckAt: lastHealthCheckAt == _unset
+          ? this.lastHealthCheckAt
+          : lastHealthCheckAt as DateTime?,
+      lastHealthErrorKind: lastHealthErrorKind == _unset
+          ? this.lastHealthErrorKind
+          : lastHealthErrorKind as String?,
     );
   }
+
+  static const Object _unset = Object();
 }
 
 /// Draft lifecycle for the compose screen.
@@ -122,6 +141,9 @@ enum FacebookComposePhase {
 
 /// Whether the CTA posts now or schedules the post.
 enum FacebookPublishMode { now, scheduled }
+
+/// Autosave lifecycle for the composer.
+enum FacebookDraftSaveState { idle, pending, saving, saved, failed }
 
 /// Feed crop presets for the attached photo. The preview shows this exact
 /// frame and `FacebookImageCropper` bakes it into the uploaded file, so what
@@ -241,6 +263,8 @@ class FacebookComposeState {
     this.restoredFromStorage = false,
     this.pageId = '',
     this.scheduledSyncFailed = false,
+    this.draftSaveState = FacebookDraftSaveState.idle,
+    this.lastDraftSavedAt,
     this.draftTitle = '',
     this.workflowId = '',
     this.workflowName = '',
@@ -275,6 +299,10 @@ class FacebookComposeState {
   /// True when the last scheduled-post reconcile failed (history shows a
   /// "Not synced" hint until the next success).
   final bool scheduledSyncFailed;
+
+  /// Autosave status for the visible save indicator.
+  final FacebookDraftSaveState draftSaveState;
+  final DateTime? lastDraftSavedAt;
 
   /// Generated headline / first line used as the default Story title.
   final String draftTitle;
@@ -345,6 +373,8 @@ class FacebookComposeState {
     bool? restoredFromStorage,
     String? pageId,
     bool? scheduledSyncFailed,
+    FacebookDraftSaveState? draftSaveState,
+    DateTime? lastDraftSavedAt,
     String? draftTitle,
     String? workflowId,
     String? workflowName,
@@ -375,6 +405,8 @@ class FacebookComposeState {
       restoredFromStorage: restoredFromStorage ?? this.restoredFromStorage,
       pageId: pageId ?? this.pageId,
       scheduledSyncFailed: scheduledSyncFailed ?? this.scheduledSyncFailed,
+      draftSaveState: draftSaveState ?? this.draftSaveState,
+      lastDraftSavedAt: lastDraftSavedAt ?? this.lastDraftSavedAt,
       draftTitle: draftTitle ?? this.draftTitle,
       workflowId: workflowId ?? this.workflowId,
       workflowName: workflowName ?? this.workflowName,

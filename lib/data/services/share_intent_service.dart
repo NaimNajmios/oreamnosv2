@@ -39,7 +39,11 @@ class ShareIntentService {
       if (getIt.isRegistered<LogService>()) {
         final logService = getIt<LogService>();
         if (error != null) {
-          logService.error('ShareIntent: $message', error, stackTrace);
+          logService.error(
+            'ShareIntent: $message',
+            error: error,
+            stackTrace: stackTrace,
+          );
         } else {
           logService.info('ShareIntent: $message');
         }

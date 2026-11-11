@@ -64,6 +64,44 @@ class _FakePublisher extends FacebookPublisherService {
       const FacebookPage(id: '123456', name: 'Trace');
 }
 
+class _ScheduledPublisher extends FacebookPublisherService {
+  _ScheduledPublisher() : super(ApiClient());
+
+  int listCalls = 0;
+  bool fail = false;
+
+  @override
+  Future<FacebookPage> verify(String token) async =>
+      const FacebookPage(id: '123456', name: 'Trace');
+
+  @override
+  Future<List<FacebookScheduledPost>> listScheduled({
+    required String pageId,
+    required String token,
+  }) async {
+    listCalls++;
+    if (fail) {
+      throw const FacebookApiException(
+        kind: FacebookApiErrorKind.network,
+        message: 'offline',
+      );
+    }
+    return const [];
+  }
+}
+
+class _FailingDraftStore extends FacebookDraftStore {
+  _FailingDraftStore(super.prefs);
+
+  bool fail = true;
+
+  @override
+  Future<void> save(FacebookDraftRecord record) async {
+    if (fail) throw const FileSystemException('disk full');
+    return super.save(record);
+  }
+}
+
 class _FailingMultiPublisher extends FacebookPublisherService {
   _FailingMultiPublisher(super.client);
 
@@ -440,6 +478,130 @@ void main() {
       expect(restored.read(facebookDraftProvider).text, 'Saved caption #FAM');
       restored.dispose();
     });
+
+    test('autosave moves pending → saved and stamps the time', () async {
+      final container = await buildContainer(_fakePublisher(200, {'id': 'p1'}));
+      container
+          .read(facebookDraftProvider.notifier)
+          .setDraftText('Status check');
+      expect(
+        container.read(facebookDraftProvider).draftSaveState,
+        FacebookDraftSaveState.pending,
+      );
+
+      await Future<void>.delayed(const Duration(milliseconds: 700));
+      final draft = container.read(facebookDraftProvider);
+      expect(draft.draftSaveState, FacebookDraftSaveState.saved);
+      expect(draft.lastDraftSavedAt, isNotNull);
+      container.dispose();
+    });
+
+    test('a failed autosave can be retried successfully', () async {
+      final prefs = await SharedPreferences.getInstance();
+      final store = _FailingDraftStore(prefs);
+      getIt.registerLazySingleton<FacebookDraftStore>(() => store);
+      final container = await buildContainer(_fakePublisher(200, {'id': 'p1'}));
+      final notifier = container.read(facebookDraftProvider.notifier);
+
+      notifier.setDraftText('Survives a disk hiccup');
+      await Future<void>.delayed(const Duration(milliseconds: 700));
+      expect(
+        container.read(facebookDraftProvider).draftSaveState,
+        FacebookDraftSaveState.failed,
+      );
+
+      store.fail = false;
+      await notifier.saveDraftNow();
+      final draft = container.read(facebookDraftProvider);
+      expect(draft.draftSaveState, FacebookDraftSaveState.saved);
+      expect(draft.lastDraftSavedAt, isNotNull);
+      container.dispose();
+    });
+
+    test('clearing the draft returns autosave to idle', () async {
+      final container = await buildContainer(_fakePublisher(200, {'id': 'p1'}));
+      final notifier = container.read(facebookDraftProvider.notifier);
+      notifier.setDraftText('Temporary');
+      await Future<void>.delayed(const Duration(milliseconds: 700));
+      expect(
+        container.read(facebookDraftProvider).draftSaveState,
+        FacebookDraftSaveState.saved,
+      );
+
+      notifier.clearDraft();
+      expect(
+        container.read(facebookDraftProvider).draftSaveState,
+        FacebookDraftSaveState.idle,
+      );
+      container.dispose();
+    });
+
+    test('reconcileIfStale skips fresh syncs and runs stale ones', () async {
+      final publisher = _ScheduledPublisher();
+      final container = await buildContainer(publisher);
+      final prefs = getIt<PreferencesService>();
+      final history = getIt<FacebookHistoryService>();
+      await history.recordPublish(
+        postId: 'post_1',
+        message: 'Later',
+        permalink: '',
+        hasImage: false,
+        status: FacebookPostStatus.scheduled,
+        scheduledAt: DateTime.now().add(const Duration(hours: 1)),
+        pageId: '123456',
+      );
+
+      await prefs.setLastFacebookReconcile(DateTime.now());
+      await container.read(facebookDraftProvider.notifier).reconcileIfStale();
+      expect(publisher.listCalls, 0);
+
+      final stale = DateTime.now().subtract(const Duration(minutes: 20));
+      await prefs.setLastFacebookReconcile(stale);
+      await container.read(facebookDraftProvider.notifier).reconcileIfStale();
+      expect(publisher.listCalls, 1);
+      expect(
+        prefs.lastFacebookReconcile!.isAfter(
+          DateTime.now().subtract(const Duration(minutes: 1)),
+        ),
+        isTrue,
+      );
+      container.dispose();
+    });
+
+    test(
+      'a failed stale reconcile leaves the timestamp for the next resume',
+      () async {
+        final publisher = _ScheduledPublisher();
+        final container = await buildContainer(publisher);
+        final prefs = getIt<PreferencesService>();
+        final history = getIt<FacebookHistoryService>();
+        await history.recordPublish(
+          postId: 'post_1',
+          message: 'Later',
+          permalink: '',
+          hasImage: false,
+          status: FacebookPostStatus.scheduled,
+          scheduledAt: DateTime.now().add(const Duration(hours: 1)),
+          pageId: '123456',
+        );
+
+        final stale = DateTime.now().subtract(const Duration(minutes: 20));
+        await prefs.setLastFacebookReconcile(stale);
+        publisher.fail = true;
+        await container.read(facebookDraftProvider.notifier).reconcileIfStale();
+
+        expect(publisher.listCalls, 1);
+        expect(
+          prefs.lastFacebookReconcile!.millisecondsSinceEpoch,
+          stale.millisecondsSinceEpoch,
+        );
+        expect(
+          container.read(facebookDraftProvider).scheduledSyncFailed,
+          isTrue,
+        );
+        container.dispose();
+      },
+    );
 
     test('appendDefaultHashtags appends once', () async {
       final prefs = getIt<PreferencesService>();

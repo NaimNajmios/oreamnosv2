@@ -48,6 +48,14 @@ class _OreamnosAppState extends ConsumerState<OreamnosApp> {
         // visible before the user spends a minute composing a post.
         try {
           ref.read(facebookViewModelProvider.notifier).checkConnectionHealth();
+          // A failed scheduled-post sync may have exhausted its 2s/8s/30s
+          // backoff while the app was backgrounded. Retry on resume once the
+          // 15-minute floor passes.
+          if (ref.read(facebookViewModelProvider).isConnected) {
+            unawaited(
+              ref.read(facebookDraftProvider.notifier).reconcileIfStale(),
+            );
+          }
         } catch (_) {}
       },
     );
