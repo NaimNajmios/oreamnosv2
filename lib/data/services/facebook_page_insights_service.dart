@@ -47,54 +47,23 @@ class FacebookPageInsightsService {
     ];
 
     // Meta rejects the whole request when any single metric is invalid. Fetch
-    // them independently so one bad metric cannot hide the other two.
+    // them concurrently so one slow metric cannot block the other two.
+    final results = await Future.wait(
+      metrics.map((metric) => _fetchMetric(metric, pageId, token, preset)),
+    );
+
     final rows = <Map<String, dynamic>>[];
     final unavailable = <String>[];
     FacebookApiException? firstFailure;
     var succeeded = 0;
-
-    for (final metric in metrics) {
-      try {
-        final response = await _client.get<dynamic>(
-          '$_pathBase/${Uri.encodeComponent(pageId)}/insights',
-          queryParameters: {
-            'metric': metric,
-            'period': 'day',
-            'date_preset': preset,
-          },
-          options: Options(
-            headers: {'Authorization': 'Bearer $token'},
-            receiveTimeout: AppConstants.facebookWriteTimeout,
-          ),
-        );
-        final data = facebookRequireObject(
-          response.data,
-          action: 'page performance',
-        );
-        final metricRows = data['data'];
-        if (metricRows is List) {
-          rows.addAll(
-            metricRows.whereType<Map>().map((e) => e.cast<String, dynamic>()),
-          );
-        }
+    for (final result in results) {
+      if (result.failure == null) {
+        rows.addAll(result.rows);
         succeeded++;
-      } on FacebookApiException catch (e) {
-        if (_isFatal(e)) rethrow;
-        unavailable.add(metric);
-        firstFailure ??= e;
-      } on DioException catch (e) {
-        final mapped = _mapGraphError(e);
-        if (_isFatal(mapped)) throw mapped;
-        unavailable.add(metric);
-        firstFailure ??= mapped;
-      } catch (_) {
-        final e = const FacebookApiException(
-          kind: FacebookApiErrorKind.insightsUnavailable,
-          message: 'Could not load Page performance.',
-        );
-        unavailable.add(metric);
-        firstFailure ??= e;
+        continue;
       }
+      unavailable.add(result.metric);
+      firstFailure ??= result.failure;
     }
 
     if (succeeded == 0 && firstFailure != null) throw firstFailure;
@@ -104,6 +73,56 @@ class FacebookPageInsightsService {
       DateTime.now(),
       unavailableMetrics: unavailable,
     );
+  }
+
+  Future<_MetricResult> _fetchMetric(
+    String metric,
+    String pageId,
+    String token,
+    String preset,
+  ) async {
+    try {
+      final response = await _client.get<dynamic>(
+        '$_pathBase/${Uri.encodeComponent(pageId)}/insights',
+        queryParameters: {
+          'metric': metric,
+          'period': 'day',
+          'date_preset': preset,
+        },
+        options: Options(
+          headers: {'Authorization': 'Bearer $token'},
+          receiveTimeout: AppConstants.facebookWriteTimeout,
+        ),
+      );
+      final data = facebookRequireObject(
+        response.data,
+        action: 'page performance',
+      );
+      final metricRows = data['data'];
+      return _MetricResult.success(
+        metricRows is List
+            ? metricRows
+                  .whereType<Map>()
+                  .map((e) => e.cast<String, dynamic>())
+                  .toList(growable: false)
+            : const [],
+      );
+    } on FacebookApiException catch (e) {
+      if (_isFatal(e)) rethrow;
+      return _MetricResult.failure(metric, e);
+    } on DioException catch (e) {
+      final mapped = _mapGraphError(e);
+      if (_isFatal(mapped)) throw mapped;
+      return _MetricResult.failure(metric, mapped);
+    } catch (_) {
+      return _MetricResult.failure(
+        metric,
+        const FacebookApiException(
+          kind: FacebookApiErrorKind.insightsUnavailable,
+          message: 'Could not load Page performance.',
+        ),
+      );
+    }
   }
 
   static bool _isFatal(FacebookApiException e) {
@@ -252,4 +271,15 @@ class FacebookPageInsightsService {
     }
     return null;
   }
+}
+
+/// Outcome of a single metric request.
+class _MetricResult {
+  const _MetricResult.success(this.rows) : metric = '', failure = null;
+
+  const _MetricResult.failure(this.metric, this.failure) : rows = const [];
+
+  final String metric;
+  final List<Map<String, dynamic>> rows;
+  final FacebookApiException? failure;
 }
