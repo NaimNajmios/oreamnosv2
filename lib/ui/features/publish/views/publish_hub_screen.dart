@@ -6,6 +6,7 @@ import 'package:oreamnos/config/routes/app_router.dart';
 import 'package:oreamnos/config/theme/app_spacing.dart';
 import 'package:oreamnos/core/di/injection.dart';
 import 'package:oreamnos/data/services/facebook_draft_store.dart';
+import 'package:oreamnos/data/services/facebook_export_service.dart';
 import 'package:oreamnos/data/services/facebook_workflow_store.dart';
 import 'package:oreamnos/data/services/facebook_history_service.dart';
 import 'package:oreamnos/domain/models/facebook_page_insights.dart';
@@ -134,6 +135,58 @@ class _PublishHubScreenState extends ConsumerState<PublishHubScreen> {
   Future<void> _openWorkflows() async {
     await context.push(RoutePaths.facebookWorkflows);
     if (mounted) _refresh();
+  }
+
+  Future<void> _exportHistory() async {
+    final format = await showModalBottomSheet<FacebookExportFormat>(
+      context: context,
+      builder: (sheetContext) => SafeArea(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            ListTile(
+              leading: const Icon(Icons.table_chart_outlined),
+              title: const Text('CSV (spreadsheet)'),
+              subtitle: const Text('Opens in Excel, Numbers or Sheets'),
+              onTap: () =>
+                  Navigator.pop(sheetContext, FacebookExportFormat.csv),
+            ),
+            ListTile(
+              leading: const Icon(Icons.data_object_rounded),
+              title: const Text('JSON (backup)'),
+              subtitle: const Text('Every local record and cached metric'),
+              onTap: () =>
+                  Navigator.pop(sheetContext, FacebookExportFormat.json),
+            ),
+          ],
+        ),
+      ),
+    );
+    if (format == null || !mounted) return;
+    final records = ref.read(facebookHistoryProvider);
+    if (records.isEmpty) {
+      ScaffoldMessenger.of(context)
+          .showSnackBar(const SnackBar(content: Text('Nothing to export yet')));
+      return;
+    }
+    final insights = ref.read(facebookPerformanceProvider).data;
+    try {
+      final service = getIt<FacebookExportService>();
+      final file = await service.write(
+        format: format,
+        records: records,
+        insights: insights,
+      );
+      await service.share(file);
+      if (!mounted) return;
+      ScaffoldMessenger.of(context)
+          .showSnackBar(const SnackBar(content: Text('Export ready')));
+    } catch (_) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text("Couldn't create the export")),
+      );
+    }
   }
 
   void _openPage() {
@@ -424,6 +477,12 @@ class _PublishHubScreenState extends ConsumerState<PublishHubScreen> {
                     label: 'Published posts',
                     detail: '${published.length} posts',
                     onTap: () => _openHistory(tab: 'published'),
+                  ),
+                  _ManageRow(
+                    icon: Icons.ios_share_rounded,
+                    label: 'Export history',
+                    detail: 'CSV or JSON of your local posts',
+                    onTap: _exportHistory,
                   ),
                   _ManageRow(
                     icon: Icons.account_tree_outlined,
