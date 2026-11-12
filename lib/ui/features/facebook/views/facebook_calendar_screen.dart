@@ -3,7 +3,9 @@ import 'package:flutter/services.dart' show Clipboard, ClipboardData;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import 'package:oreamnos/config/theme/app_spacing.dart';
+import 'package:oreamnos/core/di/injection.dart';
 import 'package:oreamnos/data/services/facebook_history_service.dart';
+import 'package:oreamnos/data/services/facebook_reminder_service.dart';
 import 'package:oreamnos/domain/models/facebook_post_record.dart';
 import 'package:oreamnos/ui/core/widgets/empty_state.dart';
 import 'package:oreamnos/ui/features/facebook/utils/facebook_external_links.dart';
@@ -26,6 +28,7 @@ class _FacebookCalendarScreenState
     extends ConsumerState<FacebookCalendarScreen> {
   late DateTime _month;
   DateTime? _selectedDay;
+  bool? _remindersEnabled;
 
   @override
   void initState() {
@@ -33,6 +36,31 @@ class _FacebookCalendarScreenState
     final now = DateTime.now();
     _month = DateTime(now.year, now.month);
     _selectedDay = facebookCalendarDayKey(now);
+    try {
+      _remindersEnabled = getIt<FacebookReminderService>().enabled;
+    } catch (_) {
+      _remindersEnabled = null;
+    }
+  }
+
+  Future<void> _toggleReminders(bool value) async {
+    try {
+      final service = getIt<FacebookReminderService>();
+      await service.setEnabled(value);
+      if (value) {
+        await service.sync(ref.read(facebookHistoryProvider));
+      }
+      if (!mounted) return;
+      setState(() => _remindersEnabled = value);
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(value ? 'Reminders on' : 'Reminders off')),
+      );
+    } catch (_) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text("Couldn't update reminders")),
+      );
+    }
   }
 
   void _shiftMonth(int delta) {
@@ -312,6 +340,16 @@ class _FacebookCalendarScreenState
                 const SizedBox(width: 6),
                 Text('Published', style: theme.textTheme.labelSmall),
               ],
+            ),
+            const SizedBox(height: AppSpacing.lg),
+            SwitchListTile(
+              contentPadding: EdgeInsets.zero,
+              title: const Text('Remind me 10 minutes before'),
+              subtitle: const Text(
+                'Lock-screen reminders show only the scheduled time.',
+              ),
+              value: _remindersEnabled ?? false,
+              onChanged: _remindersEnabled == null ? null : _toggleReminders,
             ),
             const SizedBox(height: AppSpacing.lg),
             if (grouped.isEmpty)

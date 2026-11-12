@@ -10,6 +10,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'config/constants.dart';
 import 'config/routes/app_router.dart';
 import 'config/theme/app_theme.dart';
+import 'core/di/injection.dart';
 import 'domain/models/app_theme_mode.dart';
 import 'domain/models/card_brief.dart';
 import 'domain/models/curated_post.dart';
@@ -17,6 +18,8 @@ import 'domain/models/curated_post.dart';
 import 'ui/features/settings/view_models/settings_view_model.dart';
 import 'ui/features/generate/view_models/generate_view_model.dart';
 import 'ui/features/facebook/view_models/facebook_view_model.dart';
+import 'data/services/facebook_history_service.dart';
+import 'data/services/facebook_reminder_service.dart';
 import 'data/services/share_intent_service.dart';
 import 'data/services/notification_service.dart';
 
@@ -57,18 +60,29 @@ class _OreamnosAppState extends ConsumerState<OreamnosApp> {
             );
           }
         } catch (_) {}
+        _syncReminders();
       },
     );
+
+    // One reminder per scheduled post, refreshed whenever history changes.
+    ref.listenManual(facebookHistoryProvider, (_, _) => _syncReminders());
 
     // Request notification permissions after app launch
     Future.microtask(() {
       try {
         NotificationService().requestPermission();
       } catch (_) {}
+      _syncReminders();
     });
 
     // Route notification actions (tone quick chooser, open, copy) — must be set after DI.
     NotificationService().onAction = (payload, actionId) async {
+      if (payload == 'facebook_scheduled_post') {
+        if (mounted) {
+          _router.go('${RoutePaths.facebookHistory}?tab=scheduled');
+        }
+        return;
+      }
       if (actionId == null || actionId == 'open_app') {
         if (payload != null && payload.isNotEmpty) {
           try {
@@ -170,6 +184,14 @@ class _OreamnosAppState extends ConsumerState<OreamnosApp> {
       });
     };
     ShareIntentService().initialize();
+  }
+
+  void _syncReminders() {
+    try {
+      final service = getIt<FacebookReminderService>();
+      final records = ref.read(facebookHistoryProvider);
+      unawaited(service.sync(records));
+    } catch (_) {}
   }
 
   @override

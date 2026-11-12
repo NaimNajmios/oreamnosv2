@@ -3,6 +3,7 @@ import 'dart:io';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
+import 'package:timezone/timezone.dart' as tz;
 
 class NotificationService {
   static final NotificationService _instance = NotificationService._internal();
@@ -244,6 +245,47 @@ class NotificationService {
       body: body,
       notificationDetails: details,
     );
+  }
+
+  /// Schedules a lock-screen-safe reminder for a Page post going live.
+  ///
+  /// Only a generic title and the local scheduled time are shown — never the
+  /// caption or any token. Inexact mode avoids the exact-alarm permission.
+  Future<void> scheduleFacebookReminder({
+    required int id,
+    required String title,
+    required String body,
+    required DateTime at,
+    String payload = 'facebook_scheduled_post',
+  }) async {
+    const androidDetails = AndroidNotificationDetails(
+      'oreamnos_facebook_schedule',
+      'Scheduled posts',
+      channelDescription: 'Reminders shortly before a scheduled Page post',
+      importance: Importance.high,
+      priority: Priority.high,
+      autoCancel: true,
+    );
+    const iosDetails = DarwinNotificationDetails(
+      presentAlert: true,
+      presentSound: true,
+    );
+    await _notificationsPlugin.zonedSchedule(
+      id: id,
+      title: title,
+      body: body,
+      scheduledDate: tz.TZDateTime.from(at.toUtc(), tz.UTC),
+      notificationDetails: const NotificationDetails(
+        android: androidDetails,
+        iOS: iosDetails,
+      ),
+      androidScheduleMode: AndroidScheduleMode.inexactAllowWhileIdle,
+      payload: payload,
+    );
+  }
+
+  Future<void> cancelNotification(int id) async {
+    await _notificationsPlugin.cancel(id: id);
   }
 
   /// Best-effort clipboard helper.

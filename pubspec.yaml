@@ -58,6 +58,7 @@ dependencies:
   flutter_svg: ^2.3.0
   workmanager: ^0.10.9
   image: ^4.5.4
+  timezone: ^0.11.2
 
 dev_dependencies:
   flutter_test:
