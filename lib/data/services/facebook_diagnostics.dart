@@ -32,7 +32,15 @@ abstract final class FacebookDiagnostics {
   }
 
   /// Records a successful write at debug level (no payloads).
-  static void event(String action, {String? pageId, int? statusCode}) {
+  ///
+  /// [detail] carries small non-sensitive counters such as `freed=4` for
+  /// actions that have no HTTP status. Never pass captions, ids, or paths.
+  static void event(
+    String action, {
+    String? pageId,
+    int? statusCode,
+    String? detail,
+  }) {
     final log = _log;
     if (log == null) return;
     log.debug(
@@ -41,6 +49,7 @@ abstract final class FacebookDiagnostics {
       details: [
         if (pageId != null && pageId.isNotEmpty) 'page=$pageId',
         if (statusCode != null) 'status=$statusCode',
+        if (detail != null && detail.isNotEmpty) detail,
       ].join(' '),
     );
   }

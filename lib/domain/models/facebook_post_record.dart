@@ -124,6 +124,14 @@ class FacebookPostRecord {
   bool get storyPublished => storyStatus == FacebookStoryStatus.published;
   bool get storyFailed => storyStatus == FacebookStoryStatus.failed;
 
+  /// True when this record has a feed post the external browser can open.
+  /// Story-only records have no permalink, and scheduled posts have none yet.
+  bool get hasOpenableFeedPost =>
+      isPublished && !isStoryOnly && permalink.trim().isNotEmpty;
+
+  /// A published record that only produced a Story (no feed post).
+  bool get isStoryOnlyPublished => isPublished && isStoryOnly;
+
   bool get hasInsights =>
       uniqueViewers != null ||
       impressions != null ||

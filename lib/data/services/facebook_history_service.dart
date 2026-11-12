@@ -9,6 +9,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:oreamnos/config/constants.dart';
 import 'package:oreamnos/core/di/injection.dart';
 import 'package:oreamnos/data/services/facebook_expiry_signal.dart';
+import 'package:oreamnos/data/services/facebook_diagnostics.dart';
 import 'package:oreamnos/data/services/facebook_insights_service.dart';
 import 'package:oreamnos/data/services/facebook_publisher_service.dart';
 import 'package:oreamnos/data/services/preferences_service.dart';
@@ -22,6 +23,21 @@ final facebookHistoryProvider =
     NotifierProvider<FacebookHistoryNotifier, List<FacebookPostRecord>>(
       FacebookHistoryNotifier.new,
     );
+
+/// Outcome of a bulk Story retry.
+class StoryRetrySummary {
+  const StoryRetrySummary({
+    required this.succeeded,
+    required this.failed,
+    this.firstError,
+  });
+
+  final int succeeded;
+  final int failed;
+  final String? firstError;
+
+  bool get isEmpty => succeeded == 0 && failed == 0;
+}
 
 class FacebookHistoryNotifier extends Notifier<List<FacebookPostRecord>> {
   late final FacebookHistoryService _service;
@@ -138,6 +154,38 @@ class FacebookHistoryNotifier extends Notifier<List<FacebookPostRecord>> {
     } catch (_) {
       return 'Could not publish the Story. Try again.';
     }
+  }
+
+  /// Retries every Story whose feed post succeeded but whose Story failed.
+  /// Sequential so a burst of retries cannot trip Meta's rate limiter, and one
+  /// failure does not stop the rest. Returns counts for the UI summary.
+  Future<StoryRetrySummary> retryFailedStories() async {
+    final failed = _service.records.where((r) => r.storyFailed).toList();
+    if (failed.isEmpty) {
+      return const StoryRetrySummary(succeeded: 0, failed: 0);
+    }
+    var succeeded = 0;
+    var failedCount = 0;
+    String? firstError;
+    for (final record in failed) {
+      final error = await retryStory(record.id);
+      if (error == null) {
+        succeeded++;
+      } else {
+        failedCount++;
+        firstError ??= error;
+      }
+    }
+    final summary = StoryRetrySummary(
+      succeeded: succeeded,
+      failed: failedCount,
+      firstError: firstError,
+    );
+    FacebookDiagnostics.event(
+      'Stories retried',
+      detail: 'published=${summary.succeeded} failed=${summary.failed}',
+    );
+    return summary;
   }
 
   FacebookPostRecord? _findRecord(String recordId) {

@@ -164,6 +164,20 @@ class _PublishHubScreenState extends ConsumerState<PublishHubScreen> {
         .showSnackBar(SnackBar(content: Text(error ?? 'Story published')));
   }
 
+  Future<void> _retryAllStories() async {
+    Haptics.lightImpact();
+    final summary = await ref
+        .read(facebookHistoryProvider.notifier)
+        .retryFailedStories();
+    if (!mounted) return;
+    final message = summary.failed == 0
+        ? '${summary.succeeded} '
+              '${summary.succeeded == 1 ? 'Story' : 'Stories'} published'
+        : '${summary.succeeded} published · ${summary.failed} failed';
+    ScaffoldMessenger.of(context)
+        .showSnackBar(SnackBar(content: Text(message)));
+  }
+
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
@@ -197,6 +211,7 @@ class _PublishHubScreenState extends ConsumerState<PublishHubScreen> {
         ),
       );
     final published = history.where((r) => !r.isScheduled).toList();
+    final failedStories = history.where((r) => r.storyFailed).length;
     final nextScheduled = scheduled.isEmpty ? null : scheduled.first;
     final recent = published.take(3).toList();
     final continueDraft = activeDraft.isEmpty
@@ -331,6 +346,31 @@ class _PublishHubScreenState extends ConsumerState<PublishHubScreen> {
                 actionLabel: connection.isConnected ? 'New post' : null,
                 onAction: connection.isConnected ? _newPost : null,
               ),
+            if (failedStories >= 2) ...[
+              const SizedBox(height: AppSpacing.base),
+              AppCard(
+                child: Row(
+                  children: [
+                    Icon(
+                      Icons.auto_stories_rounded,
+                      size: 20,
+                      color: theme.colorScheme.error,
+                    ),
+                    const SizedBox(width: AppSpacing.sm),
+                    Expanded(
+                      child: Text(
+                        '$failedStories Stories failed to publish.',
+                        style: theme.textTheme.bodySmall,
+                      ),
+                    ),
+                    TextButton(
+                      onPressed: _retryAllStories,
+                      child: const Text('Retry all'),
+                    ),
+                  ],
+                ),
+              ),
+            ],
             const SizedBox(height: AppSpacing.lg),
             _SectionTitle(
               title: 'Recent posts',
@@ -1183,6 +1223,7 @@ class _RecentPostRow extends StatelessWidget {
                     [
                       record.pageName,
                       record.formattedTime,
+                      if (record.isStoryOnly) 'Story only',
                       if (stats.isNotEmpty) stats,
                     ].join(' · '),
                     maxLines: 1,

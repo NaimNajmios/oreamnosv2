@@ -31,6 +31,8 @@ class FacebookHistoryScreen extends ConsumerStatefulWidget {
 }
 
 class _FacebookHistoryScreenState extends ConsumerState<FacebookHistoryScreen> {
+  bool _retryingStories = false;
+
   @override
   void initState() {
     super.initState();
@@ -52,12 +54,41 @@ class _FacebookHistoryScreenState extends ConsumerState<FacebookHistoryScreen> {
     }
   }
 
+  Future<void> _retryAllStories() async {
+    if (_retryingStories) return;
+    setState(() => _retryingStories = true);
+    Haptics.lightImpact();
+    final summary = await ref
+        .read(facebookHistoryProvider.notifier)
+        .retryFailedStories();
+    if (!mounted) return;
+    setState(() => _retryingStories = false);
+    final String message;
+    if (summary.succeeded == 0 && summary.failed == 0) {
+      message = 'No failed Stories';
+    } else if (summary.failed == 0) {
+      message =
+          '${summary.succeeded} '
+          '${summary.succeeded == 1 ? 'Story' : 'Stories'} published';
+    } else if (summary.succeeded == 0) {
+      message =
+          summary.firstError ??
+          "Couldn't retry ${summary.failed} "
+              '${summary.failed == 1 ? 'Story' : 'Stories'}';
+    } else {
+      message = '${summary.succeeded} published · ${summary.failed} failed';
+    }
+    ScaffoldMessenger.of(context)
+        .showSnackBar(SnackBar(content: Text(message)));
+  }
+
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final records = ref.watch(facebookHistoryProvider);
     final published = records.where((r) => !r.isScheduled).toList();
     final scheduled = records.where((r) => r.isScheduled).toList();
+    final failedStories = records.where((r) => r.storyFailed).length;
     final syncFailed = ref.watch(facebookDraftProvider).scheduledSyncFailed;
 
     return DefaultTabController(
@@ -72,6 +103,23 @@ class _FacebookHistoryScreenState extends ConsumerState<FacebookHistoryScreen> {
               letterSpacing: -0.3,
             ),
           ),
+          actions: [
+            if (failedStories > 0)
+              IconButton(
+                tooltip: 'Retry failed Stories',
+                onPressed: _retryingStories ? null : _retryAllStories,
+                icon: _retryingStories
+                    ? const SizedBox(
+                        width: 18,
+                        height: 18,
+                        child: CircularProgressIndicator(strokeWidth: 2),
+                      )
+                    : Badge.count(
+                        count: failedStories,
+                        child: const Icon(Icons.auto_stories_rounded),
+                      ),
+              ),
+          ],
           bottom: TabBar(
             tabs: [
               Tab(text: 'Published (${published.length})'),
@@ -191,9 +239,11 @@ class _RecordTile extends ConsumerWidget {
                       ),
                     if (record.isPublished)
                       _StatusChip(
-                        label: 'Published',
+                        label: record.isStoryOnly ? 'Story only' : 'Published',
                         color: theme.colorScheme.primary,
-                        icon: Icons.check_circle_outline_rounded,
+                        icon: record.isStoryOnly
+                            ? Icons.auto_stories_rounded
+                            : Icons.check_circle_outline_rounded,
                       ),
                     if (record.isFailed)
                       _StatusChip(
@@ -296,8 +346,14 @@ class _RecordTile extends ConsumerWidget {
 
   Future<void> _open(BuildContext context) async {
     // The full row opens the feed post; Story-only records have no permalink
-    // and are intentionally a no-op here (the Story chip explains why).
-    await openFacebookPost(context, record);
+    // and explain why instead of silently doing nothing.
+    await openFacebookPost(
+      context,
+      record,
+      missingMessage: record.isStoryOnlyPublished
+          ? 'This Story has no feed post to open.'
+          : null,
+    );
   }
 
   Future<void> _showActions(BuildContext context, WidgetRef ref) async {

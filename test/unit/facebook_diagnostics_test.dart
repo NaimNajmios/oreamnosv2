@@ -96,6 +96,15 @@ void main() {
       expect(entry.tag, 'Facebook');
       expect(entry.details, 'page=123');
     });
+
+    test('events carry non-sensitive detail counters', () async {
+      FacebookDiagnostics.event('Storage swept', detail: 'freed=4');
+      await Future<void>.delayed(const Duration(milliseconds: 10));
+
+      final entry = getIt<LogService>().logs.single;
+      expect(entry.details, 'freed=4');
+      expect(entry.details, isNot(contains(_token)));
+    });
   });
 
   test('copied summary stays redacted and includes sync state', () async {
