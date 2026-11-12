@@ -110,12 +110,26 @@ class FacebookPerformanceNotifier extends Notifier<FacebookPerformanceState> {
     }
     if (generation != _generation) return null;
     try {
-      final data = await _service.fetch(
+      var data = await _service.fetch(
         pageId: pageId,
         token: token,
         days: requestedDays,
       );
       if (generation != _generation) return null;
+      try {
+        final previous = await _service.fetchPrevious(
+          pageId: pageId,
+          token: token,
+          days: requestedDays,
+        );
+        if (generation != _generation) return null;
+        data = data.copyWith(
+          previousPoints: previous.points,
+          previousUnavailableMetrics: previous.unavailableMetrics,
+        );
+      } catch (_) {
+        // The previous window is optional; keep the current period.
+      }
       await _store.save(data);
       if (generation != _generation) return null;
       state = FacebookPerformanceState(
@@ -167,4 +181,28 @@ final bestTimeToPostReasonProvider = Provider<String?>((ref) {
 final recentPublishedPostsProvider = Provider<List<FacebookPostRecord>>((ref) {
   final records = ref.watch(facebookHistoryProvider);
   return records.where((r) => r.isPublished).take(5).toList(growable: false);
+});
+
+/// Posts in the selected range ranked by engagement rate, then recency.
+final facebookTopPostsProvider = Provider<List<FacebookPostRecord>>((ref) {
+  final days = ref.watch(facebookPerformanceProvider).days;
+  final cutoff = DateTime.now().subtract(Duration(days: days));
+  final records = ref
+      .watch(facebookHistoryProvider)
+      .where((r) => r.isPublished && r.timestamp.isAfter(cutoff))
+      .toList();
+  double score(FacebookPostRecord record) {
+    final engagement =
+        (record.reactions ?? 0) + (record.comments ?? 0) + (record.shares ?? 0);
+    final reach = record.uniqueViewers ?? record.impressions;
+    if (reach == null || reach <= 0) return engagement.toDouble();
+    return engagement / reach * 1000;
+  }
+
+  records.sort((a, b) {
+    final byScore = score(b).compareTo(score(a));
+    if (byScore != 0) return byScore;
+    return b.timestamp.compareTo(a.timestamp);
+  });
+  return records.take(5).toList(growable: false);
 });

@@ -134,6 +134,65 @@ void main() {
       );
     });
 
+    test('uses last_90d for the 90 day range', () async {
+      final adapter = _GraphAdapter(200, _ok([]));
+
+      await _service(adapter).fetch(pageId: 'page-1', token: _token, days: 90);
+
+      expect(
+        adapter.lastRequest!.uri.queryParameters['date_preset'],
+        'last_90d',
+      );
+    });
+
+    test('fetchPrevious asks for an explicit since/until window', () async {
+      final adapter = _GraphAdapter(200, _ok([]));
+
+      await _service(adapter)
+          .fetchPrevious(pageId: 'page-1', token: _token, days: 28);
+
+      expect(adapter.requests, hasLength(3));
+      for (final request in adapter.requests) {
+        final params = request.uri.queryParameters;
+        expect(params['period'], 'day');
+        expect(params.containsKey('date_preset'), isFalse);
+        final since = int.parse(params['since']!);
+        final until = int.parse(params['until']!);
+        expect(until - since, const Duration(days: 28).inSeconds);
+        expect(until, lessThan(DateTime.now().millisecondsSinceEpoch ~/ 1000));
+      }
+    });
+
+    test(
+      'fetchPrevious keeps partial data when a metric is rejected',
+      () async {
+        final insights = await _service(
+          _GraphAdapter(
+            500,
+            null,
+            byMetric: {
+              'page_media_view': _GraphReply(
+                200,
+                _ok([
+                  _row('page_media_view', [
+                    {'value': 9, 'end_time': '2026-10-20T08:00:00+0000'},
+                  ]),
+                ]),
+              ),
+              'page_post_engagements': _GraphReply(400, {
+                'error': {'code': 100, 'message': 'nope'},
+              }),
+              'page_follows': _GraphReply(200, _ok([])),
+            },
+          ),
+        ).fetchPrevious(pageId: 'page-1', token: _token, days: 7);
+
+        expect(insights.rangeDays, 7);
+        expect(insights.totalMediaViews, 9);
+        expect(insights.unavailableMetrics, contains('page_post_engagements'));
+      },
+    );
+
     test('a missing metric stays null and never drags others down', () async {
       final insights = await _service(
         _GraphAdapter(

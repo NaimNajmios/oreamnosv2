@@ -44,6 +44,9 @@ class _FacebookPerformanceScreenState
     final data = state.data;
     final points = _points(data);
     final posts = ref.watch(recentPublishedPostsProvider);
+    final topPosts = ref.watch(facebookTopPostsProvider);
+    final totals = data?.currentTotals;
+    final previousTotals = data?.previousTotals;
 
     return Scaffold(
       appBar: AppBar(
@@ -92,6 +95,12 @@ class _FacebookPerformanceScreenState
                   label: '28D',
                   selected: _days == 28,
                   onTap: () => _selectDays(28),
+                ),
+                const SizedBox(width: AppSpacing.xs),
+                AppChip(
+                  label: '90D',
+                  selected: _days == 90,
+                  onTap: () => _selectDays(90),
                 ),
                 const Spacer(),
                 if (state.loading)
@@ -158,6 +167,20 @@ class _FacebookPerformanceScreenState
                       fontWeight: FontWeight.w800,
                     ),
                   ),
+                  if (_deltaLabel(
+                        totals?.mediaViews,
+                        previousTotals?.mediaViews,
+                      )
+                      case final label?)
+                    Padding(
+                      padding: const EdgeInsets.only(top: 2),
+                      child: Text(
+                        label,
+                        style: theme.textTheme.labelSmall?.copyWith(
+                          color: theme.colorScheme.onSurfaceVariant,
+                        ),
+                      ),
+                    ),
                   const SizedBox(height: AppSpacing.sm),
                   SizedBox(
                     height: 140,
@@ -207,10 +230,18 @@ class _FacebookPerformanceScreenState
                             : (sum ?? 0) + p.engagements!,
                       ),
                     ),
+                    delta: _deltaLabel(
+                      totals?.engagements,
+                      previousTotals?.engagements,
+                    ),
                   ),
                   _KpiCard(
                     label: 'Followers',
                     value: _compact(_latestFollows(points)),
+                    delta: _deltaLabel(
+                      totals?.follows,
+                      previousTotals?.follows,
+                    ),
                   ),
                 ];
                 if (stacked) {
@@ -263,6 +294,28 @@ class _FacebookPerformanceScreenState
               ),
             ],
             const SizedBox(height: AppSpacing.lg),
+            if (topPosts.isNotEmpty) ...[
+              Text(
+                'Top posts · $_days days',
+                style: theme.textTheme.titleSmall?.copyWith(
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
+              const SizedBox(height: AppSpacing.sm),
+              AppCard(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: AppSpacing.md,
+                  vertical: AppSpacing.xs,
+                ),
+                child: Column(
+                  children: [
+                    for (final record in topPosts.take(3))
+                      _PostRow(record: record),
+                  ],
+                ),
+              ),
+              const SizedBox(height: AppSpacing.lg),
+            ],
             Text(
               'Recent posts',
               style: theme.textTheme.titleSmall?.copyWith(
@@ -330,6 +383,21 @@ class _FacebookPerformanceScreenState
     return null;
   }
 
+  String? _deltaLabel(int? current, int? previous) {
+    if (current == null && previous == null) return null;
+    if (previous == null) return 'No previous data';
+    if (current == null) return 'No data for this period';
+    if (previous == 0) {
+      return current == 0
+          ? 'No change vs previous $_days days'
+          : 'New vs previous $_days days';
+    }
+    final percent = ((current - previous) / previous * 100).round();
+    if (percent == 0) return 'No change vs previous $_days days';
+    final arrow = percent > 0 ? '↑' : '↓';
+    return '$arrow ${percent.abs()}% vs previous $_days days';
+  }
+
   static String _compact(int? value) {
     if (value == null) return '—';
     if (value >= 1000000) return '${(value / 1000000).toStringAsFixed(1)}m';
@@ -364,10 +432,11 @@ class _FacebookPerformanceScreenState
 }
 
 class _KpiCard extends StatelessWidget {
-  const _KpiCard({required this.label, required this.value});
+  const _KpiCard({required this.label, required this.value, this.delta});
 
   final String label;
   final String value;
+  final String? delta;
 
   @override
   Widget build(BuildContext context) {
@@ -388,6 +457,16 @@ class _KpiCard extends StatelessWidget {
               color: theme.colorScheme.onSurfaceVariant,
             ),
           ),
+          if (delta != null)
+            Padding(
+              padding: const EdgeInsets.only(top: 2),
+              child: Text(
+                delta!,
+                style: theme.textTheme.labelSmall?.copyWith(
+                  color: theme.colorScheme.onSurfaceVariant,
+                ),
+              ),
+            ),
         ],
       ),
     );

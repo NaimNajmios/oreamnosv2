@@ -40,7 +40,11 @@ class FacebookPageInsightsService {
         message: 'Connect your Page to load performance.',
       );
     }
-    final preset = days <= 7 ? 'last_7d' : 'last_28d';
+    final preset = days <= 7
+        ? 'last_7d'
+        : days <= 28
+        ? 'last_28d'
+        : 'last_90d';
     const metrics = [
       FacebookMetricNames.pageMediaView,
       FacebookMetricNames.pageFollows,
@@ -50,7 +54,9 @@ class FacebookPageInsightsService {
     // Meta rejects the whole request when any single metric is invalid. Fetch
     // them concurrently so one slow metric cannot block the other two.
     final results = await Future.wait(
-      metrics.map((metric) => _fetchMetric(metric, pageId, token, preset)),
+      metrics.map(
+        (metric) => _fetchMetric(metric, pageId, token, preset: preset),
+      ),
     );
 
     final rows = <Map<String, dynamic>>[];
@@ -73,22 +79,78 @@ class FacebookPageInsightsService {
       pageId,
       DateTime.now(),
       unavailableMetrics: unavailable,
+      rangeDays: days,
+    );
+  }
+
+  /// Fetches the window immediately before the current range. Failures are
+  /// non-fatal: the caller keeps the current period and labels the comparison
+  /// as unavailable.
+  Future<FacebookPageInsights> fetchPrevious({
+    required String pageId,
+    required String token,
+    int days = 28,
+  }) async {
+    if (pageId.trim().isEmpty || token.trim().isEmpty) {
+      throw const FacebookApiException(
+        kind: FacebookApiErrorKind.permission,
+        message: 'Connect your Page to load performance.',
+      );
+    }
+    final now = DateTime.now().toUtc();
+    final until = now.subtract(Duration(days: days));
+    final since = until.subtract(Duration(days: days));
+    const metrics = [
+      FacebookMetricNames.pageMediaView,
+      FacebookMetricNames.pageFollows,
+      FacebookMetricNames.pagePostEngagements,
+    ];
+    final results = await Future.wait(
+      metrics.map(
+        (metric) => _fetchMetric(
+          metric,
+          pageId,
+          token,
+          since: since.millisecondsSinceEpoch ~/ 1000,
+          until: until.millisecondsSinceEpoch ~/ 1000,
+        ),
+      ),
+    );
+    final rows = <Map<String, dynamic>>[];
+    final unavailable = <String>[];
+    for (final result in results) {
+      if (result.failure == null) {
+        rows.addAll(result.rows);
+      } else {
+        unavailable.add(result.metric);
+      }
+    }
+    return _parse(
+      {'data': rows},
+      pageId,
+      DateTime.now(),
+      unavailableMetrics: unavailable,
+      rangeDays: days,
     );
   }
 
   Future<_MetricResult> _fetchMetric(
     String metric,
     String pageId,
-    String token,
-    String preset,
-  ) async {
+    String token, {
+    String? preset,
+    int? since,
+    int? until,
+  }) async {
     try {
       final response = await _client.get<dynamic>(
         '$_pathBase/${Uri.encodeComponent(pageId)}/insights',
         queryParameters: {
           'metric': metric,
           'period': 'day',
-          'date_preset': preset,
+          'date_preset': ?preset,
+          if (since != null) 'since': '$since',
+          if (until != null) 'until': '$until',
         },
         options: Options(
           headers: {'Authorization': 'Bearer $token'},
@@ -198,6 +260,7 @@ class FacebookPageInsightsService {
     String pageId,
     DateTime fetchedAt, {
     List<String> unavailableMetrics = const [],
+    int rangeDays = 28,
   }) {
     final rows = body['data'];
     if (rows is! List) {
@@ -206,6 +269,7 @@ class FacebookPageInsightsService {
         points: const [],
         fetchedAt: fetchedAt,
         unavailableMetrics: unavailableMetrics,
+        rangeDays: rangeDays,
       );
     }
     final byDay = <String, PageInsightPoint>{};
@@ -251,6 +315,7 @@ class FacebookPageInsightsService {
       hasFollows: hasFollows,
       hasEngagements: hasEngagements,
       unavailableMetrics: unavailableMetrics,
+      rangeDays: rangeDays,
     );
   }
 

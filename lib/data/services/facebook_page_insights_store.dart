@@ -13,13 +13,19 @@ class FacebookPageInsightsStore {
 
   final SharedPreferences _prefs;
 
-  String _key(String pageId) =>
-      '${AppConstants.keyFacebookPageInsights}_$pageId';
+  String _key(String pageId, int days) =>
+      '${AppConstants.keyFacebookPageInsights}_${pageId}_$days';
 
-  FacebookPageInsights? load(String pageId) {
+  FacebookPageInsights? load(String pageId, {int days = 28}) {
     if (pageId.isEmpty) return null;
     try {
-      final raw = _prefs.getString(_key(pageId));
+      var raw = _prefs.getString(_key(pageId, days));
+      if ((raw == null || raw.isEmpty) && days == 28) {
+        // Legacy caches predate range-scoped keys and only held 28D data.
+        raw = _prefs.getString(
+          '${AppConstants.keyFacebookPageInsights}_$pageId',
+        );
+      }
       if (raw == null || raw.isEmpty) return null;
       return FacebookPageInsights.fromJson(
         jsonDecode(raw) as Map<String, dynamic>,
@@ -32,15 +38,23 @@ class FacebookPageInsightsStore {
   Future<void> save(FacebookPageInsights insights) async {
     try {
       await _prefs.setString(
-        _key(insights.pageId),
+        _key(insights.pageId, insights.rangeDays),
         jsonEncode(insights.toJson()),
       );
     } catch (_) {}
   }
 
   Future<void> clear(String pageId) async {
+    if (pageId.isEmpty) return;
     try {
-      await _prefs.remove(_key(pageId));
+      final prefix = '${AppConstants.keyFacebookPageInsights}_$pageId';
+      final keys = _prefs
+          .getKeys()
+          .where((key) => key == prefix || key.startsWith('${prefix}_'))
+          .toList();
+      for (final key in keys) {
+        await _prefs.remove(key);
+      }
     } catch (_) {}
   }
 }
