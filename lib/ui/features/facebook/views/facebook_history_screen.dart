@@ -104,6 +104,11 @@ class _FacebookHistoryScreenState extends ConsumerState<FacebookHistoryScreen> {
             ),
           ),
           actions: [
+            IconButton(
+              tooltip: 'Content calendar',
+              onPressed: () => context.push(RoutePaths.facebookCalendar),
+              icon: const Icon(Icons.calendar_month_rounded),
+            ),
             if (failedStories > 0)
               IconButton(
                 tooltip: 'Retry failed Stories',

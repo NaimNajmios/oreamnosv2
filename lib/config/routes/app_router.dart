@@ -13,6 +13,7 @@ import '../../ui/features/card_generator/views/card_generator_screen.dart';
 import '../../ui/features/generate/views/reading_mode_screen.dart';
 import '../../ui/features/facebook/views/facebook_compose_screen.dart';
 import '../../ui/features/facebook/views/facebook_comments_screen.dart';
+import '../../ui/features/facebook/views/facebook_calendar_screen.dart';
 import '../../ui/features/facebook/views/facebook_drafts_screen.dart';
 import '../../ui/features/facebook/views/facebook_diagnostics_screen.dart';
 import '../../ui/features/facebook/views/facebook_workflows_screen.dart';
@@ -39,6 +40,7 @@ abstract final class RoutePaths {
   static const String publish = '/publish';
   static const String facebookCompose = '/facebook-compose';
   static const String facebookHistory = '/facebook-history';
+  static const String facebookCalendar = '/facebook-calendar';
   static const String facebookPerformance = '/facebook-performance';
   static const String facebookDrafts = '/facebook-drafts';
   static const String facebookComments = '/facebook-comments';
@@ -256,6 +258,11 @@ GoRouter createAppRouter({String? initialLocation}) {
             ),
           );
         },
+      ),
+      GoRoute(
+        path: RoutePaths.facebookCalendar,
+        pageBuilder: (context, state) =>
+            _kickoffPage(child: const FacebookCalendarScreen()),
       ),
       GoRoute(
         path: RoutePaths.facebookPerformance,

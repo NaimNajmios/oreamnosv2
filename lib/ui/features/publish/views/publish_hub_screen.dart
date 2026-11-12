@@ -132,6 +132,11 @@ class _PublishHubScreenState extends ConsumerState<PublishHubScreen> {
     if (mounted) _refresh();
   }
 
+  Future<void> _openCalendar() async {
+    await context.push(RoutePaths.facebookCalendar);
+    if (mounted) _refresh();
+  }
+
   Future<void> _openWorkflows() async {
     await context.push(RoutePaths.facebookWorkflows);
     if (mounted) _refresh();
@@ -477,6 +482,12 @@ class _PublishHubScreenState extends ConsumerState<PublishHubScreen> {
                     label: 'Published posts',
                     detail: '${published.length} posts',
                     onTap: () => _openHistory(tab: 'published'),
+                  ),
+                  _ManageRow(
+                    icon: Icons.calendar_month_rounded,
+                    label: 'Content calendar',
+                    detail: 'Scheduled and published posts by day',
+                    onTap: _openCalendar,
                   ),
                   _ManageRow(
                     icon: Icons.ios_share_rounded,
