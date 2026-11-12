@@ -756,7 +756,7 @@ void main() {
       container.dispose();
     });
 
-    test('the composer caps media at four photos', () {
+    test('the composer caps media at ten photos', () {
       final draft = FacebookComposeState(
         media: List.generate(
           FacebookLimits.maxPhotos,

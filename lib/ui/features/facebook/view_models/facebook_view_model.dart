@@ -745,16 +745,17 @@ class FacebookDraftNotifier extends Notifier<FacebookComposeState> {
     });
   }
 
-  /// Gallery pick for one or more photos (cap 4). Returns how many were added.
+  /// Gallery pick for one or more photos (cap 10). Returns how many were added.
   Future<int> attachImages(ImageSource source) async {
     if (!state.canAddMoreMedia) return 0;
+    final slots = FacebookLimits.maxPhotos - state.media.length;
     try {
       final files = await ImagePicker().pickMultiImage(
         maxWidth: 2048,
         imageQuality: 85,
+        limit: slots,
       );
       if (files.isEmpty) return 0;
-      final slots = FacebookLimits.maxPhotos - state.media.length;
       final aspect = state.mediaItem?.aspect ?? FacebookImageAspect.portrait;
       final added = files
           .take(slots)

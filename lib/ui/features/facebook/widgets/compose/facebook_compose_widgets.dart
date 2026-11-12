@@ -612,6 +612,9 @@ class _PreviewImageState extends State<PreviewImage> {
                 fit: BoxFit.cover,
                 width: frame.width,
                 height: frame.height,
+                cacheWidth:
+                    (frame.width * MediaQuery.devicePixelRatioOf(context))
+                        .round(),
                 errorBuilder: (_, _, _) => Center(
                   child: Column(
                     mainAxisSize: MainAxisSize.min,

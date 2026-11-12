@@ -110,7 +110,7 @@ class FacebookComposerCard extends StatelessWidget {
               child: Text(
                 draft.media.length > 1
                     ? 'Swipe between photos · edit to crop, reorder or add alt text'
-                    : 'Tap edit to crop, zoom or add alt text',
+                    : 'Up to 10 photos · tap edit to crop, zoom or add alt text',
                 textAlign: TextAlign.center,
                 style: theme.textTheme.labelSmall?.copyWith(
                   color: theme.colorScheme.onSurfaceVariant.withValues(

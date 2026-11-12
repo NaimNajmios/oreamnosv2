@@ -174,8 +174,9 @@ enum FacebookImageAspect {
 
 /// Product caps for the composer.
 abstract final class FacebookLimits {
-  /// Graph allows 10 per post; the product cap keeps the carousel simple.
-  static const int maxPhotos = 4;
+  /// Graph accepts up to 10 photos in one multi-photo feed post.
+  static const int maxPhotos = 10;
+  static const int graphPhotoLimit = 10;
   static const int maxAltTextLength = 420;
 }
 
