@@ -8,6 +8,7 @@ import 'package:oreamnos/core/network/api_client.dart';
 import '../../config/constants.dart';
 import '../../domain/models/facebook_api_exception.dart';
 import '../../domain/models/facebook_post_insights.dart';
+import 'facebook_diagnostics.dart';
 import 'facebook_metric_names.dart';
 import 'facebook_network_error.dart';
 import 'facebook_response_guard.dart';
@@ -58,7 +59,9 @@ class FacebookInsightsService {
         response.data,
         action: 'post insights',
       );
-      return _parse(data, DateTime.now());
+      final insights = _parse(data, DateTime.now());
+      FacebookDiagnostics.event('Post insights refreshed');
+      return insights;
     } on FacebookApiException {
       rethrow;
     } on DioException catch (e) {
@@ -71,7 +74,7 @@ class FacebookInsightsService {
       );
       if (mapped.kind == FacebookApiErrorKind.unknown &&
           e.response?.statusCode == 400) {
-        throw FacebookApiException(
+        final converted = FacebookApiException(
           kind: FacebookApiErrorKind.insightsUnavailable,
           message:
               'Meta reports these post insights are unavailable. The metric '
@@ -79,13 +82,26 @@ class FacebookInsightsService {
           code: mapped.code,
           subcode: mapped.subcode,
         );
+        FacebookDiagnostics.failure(
+          'Insights refresh',
+          converted,
+          statusCode: e.response?.statusCode,
+        );
+        throw converted;
       }
+      FacebookDiagnostics.failure(
+        'Insights refresh',
+        mapped,
+        statusCode: e.response?.statusCode,
+      );
       throw mapped;
     } catch (_) {
-      throw const FacebookApiException(
+      const error = FacebookApiException(
         kind: FacebookApiErrorKind.insightsUnavailable,
         message: 'Insights are unavailable for this post.',
       );
+      FacebookDiagnostics.failure('Insights refresh', error);
+      throw error;
     }
   }
 
@@ -117,21 +133,31 @@ class FacebookInsightsService {
         response.data,
         action: 'post engagement',
       );
-      return _parseEngagement(data, DateTime.now());
+      final insights = _parseEngagement(data, DateTime.now());
+      FacebookDiagnostics.event('Engagement refreshed');
+      return insights;
     } on FacebookApiException {
       rethrow;
     } on DioException catch (e) {
-      throw FacebookApiException.fromGraph(
+      final mapped = FacebookApiException.fromGraph(
         e.response?.statusCode,
         _asMap(e.response?.data),
         isNetworkFailure: e.response == null,
         networkIssue: e.response == null ? facebookNetworkIssueFor(e) : null,
       );
+      FacebookDiagnostics.failure(
+        'Engagement refresh',
+        mapped,
+        statusCode: e.response?.statusCode,
+      );
+      throw mapped;
     } catch (_) {
-      throw const FacebookApiException(
+      const error = FacebookApiException(
         kind: FacebookApiErrorKind.insightsUnavailable,
         message: 'Engagement is unavailable for this post.',
       );
+      FacebookDiagnostics.failure('Engagement refresh', error);
+      throw error;
     }
   }
 

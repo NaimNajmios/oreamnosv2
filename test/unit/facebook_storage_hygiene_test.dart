@@ -1,10 +1,13 @@
 import 'dart:io';
 
 import 'package:flutter/services.dart';
+import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:oreamnos/core/di/injection.dart';
 import 'package:oreamnos/data/services/facebook_draft_store.dart';
 import 'package:oreamnos/data/services/facebook_history_service.dart';
 import 'package:oreamnos/data/services/facebook_storage_service.dart';
+import 'package:oreamnos/data/services/log_service.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 void main() {
@@ -16,6 +19,11 @@ void main() {
 
   setUp(() async {
     SharedPreferences.setMockInitialValues({});
+    FlutterSecureStorage.setMockInitialValues({});
+    await getIt.reset();
+    await configureDependencies();
+    getIt.allowReassignment = true;
+    getIt<LogService>().clear();
     docs = await Directory.systemTemp.createTemp('oreamnos_docs');
     temp = await Directory.systemTemp.createTemp('oreamnos_temp');
     TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
@@ -35,6 +43,7 @@ void main() {
         .setMockMethodCallHandler(channel, null);
     if (docs.existsSync()) await docs.delete(recursive: true);
     if (temp.existsSync()) await temp.delete(recursive: true);
+    await getIt.reset();
   });
 
   Future<FacebookHistoryService> history() async =>
@@ -168,5 +177,23 @@ void main() {
     await storage.sweep();
     final second = await storage.sweep();
     expect(second, 0);
+  });
+
+  test('a storage failure leaves one redacted diagnostics entry', () async {
+    TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+        .setMockMethodCallHandler(channel, (call) async {
+          throw PlatformException(code: 'unavailable');
+        });
+    final storage = FacebookStorageService(await history(), await drafts());
+    try {
+      await storage.report();
+      fail('should throw');
+    } catch (_) {}
+    await Future<void>.delayed(const Duration(milliseconds: 10));
+
+    final entry = getIt<LogService>().logs.single;
+    expect(entry.tag, 'Facebook');
+    expect(entry.message, 'Storage report failed');
+    expect(entry.details, isNot(contains('oreamnos')));
   });
 }

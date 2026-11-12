@@ -3,6 +3,7 @@ import 'dart:io';
 import 'package:injectable/injectable.dart';
 import 'package:path_provider/path_provider.dart';
 
+import 'facebook_diagnostics.dart';
 import 'facebook_draft_store.dart';
 import 'facebook_history_service.dart';
 
@@ -54,39 +55,50 @@ class FacebookStorageService {
   static const String _tempPrefix = 'oreamnos_fb_';
 
   Future<FacebookStorageReport> report() async {
-    final docs = await _documents();
-    final temp = await getTemporaryDirectory();
-    final thumbs = docs == null
-        ? (bytes: 0, count: 0)
-        : await _measure(Directory('${docs.path}/facebook_thumbs'));
-    final draftRoot = docs == null
-        ? (bytes: 0, count: 0)
-        : await _measure(Directory('${docs.path}/facebook_drafts'));
-    final tempUploads = await _measureTemp(temp);
-    return FacebookStorageReport(
-      historyThumbnailBytes: thumbs.bytes,
-      thumbnailCount: thumbs.count,
-      draftImageBytes: draftRoot.bytes,
-      draftCount: _drafts.loadAll().length,
-      tempUploadBytes: tempUploads.bytes,
-      tempFileCount: tempUploads.count,
-    );
+    try {
+      final docs = await _documents();
+      final temp = await getTemporaryDirectory();
+      final thumbs = docs == null
+          ? (bytes: 0, count: 0)
+          : await _measure(Directory('${docs.path}/facebook_thumbs'));
+      final draftRoot = docs == null
+          ? (bytes: 0, count: 0)
+          : await _measure(Directory('${docs.path}/facebook_drafts'));
+      final tempUploads = await _measureTemp(temp);
+      return FacebookStorageReport(
+        historyThumbnailBytes: thumbs.bytes,
+        thumbnailCount: thumbs.count,
+        draftImageBytes: draftRoot.bytes,
+        draftCount: _drafts.loadAll().length,
+        tempUploadBytes: tempUploads.bytes,
+        tempFileCount: tempUploads.count,
+      );
+    } catch (e) {
+      FacebookDiagnostics.failure('Storage report', e);
+      rethrow;
+    }
   }
 
   /// Deletes unreferenced thumbnails, draft files/folders, and stale temp
   /// crops. Returns bytes freed.
   Future<int> sweep() async {
-    var freed = 0;
-    final docs = await _documents();
-    if (docs != null) {
-      freed += await _sweepThumbnails(
-        Directory('${docs.path}/facebook_thumbs'),
-      );
+    try {
+      var freed = 0;
+      final docs = await _documents();
+      if (docs != null) {
+        freed += await _sweepThumbnails(
+          Directory('${docs.path}/facebook_thumbs'),
+        );
+      }
+      freed += await _drafts.sweepAll();
+      final temp = await getTemporaryDirectory();
+      freed += await _sweepTemp(temp);
+      FacebookDiagnostics.event('Storage swept', detail: 'freed=$freed');
+      return freed;
+    } catch (e) {
+      FacebookDiagnostics.failure('Storage sweep', e);
+      rethrow;
     }
-    freed += await _drafts.sweepAll();
-    final temp = await getTemporaryDirectory();
-    freed += await _sweepTemp(temp);
-    return freed;
   }
 
   Future<int> _sweepThumbnails(Directory dir) async {

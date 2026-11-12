@@ -334,6 +334,7 @@ class FacebookPublisherService {
         data: {'access_token': token},
         options: _formOptions(),
       );
+      FacebookDiagnostics.event('Photo deleted');
     } catch (_) {}
   }
 
@@ -366,6 +367,7 @@ class FacebookPublisherService {
           message: 'Facebook returned no Story id.',
         );
       }
+      FacebookDiagnostics.event('Story published', pageId: pageId);
       return FacebookStoryResult(postId: postId);
     } on DioException catch (e) {
       final mapped = _map(e);
@@ -403,6 +405,7 @@ class FacebookPublisherService {
           receiveOverride: AppConstants.facebookWriteTimeout,
         ),
       );
+      FacebookDiagnostics.event('Post deleted');
     } on DioException catch (e) {
       throw _map(e);
     }
@@ -430,6 +433,7 @@ class FacebookPublisherService {
           receiveOverride: AppConstants.facebookWriteTimeout,
         ),
       );
+      FacebookDiagnostics.event('Post caption updated');
     } on DioException catch (e) {
       final mapped = _map(e);
       if (mapped.kind == FacebookApiErrorKind.unknown) {
@@ -460,6 +464,7 @@ class FacebookPublisherService {
           receiveOverride: AppConstants.facebookWriteTimeout,
         ),
       );
+      FacebookDiagnostics.event('Scheduled post cancelled');
     } on DioException catch (e) {
       throw _map(e);
     }
@@ -483,6 +488,7 @@ class FacebookPublisherService {
           receiveOverride: AppConstants.facebookWriteTimeout,
         ),
       );
+      FacebookDiagnostics.event('Scheduled post rescheduled');
     } on DioException catch (e) {
       throw _map(e);
     }

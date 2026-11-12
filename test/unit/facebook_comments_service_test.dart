@@ -1,11 +1,15 @@
 import 'dart:convert';
 
 import 'package:dio/dio.dart';
+import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:oreamnos/config/constants.dart';
+import 'package:oreamnos/core/di/injection.dart';
 import 'package:oreamnos/core/network/api_client.dart';
 import 'package:oreamnos/data/services/facebook_comments_service.dart';
+import 'package:oreamnos/data/services/log_service.dart';
 import 'package:oreamnos/domain/models/facebook_api_exception.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 class _GraphAdapter implements HttpClientAdapter {
   _GraphAdapter(this.status, this.body);
@@ -83,6 +87,21 @@ FacebookCommentsService _service(HttpClientAdapter adapter) {
 const _token = 'EAAtestToken';
 
 void main() {
+  TestWidgetsFlutterBinding.ensureInitialized();
+
+  setUp(() async {
+    SharedPreferences.setMockInitialValues({});
+    FlutterSecureStorage.setMockInitialValues({});
+    await getIt.reset();
+    await configureDependencies();
+    getIt.allowReassignment = true;
+    getIt<LogService>().clear();
+  });
+
+  tearDown(() async {
+    await getIt.reset();
+  });
+
   group('FacebookCommentsService', () {
     test(
       'list parses comments, missing authors, and the next cursor',
@@ -225,6 +244,39 @@ void main() {
         expect(e.kind, FacebookApiErrorKind.expiredToken);
         expect(e.needsReconnect, isTrue);
       }
+    });
+
+    test('a failure leaves one redacted diagnostics entry', () async {
+      final service = _service(
+        _GraphAdapter(400, {
+          'error': {'code': 190, 'message': 'Error validating access token'},
+        }),
+      );
+      try {
+        await service.list(postId: 'p', token: _token);
+        fail('should throw');
+      } on FacebookApiException catch (_) {}
+      await Future<void>.delayed(const Duration(milliseconds: 10));
+
+      final entry = getIt<LogService>().logs.single;
+      expect(entry.tag, 'Facebook');
+      expect(entry.level, 'ERROR');
+      expect(entry.message, 'Comments load failed');
+      expect(entry.details, contains('kind=expiredToken'));
+      expect(entry.details, contains('code=190'));
+      expect(entry.details, contains('status=400'));
+      expect(entry.details, isNot(contains(_token)));
+    });
+
+    test('a successful reply leaves a debug breadcrumb', () async {
+      await _service(_GraphAdapter(200, {'id': 'reply1'}))
+          .reply(commentId: 'c1', token: _token, message: 'Thanks');
+      await Future<void>.delayed(const Duration(milliseconds: 10));
+
+      final entry = getIt<LogService>().logs.single;
+      expect(entry.level, 'DEBUG');
+      expect(entry.message, 'Comment replied');
+      expect(entry.details, isEmpty);
     });
   });
 }

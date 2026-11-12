@@ -8,6 +8,7 @@ import 'package:oreamnos/core/network/api_client.dart';
 import '../../config/constants.dart';
 import '../../domain/models/facebook_api_exception.dart';
 import '../../domain/models/facebook_comment.dart';
+import 'facebook_diagnostics.dart';
 import 'facebook_network_error.dart';
 import 'facebook_response_guard.dart';
 
@@ -60,7 +61,7 @@ class FacebookCommentsService {
     } on FacebookApiException {
       rethrow;
     } on DioException catch (e) {
-      throw _friendly(_map(e));
+      throw _friendly(_map(e, 'Comments load'));
     } catch (_) {
       throw const FacebookApiException(
         kind: FacebookApiErrorKind.unknown,
@@ -86,8 +87,9 @@ class FacebookCommentsService {
         data: {'access_token': token, 'message': message},
         options: _formOptions(),
       );
+      FacebookDiagnostics.event('Comment replied');
     } on DioException catch (e) {
-      throw _friendly(_map(e));
+      throw _friendly(_map(e, 'Comment reply'));
     }
   }
 
@@ -102,8 +104,9 @@ class FacebookCommentsService {
         data: {'access_token': token, 'is_hidden': hidden ? 'true' : 'false'},
         options: _formOptions(),
       );
+      FacebookDiagnostics.event(hidden ? 'Comment hidden' : 'Comment shown');
     } on DioException catch (e) {
-      throw _friendly(_map(e));
+      throw _friendly(_map(e, hidden ? 'Comment hide' : 'Comment show'));
     }
   }
 
@@ -117,8 +120,9 @@ class FacebookCommentsService {
         data: {'access_token': token},
         options: _formOptions(),
       );
+      FacebookDiagnostics.event('Comment deleted');
     } on DioException catch (e) {
-      throw _friendly(_map(e));
+      throw _friendly(_map(e, 'Comment delete'));
     }
   }
 
@@ -171,13 +175,19 @@ class FacebookCommentsService {
     return null;
   }
 
-  FacebookApiException _map(DioException e) {
-    return FacebookApiException.fromGraph(
+  FacebookApiException _map(DioException e, String action) {
+    final mapped = FacebookApiException.fromGraph(
       e.response?.statusCode,
       _asMap(e.response?.data),
       isNetworkFailure: e.response == null,
       networkIssue: e.response == null ? facebookNetworkIssueFor(e) : null,
     );
+    FacebookDiagnostics.failure(
+      action,
+      mapped,
+      statusCode: e.response?.statusCode,
+    );
+    return mapped;
   }
 
   static FacebookApiException _friendly(FacebookApiException e) {
