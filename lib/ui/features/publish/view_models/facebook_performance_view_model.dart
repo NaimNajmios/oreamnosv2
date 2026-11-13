@@ -54,8 +54,9 @@ class FacebookPerformanceNotifier extends Notifier<FacebookPerformanceState> {
     _monetization = getIt<FacebookMonetizationService>();
     _prefs = getIt<PreferencesService>();
     _pageId = ref.read(facebookViewModelProvider).activePageId;
-    final cached = _pageId.isEmpty ? null : _store.load(_pageId);
-    return FacebookPerformanceState(data: cached);
+    final days = _prefs.facebookPerformanceDays;
+    final cached = _pageId.isEmpty ? null : _store.load(_pageId, days: days);
+    return FacebookPerformanceState(data: cached, days: days);
   }
 
   Future<void> ensureLoaded({bool force = false}) async {
@@ -71,6 +72,7 @@ class FacebookPerformanceNotifier extends Notifier<FacebookPerformanceState> {
 
   Future<String?> refresh({int? days}) async {
     final requestedDays = days ?? state.days;
+    await _prefs.setFacebookPerformanceDays(requestedDays);
     final pageId = ref.read(facebookViewModelProvider).activePageId;
     final pageChanged = pageId != _pageId;
     _pageId = pageId;

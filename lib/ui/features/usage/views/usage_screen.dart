@@ -12,6 +12,7 @@ import '../../../../config/theme/app_typography.dart';
 import '../../../core/widgets/staggered_entrance.dart';
 import '../../../../data/services/usage_service.dart';
 import '../../../../data/services/daily_usage_service.dart';
+import '../../../../data/models/ai_provider.dart';
 import '../../../../domain/models/usage_log.dart';
 import '../../../../core/di/injection.dart';
 import '../../../core/utils/haptics.dart';
@@ -88,7 +89,8 @@ class _UsageScreenState extends ConsumerState<UsageScreen> {
             tooltip: 'Session History',
             onPressed: () => context.push(RoutePaths.sessionHistory),
           ),
-          if (logs.isNotEmpty)
+          if (logs.isNotEmpty ||
+              (dailyUsage?.hasGeminiActivityToday() ?? false))
             IconButton(
               icon: const Icon(Icons.delete_outline_rounded),
               tooltip: 'Clear History',
@@ -422,10 +424,8 @@ class _UsageScreenState extends ConsumerState<UsageScreen> {
                               ),
                               const SizedBox(width: AppSpacing.sm),
                               for (final p in [
-                                'gemini',
-                                'groq',
-                                'openrouter',
-                                'cerebras',
+                                for (final provider in AiProvider.values)
+                                  provider.name.toLowerCase(),
                               ])
                                 if (logsAll.any(
                                   (l) => l.providerId.toLowerCase() == p,
@@ -463,6 +463,16 @@ class _UsageScreenState extends ConsumerState<UsageScreen> {
                         Builder(
                           builder: (context) {
                             final now = DateTime.now();
+                            final today = DateTime(
+                              now.year,
+                              now.month,
+                              now.day,
+                            );
+                            final yesterday = DateTime(
+                              now.year,
+                              now.month,
+                              now.day - 1,
+                            );
                             final grouped = <String, List<UsageLog>>{};
                             final order = <String>[];
                             final displayLogs = logs
@@ -471,13 +481,13 @@ class _UsageScreenState extends ConsumerState<UsageScreen> {
                             for (final l in displayLogs) {
                               final d = l.timestamp;
                               String key;
-                              if (d.year == now.year &&
-                                  d.month == now.month &&
-                                  d.day == now.day) {
+                              if (d.year == today.year &&
+                                  d.month == today.month &&
+                                  d.day == today.day) {
                                 key = 'Today';
-                              } else if (d.year == now.year &&
-                                  d.month == now.month &&
-                                  d.day == now.day - 1) {
+                              } else if (d.year == yesterday.year &&
+                                  d.month == yesterday.month &&
+                                  d.day == yesterday.day) {
                                 key = 'Yesterday';
                               } else {
                                 key = DateFormat('MMM d, yyyy').format(d);
@@ -700,7 +710,7 @@ class _UsageScreenState extends ConsumerState<UsageScreen> {
                 ),
                 const SizedBox(height: AppSpacing.xs),
                 Text(
-                  'This will permanently reset all recorded token usage, latency statistics, and request history.',
+                  'This permanently clears request history, token and latency statistics, and today\'s device-local daily quota counters.',
                   style: theme.textTheme.bodySmall?.copyWith(
                     color: theme.colorScheme.onSurface.withValues(alpha: 0.6),
                   ),
@@ -733,6 +743,11 @@ class _UsageScreenState extends ConsumerState<UsageScreen> {
     if (result == true) {
       Haptics.heavyImpact();
       await ref.read(usageNotifierProvider.notifier).clearLogs();
+      try {
+        if (getIt.isRegistered<DailyUsageService>()) {
+          await getIt<DailyUsageService>().clearAll();
+        }
+      } catch (_) {}
     }
   }
 }

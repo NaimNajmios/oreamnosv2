@@ -12,6 +12,19 @@ import '../../domain/models/vision_mode.dart';
 import '../models/ai_provider.dart';
 import 'facebook_publisher_service.dart';
 
+/// Thrown when the platform secure store rejects a credential write even
+/// after a single retry. Callers should surface this instead of claiming the
+/// value was saved.
+class CredentialStoreException implements Exception {
+  const CredentialStoreException(this.operation, this.cause);
+
+  final String operation;
+  final Object cause;
+
+  @override
+  String toString() => 'CredentialStoreException($operation): $cause';
+}
+
 /// Manages user preferences and secure API key storage.
 /// Mirrors Android's PreferencesManager with EncryptedSharedPreferences.
 @lazySingleton
@@ -23,45 +36,66 @@ class PreferencesService {
 
   // === API Keys (secure) ===
 
-  Future<String?> getApiKey(AiProvider provider) async {
-    final key = switch (provider) {
+  static String _keyFor(AiProvider provider) {
+    return switch (provider) {
       AiProvider.gemini => AppConstants.keyGeminiApiKey,
       AiProvider.groq => AppConstants.keyGroqApiKey,
       AiProvider.openRouter => AppConstants.keyOpenRouterApiKey,
       AiProvider.cerebras => AppConstants.keyCerebrasApiKey,
     };
+  }
+
+  /// Reads a provider key. A transient platform failure is retried once for the
+  /// same key only — never a store-wide wipe, which would destroy unrelated
+  /// Facebook tokens and other providers' keys.
+  Future<String?> getApiKey(AiProvider provider) async {
+    final key = _keyFor(provider);
     try {
       return await _secureStorage.read(key: key);
-    } catch (e) {
+    } catch (_) {
       try {
-        await _secureStorage.deleteAll();
-      } catch (_) {}
-      return null;
+        return await _secureStorage.read(key: key);
+      } catch (_) {
+        return null;
+      }
     }
   }
 
   Future<void> setApiKey(AiProvider provider, String value) async {
-    final key = switch (provider) {
-      AiProvider.gemini => AppConstants.keyGeminiApiKey,
-      AiProvider.groq => AppConstants.keyGroqApiKey,
-      AiProvider.openRouter => AppConstants.keyOpenRouterApiKey,
-      AiProvider.cerebras => AppConstants.keyCerebrasApiKey,
-    };
+    final key = _keyFor(provider);
     try {
       await _secureStorage.write(key: key, value: value);
     } catch (e) {
       try {
-        await _secureStorage.deleteAll();
         await _secureStorage.write(key: key, value: value);
-      } catch (_) {}
+      } catch (retryError) {
+        throw CredentialStoreException('write', retryError);
+      }
+    }
+  }
+
+  Future<void> deleteApiKey(AiProvider provider) async {
+    final key = _keyFor(provider);
+    try {
+      await _secureStorage.delete(key: key);
+    } catch (e) {
+      try {
+        await _secureStorage.delete(key: key);
+      } catch (retryError) {
+        throw CredentialStoreException('delete', retryError);
+      }
     }
   }
 
   Future<String?> getTavilyApiKey() async {
     try {
       return await _secureStorage.read(key: AppConstants.keyTavilyApiKey);
-    } catch (e) {
-      return null;
+    } catch (_) {
+      try {
+        return await _secureStorage.read(key: AppConstants.keyTavilyApiKey);
+      } catch (_) {
+        return null;
+      }
     }
   }
 
@@ -73,12 +107,25 @@ class PreferencesService {
       );
     } catch (e) {
       try {
-        await _secureStorage.delete(key: AppConstants.keyTavilyApiKey);
         await _secureStorage.write(
           key: AppConstants.keyTavilyApiKey,
           value: value,
         );
-      } catch (_) {}
+      } catch (retryError) {
+        throw CredentialStoreException('write', retryError);
+      }
+    }
+  }
+
+  Future<void> deleteTavilyApiKey() async {
+    try {
+      await _secureStorage.delete(key: AppConstants.keyTavilyApiKey);
+    } catch (e) {
+      try {
+        await _secureStorage.delete(key: AppConstants.keyTavilyApiKey);
+      } catch (retryError) {
+        throw CredentialStoreException('delete', retryError);
+      }
     }
   }
 
@@ -328,6 +375,17 @@ class PreferencesService {
     at.millisecondsSinceEpoch,
   );
 
+  /// Last range selected on the Performance surface (7 / 28 / 90).
+  int get facebookPerformanceDays {
+    final value = _prefs.getInt(AppConstants.keyFacebookPerformanceDays);
+    return value == null || (value != 7 && value != 28 && value != 90)
+        ? 28
+        : value;
+  }
+
+  Future<void> setFacebookPerformanceDays(int days) =>
+      _prefs.setInt(AppConstants.keyFacebookPerformanceDays, days);
+
   DateTime? _readMillis(String key) {
     final value = _prefs.getInt(key);
     if (value == null) return null;
@@ -366,6 +424,10 @@ class PreferencesService {
 
   Future<bool> setSelectedModel(AiProvider provider, String modelId) {
     return _prefs.setString('model_${provider.name}', modelId);
+  }
+
+  Future<bool> clearSelectedModel(AiProvider provider) {
+    return _prefs.remove('model_${provider.name}');
   }
 
   // === Connection Test Result (per provider, persistent) ===

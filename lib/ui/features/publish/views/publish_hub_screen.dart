@@ -61,10 +61,42 @@ class _PublishHubScreenState extends ConsumerState<PublishHubScreen> {
     }
   }
 
+  /// Confirms replacing a non-empty draft before the generated post takes over.
+  /// Returns false when the user cancels.
+  Future<bool> _confirmReplaceDraft(String nextText) async {
+    final draft = ref.read(facebookDraftProvider);
+    if (draft.isEmpty || draft.text.trim() == nextText.trim()) {
+      return true;
+    }
+    final replace = await showDialog<bool>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: const Text('Replace current draft?'),
+        content: const Text(
+          'Your current draft will be saved first, then replaced with the generated post.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(dialogContext).pop(false),
+            child: const Text('Cancel'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.of(dialogContext).pop(true),
+            child: const Text('Save & replace'),
+          ),
+        ],
+      ),
+    );
+    if (replace != true) return false;
+    await ref.read(facebookDraftProvider.notifier).saveDraftNow();
+    return true;
+  }
+
   Future<void> _openHandoff(
     PublishHandoff handoff, {
     bool schedule = false,
   }) async {
+    if (!await _confirmReplaceDraft(handoff.text)) return;
     final draft = ref.read(facebookDraftProvider);
     final notifier = ref.read(facebookDraftProvider.notifier);
     if (draft.isEmpty || draft.text.trim() != handoff.text.trim()) {
@@ -94,11 +126,13 @@ class _PublishHubScreenState extends ConsumerState<PublishHubScreen> {
     final notifier = ref.read(facebookDraftProvider.notifier);
     final handoff = ref.read(publishHandoffProvider);
     if (handoff != null) {
+      if (!await _confirmReplaceDraft(handoff.text)) return;
       notifier.startDraft(handoff.text, title: handoff.title);
     } else if (ref.read(facebookDraftProvider).isEmpty) {
       notifier.startEmptyDraft();
     }
     notifier.setScheduledAt(at);
+    if (!mounted) return;
     await context.push(RoutePaths.facebookCompose);
     if (mounted) _refresh();
   }
@@ -324,7 +358,7 @@ class _PublishHubScreenState extends ConsumerState<PublishHubScreen> {
               ),
               const SizedBox(height: AppSpacing.base),
             ],
-            if (handoff != null)
+            if (handoff != null) ...[
               _ReadyToPublishCard(
                 handoff: handoff,
                 pageName: connection.pageName,
@@ -333,8 +367,16 @@ class _PublishHubScreenState extends ConsumerState<PublishHubScreen> {
                 onSchedule: () => _openHandoff(handoff, schedule: true),
                 onDismiss: () =>
                     ref.read(publishHandoffProvider.notifier).consume(),
-              )
-            else
+              ),
+              Align(
+                alignment: Alignment.centerRight,
+                child: TextButton.icon(
+                  onPressed: connection.isConnected ? _newPost : null,
+                  icon: const Icon(Icons.add_rounded, size: 18),
+                  label: const Text('New blank post'),
+                ),
+              ),
+            ] else
               _CreateCard(
                 enabled: connection.isConnected,
                 workflowLabel: workflow.destinationLabel,
@@ -356,6 +398,7 @@ class _PublishHubScreenState extends ConsumerState<PublishHubScreen> {
               published: published.length,
               onDrafts: _openDrafts,
               onScheduled: () => _openHistory(tab: 'scheduled'),
+              onPublished: () => _openHistory(tab: 'published'),
             ),
             if (nextScheduled != null) ...[
               const SizedBox(height: AppSpacing.lg),
@@ -800,7 +843,7 @@ class _PerformanceCard extends StatelessWidget {
               const SizedBox(width: AppSpacing.sm),
               Expanded(
                 child: Text(
-                  'Performance · 28 days',
+                  'Performance · ${state.days} days',
                   style: theme.textTheme.titleSmall?.copyWith(
                     fontWeight: FontWeight.w700,
                   ),
@@ -1026,6 +1069,7 @@ class _QuickActions extends StatelessWidget {
     required this.published,
     required this.onDrafts,
     required this.onScheduled,
+    required this.onPublished,
   });
 
   final int drafts;
@@ -1033,6 +1077,7 @@ class _QuickActions extends StatelessWidget {
   final int published;
   final VoidCallback onDrafts;
   final VoidCallback onScheduled;
+  final VoidCallback onPublished;
 
   @override
   Widget build(BuildContext context) {
@@ -1049,7 +1094,11 @@ class _QuickActions extends StatelessWidget {
             value: scheduled,
             onTap: onScheduled,
           ),
-          _CountAction(label: 'Published', value: published, onTap: null),
+          _CountAction(
+            label: 'Published',
+            value: published,
+            onTap: onPublished,
+          ),
         ],
       ),
     );

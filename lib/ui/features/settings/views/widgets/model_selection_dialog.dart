@@ -262,11 +262,57 @@ class _ModelSelectionDialogState extends ConsumerState<ModelSelectionDialog> {
       );
     }
 
+    final showAutoRow = _filter.isEmpty;
     return ListView.separated(
-      itemCount: filtered.length,
+      itemCount: filtered.length + (showAutoRow ? 1 : 0),
       separatorBuilder: (context, index) => const Divider(height: 1),
       itemBuilder: (context, index) {
-        final model = filtered[index];
+        if (showAutoRow && index == 0) {
+          final isSelected = state.selectedModel == null;
+          return Material(
+            color: Colors.transparent,
+            child: InkWell(
+              onTap: () {
+                Haptics.selectionClick();
+                ref
+                    .read(settingsViewModelProvider.notifier)
+                    .clearSelectedModel();
+                Navigator.of(context).pop();
+              },
+              borderRadius: AppSpacing.borderRadiusSm,
+              child: Padding(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: AppSpacing.sm,
+                  vertical: 12,
+                ),
+                child: Row(
+                  children: [
+                    Expanded(
+                      child: Text(
+                        'Default (Auto-select)',
+                        style: theme.textTheme.bodyMedium?.copyWith(
+                          fontWeight: isSelected
+                              ? FontWeight.w700
+                              : FontWeight.w400,
+                          color: isSelected
+                              ? theme.colorScheme.primary
+                              : theme.colorScheme.onSurface,
+                        ),
+                      ),
+                    ),
+                    if (isSelected)
+                      Icon(
+                        Icons.check_rounded,
+                        size: 20,
+                        color: theme.colorScheme.primary,
+                      ),
+                  ],
+                ),
+              ),
+            ),
+          );
+        }
+        final model = filtered[index - (showAutoRow ? 1 : 0)];
         final isSelected = state.selectedModel == model.id;
 
         return Material(

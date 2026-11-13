@@ -73,6 +73,9 @@ abstract final class AppConstants {
   static const double defaultTemperature = 0.7;
   static const int defaultMaxTokens = 2048;
 
+  /// Maximum pasted/generated input length accepted by the Generate screen.
+  static const int maxInputChars = 8000;
+
   /// Output cap for full post generation/refinement. Malay tokenizes poorly
   /// on most models, so 2048 used to cut long posts mid-sentence (and left
   /// the JSON unterminated). The 90s receive window still bounds latency;
@@ -123,6 +126,7 @@ abstract final class AppConstants {
   static const String keyFacebookLastReconcile = 'facebook_last_reconcile';
   static const String keyFacebookWorkflows = 'facebook_workflows';
   static const String keyFacebookPageInsights = 'facebook_page_insights';
+  static const String keyFacebookPerformanceDays = 'facebook_performance_days';
   static const String keyFacebookRemindersEnabled =
       'facebook_reminders_enabled';
   static const String keyFacebookReminderIds = 'facebook_reminder_ids';

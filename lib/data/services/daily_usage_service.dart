@@ -149,6 +149,17 @@ class DailyUsageService {
     return bucket.keys.any((k) => k.startsWith('gemini:'));
   }
 
+  /// Clears every local daily-quota counter. Provider-side RPD windows are not
+  /// affected; this only resets the device-local estimate shown in Usage.
+  Future<void> clearAll() async {
+    try {
+      await _prefs.remove(_keyStore);
+    } catch (_) {
+      // Clearing must never crash the screen; a failed remove leaves the
+      // counters intact, which the UI will show again on next load.
+    }
+  }
+
   /// Keep today + yesterday only (yesterday kept for late-night sessions
   /// spanning the reset).
   bool _isLiveDayKey(String key, String todayKey) {

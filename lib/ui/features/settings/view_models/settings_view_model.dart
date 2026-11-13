@@ -3,6 +3,7 @@ import 'package:oreamnos/core/di/injection.dart';
 
 import '../../../../data/models/ai_provider.dart';
 import '../../../../data/services/preferences_service.dart';
+import '../../../../data/services/provider_api_service.dart';
 import '../../../../domain/models/app_theme_mode.dart';
 import '../../../../domain/models/custom_pill.dart';
 import '../../../../domain/models/hashtag_group.dart';
@@ -108,10 +109,48 @@ class SettingsNotifier extends Notifier<SettingsState> {
     }
   }
 
+  /// Removes a provider key and clears its verification state.
+  Future<void> clearApiKey(AiProvider provider) async {
+    await _preferencesService.deleteApiKey(provider);
+    await _preferencesService.clearLastTestResult(provider);
+    if (state.selectedProvider == provider) {
+      state = state.copyWith(clearApiKey: true, clearLastTest: true);
+    }
+  }
+
+  Future<void> clearTavilyApiKey() async {
+    await _preferencesService.deleteTavilyApiKey();
+    state = state.copyWith(clearTavilyKey: true);
+  }
+
+  /// Clears a manual model choice so the provider default is used again.
+  Future<void> clearSelectedModel() async {
+    final provider = state.selectedProvider;
+    await _preferencesService.clearSelectedModel(provider);
+    await _preferencesService.clearLastTestResult(provider);
+    state = state.copyWith(clearModel: true, clearLastTest: true);
+  }
+
   Future<void> setLastTestResult(bool ok) async {
     final at = DateTime.now();
     await _preferencesService.setLastTestResult(state.selectedProvider, ok, at);
     state = state.copyWith(lastTestOk: ok, lastTestedAt: at);
+  }
+
+  /// Verifies the active provider with its stored key and persists the result.
+  /// Returns false when no key is configured or the request fails.
+  Future<bool> testConnection() async {
+    final provider = state.selectedProvider;
+    final key = await _preferencesService.getApiKey(provider) ?? '';
+    if (key.isEmpty) return false;
+    bool ok;
+    try {
+      ok = await getIt<ProviderApiService>().testConnection(provider, key);
+    } catch (_) {
+      ok = false;
+    }
+    await setLastTestResult(ok);
+    return ok;
   }
 
   Future<String?> getApiKeyForProvider(AiProvider provider) async {

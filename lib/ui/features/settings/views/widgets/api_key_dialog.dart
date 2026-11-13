@@ -27,6 +27,8 @@ class _ApiKeyDialogState extends ConsumerState<ApiKeyDialog> {
   late TextEditingController _controller;
   bool _isLoading = false;
   bool _obscureText = true;
+  bool _hasExistingKey = false;
+  String _maskedKey = '';
 
   @override
   void initState() {
@@ -38,9 +40,14 @@ class _ApiKeyDialogState extends ConsumerState<ApiKeyDialog> {
   Future<void> _loadExistingKey() async {
     final viewModel = ref.read(settingsViewModelProvider.notifier);
     final existingKey = await viewModel.getApiKeyForProvider(widget.provider);
-    if (mounted && existingKey != null) {
-      _controller.text = existingKey;
-    }
+    if (!mounted) return;
+    final key = existingKey?.trim() ?? '';
+    setState(() {
+      _hasExistingKey = key.isNotEmpty;
+      _maskedKey = key.length <= 4
+          ? '••••'
+          : '••••${key.substring(key.length - 4)}';
+    });
   }
 
   @override
@@ -71,6 +78,62 @@ class _ApiKeyDialogState extends ConsumerState<ApiKeyDialog> {
           SnackBar(
             content: Text('${widget.provider.displayName} API Key saved'),
           ),
+        );
+      }
+    } catch (_) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text("Couldn't save the key securely. Try again."),
+          ),
+        );
+      }
+    } finally {
+      if (mounted) {
+        setState(() => _isLoading = false);
+      }
+    }
+  }
+
+  Future<void> _removeKey() async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: const Text('Remove API key?'),
+        content: Text(
+          '${widget.provider.displayName} will stop generating until you add a key again.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(dialogContext).pop(false),
+            child: const Text('Cancel'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.of(dialogContext).pop(true),
+            child: const Text('Remove'),
+          ),
+        ],
+      ),
+    );
+    if (confirmed != true || !mounted) return;
+
+    setState(() => _isLoading = true);
+    try {
+      await ref
+          .read(settingsViewModelProvider.notifier)
+          .clearApiKey(widget.provider);
+      if (!mounted) return;
+      Haptics.mediumImpact();
+      Navigator.of(context).pop();
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('${widget.provider.displayName} API Key removed'),
+        ),
+      );
+    } catch (_) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text("Couldn't remove the key. Try again.")),
         );
       }
     } finally {
@@ -140,7 +203,9 @@ class _ApiKeyDialogState extends ConsumerState<ApiKeyDialog> {
               AppInput(
                 controller: _controller,
                 label: 'API Key',
-                hint: 'sk-...',
+                hint: _hasExistingKey
+                    ? 'Stored $_maskedKey — paste to replace'
+                    : 'sk-...',
                 maxLines: 1,
                 obscureText: _obscureText,
                 suffixIcon: IconButton(
@@ -159,6 +224,17 @@ class _ApiKeyDialogState extends ConsumerState<ApiKeyDialog> {
               Row(
                 mainAxisAlignment: MainAxisAlignment.end,
                 children: [
+                  if (_hasExistingKey)
+                    TextButton(
+                      onPressed: _isLoading ? null : _removeKey,
+                      child: Text(
+                        'Remove',
+                        style: TextStyle(
+                          color: Theme.of(context).colorScheme.error,
+                        ),
+                      ),
+                    ),
+                  const Spacer(),
                   TextButton(
                     onPressed: () => Navigator.of(context).pop(),
                     child: const Text('Cancel'),

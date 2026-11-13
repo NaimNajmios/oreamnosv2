@@ -70,11 +70,13 @@ class _GenerateScreenState extends ConsumerState<GenerateScreen> {
   String? _previewTitle;
   String? _previewDesc;
   String? _previewFavicon;
+  Timer? _previewDebounce;
 
   void _maybeFetchPreview(String url, bool isGenerating) {
     if (isGenerating || url == _previewFor || url == _previewDismissedFor) {
       return;
     }
+    if (!WebScraperService.isUrl(url)) return;
     _previewFor = url;
     WebScraperService.extractArticleFromUrl(url)
         .then((article) {
@@ -118,12 +120,29 @@ class _GenerateScreenState extends ConsumerState<GenerateScreen> {
 
   @override
   void dispose() {
+    _previewDebounce?.cancel();
     _controller.removeListener(_onTextChanged);
     _controller.dispose();
     super.dispose();
   }
 
   void _onTextChanged() {
+    final text = _controller.text.trim();
+    if (text != _previewFor) {
+      _previewTitle = null;
+      _previewDesc = null;
+      _previewFavicon = null;
+    }
+    _previewDebounce?.cancel();
+    if (text.isNotEmpty && text != _previewDismissedFor) {
+      _previewDebounce = Timer(const Duration(milliseconds: 400), () {
+        if (!mounted) return;
+        _maybeFetchPreview(
+          text,
+          ref.read(generateViewModelProvider).isGenerating,
+        );
+      });
+    }
     setState(() {});
   }
 
@@ -592,14 +611,7 @@ class _GenerateScreenState extends ConsumerState<GenerateScreen> {
             hint: 'Paste football news or article URL...',
             minLines: 3,
             maxLines: 6,
-            onChanged: (_) => setState(() {
-              final trimmed = _controller.text.trim();
-              if (trimmed != _previewFor) {
-                _previewTitle = null;
-                _previewDesc = null;
-                _previewFavicon = null;
-              }
-            }),
+            maxLength: AppConstants.maxInputChars,
           ),
           if (viewModel.isExtractingImage) ...[
             const SizedBox(height: AppSpacing.sm),
@@ -607,31 +619,26 @@ class _GenerateScreenState extends ConsumerState<GenerateScreen> {
           ],
           if (isUrl && _controller.text.trim() != _previewDismissedFor) ...[
             const SizedBox(height: AppSpacing.sm),
-            Builder(
-              builder: (context) {
-                _maybeFetchPreview(_controller.text.trim(), isGenerating);
-                return LinkPreviewCard(
-                  url: _controller.text.trim(),
-                  title: _previewTitle,
-                  description: _previewDesc,
-                  faviconUrl: _previewFavicon,
-                  isLoading: isGenerating,
-                  onExtract: isGenerating
-                      ? null
-                      : () {
-                          FocusScope.of(context).unfocus();
-                          ref
-                              .read(generateViewModelProvider.notifier)
-                              .generatePost(_controller.text);
-                        },
-                  onDismiss: () => setState(() {
-                    _previewDismissedFor = _controller.text.trim();
-                    _previewTitle = null;
-                    _previewDesc = null;
-                    _previewFavicon = null;
-                  }),
-                );
-              },
+            LinkPreviewCard(
+              url: _controller.text.trim(),
+              title: _previewTitle,
+              description: _previewDesc,
+              faviconUrl: _previewFavicon,
+              isLoading: isGenerating,
+              onExtract: isGenerating
+                  ? null
+                  : () {
+                      FocusScope.of(context).unfocus();
+                      ref
+                          .read(generateViewModelProvider.notifier)
+                          .generatePost(_controller.text);
+                    },
+              onDismiss: () => setState(() {
+                _previewDismissedFor = _controller.text.trim();
+                _previewTitle = null;
+                _previewDesc = null;
+                _previewFavicon = null;
+              }),
             ),
           ],
           const SizedBox(height: AppSpacing.sm),
@@ -688,7 +695,7 @@ class _GenerateScreenState extends ConsumerState<GenerateScreen> {
                       vertical: 4,
                     ),
                     decoration: BoxDecoration(
-                      color: charCount > 8000
+                      color: charCount > AppConstants.maxInputChars
                           ? theme.colorScheme.error.withValues(alpha: 0.08)
                           : Colors.transparent,
                       borderRadius: AppSpacing.borderRadiusXs,
@@ -699,10 +706,10 @@ class _GenerateScreenState extends ConsumerState<GenerateScreen> {
                       overflow: TextOverflow.ellipsis,
                       style: AppTypography.mono(
                         fontSize: 11,
-                        fontWeight: charCount > 8000
+                        fontWeight: charCount > AppConstants.maxInputChars
                             ? FontWeight.w700
                             : FontWeight.w500,
-                        color: charCount > 8000
+                        color: charCount > AppConstants.maxInputChars
                             ? theme.colorScheme.error
                             : theme.colorScheme.onSurface.withValues(
                                 alpha: 0.55,

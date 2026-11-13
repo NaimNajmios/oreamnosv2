@@ -5,6 +5,7 @@ import '../../../../config/theme/app_colors.dart';
 import '../../../../config/theme/app_spacing.dart';
 import '../../../../config/theme/app_typography.dart';
 import '../../../../data/services/usage_service.dart';
+import '../../../../data/models/ai_provider.dart';
 import '../../../core/widgets/app_card.dart';
 import '../../../core/widgets/empty_state.dart';
 
@@ -33,7 +34,7 @@ class _SessionListScreenState extends ConsumerState<SessionListScreen> {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text(
-              'Session History',
+              'Request History',
               style: theme.textTheme.titleMedium?.copyWith(
                 fontWeight: FontWeight.w700,
               ),
@@ -82,10 +83,8 @@ class _SessionListScreenState extends ConsumerState<SessionListScreen> {
                               ),
                               const SizedBox(width: 8),
                               for (final p in [
-                                'gemini',
-                                'groq',
-                                'openrouter',
-                                'cerebras',
+                                for (final provider in AiProvider.values)
+                                  provider.name.toLowerCase(),
                               ])
                                 if (allLogs.any(
                                   (l) => l.providerId.toLowerCase() == p,

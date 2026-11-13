@@ -376,7 +376,7 @@ class GenerateViewModel extends Notifier<GenerateUiState>
     if (trimmed.isEmpty) {
       return const ValidationResult.invalid('Please enter news text or a URL.');
     }
-    if (trimmed.length > 8000) {
+    if (trimmed.length > AppConstants.maxInputChars) {
       return const ValidationResult.invalid(
         'Input too long (max 8000 characters). Please shorten or paste a URL.',
       );

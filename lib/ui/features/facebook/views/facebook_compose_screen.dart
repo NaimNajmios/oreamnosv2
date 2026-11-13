@@ -68,6 +68,7 @@ class _FacebookComposeScreenState extends ConsumerState<FacebookComposeScreen> {
           ),
         ),
       );
+      ref.read(facebookDraftProvider.notifier).acknowledgeRestore();
     });
   }
 
@@ -169,15 +170,6 @@ class _FacebookComposeScreenState extends ConsumerState<FacebookComposeScreen> {
                       },
                     ),
                   const Divider(),
-                  ListTile(
-                    contentPadding: EdgeInsets.zero,
-                    leading: const Icon(Icons.tune_rounded),
-                    title: const Text('Customize this post'),
-                    subtitle: const Text(
-                      'Toggle Page/Story and edit the title',
-                    ),
-                    onTap: () => Navigator.of(sheetContext).pop(),
-                  ),
                   if (draft.workflowId.isNotEmpty)
                     ListTile(
                       contentPadding: EdgeInsets.zero,
@@ -697,12 +689,54 @@ class _FacebookComposeScreenState extends ConsumerState<FacebookComposeScreen> {
                           FacebookComposerCard(
                             controller: _textController,
                             draft: draft,
-                            onGallery: () => ref
-                                .read(facebookDraftProvider.notifier)
-                                .attachImages(ImageSource.gallery),
-                            onCamera: () => ref
-                                .read(facebookDraftProvider.notifier)
-                                .attachImage(ImageSource.camera),
+                            onGallery: () async {
+                              final result = await ref
+                                  .read(facebookDraftProvider.notifier)
+                                  .attachImages(ImageSource.gallery);
+                              if (!context.mounted) return;
+                              if (result is MediaAttachFailed) {
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  SnackBar(content: Text(result.message)),
+                                );
+                              }
+                            },
+                            onCamera: () async {
+                              if (draft.media.isNotEmpty) {
+                                final replace = await showDialog<bool>(
+                                  context: context,
+                                  builder: (dialogContext) => AlertDialog(
+                                    title: const Text('Replace photos?'),
+                                    content: const Text(
+                                      'Taking a new photo replaces every photo currently attached.',
+                                    ),
+                                    actions: [
+                                      TextButton(
+                                        onPressed: () =>
+                                            Navigator.of(dialogContext)
+                                                .pop(false),
+                                        child: const Text('Cancel'),
+                                      ),
+                                      TextButton(
+                                        onPressed: () =>
+                                            Navigator.of(dialogContext)
+                                                .pop(true),
+                                        child: const Text('Replace'),
+                                      ),
+                                    ],
+                                  ),
+                                );
+                                if (replace != true || !mounted) return;
+                              }
+                              final result = await ref
+                                  .read(facebookDraftProvider.notifier)
+                                  .attachImage(ImageSource.camera);
+                              if (!context.mounted) return;
+                              if (result is MediaAttachFailed) {
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  SnackBar(content: Text(result.message)),
+                                );
+                              }
+                            },
                             onHashtags: _appendHashtags,
                             onRemoveMedia: (id) => ref
                                 .read(facebookDraftProvider.notifier)

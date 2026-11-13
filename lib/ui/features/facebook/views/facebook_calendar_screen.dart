@@ -104,6 +104,24 @@ class _FacebookCalendarScreenState
       );
       return;
     }
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: const Text('Cancel scheduled post?'),
+        content: const Text('This removes the post from the schedule.'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(dialogContext).pop(false),
+            child: const Text('Keep'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.of(dialogContext).pop(true),
+            child: const Text('Cancel post'),
+          ),
+        ],
+      ),
+    );
+    if (confirmed != true || !mounted) return;
     final error = await ref
         .read(facebookDraftProvider.notifier)
         .cancelScheduledPost(record.postId);

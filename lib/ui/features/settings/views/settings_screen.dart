@@ -57,13 +57,48 @@ class SettingsScreen extends ConsumerWidget {
     final notifier = ref.read(settingsViewModelProvider.notifier);
     final theme = Theme.of(context);
 
+    // Avoid flashing default "Setup 0 of 3" values while secure storage and
+    // prefs are still loading.
+    if (!state.isInitialized) {
+      return Scaffold(
+        appBar: AppBar(
+          title: Text(
+            'Settings',
+            style: theme.textTheme.titleMedium?.copyWith(
+              fontWeight: FontWeight.w700,
+              letterSpacing: -0.3,
+            ),
+          ),
+          bottom: PreferredSize(
+            preferredSize: const Size.fromHeight(1),
+            child: Container(color: theme.colorScheme.outline, height: 1),
+          ),
+        ),
+        body: ListView(
+          padding: const EdgeInsets.fromLTRB(
+            AppSpacing.base,
+            AppSpacing.base,
+            AppSpacing.base,
+            AppSpacing.xxl,
+          ),
+          children: const [
+            _SettingsSkeletonCard(height: 96),
+            SizedBox(height: AppSpacing.base),
+            _SettingsSkeletonCard(height: 220),
+            SizedBox(height: AppSpacing.base),
+            _SettingsSkeletonCard(height: 160),
+          ],
+        ),
+      );
+    }
+
     final hasKey = state.currentApiKey?.isNotEmpty ?? false;
-    final hasModel = state.selectedModel != null;
     final verified = state.lastTestOk == true;
 
-    final setupComplete = hasKey && hasModel && verified;
-    final setupCount =
-        (hasKey ? 1 : 0) + (hasModel ? 1 : 0) + (verified ? 1 : 0);
+    // Auto-select (selectedModel == null) is a valid model choice, so setup
+    // only requires a key and a verified connection.
+    final setupComplete = hasKey && verified;
+    final setupCount = (hasKey ? 1 : 0) + (verified ? 1 : 0);
 
     final defaultGroup = state.hashtagGroups
         .where((g) => g.isDefault)
@@ -94,14 +129,22 @@ class SettingsScreen extends ConsumerWidget {
           providerName: state.selectedProvider.displayName,
           nextLabel: !hasKey
               ? 'Add your ${state.selectedProvider.displayName} key to start generating'
-              : !hasModel
-              ? 'Pick a model for ${state.selectedProvider.displayName}'
               : 'Verify your connection',
           onAction: !hasKey
               ? () => ApiKeyDialog.show(context, state.selectedProvider)
-              : !hasModel
-              ? () => ModelSelectionDialog.show(context, state.selectedProvider)
-              : null,
+              : () async {
+                  final ok = await notifier.testConnection();
+                  if (!context.mounted) return;
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(
+                      content: Text(
+                        ok
+                            ? '${state.selectedProvider.displayName} connected successfully'
+                            : 'Connection failed — check your API key',
+                      ),
+                    ),
+                  );
+                },
         ),
       const SectionHeader(title: 'Appearance'),
       AppCard(
@@ -773,6 +816,28 @@ class _FanClubFieldState extends ConsumerState<_FanClubField> {
               ),
             ),
         ],
+      ),
+    );
+  }
+}
+
+/// Neutral placeholder shown while Settings loads from prefs/secure storage.
+class _SettingsSkeletonCard extends StatelessWidget {
+  const _SettingsSkeletonCard({required this.height});
+
+  final double height;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    return AppCard(
+      padding: const EdgeInsets.all(AppSpacing.base),
+      child: Container(
+        height: height,
+        decoration: BoxDecoration(
+          color: theme.colorScheme.onSurface.withValues(alpha: 0.05),
+          borderRadius: AppSpacing.borderRadiusMd,
+        ),
       ),
     );
   }

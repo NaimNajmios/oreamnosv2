@@ -24,6 +24,8 @@ class _TavilyApiKeyDialogState extends ConsumerState<TavilyApiKeyDialog> {
   late TextEditingController _controller;
   bool _isLoading = false;
   bool _obscureText = true;
+  bool _hasExistingKey = false;
+  String _maskedKey = '';
 
   @override
   void initState() {
@@ -35,9 +37,14 @@ class _TavilyApiKeyDialogState extends ConsumerState<TavilyApiKeyDialog> {
   Future<void> _loadExistingKey() async {
     final viewModel = ref.read(settingsViewModelProvider.notifier);
     final existingKey = await viewModel.getTavilyApiKey();
-    if (mounted && existingKey != null) {
-      _controller.text = existingKey;
-    }
+    if (!mounted) return;
+    final key = existingKey?.trim() ?? '';
+    setState(() {
+      _hasExistingKey = key.isNotEmpty;
+      _maskedKey = key.length <= 4
+          ? '••••'
+          : '••••${key.substring(key.length - 4)}';
+    });
   }
 
   @override
@@ -65,6 +72,58 @@ class _TavilyApiKeyDialogState extends ConsumerState<TavilyApiKeyDialog> {
         ScaffoldMessenger.of(
           context,
         ).showSnackBar(const SnackBar(content: Text('Tavily API Key saved')));
+      }
+    } catch (_) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text("Couldn't save the key securely. Try again."),
+          ),
+        );
+      }
+    } finally {
+      if (mounted) {
+        setState(() => _isLoading = false);
+      }
+    }
+  }
+
+  Future<void> _removeKey() async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: const Text('Remove Tavily key?'),
+        content: const Text(
+          'Live web search will be unavailable until you add it again.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(dialogContext).pop(false),
+            child: const Text('Cancel'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.of(dialogContext).pop(true),
+            child: const Text('Remove'),
+          ),
+        ],
+      ),
+    );
+    if (confirmed != true || !mounted) return;
+
+    setState(() => _isLoading = true);
+    try {
+      await ref.read(settingsViewModelProvider.notifier).clearTavilyApiKey();
+      if (!mounted) return;
+      Haptics.mediumImpact();
+      Navigator.of(context).pop();
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('Tavily API Key removed')));
+    } catch (_) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text("Couldn't remove the key. Try again.")),
+        );
       }
     } finally {
       if (mounted) {
@@ -133,7 +192,9 @@ class _TavilyApiKeyDialogState extends ConsumerState<TavilyApiKeyDialog> {
               AppInput(
                 controller: _controller,
                 label: 'API Key',
-                hint: 'tvly-...',
+                hint: _hasExistingKey
+                    ? 'Stored $_maskedKey — paste to replace'
+                    : 'tvly-...',
                 maxLines: 1,
                 obscureText: _obscureText,
                 suffixIcon: IconButton(
@@ -152,6 +213,17 @@ class _TavilyApiKeyDialogState extends ConsumerState<TavilyApiKeyDialog> {
               Row(
                 mainAxisAlignment: MainAxisAlignment.end,
                 children: [
+                  if (_hasExistingKey)
+                    TextButton(
+                      onPressed: _isLoading ? null : _removeKey,
+                      child: Text(
+                        'Remove',
+                        style: TextStyle(
+                          color: Theme.of(context).colorScheme.error,
+                        ),
+                      ),
+                    ),
+                  const Spacer(),
                   TextButton(
                     onPressed: () => Navigator.of(context).pop(),
                     child: const Text('Cancel'),

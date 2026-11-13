@@ -297,11 +297,13 @@ void main() {
       notifier.startDraft('Hello');
       notifier.setDraftText('Hello edited');
       expect(container.read(facebookDraftProvider).text, 'Hello edited');
+      final attachResult = await notifier.attachImage(ImageSource.gallery);
       expect(
-        await notifier.attachImage(ImageSource.gallery),
-        isFalse,
-        reason: 'no plugin in test env → cancel treated as no-image',
+        attachResult,
+        isNot(isA<MediaAttachAdded>()),
+        reason: 'no plugin in test env → attach fails or cancels',
       );
+      expect(container.read(facebookDraftProvider).media, isEmpty);
       container.dispose();
     });
 

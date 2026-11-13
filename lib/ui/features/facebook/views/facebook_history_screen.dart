@@ -369,6 +369,14 @@ class _RecordTile extends ConsumerWidget {
       case 'open':
         await _open(context);
       case 'copy':
+        if (record.permalink.trim().isEmpty) {
+          if (context.mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(content: Text('This post has no link to copy.')),
+            );
+          }
+          break;
+        }
         await Clipboard.setData(ClipboardData(text: record.permalink));
         Haptics.lightImpact();
         if (context.mounted) {

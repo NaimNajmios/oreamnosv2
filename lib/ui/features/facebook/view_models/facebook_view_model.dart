@@ -27,6 +27,28 @@ import '../../../../domain/services/facebook_story_title.dart';
 import '../../../../domain/services/facebook_text_formatter.dart';
 import 'facebook_state.dart';
 
+/// Result of a gallery/camera attach attempt. Callers should surface
+/// [MediaAttachFailed]; [MediaAttachCancelled] is a normal user abort.
+sealed class MediaAttachResult {
+  const MediaAttachResult();
+}
+
+class MediaAttachAdded extends MediaAttachResult {
+  const MediaAttachAdded(this.count);
+
+  final int count;
+}
+
+class MediaAttachCancelled extends MediaAttachResult {
+  const MediaAttachCancelled();
+}
+
+class MediaAttachFailed extends MediaAttachResult {
+  const MediaAttachFailed(this.message);
+
+  final String message;
+}
+
 final facebookViewModelProvider =
     NotifierProvider<FacebookNotifier, FacebookUiState>(
       () => FacebookNotifier(),
@@ -327,6 +349,8 @@ class FacebookDraftNotifier extends Notifier<FacebookComposeState> {
   Timer? _autosaveTimer;
   Timer? _reconcileRetryTimer;
   int _reconcileRetryAttempt = 0;
+  bool _reconcileInFlight = false;
+  static const Duration _reconcileTtl = Duration(minutes: 2);
   int _saveSequence = 0;
   String? _activeDraftId;
   String _pageId = '';
@@ -745,9 +769,13 @@ class FacebookDraftNotifier extends Notifier<FacebookComposeState> {
     });
   }
 
-  /// Gallery pick for one or more photos (cap 10). Returns how many were added.
-  Future<int> attachImages(ImageSource source) async {
-    if (!state.canAddMoreMedia) return 0;
+  /// Gallery pick for one or more photos (cap 10).
+  Future<MediaAttachResult> attachImages(ImageSource source) async {
+    if (!state.canAddMoreMedia) {
+      return const MediaAttachFailed(
+        'You already attached the maximum photos.',
+      );
+    }
     final slots = FacebookLimits.maxPhotos - state.media.length;
     try {
       final files = await ImagePicker().pickMultiImage(
@@ -755,7 +783,7 @@ class FacebookDraftNotifier extends Notifier<FacebookComposeState> {
         imageQuality: 85,
         limit: slots,
       );
-      if (files.isEmpty) return 0;
+      if (files.isEmpty) return const MediaAttachCancelled();
       final aspect = state.mediaItem?.aspect ?? FacebookImageAspect.portrait;
       final added = files
           .take(slots)
@@ -767,27 +795,29 @@ class FacebookDraftNotifier extends Notifier<FacebookComposeState> {
             ),
           )
           .toList();
-      if (added.isEmpty) return 0;
+      if (added.isEmpty) return const MediaAttachCancelled();
       state = state.copyWith(
         media: [...state.media, ...added],
         restoredFromStorage: false,
       );
       _scheduleAutosave();
-      return added.length;
+      return MediaAttachAdded(added.length);
     } catch (_) {
-      return 0;
+      return const MediaAttachFailed(
+        'Could not add photos. Check photo permissions and try again.',
+      );
     }
   }
 
   /// Camera pick — replaces the current photos with a single new capture.
-  Future<bool> attachImage(ImageSource source) async {
+  Future<MediaAttachResult> attachImage(ImageSource source) async {
     try {
       final picked = await ImagePicker().pickImage(
         source: source,
         maxWidth: 2048,
         imageQuality: 85,
       );
-      if (picked == null) return false;
+      if (picked == null) return const MediaAttachCancelled();
       final existing = state.mediaItem;
       state = state.copyWith(
         media: [
@@ -800,9 +830,11 @@ class FacebookDraftNotifier extends Notifier<FacebookComposeState> {
         restoredFromStorage: false,
       );
       _scheduleAutosave();
-      return true;
+      return const MediaAttachAdded(1);
     } catch (_) {
-      return false;
+      return const MediaAttachFailed(
+        'Could not open the camera. Check camera permissions and try again.',
+      );
     }
   }
 
@@ -816,6 +848,14 @@ class FacebookDraftNotifier extends Notifier<FacebookComposeState> {
 
   void removeImage() {
     clearMedia();
+  }
+
+  /// Marks the restore notice as shown so it does not reappear on every
+  /// composer entry.
+  void acknowledgeRestore() {
+    if (state.restoredFromStorage) {
+      state = state.copyWith(restoredFromStorage: false);
+    }
   }
 
   /// Removes every attached photo.
@@ -1375,7 +1415,25 @@ class FacebookDraftNotifier extends Notifier<FacebookComposeState> {
   /// Best-effort reconciliation with `/{page}/scheduled_posts`: any local
   /// scheduled record whose time has passed and is no longer scheduled on
   /// Graph is promoted to published. Fetch failures leave records untouched.
+  /// Non-forced calls are throttled for [_reconcileTtl] because the hub
+  /// remounts on every tab switch.
   Future<void> reconcileScheduled({bool force = false}) async {
+    if (_reconcileInFlight) return;
+    if (!force) {
+      final last = _preferencesService.lastFacebookReconcile;
+      if (last != null && DateTime.now().difference(last) < _reconcileTtl) {
+        return;
+      }
+    }
+    _reconcileInFlight = true;
+    try {
+      await _reconcileScheduledBody(force: force);
+    } finally {
+      _reconcileInFlight = false;
+    }
+  }
+
+  Future<void> _reconcileScheduledBody({required bool force}) async {
     if (force) _cancelReconcileRetry();
     final conn = ref.read(facebookViewModelProvider);
     if (!conn.isConnected) return;
@@ -1386,6 +1444,7 @@ class FacebookDraftNotifier extends Notifier<FacebookComposeState> {
     final scheduled = history.records.where((r) => r.isScheduled).toList();
     if (scheduled.isEmpty) {
       _cancelReconcileRetry();
+      await _preferencesService.setLastFacebookReconcile(DateTime.now());
       if (state.scheduledSyncFailed) {
         state = state.copyWith(scheduledSyncFailed: false);
       }
@@ -1410,6 +1469,7 @@ class FacebookDraftNotifier extends Notifier<FacebookComposeState> {
       return;
     }
     _cancelReconcileRetry();
+    await _preferencesService.setLastFacebookReconcile(DateTime.now());
     if (state.scheduledSyncFailed) {
       state = state.copyWith(scheduledSyncFailed: false);
     }
