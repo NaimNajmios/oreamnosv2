@@ -225,6 +225,11 @@ class FacebookDraftStore {
       mode: source.mode,
       scheduledAt: source.scheduledAt,
       updatedAt: DateTime.now(),
+      workflowId: source.workflowId,
+      workflowName: source.workflowName,
+      publishFeed: source.publishFeed,
+      storyEnabled: source.storyEnabled,
+      storyTitle: source.storyTitle,
     );
     await save(copy);
     return newId;

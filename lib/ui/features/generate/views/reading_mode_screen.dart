@@ -117,8 +117,8 @@ class _ReadingModeScreenState extends ConsumerState<ReadingModeScreen>
                       onVerticalDragUpdate: _onVerticalDragUpdate,
                       onVerticalDragEnd: _onVerticalDragEnd,
                       child: Container(
-                        width: 44,
-                        height: 28,
+                        width: 56,
+                        height: 48,
                         alignment: Alignment.center,
                         child: Container(
                           width: 36,

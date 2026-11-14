@@ -29,6 +29,9 @@ class FacebookComposerCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final captionLength = draft.text.runes.length;
+    final showCaptionCap = captionLength >= 50000;
+    final overCaptionCap = captionLength > FacebookLimits.maxCaptionLength;
     return AppCard(
       padding: EdgeInsets.zero,
       borderRadius: AppSpacing.borderRadiusLg,
@@ -62,9 +65,16 @@ class FacebookComposerCard extends StatelessWidget {
             child: Row(
               children: [
                 Text(
-                  '${draft.text.length} chars',
+                  showCaptionCap
+                      ? '$captionLength / ${FacebookLimits.maxCaptionLength}'
+                      : '$captionLength chars',
                   style: theme.textTheme.labelSmall?.copyWith(
-                    color: theme.colorScheme.onSurfaceVariant,
+                    color: overCaptionCap
+                        ? theme.colorScheme.error
+                        : theme.colorScheme.onSurfaceVariant,
+                    fontWeight: overCaptionCap
+                        ? FontWeight.w700
+                        : FontWeight.w400,
                   ),
                 ),
                 const Spacer(),

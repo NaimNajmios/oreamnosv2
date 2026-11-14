@@ -10,6 +10,42 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 enum LogLevel { debug, info, warning, error }
 
+/// Strips credential-shaped values before a log entry is buffered, printed,
+/// or persisted. Request bodies are never logged in the first place.
+abstract final class LogRedactor {
+  static const String _mask = '[redacted]';
+
+  static final List<RegExp> _patterns = [
+    RegExp(r'(authorization\s*:\s*bearer\s+)[^\s,;]+', caseSensitive: false),
+    RegExp(
+      r'''\b(access_token|refresh_token|api_key|apikey|client_secret|token|secret|key)\b(\s*[=:]\s*)[^\s,;&"'}]+''',
+      caseSensitive: false,
+    ),
+    RegExp(r'\bEAA[A-Za-z0-9]{10,}\b'),
+    RegExp(r'\b[A-Za-z0-9+/]{40,}={0,2}\b'),
+  ];
+
+  static String? redact(String? input) {
+    if (input == null || input.isEmpty) return input;
+    var value = input;
+    for (var i = 0; i < _patterns.length; i++) {
+      final pattern = _patterns[i];
+      value = value.replaceAllMapped(pattern, (match) {
+        // Bearer and assignment patterns keep their label so the log stays
+        // readable; bare tokens and blobs become the mask alone.
+        if (match.groupCount >= 2 && match.group(2) != null) {
+          return '${match.group(1)}${match.group(2)}$_mask';
+        }
+        if (match.groupCount == 1 && match.group(1) != null) {
+          return '${match.group(1)}$_mask';
+        }
+        return _mask;
+      });
+    }
+    return value;
+  }
+}
+
 extension LogLevelX on LogLevel {
   String get label => switch (this) {
     LogLevel.debug => 'DEBUG',
@@ -266,6 +302,9 @@ class LogService implements ILogService {
     String tag = 'App',
     String? details,
   }) {
+    final safeMessage = LogRedactor.redact(message) ?? '';
+    final safeError = LogRedactor.redact(error);
+    final safeDetails = LogRedactor.redact(details);
     if (_logs.length >= _maxLogs) {
       _logs.removeAt(0);
     }
@@ -273,15 +312,16 @@ class LogService implements ILogService {
       LogEntry(
         timestamp: DateTime.now(),
         level: level,
-        message: message,
-        error: error,
+        message: safeMessage,
+        error: safeError,
         tag: tag,
-        details: details,
+        details: safeDetails,
       ),
     );
     if (kDebugMode) {
       print(
-        '[$level][$tag] $message ${error != null ? '\nError: $error' : ''}',
+        '[$level][$tag] $safeMessage '
+        '${safeError != null ? '\nError: $safeError' : ''}',
       );
     }
     _scheduleThrottledNotify();

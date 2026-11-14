@@ -9,6 +9,7 @@ import 'package:oreamnos/config/theme/app_motion.dart';
 import 'package:oreamnos/config/theme/app_spacing.dart';
 import 'package:oreamnos/config/theme/app_theme.dart';
 import 'package:oreamnos/ui/core/utils/haptics.dart';
+import 'package:oreamnos/ui/core/utils/relative_time.dart';
 import 'package:oreamnos/ui/core/widgets/app_card.dart';
 import 'package:oreamnos/ui/core/widgets/app_input.dart';
 import 'package:oreamnos/ui/core/widgets/app_switch.dart';
@@ -42,20 +43,21 @@ class SettingsScreen extends ConsumerWidget {
     return tone[0].toUpperCase() + tone.substring(1);
   }
 
-  static String _relativeTime(DateTime? at) {
-    if (at == null) return '';
-    final diff = DateTime.now().difference(at);
-    if (diff.inSeconds < 60) return 'just now';
-    if (diff.inMinutes < 60) return '${diff.inMinutes}m ago';
-    if (diff.inHours < 24) return '${diff.inHours}h ago';
-    return '${diff.inDays}d ago';
-  }
-
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final state = ref.watch(settingsViewModelProvider);
     final notifier = ref.read(settingsViewModelProvider.notifier);
     final theme = Theme.of(context);
+
+    Future<void> apply(Future<bool> Function() write) async {
+      final ok = await write();
+      if (ok || !context.mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text("Couldn't save that setting — try again."),
+        ),
+      );
+    }
 
     // Avoid flashing default "Setup 0 of 3" values while secure storage and
     // prefs are still loading.
@@ -157,7 +159,8 @@ class SettingsScreen extends ConsumerWidget {
                 child: _ThemeOption(
                   mode: _curatedThemes[i],
                   isSelected: state.themeMode == _curatedThemes[i],
-                  onTap: () => notifier.setThemeMode(_curatedThemes[i]),
+                  onTap: () =>
+                      apply(() => notifier.setThemeMode(_curatedThemes[i])),
                 ),
               ),
               if (i != _curatedThemes.length - 1)
@@ -166,7 +169,7 @@ class SettingsScreen extends ConsumerWidget {
             const SizedBox(width: AppSpacing.sm),
             _SeeAllThemes(
               current: state.themeMode,
-              onSelect: (m) => notifier.setThemeMode(m),
+              onSelect: (m) => apply(() => notifier.setThemeMode(m)),
             ),
           ],
         ),
@@ -178,7 +181,7 @@ class SettingsScreen extends ConsumerWidget {
             leadingIcon: Icons.smart_toy_outlined,
             title: 'Active Provider',
             subtitle: state.lastTestOk == true
-                ? '${state.selectedProvider.displayName} · Connected ${_relativeTime(state.lastTestedAt)}'
+                ? '${state.selectedProvider.displayName} · Connected ${relativeTime(state.lastTestedAt)}'
                 : state.lastTestOk == false
                 ? '${state.selectedProvider.displayName} · Failed — test again'
                 : state.selectedProvider.displayName,
@@ -239,7 +242,8 @@ class SettingsScreen extends ConsumerWidget {
                 'Persist last-used length & research mode across sessions',
             trailing: AppSwitch(
               value: state.persistGenerationOptions,
-              onChanged: (value) => notifier.setPersistGenerationOptions(value),
+              onChanged: (value) =>
+                  apply(() => notifier.setPersistGenerationOptions(value)),
             ),
           ),
           SettingsTile(
@@ -252,7 +256,8 @@ class SettingsScreen extends ConsumerWidget {
                 : 'Write as a fan',
             trailing: AppSwitch(
               value: state.isFanModeEnabled,
-              onChanged: (value) => notifier.setFanModeEnabled(value),
+              onChanged: (value) =>
+                  apply(() => notifier.setFanModeEnabled(value)),
             ),
           ),
           if (state.isFanModeEnabled)
@@ -273,8 +278,10 @@ class SettingsScreen extends ConsumerWidget {
                 : 'Auto: free cloud vision first, then on-device',
             trailing: AppSwitch(
               value: state.visionMode == VisionMode.onDeviceOnly,
-              onChanged: (value) => notifier.setVisionMode(
-                value ? VisionMode.onDeviceOnly : VisionMode.auto,
+              onChanged: (value) => apply(
+                () => notifier.setVisionMode(
+                  value ? VisionMode.onDeviceOnly : VisionMode.auto,
+                ),
               ),
             ),
           ),
@@ -292,7 +299,8 @@ class SettingsScreen extends ConsumerWidget {
             subtitle: 'Automatically append default group',
             trailing: AppSwitch(
               value: state.autoAppendHashtags,
-              onChanged: (value) => notifier.setAutoAppendHashtags(value),
+              onChanged: (value) =>
+                  apply(() => notifier.setAutoAppendHashtags(value)),
             ),
           ),
           SettingsTile(
@@ -312,7 +320,7 @@ class SettingsScreen extends ConsumerWidget {
             leadingIcon: Icons.analytics_outlined,
             title: 'Usage Statistics',
             subtitle: 'View token usage & latency',
-            onTap: () => context.push(RoutePaths.usage),
+            onTap: () => context.go(RoutePaths.usage),
           ),
         ],
       ),
@@ -482,76 +490,82 @@ class _ThemeOption extends StatelessWidget {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final preview = _previewFor(mode, context);
-    return GestureDetector(
-      onTap: () {
-        Haptics.lightImpact();
-        onTap();
-      },
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Container(
-            width: 56,
-            height: 56,
-            decoration: BoxDecoration(
-              shape: BoxShape.circle,
-              border: Border.all(
-                color: isSelected
-                    ? theme.colorScheme.primary
-                    : theme.colorScheme.outlineVariant,
-                width: isSelected ? 2 : 1,
+    return Semantics(
+      button: true,
+      selected: isSelected,
+      label: '${mode.label} theme',
+      child: InkWell(
+        onTap: () {
+          Haptics.lightImpact();
+          onTap();
+        },
+        borderRadius: AppSpacing.borderRadiusMd,
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Container(
+              width: 56,
+              height: 56,
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                border: Border.all(
+                  color: isSelected
+                      ? theme.colorScheme.primary
+                      : theme.colorScheme.outlineVariant,
+                  width: isSelected ? 2 : 1,
+                ),
+              ),
+              child: Padding(
+                padding: const EdgeInsets.all(3),
+                child: mode == AppThemeMode.system
+                    ? Container(
+                        decoration: BoxDecoration(
+                          shape: BoxShape.circle,
+                          color: theme.colorScheme.surfaceContainerHighest,
+                        ),
+                        child: Icon(
+                          isSelected
+                              ? Icons.check_rounded
+                              : Icons.settings_suggest_rounded,
+                          size: 20,
+                          color: isSelected
+                              ? theme.colorScheme.primary
+                              : theme.colorScheme.onSurfaceVariant,
+                        ),
+                      )
+                    : Container(
+                        decoration: BoxDecoration(
+                          shape: BoxShape.circle,
+                          gradient: LinearGradient(
+                            colors: [preview.$1, preview.$2],
+                            begin: Alignment.topLeft,
+                            end: Alignment.bottomRight,
+                          ),
+                        ),
+                        child: isSelected
+                            ? const Icon(
+                                Icons.check_rounded,
+                                size: 20,
+                                color: Colors.white,
+                              )
+                            : null,
+                      ),
               ),
             ),
-            child: Padding(
-              padding: const EdgeInsets.all(3),
-              child: mode == AppThemeMode.system
-                  ? Container(
-                      decoration: BoxDecoration(
-                        shape: BoxShape.circle,
-                        color: theme.colorScheme.surfaceContainerHighest,
-                      ),
-                      child: Icon(
-                        isSelected
-                            ? Icons.check_rounded
-                            : Icons.settings_suggest_rounded,
-                        size: 20,
-                        color: isSelected
-                            ? theme.colorScheme.primary
-                            : theme.colorScheme.onSurfaceVariant,
-                      ),
-                    )
-                  : Container(
-                      decoration: BoxDecoration(
-                        shape: BoxShape.circle,
-                        gradient: LinearGradient(
-                          colors: [preview.$1, preview.$2],
-                          begin: Alignment.topLeft,
-                          end: Alignment.bottomRight,
-                        ),
-                      ),
-                      child: isSelected
-                          ? const Icon(
-                              Icons.check_rounded,
-                              size: 20,
-                              color: Colors.white,
-                            )
-                          : null,
-                    ),
+            const SizedBox(height: AppSpacing.xs),
+            Text(
+              mode.label,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: theme.textTheme.labelSmall?.copyWith(
+                color: isSelected
+                    ? theme.colorScheme.onSurface
+                    : theme.colorScheme.onSurfaceVariant,
+                fontWeight: isSelected ? FontWeight.w700 : FontWeight.w500,
+              ),
             ),
-          ),
-          const SizedBox(height: AppSpacing.xs),
-          Text(
-            mode.label,
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
-            style: theme.textTheme.labelSmall?.copyWith(
-              color: isSelected
-                  ? theme.colorScheme.onSurface
-                  : theme.colorScheme.onSurfaceVariant,
-              fontWeight: isSelected ? FontWeight.w700 : FontWeight.w500,
-            ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }
@@ -611,113 +625,117 @@ class _SeeAllThemes extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    return GestureDetector(
-      onTap: () {
-        Haptics.lightImpact();
-        showModalBottomSheet<void>(
-          context: context,
-          showDragHandle: true,
-          builder: (sheetContext) => SafeArea(
-            child: Padding(
-              padding: const EdgeInsets.fromLTRB(
-                AppSpacing.screenHorizontal,
-                AppSpacing.sm,
-                AppSpacing.screenHorizontal,
-                AppSpacing.xl,
-              ),
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    'All themes',
-                    style: theme.textTheme.titleMedium?.copyWith(
-                      fontWeight: FontWeight.w700,
+    return Semantics(
+      button: true,
+      label: 'All themes',
+      child: InkWell(
+        onTap: () {
+          Haptics.lightImpact();
+          showModalBottomSheet<void>(
+            context: context,
+            showDragHandle: true,
+            builder: (sheetContext) => SafeArea(
+              child: Padding(
+                padding: const EdgeInsets.fromLTRB(
+                  AppSpacing.screenHorizontal,
+                  AppSpacing.sm,
+                  AppSpacing.screenHorizontal,
+                  AppSpacing.xl,
+                ),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'All themes',
+                      style: theme.textTheme.titleMedium?.copyWith(
+                        fontWeight: FontWeight.w700,
+                      ),
                     ),
-                  ),
-                  const SizedBox(height: AppSpacing.xs),
-                  Text(
-                    'Pick the look for the whole app.',
-                    style: theme.textTheme.bodySmall?.copyWith(
-                      color: theme.colorScheme.onSurfaceVariant,
+                    const SizedBox(height: AppSpacing.xs),
+                    Text(
+                      'Pick the look for the whole app.',
+                      style: theme.textTheme.bodySmall?.copyWith(
+                        color: theme.colorScheme.onSurfaceVariant,
+                      ),
                     ),
-                  ),
-                  const SizedBox(height: AppSpacing.md),
-                  Flexible(
-                    child: ListView.separated(
-                      shrinkWrap: true,
-                      itemCount: AppThemeMode.values.length,
-                      separatorBuilder: (_, _) => const Divider(height: 1),
-                      itemBuilder: (_, i) {
-                        final mode = AppThemeMode.values[i];
-                        final selected = mode == current;
-                        return ListTile(
-                          contentPadding: const EdgeInsets.symmetric(
-                            horizontal: AppSpacing.sm,
-                          ),
-                          leading: _MiniSwatch(mode: mode),
-                          title: Text(
-                            mode.label,
-                            style: theme.textTheme.titleSmall?.copyWith(
-                              fontWeight: selected
-                                  ? FontWeight.w700
-                                  : FontWeight.w500,
-                              color: selected
-                                  ? theme.colorScheme.primary
-                                  : theme.colorScheme.onSurface,
+                    const SizedBox(height: AppSpacing.md),
+                    Flexible(
+                      child: ListView.separated(
+                        shrinkWrap: true,
+                        itemCount: AppThemeMode.values.length,
+                        separatorBuilder: (_, _) => const Divider(height: 1),
+                        itemBuilder: (_, i) {
+                          final mode = AppThemeMode.values[i];
+                          final selected = mode == current;
+                          return ListTile(
+                            contentPadding: const EdgeInsets.symmetric(
+                              horizontal: AppSpacing.sm,
                             ),
-                          ),
-                          subtitle: Text(
-                            _descriptions[mode] ?? '',
-                            style: theme.textTheme.bodySmall?.copyWith(
-                              color: theme.colorScheme.onSurfaceVariant,
+                            leading: _MiniSwatch(mode: mode),
+                            title: Text(
+                              mode.label,
+                              style: theme.textTheme.titleSmall?.copyWith(
+                                fontWeight: selected
+                                    ? FontWeight.w700
+                                    : FontWeight.w500,
+                                color: selected
+                                    ? theme.colorScheme.primary
+                                    : theme.colorScheme.onSurface,
+                              ),
                             ),
-                          ),
-                          trailing: selected
-                              ? Icon(
-                                  Icons.check_circle_rounded,
-                                  color: theme.colorScheme.primary,
-                                )
-                              : null,
-                          onTap: () {
-                            Haptics.selectionClick();
-                            onSelect(mode);
-                            Navigator.of(sheetContext).pop();
-                          },
-                        );
-                      },
+                            subtitle: Text(
+                              _descriptions[mode] ?? '',
+                              style: theme.textTheme.bodySmall?.copyWith(
+                                color: theme.colorScheme.onSurfaceVariant,
+                              ),
+                            ),
+                            trailing: selected
+                                ? Icon(
+                                    Icons.check_circle_rounded,
+                                    color: theme.colorScheme.primary,
+                                  )
+                                : null,
+                            onTap: () {
+                              Haptics.selectionClick();
+                              onSelect(mode);
+                              Navigator.of(sheetContext).pop();
+                            },
+                          );
+                        },
+                      ),
                     ),
-                  ),
-                ],
+                  ],
+                ),
               ),
             ),
-          ),
-        );
-      },
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Container(
-            width: 56,
-            height: 56,
-            decoration: BoxDecoration(
-              shape: BoxShape.circle,
-              color: theme.colorScheme.surfaceContainerHighest,
-              border: Border.all(color: theme.colorScheme.outlineVariant),
+          );
+        },
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Container(
+              width: 56,
+              height: 56,
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                color: theme.colorScheme.surfaceContainerHighest,
+                border: Border.all(color: theme.colorScheme.outlineVariant),
+              ),
+              child: Icon(
+                Icons.more_horiz_rounded,
+                color: theme.colorScheme.onSurfaceVariant,
+              ),
             ),
-            child: Icon(
-              Icons.more_horiz_rounded,
-              color: theme.colorScheme.onSurfaceVariant,
+            const SizedBox(height: AppSpacing.xs),
+            Text(
+              'All',
+              style: theme.textTheme.labelSmall?.copyWith(
+                color: theme.colorScheme.onSurfaceVariant,
+              ),
             ),
-          ),
-          const SizedBox(height: AppSpacing.xs),
-          Text(
-            'All',
-            style: theme.textTheme.labelSmall?.copyWith(
-              color: theme.colorScheme.onSurfaceVariant,
-            ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }
@@ -759,11 +777,13 @@ class _FanClubField extends ConsumerStatefulWidget {
 
 class _FanClubFieldState extends ConsumerState<_FanClubField> {
   late final TextEditingController _controller;
+  late final SettingsNotifier _notifier;
   Timer? _debounce;
 
   @override
   void initState() {
     super.initState();
+    _notifier = ref.read(settingsViewModelProvider.notifier);
     _controller = TextEditingController(
       text: ref.read(settingsViewModelProvider).fanClubName,
     );
@@ -772,6 +792,8 @@ class _FanClubFieldState extends ConsumerState<_FanClubField> {
   @override
   void dispose() {
     _debounce?.cancel();
+    // Flush an in-flight edit instead of dropping it when the field unmounts.
+    unawaited(_notifier.setFanClubName(_controller.text.trim()));
     _controller.dispose();
     super.dispose();
   }
@@ -779,7 +801,7 @@ class _FanClubFieldState extends ConsumerState<_FanClubField> {
   void _onChanged(String value) {
     _debounce?.cancel();
     _debounce = Timer(const Duration(milliseconds: 500), () {
-      ref.read(settingsViewModelProvider.notifier).setFanClubName(value.trim());
+      unawaited(_notifier.setFanClubName(value.trim()));
     });
   }
 

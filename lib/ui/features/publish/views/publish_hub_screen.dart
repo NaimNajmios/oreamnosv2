@@ -9,6 +9,7 @@ import 'package:oreamnos/data/services/facebook_draft_store.dart';
 import 'package:oreamnos/data/services/facebook_export_service.dart';
 import 'package:oreamnos/data/services/facebook_workflow_store.dart';
 import 'package:oreamnos/data/services/facebook_history_service.dart';
+import 'package:oreamnos/data/services/log_service.dart';
 import 'package:oreamnos/domain/models/facebook_page_insights.dart';
 import 'package:oreamnos/domain/models/facebook_post_record.dart';
 import 'package:oreamnos/domain/models/posting_time_slot.dart';
@@ -220,7 +221,10 @@ class _PublishHubScreenState extends ConsumerState<PublishHubScreen> {
       if (!mounted) return;
       ScaffoldMessenger.of(context)
           .showSnackBar(const SnackBar(content: Text('Export ready')));
-    } catch (_) {
+    } catch (e) {
+      if (getIt.isRegistered<LogService>()) {
+        getIt<LogService>().warning('Export failed: $e', tag: 'Facebook');
+      }
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text("Couldn't create the export")),
@@ -779,6 +783,29 @@ class _ReadyToPublishCard extends StatelessWidget {
               height: 1.35,
             ),
           ),
+          if (handoff.sourceDisplay.isNotEmpty) ...[
+            const SizedBox(height: AppSpacing.xs),
+            Row(
+              children: [
+                Icon(
+                  Icons.public_rounded,
+                  size: 13,
+                  color: theme.colorScheme.onSurfaceVariant,
+                ),
+                const SizedBox(width: 4),
+                Expanded(
+                  child: Text(
+                    'From ${handoff.sourceDisplay}',
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: theme.textTheme.labelSmall?.copyWith(
+                      color: theme.colorScheme.onSurfaceVariant,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ],
           const SizedBox(height: AppSpacing.xs),
           Text(
             [

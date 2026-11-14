@@ -70,6 +70,49 @@ class FacebookCommentsService {
     }
   }
 
+  Future<FacebookCommentPage> fetchReplies({
+    required String commentId,
+    required String token,
+    String? after,
+    int limit = 25,
+  }) async {
+    if (commentId.trim().isEmpty || token.trim().isEmpty) {
+      throw const FacebookApiException(
+        kind: FacebookApiErrorKind.permission,
+        message: 'Connect your Page before opening replies.',
+      );
+    }
+    try {
+      final response = await _client.get<dynamic>(
+        '$_pathBase/${Uri.encodeComponent(commentId)}/comments',
+        queryParameters: {
+          'fields':
+              'id,message,from{id,name},created_time,like_count,'
+              'comment_count,is_hidden,can_hide,can_remove,permalink_url',
+          'limit': '$limit',
+          'order': 'chronological',
+          if (after != null && after.isNotEmpty) 'after': after,
+        },
+        options: Options(
+          headers: {'Authorization': 'Bearer $token'},
+          receiveTimeout: AppConstants.facebookWriteTimeout,
+        ),
+      );
+      return _parsePage(
+        facebookRequireObject(response.data, action: 'replies'),
+      );
+    } on FacebookApiException {
+      rethrow;
+    } on DioException catch (e) {
+      throw _friendly(_map(e, 'Reply load'));
+    } catch (_) {
+      throw const FacebookApiException(
+        kind: FacebookApiErrorKind.unknown,
+        message: 'Could not load replies. Try again.',
+      );
+    }
+  }
+
   Future<void> reply({
     required String commentId,
     required String token,

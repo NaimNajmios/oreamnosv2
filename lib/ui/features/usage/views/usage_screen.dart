@@ -22,8 +22,11 @@ import '../../../core/widgets/empty_state.dart';
 import '../../../core/widgets/section_header.dart';
 import '../../../core/widgets/stat_card.dart';
 import '../../../core/widgets/app_chip.dart';
+import '../view_models/usage_analytics.dart';
+import '../view_models/usage_filter_view_model.dart';
 import 'widgets/provider_charts.dart';
 import 'widgets/usage_chart.dart';
+import 'widgets/usage_tables.dart';
 
 /// Serene Editorial Usage & Analytics screen — grouped, filtered, responsive.
 class UsageScreen extends ConsumerStatefulWidget {
@@ -34,18 +37,27 @@ class UsageScreen extends ConsumerStatefulWidget {
 }
 
 class _UsageScreenState extends ConsumerState<UsageScreen> {
-  String _filter = 'all';
   int _displayLimit = 10;
-  int _rangeDays = 0; // 0 = all time, else 7 / 30 / 90
+  bool _showTokenTable = false;
+  bool _showSuccessTable = false;
+  bool _showLatencyTable = false;
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final logsAll = ref.watch(usageNotifierProvider);
-    final logs = _filter == 'all'
-        ? logsAll
-        : logsAll.where((l) => l.providerId.toLowerCase() == _filter).toList();
+    final filter = ref.watch(usageFilterProvider);
+    final filterNotifier = ref.read(usageFilterProvider.notifier);
+    final analytics = UsageAnalytics.from(
+      logsAll,
+      rangeDays: filter.rangeDays,
+      providerFilter: filter.providerFilter,
+    );
+    final logs = analytics.logs;
+    final rangeLabel = analytics.rangeLabel;
+    final truncated =
+        filter.rangeDays != 0 && logsAll.length >= UsageService.maxLogs;
 
     // Daily RPD budget (device-local estimate; refreshes with usage logs).
     DailyUsageService? dailyUsage;
@@ -57,18 +69,49 @@ class _UsageScreenState extends ConsumerState<UsageScreen> {
       dailyUsage = null;
     }
 
-    int totalTokens = 0;
-    int successCount = 0;
-    int totalLatency = 0;
-
-    for (var log in logs) {
-      totalTokens += log.estimatedTokens;
-      if (log.isSuccess) successCount++;
-      totalLatency += log.latencyMs;
-    }
-
-    final successRate = logs.isEmpty ? 0.0 : (successCount / logs.length) * 100;
-    final avgLatency = logs.isEmpty ? 0 : totalLatency ~/ logs.length;
+    final totalTokens = analytics.totalTokens;
+    final successCount = analytics.successCount;
+    final successRate = analytics.successRate;
+    final avgLatency = analytics.avgLatency;
+    // At very large text the inline title + legend cannot fit; stack them so
+    // 100% keeps the original single-row arrangement.
+    final largeText = MediaQuery.textScalerOf(context).scale(1) > 1.3;
+    final chartIcon = Container(
+      width: 28,
+      height: 28,
+      decoration: BoxDecoration(
+        color: (isDark ? AppColors.darkVioletSoft : AppColors.lightVioletSoft)
+            .withValues(alpha: 0.35),
+        borderRadius: AppSpacing.borderRadiusXs,
+      ),
+      child: Icon(
+        Icons.show_chart_rounded,
+        size: 14,
+        color: isDark ? AppColors.darkViolet : AppColors.lightViolet,
+      ),
+    );
+    final chartTitle = Text(
+      'Token Usage History',
+      style: theme.textTheme.labelSmall?.copyWith(
+        letterSpacing: 0.8,
+        fontWeight: FontWeight.w700,
+        color: theme.colorScheme.onSurface.withValues(alpha: 0.75),
+      ),
+    );
+    final chartLegend = Wrap(
+      spacing: 10,
+      children: [
+        _LegendDot(
+          color: isDark ? AppColors.darkTeal : AppColors.lightTeal,
+          label: 'Tokens',
+        ),
+        _LegendDot(
+          color: isDark ? AppColors.darkViolet : AppColors.lightViolet,
+          label: 'Trend',
+        ),
+        _LegendDot(color: AppColors.error, label: 'Fail'),
+      ],
+    );
 
     return Scaffold(
       appBar: AppBar(
@@ -89,7 +132,7 @@ class _UsageScreenState extends ConsumerState<UsageScreen> {
             tooltip: 'Session History',
             onPressed: () => context.push(RoutePaths.sessionHistory),
           ),
-          if (logs.isNotEmpty ||
+          if (logsAll.isNotEmpty ||
               (dailyUsage?.hasGeminiActivityToday() ?? false))
             IconButton(
               icon: const Icon(Icons.delete_outline_rounded),
@@ -98,7 +141,7 @@ class _UsageScreenState extends ConsumerState<UsageScreen> {
             ),
         ],
       ),
-      body: logs.isEmpty
+      body: logsAll.isEmpty
           ? EmptyState(
               icon: Icons.analytics_outlined,
               title: 'No Usage Data Yet',
@@ -263,91 +306,92 @@ class _UsageScreenState extends ConsumerState<UsageScreen> {
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            Row(
-                              children: [
-                                Container(
-                                  width: 28,
-                                  height: 28,
-                                  decoration: BoxDecoration(
-                                    color:
-                                        (isDark
-                                                ? AppColors.darkVioletSoft
-                                                : AppColors.lightVioletSoft)
-                                            .withValues(alpha: 0.35),
-                                    borderRadius: AppSpacing.borderRadiusXs,
+                            if (largeText)
+                              Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Row(
+                                    children: [
+                                      chartIcon,
+                                      const SizedBox(width: AppSpacing.sm),
+                                      Expanded(child: chartTitle),
+                                    ],
                                   ),
-                                  child: Icon(
-                                    Icons.show_chart_rounded,
-                                    size: 14,
-                                    color: isDark
-                                        ? AppColors.darkViolet
-                                        : AppColors.lightViolet,
-                                  ),
-                                ),
-                                const SizedBox(width: AppSpacing.sm),
-                                Text(
-                                  'Token Usage History',
-                                  style: theme.textTheme.labelSmall?.copyWith(
-                                    letterSpacing: 0.8,
-                                    fontWeight: FontWeight.w700,
-                                    color: theme.colorScheme.onSurface
-                                        .withValues(alpha: 0.6),
-                                  ),
-                                ),
-                                const Spacer(),
-                                // Legend
-                                Wrap(
-                                  spacing: 10,
-                                  children: [
-                                    _LegendDot(
-                                      color: isDark
-                                          ? AppColors.darkTeal
-                                          : AppColors.lightTeal,
-                                      label: 'Tokens',
-                                    ),
-                                    _LegendDot(
-                                      color: isDark
-                                          ? AppColors.darkViolet
-                                          : AppColors.lightViolet,
-                                      label: 'Trend',
-                                    ),
-                                    _LegendDot(
-                                      color: AppColors.error,
-                                      label: 'Fail',
-                                    ),
-                                  ],
-                                ),
-                              ],
-                            ),
+                                  const SizedBox(height: AppSpacing.xs),
+                                  chartLegend,
+                                ],
+                              )
+                            else
+                              Row(
+                                children: [
+                                  chartIcon,
+                                  const SizedBox(width: AppSpacing.sm),
+                                  chartTitle,
+                                  const Spacer(),
+                                  chartLegend,
+                                ],
+                              ),
                             const SizedBox(height: AppSpacing.md),
                             Row(
                               children: [
                                 for (final days in [0, 7, 30, 90]) ...[
                                   AppChip(
                                     label: days == 0 ? 'All' : '${days}d',
-                                    selected: _rangeDays == days,
-                                    onTap: () => setState(() {
-                                      _rangeDays = days;
-                                    }),
+                                    selected: filter.rangeDays == days,
+                                    onTap: () =>
+                                        filterNotifier.setRangeDays(days),
                                   ),
                                   const SizedBox(width: AppSpacing.xs),
                                 ],
+                                const Spacer(),
+                                _TableToggle(
+                                  showingTable: _showTokenTable,
+                                  onPressed: () => setState(
+                                    () => _showTokenTable = !_showTokenTable,
+                                  ),
+                                ),
                               ],
                             ),
-                            const SizedBox(height: AppSpacing.sm),
-                            StaggeredEntranceItem(
-                              index: 3,
-                              child: AnimatedSwitcher(
-                                duration: AppMotion.transitionSpec,
-                                switchInCurve: AppMotion.curveTransition,
-                                child: KeyedSubtree(
-                                  key: ValueKey(
-                                    '${_rangeDays}_${_rangedLogs(logsAll).length}',
-                                  ),
-                                  child: UsageChart(logs: _rangedLogs(logsAll)),
+                            if (truncated) ...[
+                              const SizedBox(height: AppSpacing.xs),
+                              Text(
+                                'Showing the most recent '
+                                '${UsageService.maxLogs} requests',
+                                style: theme.textTheme.labelSmall?.copyWith(
+                                  color: theme.colorScheme.onSurfaceVariant,
                                 ),
                               ),
-                            ),
+                            ],
+                            const SizedBox(height: AppSpacing.sm),
+                            if (!analytics.hasData)
+                              _NoRangeData(
+                                rangeLabel: rangeLabel,
+                                onShowAll: filterNotifier.resetToAllTime,
+                              )
+                            else if (_showTokenTable)
+                              UsageTable(logs: logs)
+                            else
+                              StaggeredEntranceItem(
+                                index: 3,
+                                child: Semantics(
+                                  container: true,
+                                  label: _tokenChartLabel(analytics),
+                                  child: ExcludeSemantics(
+                                    child: AnimatedSwitcher(
+                                      duration: AppMotion.transitionSpec,
+                                      switchInCurve: AppMotion.curveTransition,
+                                      child: KeyedSubtree(
+                                        key: ValueKey(
+                                          '${filter.rangeDays}_'
+                                          '${filter.providerFilter}_'
+                                          '${logs.length}',
+                                        ),
+                                        child: UsageChart(logs: logs),
+                                      ),
+                                    ),
+                                  ),
+                                ),
+                              ),
                           ],
                         ),
                       ),
@@ -359,18 +403,44 @@ class _UsageScreenState extends ConsumerState<UsageScreen> {
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            Text(
-                              'SUCCESS RATE',
-                              style: theme.textTheme.labelSmall?.copyWith(
-                                letterSpacing: 0.8,
-                                fontWeight: FontWeight.w700,
-                                color: theme.colorScheme.onSurface.withValues(
-                                  alpha: 0.6,
+                            Row(
+                              children: [
+                                Expanded(
+                                  child: Text(
+                                    'SUCCESS RATE',
+                                    style: theme.textTheme.labelSmall?.copyWith(
+                                      letterSpacing: 0.8,
+                                      fontWeight: FontWeight.w700,
+                                      color: theme.colorScheme.onSurface
+                                          .withValues(alpha: 0.75),
+                                    ),
+                                  ),
                                 ),
-                              ),
+                                _TableToggle(
+                                  showingTable: _showSuccessTable,
+                                  onPressed: () => setState(
+                                    () =>
+                                        _showSuccessTable = !_showSuccessTable,
+                                  ),
+                                ),
+                              ],
                             ),
                             const SizedBox(height: AppSpacing.md),
-                            SuccessRateDonut(logs: _rangedLogs(logsAll)),
+                            if (!analytics.hasData)
+                              _NoRangeData(
+                                rangeLabel: rangeLabel,
+                                onShowAll: filterNotifier.resetToAllTime,
+                              )
+                            else if (_showSuccessTable)
+                              SuccessRateTable(logs: logs)
+                            else
+                              Semantics(
+                                container: true,
+                                label: _successChartLabel(analytics),
+                                child: ExcludeSemantics(
+                                  child: SuccessRateDonut(logs: logs),
+                                ),
+                              ),
                           ],
                         ),
                       ),
@@ -382,18 +452,44 @@ class _UsageScreenState extends ConsumerState<UsageScreen> {
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            Text(
-                              'RESPONSE TIME',
-                              style: theme.textTheme.labelSmall?.copyWith(
-                                letterSpacing: 0.8,
-                                fontWeight: FontWeight.w700,
-                                color: theme.colorScheme.onSurface.withValues(
-                                  alpha: 0.6,
+                            Row(
+                              children: [
+                                Expanded(
+                                  child: Text(
+                                    'RESPONSE TIME',
+                                    style: theme.textTheme.labelSmall?.copyWith(
+                                      letterSpacing: 0.8,
+                                      fontWeight: FontWeight.w700,
+                                      color: theme.colorScheme.onSurface
+                                          .withValues(alpha: 0.75),
+                                    ),
+                                  ),
                                 ),
-                              ),
+                                _TableToggle(
+                                  showingTable: _showLatencyTable,
+                                  onPressed: () => setState(
+                                    () =>
+                                        _showLatencyTable = !_showLatencyTable,
+                                  ),
+                                ),
+                              ],
                             ),
                             const SizedBox(height: AppSpacing.md),
-                            ResponseTimeBars(logs: _rangedLogs(logsAll)),
+                            if (!analytics.hasData)
+                              _NoRangeData(
+                                rangeLabel: rangeLabel,
+                                onShowAll: filterNotifier.resetToAllTime,
+                              )
+                            else if (_showLatencyTable)
+                              ResponseTimeTable(logs: logs)
+                            else
+                              Semantics(
+                                container: true,
+                                label: _latencyChartLabel(analytics),
+                                child: ExcludeSemantics(
+                                  child: ResponseTimeBars(logs: logs),
+                                ),
+                              ),
                           ],
                         ),
                       ),
@@ -416,11 +512,11 @@ class _UsageScreenState extends ConsumerState<UsageScreen> {
                             children: [
                               AppChip(
                                 label: 'All',
-                                selected: _filter == 'all',
-                                onTap: () => setState(() {
-                                  _filter = 'all';
-                                  _displayLimit = 10;
-                                }),
+                                selected: filter.providerFilter == 'all',
+                                onTap: () {
+                                  filterNotifier.setProviderFilter('all');
+                                  setState(() => _displayLimit = 10);
+                                },
                               ),
                               const SizedBox(width: AppSpacing.sm),
                               for (final p in [
@@ -432,11 +528,11 @@ class _UsageScreenState extends ConsumerState<UsageScreen> {
                                 )) ...[
                                   AppChip(
                                     label: p[0].toUpperCase() + p.substring(1),
-                                    selected: _filter == p,
-                                    onTap: () => setState(() {
-                                      _filter = p;
-                                      _displayLimit = 10;
-                                    }),
+                                    selected: filter.providerFilter == p,
+                                    onTap: () {
+                                      filterNotifier.setProviderFilter(p);
+                                      setState(() => _displayLimit = 10);
+                                    },
                                   ),
                                   const SizedBox(width: AppSpacing.sm),
                                 ],
@@ -445,17 +541,17 @@ class _UsageScreenState extends ConsumerState<UsageScreen> {
                         ),
                         const SizedBox(height: AppSpacing.md),
                       ],
-                      if (logs.isEmpty && _filter != 'all')
+                      if (logs.isEmpty)
                         Padding(
                           padding: const EdgeInsets.symmetric(
                             vertical: AppSpacing.lg,
                           ),
                           child: Text(
-                            'No requests for this provider.',
+                            filter.providerFilter == 'all'
+                                ? 'No requests in this range.'
+                                : 'No requests for this provider in this range.',
                             style: theme.textTheme.bodySmall?.copyWith(
-                              color: theme.colorScheme.onSurface.withValues(
-                                alpha: 0.5,
-                              ),
+                              color: theme.colorScheme.onSurfaceVariant,
                             ),
                           ),
                         )
@@ -611,10 +707,53 @@ class _UsageScreenState extends ConsumerState<UsageScreen> {
     );
   }
 
-  List<UsageLog> _rangedLogs(List<UsageLog> all) {
-    if (_rangeDays <= 0) return all;
-    final cutoff = DateTime.now().subtract(Duration(days: _rangeDays));
-    return all.where((l) => l.timestamp.isAfter(cutoff)).toList();
+  String _tokenChartLabel(UsageAnalytics analytics) {
+    final total = NumberFormat.compact().format(analytics.totalTokens);
+    return 'Token usage, ${analytics.logs.length} '
+        '${analytics.logs.length == 1 ? 'request' : 'requests'}, '
+        'total $total tokens, ${analytics.rangeLabel}.';
+  }
+
+  String _successChartLabel(UsageAnalytics analytics) {
+    final parts = <String>[];
+    for (final provider in _providers(analytics.logs)) {
+      final mine = analytics.logs
+          .where((log) => log.providerId.toLowerCase() == provider)
+          .toList(growable: false);
+      final rate = mine.isEmpty
+          ? 0
+          : (mine.where((log) => log.isSuccess).length / mine.length * 100)
+                .round();
+      parts.add('${provider[0].toUpperCase()}${provider.substring(1)} $rate%');
+    }
+    return 'Success rate ${analytics.successRate.round()}%, '
+        '${analytics.successCount} of ${analytics.logs.length} '
+        'requests${parts.isEmpty ? '' : ', ${parts.join(', ')}'}.';
+  }
+
+  String _latencyChartLabel(UsageAnalytics analytics) {
+    final parts = <String>[];
+    for (final provider in _providers(analytics.logs)) {
+      final mine = analytics.logs
+          .where((log) => log.providerId.toLowerCase() == provider)
+          .toList(growable: false);
+      if (mine.isEmpty) continue;
+      final avg =
+          mine.fold<int>(0, (sum, log) => sum + log.latencyMs) ~/ mine.length;
+      parts.add(
+        '${provider[0].toUpperCase()}${provider.substring(1)} ${avg}ms',
+      );
+    }
+    return 'Average response time: ${parts.join(', ')}.';
+  }
+
+  static List<String> _providers(List<UsageLog> logs) {
+    final providers = <String>[];
+    for (final log in logs) {
+      final id = log.providerId.toLowerCase();
+      if (!providers.contains(id)) providers.add(id);
+    }
+    return providers;
   }
 
   Widget _buildLogCard(BuildContext context, UsageLog log) {
@@ -663,8 +802,8 @@ class _UsageScreenState extends ConsumerState<UsageScreen> {
                 Text(
                   timeStr,
                   style: theme.textTheme.bodySmall?.copyWith(
-                    color: theme.colorScheme.onSurface.withValues(alpha: 0.5),
-                    fontSize: 11,
+                    color: theme.colorScheme.onSurfaceVariant,
+                    fontSize: 12,
                   ),
                 ),
               ],
@@ -749,6 +888,72 @@ class _UsageScreenState extends ConsumerState<UsageScreen> {
         }
       } catch (_) {}
     }
+  }
+}
+
+/// Shared empty state shown inside a chart card when the active range or
+/// provider filter yields no requests.
+class _NoRangeData extends StatelessWidget {
+  const _NoRangeData({required this.rangeLabel, required this.onShowAll});
+
+  final String rangeLabel;
+  final VoidCallback onShowAll;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: AppSpacing.base),
+      child: Column(
+        children: [
+          Icon(
+            Icons.query_stats_rounded,
+            size: 28,
+            color: theme.colorScheme.onSurfaceVariant,
+          ),
+          const SizedBox(height: AppSpacing.xs),
+          Text(
+            'No requests in $rangeLabel',
+            textAlign: TextAlign.center,
+            style: theme.textTheme.bodySmall?.copyWith(
+              color: theme.colorScheme.onSurfaceVariant,
+            ),
+          ),
+          TextButton(onPressed: onShowAll, child: const Text('Show all time')),
+        ],
+      ),
+    );
+  }
+}
+
+/// Chart/table switch shared by the three Usage cards. Compact so the card
+/// headers keep their original height.
+class _TableToggle extends StatelessWidget {
+  const _TableToggle({required this.showingTable, required this.onPressed});
+
+  final bool showingTable;
+  final VoidCallback onPressed;
+
+  @override
+  Widget build(BuildContext context) {
+    return Semantics(
+      button: true,
+      label: showingTable ? 'Show chart' : 'View as table',
+      child: InkResponse(
+        onTap: onPressed,
+        radius: 20,
+        child: Padding(
+          padding: const EdgeInsets.all(4),
+          child: Icon(
+            showingTable
+                ? Icons.show_chart_rounded
+                : Icons.table_chart_outlined,
+            size: 18,
+            color: Theme.of(context).colorScheme.onSurfaceVariant,
+          ),
+        ),
+      ),
+    );
   }
 }
 

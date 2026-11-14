@@ -100,23 +100,17 @@ class FacebookPerformanceNotifier extends Notifier<FacebookPerformanceState> {
       days: requestedDays,
     );
     FacebookMonetizationSnapshot? monetization;
-    try {
-      monetization = await _monetization.fetch(
-        pageId: pageId,
-        token: token,
-        days: 28,
-      );
-    } catch (_) {
-      // Earnings are optional; a failure must not hide performance.
-      monetization = state.monetization;
-    }
-    if (generation != _generation) return null;
+    final monetizationFuture = _monetization
+        .fetch(pageId: pageId, token: token, days: 28)
+        .then<FacebookMonetizationSnapshot?>((value) => value)
+        .catchError((_) => null);
     try {
       var data = await _service.fetch(
         pageId: pageId,
         token: token,
         days: requestedDays,
       );
+      monetization = await monetizationFuture;
       if (generation != _generation) return null;
       try {
         final previous = await _service.fetchPrevious(
@@ -147,7 +141,7 @@ class FacebookPerformanceNotifier extends Notifier<FacebookPerformanceState> {
       }
       state = FacebookPerformanceState(
         data: state.data,
-        monetization: monetization,
+        monetization: monetization ?? state.monetization,
         error: e.message,
         days: requestedDays,
       );
@@ -157,7 +151,7 @@ class FacebookPerformanceNotifier extends Notifier<FacebookPerformanceState> {
       const message = 'Could not load Page performance.';
       state = FacebookPerformanceState(
         data: state.data,
-        monetization: monetization,
+        monetization: monetization ?? state.monetization,
         error: message,
         days: requestedDays,
       );

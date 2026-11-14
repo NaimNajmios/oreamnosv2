@@ -947,5 +947,46 @@ void main() {
       expect(restored.restoredFromStorage, isTrue);
       container.dispose();
     });
+
+    test('canPublish rejects captions over the rune cap', () {
+      final atCap = FacebookComposeState(
+        text: 'a' * FacebookLimits.maxCaptionLength,
+      );
+      final overCap = FacebookComposeState(
+        text: 'a' * (FacebookLimits.maxCaptionLength + 1),
+      );
+      expect(atCap.canPublish, isTrue);
+      expect(overCap.canPublish, isFalse);
+      // Emoji count as one rune even though they span UTF-16 units.
+      final emoji = FacebookComposeState(
+        text: '😀' * (FacebookLimits.maxCaptionLength + 1),
+      );
+      expect(emoji.canPublish, isFalse);
+    });
+    test('autosave skips an unchanged draft and detects edits', () async {
+      final container = await buildContainer(_fakePublisher(200, {'id': 'p1'}));
+      final notifier = container.read(facebookDraftProvider.notifier);
+      notifier.startDraft('Same text');
+      await notifier.saveDraftNow();
+      expect(notifier.hasUnsavedChanges, isFalse);
+
+      final store = getIt<FacebookDraftStore>();
+      final savedAt = store.loadAll().single.updatedAt;
+      await Future<void>.delayed(const Duration(milliseconds: 20));
+      await notifier.saveDraftNow();
+
+      expect(
+        store.loadAll().single.updatedAt,
+        savedAt,
+        reason: 'an unchanged draft must not be rewritten',
+      );
+
+      notifier.setDraftText('Same text, edited');
+      expect(notifier.hasUnsavedChanges, isTrue);
+      await notifier.saveDraftNow();
+      expect(notifier.hasUnsavedChanges, isFalse);
+      expect(store.loadAll().single.text, 'Same text, edited');
+      container.dispose();
+    });
   });
 }

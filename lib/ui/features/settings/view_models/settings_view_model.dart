@@ -66,10 +66,27 @@ class SettingsNotifier extends Notifier<SettingsState> {
     );
   }
 
-  Future<void> setThemeMode(AppThemeMode mode) async {
-    if (state.themeMode == mode) return;
-    await _preferencesService.setThemeMode(mode);
-    state = state.copyWith(themeMode: mode);
+  /// Applies [next] immediately, then persists. A failed write restores the
+  /// previous state so the UI never claims a setting was saved when it wasn't.
+  Future<bool> _optimistic(
+    SettingsState next,
+    Future<bool> Function() persist,
+  ) async {
+    final previous = state;
+    state = next;
+    try {
+      if (await persist()) return true;
+    } catch (_) {}
+    state = previous;
+    return false;
+  }
+
+  Future<bool> setThemeMode(AppThemeMode mode) {
+    if (state.themeMode == mode) return Future.value(true);
+    return _optimistic(
+      state.copyWith(themeMode: mode),
+      () => _preferencesService.setThemeMode(mode),
+    );
   }
 
   Future<void> setSelectedProvider(AiProvider provider) async {
@@ -166,10 +183,12 @@ class SettingsNotifier extends Notifier<SettingsState> {
     return await _preferencesService.getTavilyApiKey();
   }
 
-  Future<void> setToneMode(String tone) async {
-    if (state.toneMode == tone) return;
-    await _preferencesService.setToneMode(tone);
-    state = state.copyWith(toneMode: tone);
+  Future<bool> setToneMode(String tone) {
+    if (state.toneMode == tone) return Future.value(true);
+    return _optimistic(
+      state.copyWith(toneMode: tone),
+      () => _preferencesService.setToneMode(tone),
+    );
   }
 
   Future<void> setDefaultHashtags(String hashtags) async {
@@ -178,10 +197,12 @@ class SettingsNotifier extends Notifier<SettingsState> {
     state = state.copyWith(defaultHashtags: hashtags);
   }
 
-  Future<void> setAutoAppendHashtags(bool enabled) async {
-    if (state.autoAppendHashtags == enabled) return;
-    await _preferencesService.setAutoAppendHashtags(enabled: enabled);
-    state = state.copyWith(autoAppendHashtags: enabled);
+  Future<bool> setAutoAppendHashtags(bool enabled) {
+    if (state.autoAppendHashtags == enabled) return Future.value(true);
+    return _optimistic(
+      state.copyWith(autoAppendHashtags: enabled),
+      () => _preferencesService.setAutoAppendHashtags(enabled: enabled),
+    );
   }
 
   Future<void> addCustomPill(CustomPill pill) async {
@@ -252,34 +273,44 @@ class SettingsNotifier extends Notifier<SettingsState> {
     state = state.copyWith(hashtagGroups: groups, defaultHashtags: defHashtags);
   }
 
-  Future<void> setReadingTextSize(double size) async {
+  Future<bool> setReadingTextSize(double size) {
     final clamped = size.clamp(12.0, 24.0);
-    if (state.readingTextSize == clamped) return;
-    await _preferencesService.setReadingTextSize(clamped);
-    state = state.copyWith(readingTextSize: clamped);
+    if (state.readingTextSize == clamped) return Future.value(true);
+    return _optimistic(
+      state.copyWith(readingTextSize: clamped),
+      () => _preferencesService.setReadingTextSize(clamped),
+    );
   }
 
-  Future<void> setFanModeEnabled(bool enabled) async {
-    if (state.isFanModeEnabled == enabled) return;
-    await _preferencesService.setFanModeEnabled(enabled);
-    state = state.copyWith(isFanModeEnabled: enabled);
+  Future<bool> setFanModeEnabled(bool enabled) {
+    if (state.isFanModeEnabled == enabled) return Future.value(true);
+    return _optimistic(
+      state.copyWith(isFanModeEnabled: enabled),
+      () => _preferencesService.setFanModeEnabled(enabled),
+    );
   }
 
-  Future<void> setFanClubName(String name) async {
-    if (state.fanClubName == name) return;
-    await _preferencesService.setFanClubName(name);
-    state = state.copyWith(fanClubName: name);
+  Future<bool> setFanClubName(String name) {
+    if (state.fanClubName == name) return Future.value(true);
+    return _optimistic(
+      state.copyWith(fanClubName: name),
+      () => _preferencesService.setFanClubName(name),
+    );
   }
 
-  Future<void> setPersistGenerationOptions(bool enabled) async {
-    if (state.persistGenerationOptions == enabled) return;
-    await _preferencesService.setPersistGenerationOptions(enabled);
-    state = state.copyWith(persistGenerationOptions: enabled);
+  Future<bool> setPersistGenerationOptions(bool enabled) {
+    if (state.persistGenerationOptions == enabled) return Future.value(true);
+    return _optimistic(
+      state.copyWith(persistGenerationOptions: enabled),
+      () => _preferencesService.setPersistGenerationOptions(enabled),
+    );
   }
 
-  Future<void> setVisionMode(VisionMode mode) async {
-    if (state.visionMode == mode) return;
-    await _preferencesService.setVisionMode(mode);
-    state = state.copyWith(visionMode: mode);
+  Future<bool> setVisionMode(VisionMode mode) {
+    if (state.visionMode == mode) return Future.value(true);
+    return _optimistic(
+      state.copyWith(visionMode: mode),
+      () => _preferencesService.setVisionMode(mode),
+    );
   }
 }

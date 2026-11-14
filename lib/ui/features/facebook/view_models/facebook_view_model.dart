@@ -17,6 +17,7 @@ import '../../../../data/services/facebook_image_cropper.dart';
 import '../../../../data/services/facebook_storage_service.dart';
 import '../../../../data/services/facebook_publisher_service.dart';
 import '../../../../data/services/facebook_history_service.dart';
+import '../../../../data/services/log_service.dart';
 import '../../../../data/services/preferences_service.dart';
 import '../../../../domain/models/facebook_api_exception.dart';
 import '../../../../data/services/facebook_story_composer.dart';
@@ -352,11 +353,22 @@ class FacebookDraftNotifier extends Notifier<FacebookComposeState> {
   bool _reconcileInFlight = false;
   static const Duration _reconcileTtl = Duration(minutes: 2);
   int _saveSequence = 0;
+  String? _lastSavedSignature;
   String? _activeDraftId;
   String _pageId = '';
   String _pageName = '';
 
   String? get activeDraftId => _activeDraftId;
+
+  void _logInfo(String message) {
+    if (!getIt.isRegistered<LogService>()) return;
+    getIt<LogService>().info(message, tag: 'Facebook');
+  }
+
+  void _logWarning(String message, {String? details}) {
+    if (!getIt.isRegistered<LogService>()) return;
+    getIt<LogService>().warning(message, tag: 'Facebook', details: details);
+  }
 
   @override
   FacebookComposeState build() {
@@ -443,6 +455,7 @@ class FacebookDraftNotifier extends Notifier<FacebookComposeState> {
     String? title,
   }) {
     _autosaveTimer?.cancel();
+    _lastSavedSignature = null;
     final connection = ref.read(facebookViewModelProvider);
     _pageId = connection.activePageId;
     _pageName = connection.pageName;
@@ -481,6 +494,7 @@ class FacebookDraftNotifier extends Notifier<FacebookComposeState> {
   /// Starts an empty draft (drafts screen FAB / "new post").
   void startEmptyDraft() {
     _autosaveTimer?.cancel();
+    _lastSavedSignature = null;
     final connection = ref.read(facebookViewModelProvider);
     _pageId = connection.activePageId;
     _pageName = connection.pageName;
@@ -514,6 +528,7 @@ class FacebookDraftNotifier extends Notifier<FacebookComposeState> {
     _pageId = record.pageId.isEmpty ? _pageId : record.pageId;
     _pageName = record.pageName.isEmpty ? _pageName : record.pageName;
     state = _fromRecord(record, restored: false);
+    _lastSavedSignature = _draftSignature();
     await _draftStore.setActive(record.id);
     return true;
   }
@@ -611,6 +626,7 @@ class FacebookDraftNotifier extends Notifier<FacebookComposeState> {
 
   void clearDraft() {
     _autosaveTimer?.cancel();
+    _lastSavedSignature = null;
     final oldId = _activeDraftId;
     _activeDraftId = null;
     state = FacebookComposeState(pageId: _pageId);
@@ -626,6 +642,24 @@ class FacebookDraftNotifier extends Notifier<FacebookComposeState> {
   /// Explicit Save draft action. Also used before opening another draft.
   Future<void> saveDraftNow() => _saveNow();
 
+  /// True when the composer differs from the last persisted snapshot.
+  bool get hasUnsavedChanges => _draftSignature() != _lastSavedSignature;
+
+  String _draftSignature() {
+    return jsonEncode({
+      'text': state.text,
+      'media': state.media.map((item) => item.toJson()).toList(),
+      'pageId': state.pageId,
+      'mode': state.publishMode.name,
+      'scheduledAt': state.scheduledAt?.millisecondsSinceEpoch,
+      'workflowId': state.workflowId,
+      'workflowName': state.workflowName,
+      'publishFeed': state.publishFeed,
+      'storyEnabled': state.storyEnabled,
+      'storyTitle': state.storyTitle,
+    });
+  }
+
   /// Persists the current draft into the multi-draft store, copying photos
   /// into app documents so temp cleanup cannot lose them.
   Future<void> _saveNow() async {
@@ -633,10 +667,17 @@ class FacebookDraftNotifier extends Notifier<FacebookComposeState> {
     if (state.isEmpty) {
       final oldId = _activeDraftId;
       _activeDraftId = null;
+      _lastSavedSignature = null;
       await _preferencesService.clearFacebookDraft();
       if (oldId != null) await _draftStore.delete(oldId);
       if (state.draftSaveState != FacebookDraftSaveState.idle) {
         state = state.copyWith(draftSaveState: FacebookDraftSaveState.idle);
+      }
+      return;
+    }
+    if (_activeDraftId != null && !hasUnsavedChanges) {
+      if (state.draftSaveState == FacebookDraftSaveState.pending) {
+        state = state.copyWith(draftSaveState: FacebookDraftSaveState.saved);
       }
       return;
     }
@@ -672,6 +713,7 @@ class FacebookDraftNotifier extends Notifier<FacebookComposeState> {
       );
       // The legacy key is migrated into the store after the first save.
       await _preferencesService.clearFacebookDraft();
+      _lastSavedSignature = _draftSignature();
       if (sequence == _saveSequence) {
         state = state.copyWith(
           draftSaveState: FacebookDraftSaveState.saved,
@@ -756,6 +798,7 @@ class FacebookDraftNotifier extends Notifier<FacebookComposeState> {
         updatedAt: DateTime.now(),
       ),
     );
+    _lastSavedSignature = _draftSignature();
   }
 
   /// Saves the current draft to the store after a short idle period.
@@ -991,6 +1034,13 @@ class FacebookDraftNotifier extends Notifier<FacebookComposeState> {
       _fail('Choose Page post, Story, or both.');
       return;
     }
+    if (state.text.runes.length > FacebookLimits.maxCaptionLength) {
+      _fail(
+        "Caption is over Facebook's "
+        '${FacebookLimits.maxCaptionLength} character limit.',
+      );
+      return;
+    }
     if (state.publishMode == FacebookPublishMode.scheduled &&
         state.storyEnabled) {
       _fail(
@@ -1064,6 +1114,7 @@ class FacebookDraftNotifier extends Notifier<FacebookComposeState> {
       return;
     }
 
+    final stopwatch = Stopwatch()..start();
     try {
       FacebookPublishResult? feedResult;
       FacebookStoryResult? storyResult;
@@ -1185,6 +1236,11 @@ class FacebookDraftNotifier extends Notifier<FacebookComposeState> {
         scheduled ? 'Scheduled post' : 'Published post',
         pageId: pageId,
       );
+      _logInfo(
+        '${scheduled ? 'Scheduled' : 'Published'} post in '
+        '${stopwatch.elapsedMilliseconds}ms'
+        '${storyError != null ? ' (Story failed)' : ''}',
+      );
       // Persist for the Published / Scheduled history.
       try {
         if (getIt.isRegistered<FacebookHistoryService>()) {
@@ -1217,6 +1273,9 @@ class FacebookDraftNotifier extends Notifier<FacebookComposeState> {
       } catch (_) {}
     } on FacebookApiException catch (e) {
       FacebookDiagnostics.failure('Publish', e, pageId: pageId);
+      _logWarning(
+        'Publish failed after ${stopwatch.elapsedMilliseconds}ms: ${e.message}',
+      );
       if (e.needsReconnect) {
         ref.read(facebookViewModelProvider.notifier).markExpired();
       }
@@ -1231,6 +1290,10 @@ class FacebookDraftNotifier extends Notifier<FacebookComposeState> {
         error: e,
       );
     } catch (_) {
+      _logWarning(
+        'Publish failed unexpectedly after '
+        '${stopwatch.elapsedMilliseconds}ms',
+      );
       _fail('Publishing failed unexpectedly. Try again.');
     }
   }
@@ -1435,6 +1498,7 @@ class FacebookDraftNotifier extends Notifier<FacebookComposeState> {
 
   Future<void> _reconcileScheduledBody({required bool force}) async {
     if (force) _cancelReconcileRetry();
+    final stopwatch = Stopwatch()..start();
     final conn = ref.read(facebookViewModelProvider);
     if (!conn.isConnected) return;
     final token = await _preferencesService.getFacebookPageToken() ?? '';
@@ -1462,6 +1526,10 @@ class FacebookDraftNotifier extends Notifier<FacebookComposeState> {
         e,
         pageId: conn.pageId,
       );
+      _logWarning(
+        'Scheduled reconcile failed after '
+        '${stopwatch.elapsedMilliseconds}ms: $e',
+      );
       if (!state.scheduledSyncFailed) {
         state = state.copyWith(scheduledSyncFailed: true);
       }
@@ -1475,6 +1543,7 @@ class FacebookDraftNotifier extends Notifier<FacebookComposeState> {
     }
     final remoteIds = remote.map((p) => p.id).toSet();
     final now = DateTime.now();
+    var updated = 0;
     for (final record in scheduled) {
       final due = record.scheduledAt;
       if (due == null || due.isAfter(now)) continue;
@@ -1486,7 +1555,12 @@ class FacebookDraftNotifier extends Notifier<FacebookComposeState> {
           scheduledAt: null,
         ),
       );
+      updated++;
     }
+    _logInfo(
+      'Reconciled $updated of ${scheduled.length} scheduled posts in '
+      '${stopwatch.elapsedMilliseconds}ms${force ? ' (forced)' : ''}',
+    );
   }
 
   /// Retries a failed reconciliation without hammering Graph: 2s, 8s, 30s,

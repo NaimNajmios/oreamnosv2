@@ -178,6 +178,9 @@ abstract final class FacebookLimits {
   static const int maxPhotos = 10;
   static const int graphPhotoLimit = 10;
   static const int maxAltTextLength = 420;
+
+  /// Meta's caption ceiling. Counted in Unicode code points at the call site.
+  static const int maxCaptionLength = 63206;
 }
 
 /// One attached photo. A list is used from v10 on even though the composer
@@ -354,6 +357,7 @@ class FacebookComposeState {
   bool get canPublish {
     if (isPublishing || isPreparing || isFinished) return false;
     if (!publishFeed && !storyEnabled) return false;
+    if (text.runes.length > FacebookLimits.maxCaptionLength) return false;
     if (publishFeed && !hasText) return false;
     if (storyEnabled && storyTitle.trim().isEmpty) return false;
     if (publishMode == FacebookPublishMode.scheduled) {

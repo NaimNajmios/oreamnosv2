@@ -11,6 +11,8 @@ class PublishHandoff {
     required this.uppercaseTitle,
     required this.hashtagCount,
     required this.sourceUrl,
+    this.sourceLabel = '',
+    this.sourceDomain = '',
     required this.createdAt,
   });
 
@@ -20,7 +22,17 @@ class PublishHandoff {
   final bool uppercaseTitle;
   final int hashtagCount;
   final String sourceUrl;
+  final String sourceLabel;
+  final String sourceDomain;
   final DateTime createdAt;
+
+  /// Human-readable provenance for the handoff card. Prefers the outlet label
+  /// and falls back to the bare domain.
+  String get sourceDisplay {
+    final label = sourceLabel.trim();
+    if (label.isNotEmpty) return label;
+    return sourceDomain.trim();
+  }
 
   String get snippet {
     final first = text
@@ -60,6 +72,8 @@ class PublishHandoffNotifier extends Notifier<PublishHandoff?> {
 
     final fingerprint = [
       post.rawMarkdown,
+      post.source.label,
+      post.source.domain ?? '',
       ui.showTitle,
       ui.uppercaseTitle,
       ui.showHashtags,
@@ -71,13 +85,19 @@ class PublishHandoffNotifier extends Notifier<PublishHandoff?> {
       _createdAt = DateTime.now();
     }
 
+    final sourceUrl = post.source.url ?? '';
+    final sourceDomain =
+        post.source.domain?.trim() ?? Uri.tryParse(sourceUrl)?.host ?? '';
+
     return PublishHandoff(
       fingerprint: fingerprint,
       text: text,
       title: post.title,
       uppercaseTitle: ui.showTitle && ui.uppercaseTitle,
       hashtagCount: ui.showHashtags ? post.hashtags.length : 0,
-      sourceUrl: post.source.url ?? '',
+      sourceUrl: sourceUrl,
+      sourceLabel: post.source.label,
+      sourceDomain: sourceDomain,
       createdAt: _createdAt,
     );
   }

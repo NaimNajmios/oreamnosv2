@@ -17,6 +17,10 @@ class FacebookCommentsState {
     this.error,
     this.needsReconnect = false,
     this.permissionDenied = false,
+    this.replies = const {},
+    this.loadingReplyIds = const {},
+    this.expandedReplyIds = const {},
+    this.replyErrors = const {},
   });
 
   final List<FacebookComment> comments;
@@ -27,6 +31,10 @@ class FacebookCommentsState {
   final String? error;
   final bool needsReconnect;
   final bool permissionDenied;
+  final Map<String, List<FacebookComment>> replies;
+  final Set<String> loadingReplyIds;
+  final Set<String> expandedReplyIds;
+  final Map<String, String> replyErrors;
 
   bool get hasMore => nextCursor != null && nextCursor!.isNotEmpty;
 
@@ -39,6 +47,10 @@ class FacebookCommentsState {
     Object? error = _sentinel,
     bool? needsReconnect,
     bool? permissionDenied,
+    Map<String, List<FacebookComment>>? replies,
+    Set<String>? loadingReplyIds,
+    Set<String>? expandedReplyIds,
+    Map<String, String>? replyErrors,
   }) {
     return FacebookCommentsState(
       comments: comments ?? this.comments,
@@ -51,6 +63,10 @@ class FacebookCommentsState {
       error: error == _sentinel ? this.error : error as String?,
       needsReconnect: needsReconnect ?? this.needsReconnect,
       permissionDenied: permissionDenied ?? this.permissionDenied,
+      replies: replies ?? this.replies,
+      loadingReplyIds: loadingReplyIds ?? this.loadingReplyIds,
+      expandedReplyIds: expandedReplyIds ?? this.expandedReplyIds,
+      replyErrors: replyErrors ?? this.replyErrors,
     );
   }
 
@@ -169,6 +185,75 @@ class FacebookCommentsController extends ChangeNotifier {
 
   Future<void> refresh() => load();
 
+  /// Expands or collapses the replies under [comment]. Replies are fetched
+  /// lazily once and kept until the comment is replied to again.
+  Future<void> toggleReplies(FacebookComment comment) async {
+    final id = comment.id;
+    if (_state.expandedReplyIds.contains(id)) {
+      _state = _state.copyWith(
+        expandedReplyIds: {..._state.expandedReplyIds}..remove(id),
+      );
+      notifyListeners();
+      return;
+    }
+    _state = _state.copyWith(
+      expandedReplyIds: {..._state.expandedReplyIds, id},
+    );
+    notifyListeners();
+    if (!_state.replies.containsKey(id)) {
+      await _loadReplies(id);
+    }
+  }
+
+  Future<void> retryReplies(FacebookComment comment) =>
+      _loadReplies(comment.id);
+
+  Future<void> _loadReplies(String commentId) async {
+    if (_state.loadingReplyIds.contains(commentId)) return;
+    final token = await _token();
+    if (token == null) {
+      _state = _state.copyWith(
+        replyErrors: {
+          ..._state.replyErrors,
+          commentId: 'Connect your Page first.',
+        },
+      );
+      notifyListeners();
+      return;
+    }
+    _state = _state.copyWith(
+      loadingReplyIds: {..._state.loadingReplyIds, commentId},
+      replyErrors: {..._state.replyErrors}..remove(commentId),
+    );
+    notifyListeners();
+    try {
+      final page = await _service.fetchReplies(
+        commentId: commentId,
+        token: token,
+      );
+      _state = _state.copyWith(
+        replies: {..._state.replies, commentId: page.comments},
+        loadingReplyIds: {..._state.loadingReplyIds}..remove(commentId),
+      );
+    } on FacebookApiException catch (e) {
+      if (e.needsReconnect) FacebookExpirySignal.report();
+      _state = _state.copyWith(
+        loadingReplyIds: {..._state.loadingReplyIds}..remove(commentId),
+        replyErrors: {..._state.replyErrors, commentId: e.message},
+        needsReconnect: e.needsReconnect,
+      );
+    } catch (_) {
+      _state = _state.copyWith(
+        loadingReplyIds: {..._state.loadingReplyIds}..remove(commentId),
+        replyErrors: {
+          ..._state.replyErrors,
+          commentId: 'Could not load replies. Try again.',
+        },
+      );
+    }
+    notifyListeners();
+  }
+
   Future<String?> reply(FacebookComment comment, String message) async {
     final trimmed = message.trim();
     if (trimmed.isEmpty) return 'Write a reply first.';
@@ -180,7 +265,12 @@ class FacebookCommentsController extends ChangeNotifier {
         token: token,
         message: trimmed,
       );
+      final wasExpanded = _state.expandedReplyIds.contains(comment.id);
+      _state = _state.copyWith(
+        replies: {..._state.replies}..remove(comment.id),
+      );
       await load();
+      if (wasExpanded) await _loadReplies(comment.id);
       return null;
     } on FacebookApiException catch (e) {
       if (e.needsReconnect) FacebookExpirySignal.report();

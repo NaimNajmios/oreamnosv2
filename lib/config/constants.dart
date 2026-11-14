@@ -110,6 +110,12 @@ abstract final class AppConstants {
   static const String keyLastIsResearchMode = 'last_is_research_mode';
   static const String keyLastKeepStructure = 'last_keep_structure';
   static const String keyLastUppercaseTitle = 'last_uppercase_title';
+  static const String keyUsageRangeDays = 'usage_range_days';
+  static const String keyUsageProviderFilter = 'usage_provider_filter';
+
+  /// Manually bumped alongside `pubspec.yaml`; keeps diagnostics export
+  /// informative without adding a `package_info_plus` dependency.
+  static const String appVersionLabel = '1.0.0+1';
 
   // === Facebook Publishing (secure + prefs) ===
   static const String keyFacebookPageToken = 'facebook_page_token';

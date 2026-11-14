@@ -12,6 +12,7 @@ import 'package:oreamnos/data/services/facebook_expiry_signal.dart';
 import 'package:oreamnos/data/services/facebook_diagnostics.dart';
 import 'package:oreamnos/data/services/facebook_insights_service.dart';
 import 'package:oreamnos/data/services/facebook_publisher_service.dart';
+import 'package:oreamnos/data/services/log_service.dart';
 import 'package:oreamnos/data/services/preferences_service.dart';
 import 'package:oreamnos/domain/models/facebook_api_exception.dart';
 import 'package:uuid/uuid.dart';
@@ -210,19 +211,33 @@ class FacebookHistoryNotifier extends Notifier<List<FacebookPostRecord>> {
     final token =
         await getIt<PreferencesService>().getFacebookPageToken() ?? '';
     if (token.isEmpty) return 'Connect your Page first.';
+    final stopwatch = Stopwatch()..start();
     try {
       final insights = await getIt<FacebookInsightsService>().fetch(
         postId: record.postId,
         token: token,
       );
       await _service.setInsights(recordId, insights);
+      _log(
+        'Insights refreshed in ${stopwatch.elapsedMilliseconds}ms',
+        level: 'INFO',
+      );
       return insights.hasAny
           ? null
           : 'Facebook has no insights for this post yet.';
     } on FacebookApiException catch (e) {
+      _log(
+        'Insights failed after ${stopwatch.elapsedMilliseconds}ms: ${e.message}',
+        level: 'WARN',
+      );
       if (e.needsReconnect) FacebookExpirySignal.report();
       return e.message;
     } catch (_) {
+      _log(
+        'Insights failed unexpectedly after '
+        '${stopwatch.elapsedMilliseconds}ms',
+        level: 'WARN',
+      );
       return 'Could not load insights. Try again later.';
     }
   }
@@ -242,18 +257,43 @@ class FacebookHistoryNotifier extends Notifier<List<FacebookPostRecord>> {
     final token =
         await getIt<PreferencesService>().getFacebookPageToken() ?? '';
     if (token.isEmpty) return 'Connect your Page first.';
+    final stopwatch = Stopwatch()..start();
     try {
       final engagement = await getIt<FacebookInsightsService>().fetchEngagement(
         postId: record.postId,
         token: token,
       );
       await _service.setInsights(recordId, engagement, engagementOnly: true);
+      _log(
+        'Engagement refreshed in ${stopwatch.elapsedMilliseconds}ms',
+        level: 'INFO',
+      );
       return null;
     } on FacebookApiException catch (e) {
+      _log(
+        'Engagement failed after ${stopwatch.elapsedMilliseconds}ms: '
+        '${e.message}',
+        level: 'WARN',
+      );
       if (e.needsReconnect) FacebookExpirySignal.report();
       return e.message;
     } catch (_) {
+      _log(
+        'Engagement failed unexpectedly after '
+        '${stopwatch.elapsedMilliseconds}ms',
+        level: 'WARN',
+      );
       return 'Could not load engagement. Try again later.';
+    }
+  }
+
+  void _log(String message, {required String level}) {
+    if (!getIt.isRegistered<LogService>()) return;
+    final service = getIt<LogService>();
+    if (level == 'WARN') {
+      service.warning(message, tag: 'Facebook');
+    } else {
+      service.info(message, tag: 'Facebook');
     }
   }
 }

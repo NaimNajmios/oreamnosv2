@@ -37,7 +37,9 @@ class UsageNotifier extends Notifier<List<UsageLog>> {
 @lazySingleton
 class UsageService {
   static const String _keyLogs = 'usage_logs';
-  static const int _maxLogs = 50;
+
+  /// Ring-buffer cap. Exposed so the UI can be honest about truncation.
+  static const int maxLogs = 50;
 
   final SharedPreferences _prefs;
   final DailyUsageService? _dailyUsage;
@@ -82,8 +84,8 @@ class UsageService {
       await _dailyUsage?.recordRequest(log.providerId, log.modelName);
     } catch (_) {}
     _logs = List.of(_logs)..insert(0, log);
-    if (_logs.length > _maxLogs) {
-      _logs = _logs.sublist(0, _maxLogs);
+    if (_logs.length > maxLogs) {
+      _logs = _logs.sublist(0, maxLogs);
     }
     await _saveLogs();
     _notify();

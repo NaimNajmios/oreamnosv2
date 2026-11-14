@@ -90,5 +90,37 @@ void main() {
       logService.clear();
       expect(logService.logs, isEmpty);
     });
+
+    test('redacts bearer, access_token, EAA tokens and assignments', () async {
+      logService.error(
+        'Graph failed access_token=abc123&foo=bar',
+        error: Exception('Authorization: Bearer secret-value'),
+        details: 'api_key: sk-live-1234567890 and EAAabcdefghijklmnop',
+      );
+      await Future.delayed(const Duration(milliseconds: 10));
+
+      final entry = logService.logs.single;
+      expect(entry.message, isNot(contains('abc123')));
+      expect(entry.message, contains('access_token=[redacted]'));
+      expect(entry.message, contains('foo=bar'));
+      expect(entry.error, isNot(contains('secret-value')));
+      expect(entry.error, contains('Bearer [redacted]'));
+      expect(entry.details, isNot(contains('sk-live-1234567890')));
+      expect(entry.details, isNot(contains('EAAabcdefghijklmnop')));
+      expect(entry.details, contains('api_key: [redacted]'));
+    });
+
+    test('redacts long base64-shaped blobs but keeps prose', () async {
+      logService.info(
+        'payload ${'A' * 60}',
+        details: 'A normal sentence with no credentials.',
+      );
+      await Future.delayed(const Duration(milliseconds: 10));
+
+      final entry = logService.logs.single;
+      expect(entry.message, contains('[redacted]'));
+      expect(entry.message, isNot(contains('A' * 60)));
+      expect(entry.details, 'A normal sentence with no credentials.');
+    });
   });
 }

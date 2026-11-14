@@ -386,6 +386,31 @@ class PreferencesService {
   Future<void> setFacebookPerformanceDays(int days) =>
       _prefs.setInt(AppConstants.keyFacebookPerformanceDays, days);
 
+  /// Persisted Usage range filter. Only 0 (all time), 7, 30 and 90 are valid.
+  int get usageRangeDays {
+    final value = _prefs.getInt(AppConstants.keyUsageRangeDays);
+    return value == 7 || value == 30 || value == 90 ? value! : 0;
+  }
+
+  Future<bool> setUsageRangeDays(int days) {
+    final safe = days == 7 || days == 30 || days == 90 ? days : 0;
+    return _prefs.setInt(AppConstants.keyUsageRangeDays, safe);
+  }
+
+  /// Persisted provider filter; `all` means no provider restriction.
+  String get usageProviderFilter {
+    final value = _prefs.getString(AppConstants.keyUsageProviderFilter);
+    if (value == null || value.trim().isEmpty) return 'all';
+    return value.toLowerCase();
+  }
+
+  Future<bool> setUsageProviderFilter(String providerId) {
+    final safe = providerId.trim().isEmpty
+        ? 'all'
+        : providerId.trim().toLowerCase();
+    return _prefs.setString(AppConstants.keyUsageProviderFilter, safe);
+  }
+
   DateTime? _readMillis(String key) {
     final value = _prefs.getInt(key);
     if (value == null) return null;

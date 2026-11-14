@@ -324,7 +324,14 @@ class _FacebookComposeScreenState extends ConsumerState<FacebookComposeScreen> {
           final draft = ref.watch(facebookDraftProvider);
           final item = draft.mediaById(id);
           if (item == null) {
-            return const SizedBox(height: 200);
+            // The photo was removed from another surface — close the sheet
+            // instead of leaving a blank panel open.
+            WidgetsBinding.instance.addPostFrameCallback((_) {
+              if (sheetContext.mounted) {
+                Navigator.of(sheetContext).maybePop();
+              }
+            });
+            return const SizedBox.shrink();
           }
           final index = draft.media.indexWhere((m) => m.identity == id);
           final notifier = ref.read(facebookDraftProvider.notifier);
@@ -551,14 +558,20 @@ class _FacebookComposeScreenState extends ConsumerState<FacebookComposeScreen> {
               ),
             if (!published)
               IconButton(
-                tooltip: _previewMode ? 'Back to editing' : 'Preview post',
+                tooltip: draft.isEmpty
+                    ? 'Write something first'
+                    : _previewMode
+                    ? 'Back to editing'
+                    : 'Preview post',
                 icon: Icon(
                   _previewMode
                       ? Icons.edit_outlined
                       : Icons.visibility_outlined,
                   size: 20,
                 ),
-                onPressed: () => setState(() => _previewMode = !_previewMode),
+                onPressed: draft.isEmpty
+                    ? null
+                    : () => setState(() => _previewMode = !_previewMode),
               ),
           ],
         ),

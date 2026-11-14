@@ -47,6 +47,32 @@ void main() {
     expect(text.style?.color?.a, closeTo(0.45, 0.01));
   });
 
+  testWidgets('chip exposes button and selected semantics', (tester) async {
+    final handle = tester.ensureSemantics();
+    await tester.pumpWidget(
+      MaterialApp(
+        theme: _darkTheme(),
+        home: Scaffold(
+          body: AppChip(label: 'Title', selected: true, onTap: () {}),
+        ),
+      ),
+    );
+
+    expect(
+      tester.getSemantics(find.byType(AppChip)),
+      matchesSemantics(
+        label: 'Title',
+        isButton: true,
+        isSelected: true,
+        hasSelectedState: true,
+        isFocusable: true,
+        hasTapAction: true,
+        hasFocusAction: true,
+      ),
+    );
+    handle.dispose();
+  });
+
   testWidgets('custom selected color falls back to onPrimary', (tester) async {
     await tester.pumpWidget(
       MaterialApp(

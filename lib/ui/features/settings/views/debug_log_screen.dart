@@ -1,7 +1,12 @@
+import 'dart:io';
+
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:path_provider/path_provider.dart';
+import 'package:share_plus/share_plus.dart';
 
+import '../../../../config/constants.dart';
 import '../../../../config/theme/app_colors.dart';
 import '../../../../config/theme/app_spacing.dart';
 import '../../../../config/theme/app_typography.dart';
@@ -21,6 +26,7 @@ class DebugLogScreen extends ConsumerStatefulWidget {
 
 class _DebugLogScreenState extends ConsumerState<DebugLogScreen> {
   String _selectedLevel = 'ALL';
+  String? _selectedTag;
   String _searchQuery = '';
   final TextEditingController _searchCtrl = TextEditingController();
 
@@ -30,39 +36,104 @@ class _DebugLogScreenState extends ConsumerState<DebugLogScreen> {
     super.dispose();
   }
 
-  Future<void> _copyLogs() async {
-    final logs = ref.read(logNotifierProvider);
-    if (logs.isEmpty) return;
+  List<LogEntry> _filterLogs(List<LogEntry> logs) {
+    final query = _searchQuery.trim().toLowerCase();
+    return logs.where((l) {
+      if (_selectedLevel != 'ALL' && l.level.toUpperCase() != _selectedLevel) {
+        return false;
+      }
+      if (_selectedTag != null && l.tag != _selectedTag) return false;
+      if (query.isNotEmpty) {
+        final matchMsg = l.message.toLowerCase().contains(query);
+        final matchTag = l.tag.toLowerCase().contains(query);
+        final matchDetails = l.details?.toLowerCase().contains(query) ?? false;
+        final matchError = l.error?.toLowerCase().contains(query) ?? false;
+        return matchMsg || matchTag || matchDetails || matchError;
+      }
+      return true;
+    }).toList();
+  }
 
-    final buffer = StringBuffer();
-    for (var log in logs) {
+  void _appendLogs(StringBuffer buffer, List<LogEntry> logs) {
+    for (final log in logs) {
       buffer.writeln(
-        '[${log.formattedTime}] [${log.level}] [${log.tag}] ${log.message}',
+        '[${log.formattedDate}] [${log.level}] [${log.tag}] ${log.message}',
       );
       if (log.details != null) buffer.writeln('Details: ${log.details}');
-      if (log.error != null) {
-        buffer.writeln(log.error);
-      }
+      if (log.error != null) buffer.writeln(log.error);
     }
+  }
+
+  Future<void> _copyLogs({required bool filtered}) async {
+    final all = ref.read(logNotifierProvider);
+    if (all.isEmpty) return;
+    final logs = filtered ? _filterLogs(all) : all;
+    if (logs.isEmpty) return;
+    final buffer = StringBuffer();
+    _appendLogs(buffer, logs);
     await Clipboard.setData(ClipboardData(text: buffer.toString()));
     Haptics.mediumImpact();
-    if (mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: const Row(
-            children: [
-              Icon(Icons.check_circle_rounded, color: Colors.white, size: 18),
-              SizedBox(width: 8),
-              Text('Logs copied to clipboard'),
-            ],
-          ),
-          backgroundColor: AppColors.success,
-          behavior: SnackBarBehavior.floating,
-          shape: RoundedRectangleBorder(
-            borderRadius: AppSpacing.borderRadiusSm,
-          ),
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Row(
+          children: [
+            const Icon(
+              Icons.check_circle_rounded,
+              color: Colors.white,
+              size: 18,
+            ),
+            const SizedBox(width: 8),
+            Text(
+              filtered
+                  ? 'Filtered logs copied to clipboard'
+                  : 'All logs copied to clipboard',
+            ),
+          ],
+        ),
+        backgroundColor: AppColors.success,
+        behavior: SnackBarBehavior.floating,
+        shape: RoundedRectangleBorder(borderRadius: AppSpacing.borderRadiusSm),
+      ),
+    );
+  }
+
+  Future<void> _exportLogs() async {
+    final all = ref.read(logNotifierProvider);
+    if (all.isEmpty) return;
+    final logs = _filterLogs(all);
+    final buffer = StringBuffer()
+      ..writeln('Oreamnos ${AppConstants.appVersionLabel}')
+      ..writeln('Exported ${DateTime.now().toIso8601String()}')
+      ..writeln(
+        'Filters: level=$_selectedLevel, '
+        'tag=${_selectedTag ?? 'ALL'}, '
+        'query=${_searchQuery.trim().isEmpty ? '-' : _searchQuery.trim()}',
+      )
+      ..writeln(
+        'Credentials are redacted before an entry reaches this log. '
+        'Request bodies are never recorded.',
+      )
+      ..writeln();
+    _appendLogs(buffer, logs);
+    try {
+      final dir = await getTemporaryDirectory();
+      final file = File(
+        '${dir.path}/oreamnos-logs-'
+        '${DateTime.now().millisecondsSinceEpoch}.txt',
+      );
+      await file.writeAsString(buffer.toString(), flush: true);
+      await SharePlus.instance.share(
+        ShareParams(
+          files: [XFile(file.path, mimeType: 'text/plain')],
+          text: 'Oreamnos ${AppConstants.appVersionLabel} debug logs',
         ),
       );
+    } catch (_) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text("Couldn't export the logs")));
     }
   }
 
@@ -131,21 +202,8 @@ class _DebugLogScreenState extends ConsumerState<DebugLogScreen> {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final allLogs = ref.watch(logNotifierProvider).reversed.toList();
-    final query = _searchQuery.trim().toLowerCase();
-
-    final filteredLogs = allLogs.where((l) {
-      if (_selectedLevel != 'ALL' && l.level.toUpperCase() != _selectedLevel) {
-        return false;
-      }
-      if (query.isNotEmpty) {
-        final matchMsg = l.message.toLowerCase().contains(query);
-        final matchTag = l.tag.toLowerCase().contains(query);
-        final matchDetails = l.details?.toLowerCase().contains(query) ?? false;
-        final matchError = l.error?.toLowerCase().contains(query) ?? false;
-        return matchMsg || matchTag || matchDetails || matchError;
-      }
-      return true;
-    }).toList();
+    final filteredLogs = _filterLogs(allLogs);
+    final tags = <String>{for (final log in allLogs) log.tag}.toList()..sort();
 
     return Scaffold(
       appBar: AppBar(
@@ -176,9 +234,21 @@ class _DebugLogScreenState extends ConsumerState<DebugLogScreen> {
               onPressed: _confirmClear,
             ),
             IconButton(
-              icon: const Icon(Icons.content_copy_rounded),
+              icon: const Icon(Icons.copy_all_rounded),
               tooltip: 'Copy all',
-              onPressed: _copyLogs,
+              onPressed: () => _copyLogs(filtered: false),
+            ),
+            IconButton(
+              icon: const Icon(Icons.content_copy_rounded),
+              tooltip: 'Copy filtered',
+              onPressed: filteredLogs.isEmpty
+                  ? null
+                  : () => _copyLogs(filtered: true),
+            ),
+            IconButton(
+              icon: const Icon(Icons.ios_share_rounded),
+              tooltip: 'Export logs',
+              onPressed: _exportLogs,
             ),
           ],
         ],
@@ -304,6 +374,49 @@ class _DebugLogScreenState extends ConsumerState<DebugLogScreen> {
                               ],
                             ),
                           ),
+                          if (tags.isNotEmpty) ...[
+                            const SizedBox(height: AppSpacing.xs),
+                            SingleChildScrollView(
+                              scrollDirection: Axis.horizontal,
+                              child: Row(
+                                children: [
+                                  Padding(
+                                    padding: const EdgeInsets.only(right: 6),
+                                    child: FilterChip(
+                                      label: const Text('ALL TAGS'),
+                                      selected: _selectedTag == null,
+                                      showCheckmark: false,
+                                      labelStyle: AppTypography.mono(
+                                        fontSize: 10,
+                                        fontWeight: _selectedTag == null
+                                            ? FontWeight.w700
+                                            : FontWeight.w500,
+                                      ),
+                                      onSelected: (_) =>
+                                          setState(() => _selectedTag = null),
+                                    ),
+                                  ),
+                                  for (final tag in tags)
+                                    Padding(
+                                      padding: const EdgeInsets.only(right: 6),
+                                      child: FilterChip(
+                                        label: Text(tag),
+                                        selected: _selectedTag == tag,
+                                        showCheckmark: false,
+                                        labelStyle: AppTypography.mono(
+                                          fontSize: 10,
+                                          fontWeight: _selectedTag == tag
+                                              ? FontWeight.w700
+                                              : FontWeight.w500,
+                                        ),
+                                        onSelected: (_) =>
+                                            setState(() => _selectedTag = tag),
+                                      ),
+                                    ),
+                                ],
+                              ),
+                            ),
+                          ],
                         ],
                       ),
                     ),

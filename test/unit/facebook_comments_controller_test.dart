@@ -13,10 +13,28 @@ class _StubComments extends FacebookCommentsService {
 
   final List<FacebookCommentPage> pages;
   final FacebookApiException? error;
+  FacebookApiException? replyError;
   int listCalls = 0;
+  int replyCalls = 0;
   final List<String> replies = [];
   final List<String> hidden = [];
   final List<String> deleted = [];
+
+  @override
+  Future<FacebookCommentPage> fetchReplies({
+    required String commentId,
+    required String token,
+    String? after,
+    int limit = 25,
+  }) async {
+    replyCalls++;
+    if (replyError != null) throw replyError!;
+    return const FacebookCommentPage(
+      comments: [
+        FacebookComment(id: 'r1', message: 'A reply', authorName: 'B'),
+      ],
+    );
+  }
 
   @override
   Future<FacebookCommentPage> list({
@@ -147,6 +165,54 @@ void main() {
     await c.load();
     expect(c.state.comments, isEmpty);
     expect(c.state.error, contains('pages_manage_engagement'));
+  });
+
+  test('toggleReplies loads once and caches the result', () async {
+    final c = controller();
+    await c.load();
+    final comment = c.state.comments.single;
+
+    await c.toggleReplies(comment);
+    expect(c.state.expandedReplyIds, contains('c1'));
+    expect(c.state.replies['c1']?.single.message, 'A reply');
+    expect(service.replyCalls, 1);
+
+    await c.toggleReplies(comment);
+    expect(c.state.expandedReplyIds, isNot(contains('c1')));
+    await c.toggleReplies(comment);
+    expect(service.replyCalls, 1);
+  });
+
+  test('reply failure keeps a retryable error per comment', () async {
+    service.replyError = const FacebookApiException(
+      kind: FacebookApiErrorKind.permission,
+      message: 'Replies are unavailable.',
+    );
+    final c = controller();
+    await c.load();
+    final comment = c.state.comments.single;
+    await c.toggleReplies(comment);
+
+    expect(c.state.replyErrors['c1'], 'Replies are unavailable.');
+    expect(c.state.expandedReplyIds, contains('c1'));
+
+    service.replyError = null;
+    await c.retryReplies(comment);
+    expect(c.state.replyErrors.containsKey('c1'), isFalse);
+    expect(c.state.replies['c1'], isNotEmpty);
+  });
+
+  test('replying to a comment refreshes its replies when expanded', () async {
+    final c = controller();
+    await c.load();
+    final comment = c.state.comments.single;
+    await c.toggleReplies(comment);
+    final firstCalls = service.replyCalls;
+
+    final error = await c.reply(comment, 'Thanks');
+    expect(error, isNull);
+    expect(service.replies.single, 'c1:Thanks');
+    expect(service.replyCalls, greaterThan(firstCalls));
   });
 
   test('no token returns a connect message', () async {

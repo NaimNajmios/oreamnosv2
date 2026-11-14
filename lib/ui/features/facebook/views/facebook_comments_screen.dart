@@ -4,6 +4,7 @@ import 'package:oreamnos/config/theme/app_spacing.dart';
 import 'package:oreamnos/domain/models/facebook_comment.dart';
 import 'package:oreamnos/ui/core/utils/haptics.dart';
 import 'package:oreamnos/ui/core/widgets/app_button.dart';
+import 'package:oreamnos/ui/features/facebook/utils/facebook_external_links.dart';
 import 'package:oreamnos/ui/features/facebook/view_models/facebook_comments_view_model.dart';
 import 'package:oreamnos/ui/features/facebook/widgets/facebook_connection_dialog.dart';
 
@@ -202,6 +203,12 @@ class _FacebookCommentsScreenState extends State<FacebookCommentsScreen> {
                 final comment = state.comments[index];
                 return _CommentTile(
                   comment: comment,
+                  replies: state.replies[comment.id] ?? const [],
+                  expanded: state.expandedReplyIds.contains(comment.id),
+                  loadingReplies: state.loadingReplyIds.contains(comment.id),
+                  replyError: state.replyErrors[comment.id],
+                  onToggleReplies: () => _controller.toggleReplies(comment),
+                  onRetryReplies: () => _controller.retryReplies(comment),
                   onReply: () => _reply(comment),
                   onToggleHidden: () => _toggleHidden(comment),
                   onDelete: () => _delete(comment),
@@ -239,12 +246,24 @@ class _FacebookCommentsScreenState extends State<FacebookCommentsScreen> {
 class _CommentTile extends StatelessWidget {
   const _CommentTile({
     required this.comment,
+    required this.replies,
+    required this.expanded,
+    required this.loadingReplies,
+    required this.replyError,
+    required this.onToggleReplies,
+    required this.onRetryReplies,
     required this.onReply,
     required this.onToggleHidden,
     required this.onDelete,
   });
 
   final FacebookComment comment;
+  final List<FacebookComment> replies;
+  final bool expanded;
+  final bool loadingReplies;
+  final String? replyError;
+  final VoidCallback onToggleReplies;
+  final VoidCallback onRetryReplies;
   final VoidCallback onReply;
   final VoidCallback onToggleHidden;
   final VoidCallback onDelete;
@@ -328,14 +347,47 @@ class _CommentTile extends StatelessWidget {
                 child: const Text('Delete'),
               ),
             if (comment.replyCount > 0)
-              Text(
-                '${comment.replyCount} ${comment.replyCount == 1 ? 'reply' : 'replies'}',
-                style: theme.textTheme.labelSmall?.copyWith(
-                  color: theme.colorScheme.onSurfaceVariant,
-                ),
+              TextButton(
+                onPressed: onToggleReplies,
+                child: loadingReplies
+                    ? const SizedBox(
+                        width: 14,
+                        height: 14,
+                        child: CircularProgressIndicator(strokeWidth: 2),
+                      )
+                    : Text(
+                        expanded
+                            ? 'Hide replies'
+                            : 'Show ${comment.replyCount == 1 ? 'reply' : 'replies'} '
+                                  '(${comment.replyCount})',
+                      ),
               ),
           ],
         ),
+        if (expanded) ...[
+          if (replyError != null)
+            Padding(
+              padding: const EdgeInsets.only(top: AppSpacing.xs),
+              child: TextButton.icon(
+                onPressed: onRetryReplies,
+                icon: const Icon(Icons.refresh_rounded, size: 16),
+                label: const Text("Couldn't load replies. Retry"),
+              ),
+            )
+          else ...[
+            for (final reply in replies.take(50)) _ReplyTile(reply: reply),
+            if (replies.length > 50 &&
+                facebookPostUri(comment.permalinkUrl) != null)
+              Padding(
+                padding: const EdgeInsets.only(top: AppSpacing.xs),
+                child: TextButton(
+                  onPressed: () =>
+                      openFacebookPermalink(context, comment.permalinkUrl),
+                  child: const Text('View on Facebook'),
+                ),
+              ),
+          ],
+        ],
       ],
     );
   }
@@ -347,6 +399,70 @@ class _CommentTile extends StatelessWidget {
     if (diff.inHours < 24) return '${diff.inHours}h';
     if (diff.inDays < 7) return '${diff.inDays}d';
     return '${at.month}/${at.day}';
+  }
+}
+
+class _ReplyTile extends StatelessWidget {
+  const _ReplyTile({required this.reply});
+
+  final FacebookComment reply;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final initial = reply.authorName.trim().isEmpty
+        ? '?'
+        : reply.authorName.trim().characters.first.toUpperCase();
+    return Padding(
+      padding: const EdgeInsets.only(left: AppSpacing.lg, top: AppSpacing.xs),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          CircleAvatar(
+            radius: 12,
+            backgroundColor: theme.colorScheme.surfaceContainerHighest,
+            child: Text(
+              initial,
+              style: theme.textTheme.labelSmall?.copyWith(
+                color: theme.colorScheme.onSurface,
+                fontWeight: FontWeight.w700,
+              ),
+            ),
+          ),
+          const SizedBox(width: AppSpacing.sm),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    Expanded(
+                      child: Text(
+                        reply.authorName,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: theme.textTheme.labelMedium?.copyWith(
+                          fontWeight: FontWeight.w700,
+                        ),
+                      ),
+                    ),
+                    if (reply.createdAt != null)
+                      Text(
+                        _CommentTile._relativeTime(reply.createdAt!),
+                        style: theme.textTheme.labelSmall?.copyWith(
+                          color: theme.colorScheme.onSurfaceVariant,
+                        ),
+                      ),
+                  ],
+                ),
+                const SizedBox(height: 2),
+                Text(reply.message, style: theme.textTheme.bodySmall),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
   }
 }
 

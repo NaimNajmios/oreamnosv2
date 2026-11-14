@@ -42,15 +42,29 @@ class _FacebookHistoryScreenState extends ConsumerState<FacebookHistoryScreen> {
     });
   }
 
-  /// Best-effort sequential refresh, capped so a long history never turns
+  /// Best-effort bounded refresh, capped so a long history never turns
   /// pull-to-refresh into a burst of Graph calls.
   Future<void> _refreshInsights(List<FacebookPostRecord> records) async {
     final notifier = ref.read(facebookHistoryProvider.notifier);
-    for (final record in records.take(10)) {
+    final targets = records.take(10).toList(growable: false);
+    var failed = 0;
+    for (var start = 0; start < targets.length; start += 4) {
+      final end = start + 4 < targets.length ? start + 4 : targets.length;
+      final chunk = targets.sublist(start, end);
+      final results = await Future.wait(
+        chunk.map((record) async {
+          final first = await notifier.refreshEngagement(record.id);
+          final second = await notifier.refreshInsights(record.id);
+          return first ?? second;
+        }),
+      );
       if (!mounted) return;
-      await notifier.refreshEngagement(record.id);
-      if (!mounted) return;
-      await notifier.refreshInsights(record.id);
+      failed += results.where((error) => error != null).length;
+    }
+    if (failed > 0 && mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text("Some insights couldn't refresh.")),
+      );
     }
   }
 

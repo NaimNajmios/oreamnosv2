@@ -138,6 +138,34 @@ void main() {
     expect(File(copy.media.single['path'] as String).existsSync(), isTrue);
   });
 
+  test('duplicate preserves workflow and Story configuration', () async {
+    final store = await makeStore();
+    await store.save(
+      FacebookDraftRecord(
+        id: 'original',
+        text: 'Copy me',
+        media: const [],
+        pageId: '123',
+        pageName: 'Trace',
+        mode: 'schedule',
+        scheduledAt: DateTime(2026, 5, 1, 9),
+        updatedAt: DateTime.now(),
+        workflowId: 'wf-1',
+        workflowName: 'Matchday',
+        publishFeed: false,
+        storyEnabled: true,
+        storyTitle: 'Kickoff',
+      ),
+    );
+    final newId = await store.duplicate('original');
+    final copy = store.loadAll().firstWhere((r) => r.id == newId);
+    expect(copy.workflowId, 'wf-1');
+    expect(copy.workflowName, 'Matchday');
+    expect(copy.publishFeed, isFalse);
+    expect(copy.storyEnabled, isTrue);
+    expect(copy.storyTitle, 'Kickoff');
+  });
+
   test('v10 single draft key migrates into the store', () async {
     final prefs = await SharedPreferences.getInstance();
     await prefs.setString(

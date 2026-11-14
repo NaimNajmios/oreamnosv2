@@ -41,6 +41,16 @@ class _FacebookPerformanceScreenState
     final theme = Theme.of(context);
     final state = ref.watch(facebookPerformanceProvider);
     final connection = ref.watch(facebookViewModelProvider);
+    // Switching Pages must not leave another Page's charts on screen.
+    ref.listen(facebookViewModelProvider.select((s) => s.activePageId), (
+      previous,
+      next,
+    ) {
+      if (previous == next) return;
+      final days = ref.read(facebookPerformanceProvider).days;
+      if (_days != days) setState(() => _days = days);
+      ref.read(facebookPerformanceProvider.notifier).refresh(days: days);
+    });
     final data = state.data;
     final points = _points(data);
     final posts = ref.watch(recentPublishedPostsProvider);

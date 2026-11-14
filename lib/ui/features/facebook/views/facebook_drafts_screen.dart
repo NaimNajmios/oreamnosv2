@@ -37,7 +37,11 @@ class _FacebookDraftsScreenState extends ConsumerState<FacebookDraftsScreen> {
   }
 
   Future<void> _load() async {
-    await ref.read(facebookDraftProvider.notifier).saveDraftNow();
+    final notifier = ref.read(facebookDraftProvider.notifier);
+    final draft = ref.read(facebookDraftProvider);
+    if (!draft.isEmpty && !draft.isFinished && notifier.hasUnsavedChanges) {
+      await notifier.saveDraftNow();
+    }
     if (!mounted) return;
     setState(() {
       _drafts = getIt<FacebookDraftStore>().loadAll();

@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:oreamnos/core/di/injection.dart';
 import 'package:oreamnos/data/services/provider_api_service.dart';
 import 'package:oreamnos/ui/core/utils/haptics.dart';
+import 'package:oreamnos/ui/core/utils/relative_time.dart';
 import 'package:oreamnos/ui/core/widgets/settings_tile.dart';
 import 'package:oreamnos/ui/features/settings/view_models/settings_view_model.dart';
 
@@ -20,14 +21,7 @@ class TestConnectionTile extends ConsumerStatefulWidget {
 class _TestConnectionTileState extends ConsumerState<TestConnectionTile> {
   bool _testing = false;
 
-  static String _relativeTime(DateTime? at) {
-    if (at == null) return '';
-    final diff = DateTime.now().difference(at);
-    if (diff.inSeconds < 60) return 'just now';
-    if (diff.inMinutes < 60) return '${diff.inMinutes}m ago';
-    if (diff.inHours < 24) return '${diff.inHours}h ago';
-    return '${diff.inDays}d ago';
-  }
+  static String _relativeTime(DateTime? at) => relativeTime(at);
 
   Future<void> _test() async {
     if (_testing) return;

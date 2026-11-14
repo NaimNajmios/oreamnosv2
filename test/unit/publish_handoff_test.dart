@@ -51,6 +51,9 @@ void main() {
       expect(handoff.uppercaseTitle, isTrue);
       expect(handoff.hashtagCount, 2);
       expect(handoff.sourceUrl, 'https://example.com/story');
+      expect(handoff.sourceLabel, 'Example');
+      expect(handoff.sourceDomain, 'example.com');
+      expect(handoff.sourceDisplay, 'Example');
       expect(handoff.snippet, isNotEmpty);
     });
 
@@ -96,6 +99,56 @@ void main() {
       notifier.markFresh();
 
       expect(container.read(publishHandoffProvider), isNotNull);
+    });
+
+    test('falls back to the domain when the source label is empty', () {
+      const post = CuratedPost(
+        title: 'A headline',
+        bodyMarkdown: 'Body copy.',
+        hashtags: [],
+        source: SourceAttribution(
+          label: '',
+          url: 'https://example.com/story',
+          domain: 'example.com',
+        ),
+        rawMarkdown: 'A headline\n\nBody copy.',
+      );
+      final handoff = _container(const GenerateUiState(curatedPost: post))
+          .read(publishHandoffProvider);
+
+      expect(handoff!.sourceDisplay, 'example.com');
+    });
+
+    test('source changes produce a new fingerprint', () {
+      const first = CuratedPost(
+        title: 'A headline',
+        bodyMarkdown: 'Body copy.',
+        hashtags: [],
+        source: SourceAttribution(
+          label: 'Example',
+          url: 'https://example.com/a',
+          domain: 'example.com',
+        ),
+        rawMarkdown: 'A headline\n\nBody copy.',
+      );
+      const second = CuratedPost(
+        title: 'A headline',
+        bodyMarkdown: 'Body copy.',
+        hashtags: [],
+        source: SourceAttribution(
+          label: 'Example',
+          url: 'https://example.com/b',
+          domain: 'other.example.com',
+        ),
+        rawMarkdown: 'A headline\n\nBody copy.',
+      );
+
+      final a = _container(const GenerateUiState(curatedPost: first))
+          .read(publishHandoffProvider)!;
+      final b = _container(const GenerateUiState(curatedPost: second))
+          .read(publishHandoffProvider)!;
+
+      expect(a.fingerprint, isNot(b.fingerprint));
     });
 
     test('snippet trims to the first non-empty line', () {
