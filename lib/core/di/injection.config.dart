@@ -20,6 +20,7 @@ import '../../data/services/daily_usage_service.dart' as _i267;
 import '../../data/services/export_service.dart' as _i496;
 import '../../data/services/facebook_comments_service.dart' as _i500;
 import '../../data/services/facebook_draft_store.dart' as _i217;
+import '../../data/services/facebook_export_service.dart' as _i519;
 import '../../data/services/facebook_history_service.dart' as _i278;
 import '../../data/services/facebook_insights_service.dart' as _i919;
 import '../../data/services/facebook_monetization_service.dart' as _i219;
@@ -27,10 +28,12 @@ import '../../data/services/facebook_page_insights_service.dart' as _i36;
 import '../../data/services/facebook_page_insights_store.dart' as _i922;
 import '../../data/services/facebook_page_service.dart' as _i9;
 import '../../data/services/facebook_publisher_service.dart' as _i493;
+import '../../data/services/facebook_reminder_service.dart' as _i727;
 import '../../data/services/facebook_storage_service.dart' as _i141;
 import '../../data/services/facebook_story_composer.dart' as _i282;
 import '../../data/services/facebook_workflow_store.dart' as _i703;
 import '../../data/services/free_tier_guard.dart' as _i200;
+import '../../data/services/home_widget_service.dart' as _i137;
 import '../../data/services/log_service.dart' as _i713;
 import '../../data/services/ml_kit_vision_extractor.dart' as _i560;
 import '../../data/services/preferences_service.dart' as _i867;
@@ -67,6 +70,9 @@ extension GetItInjectableX on _i174.GetIt {
     gh.lazySingleton<_i557.ApiClient>(() => _i557.ApiClient());
     gh.lazySingleton<_i633.CardDataExtractor>(() => _i633.CardDataExtractor());
     gh.lazySingleton<_i496.ExportService>(() => _i496.ExportService());
+    gh.lazySingleton<_i727.LocalFacebookReminderScheduler>(
+      () => const _i727.LocalFacebookReminderScheduler(),
+    );
     gh.lazySingleton<_i282.FacebookStoryComposer>(
       () => _i282.FacebookStoryComposer(),
     );
@@ -84,6 +90,12 @@ extension GetItInjectableX on _i174.GetIt {
       () => _i1062.UsageService(
         gh<_i460.SharedPreferences>(),
         gh<_i267.DailyUsageService>(),
+      ),
+    );
+    gh.lazySingleton<_i727.FacebookReminderService>(
+      () => _i727.FacebookReminderService(
+        gh<_i460.SharedPreferences>(),
+        gh<_i727.FacebookReminderScheduler>(),
       ),
     );
     gh.lazySingleton<_i671.IUsageRepository>(
@@ -119,6 +131,11 @@ extension GetItInjectableX on _i174.GetIt {
     gh.lazySingleton<_i713.LogService>(
       () => _i713.LogService(gh<_i460.SharedPreferences>()),
     );
+    gh.lazySingleton<_i519.FacebookExportService>(
+      () => _i519.FacebookExportService(
+        tempDirectory: gh<_i519.TempDirectoryProvider>(),
+      ),
+    );
     gh.lazySingleton<_i500.FacebookCommentsService>(
       () => _i500.FacebookCommentsService(gh<_i557.ApiClient>()),
     );
@@ -145,6 +162,9 @@ extension GetItInjectableX on _i174.GetIt {
         gh<_i557.ApiClient>(),
         gh<_i867.PreferencesService>(),
       ),
+    );
+    gh.lazySingleton<_i137.HomeWidgetService>(
+      () => _i137.HomeWidgetService(gh<_i713.LogService>()),
     );
     gh.lazySingleton<_i9.FacebookPageService>(
       () => _i9.FacebookPageService(

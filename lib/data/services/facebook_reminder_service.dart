@@ -20,9 +20,9 @@ abstract interface class FacebookReminderScheduler {
   Future<void> cancel(int id);
 }
 
+@lazySingleton
 class LocalFacebookReminderScheduler implements FacebookReminderScheduler {
   const LocalFacebookReminderScheduler();
-
   @override
   Future<bool> requestPermission() => NotificationService().requestPermission();
 

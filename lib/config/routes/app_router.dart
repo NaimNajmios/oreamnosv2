@@ -46,6 +46,25 @@ abstract final class RoutePaths {
   static const String facebookComments = '/facebook-comments';
   static const String facebookWorkflows = '/facebook-workflows';
   static const String facebookDiagnostics = '/facebook-diagnostics';
+
+  /// Maps a `home_widget` click URI (`oreamnos://scheduled`, `oreamnos://usage`,
+  /// `oreamnos://compose`, `oreamnos://publish`, `oreamnos://generate`) onto a
+  /// go_router location. The widget provider only speaks in these stable
+  /// host names, never in route literals, so paths can change in one place.
+  static String? forWidgetUri(Uri? uri) {
+    if (uri == null) return null;
+    final host = uri.host.isNotEmpty
+        ? uri.host.toLowerCase()
+        : uri.path.replaceAll('/', '').toLowerCase();
+    return switch (host) {
+      'scheduled' => '$facebookHistory?tab=scheduled',
+      'usage' => usage,
+      'compose' => facebookCompose,
+      'publish' => publish,
+      'generate' => generate,
+      _ => null,
+    };
+  }
 }
 
 final rootNavigatorKey = GlobalKey<NavigatorState>();

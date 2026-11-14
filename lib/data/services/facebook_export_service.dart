@@ -19,14 +19,18 @@ enum FacebookExportFormat {
   final String mimeType;
 }
 
+/// Function alias so `injectable_generator` can resolve the optional
+/// constructor parameter (raw function types break codegen).
+typedef TempDirectoryProvider = Future<Directory> Function();
+
 /// Writes a Facebook history export to a temp file and hands it to the OS
 /// share sheet. Tokens are never part of the exported models.
 @lazySingleton
 class FacebookExportService {
-  FacebookExportService({Future<Directory> Function()? tempDirectory})
+  FacebookExportService({TempDirectoryProvider? tempDirectory})
     : _tempDirectory = tempDirectory ?? getTemporaryDirectory;
 
-  final Future<Directory> Function() _tempDirectory;
+  final TempDirectoryProvider _tempDirectory;
 
   Future<File> write({
     required FacebookExportFormat format,

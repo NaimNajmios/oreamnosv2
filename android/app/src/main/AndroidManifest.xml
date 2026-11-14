@@ -54,6 +54,26 @@
                 <action android:name="com.htc.intent.action.QUICKBOOT_POWERON"/>
             </intent-filter>
         </receiver>
+
+        <!-- Home-screen widget: next scheduled post + today's Gemini quota.
+             Reads the string payload the app writes through `home_widget`;
+             taps are explicit intents back into MainActivity. -->
+        <receiver
+            android:name=".widget.OreamnosWidgetProvider"
+            android:exported="true"
+            android:label="@string/widget_label">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_UPDATE"/>
+            </intent-filter>
+            <meta-data
+                android:name="android.appwidget.provider"
+                android:resource="@xml/oreamnos_widget_info"/>
+        </receiver>
+        <!-- Re-arms the widget refresh after the next post goes live and at
+             the Pacific quota reset (inexact alarms, no exact-alarm grant). -->
+        <receiver
+            android:name="es.antonborri.home_widget.HomeWidgetScheduledUpdateReceiver"
+            android:exported="false"/>
     </application>
     <!-- Required to query activities that can process text, see:
          https://developer.android.com/training/package-visibility and

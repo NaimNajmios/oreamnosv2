@@ -1,0 +1,5 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="widget_description">Next scheduled Page post and today\'s Gemini quota</string>
+    <string name="widget_label">Oreamnos next up</string>
+</resources>

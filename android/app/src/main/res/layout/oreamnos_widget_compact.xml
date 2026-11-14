@@ -1,0 +1,151 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Compact (2x2) layout. Same view ids as the expanded layout so the
+     provider can bind both without branching on the view tree. -->
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:id="@+id/widget_root"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:orientation="vertical"
+    android:padding="12dp"
+    android:background="#1C1C1C">
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        android:gravity="center_vertical">
+
+        <TextView
+            android:id="@+id/widget_kicker"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:maxLines="1"
+            android:ellipsize="end"
+            android:letterSpacing="0.08"
+            android:text="NEXT UP"
+            android:textColor="#0095F6"
+            android:textSize="9sp"
+            android:textStyle="bold" />
+
+        <TextView
+            android:id="@+id/widget_page"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:maxLines="1"
+            android:ellipsize="end"
+            android:text="Football Malaysia"
+            android:textColor="#B0B3B8"
+            android:textSize="9sp" />
+    </LinearLayout>
+
+    <TextView
+        android:id="@+id/widget_snippet"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="4dp"
+        android:ellipsize="end"
+        android:maxLines="3"
+        android:text="Kelayakan Piala Asia: Malaysia bertemu Vietnam malam ini"
+        android:textColor="#FFFFFF"
+        android:textSize="13sp"
+        android:textStyle="bold" />
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="2dp"
+        android:orientation="horizontal"
+        android:gravity="center_vertical">
+
+        <TextView
+            android:id="@+id/widget_when"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:maxLines="1"
+            android:text="Today 20:45"
+            android:textColor="#B0B3B8"
+            android:textSize="10sp" />
+
+        <Chronometer
+            android:id="@+id/widget_countdown"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginStart="5dp"
+            android:format="in %s"
+            android:textColor="#B0B3B8"
+            android:textSize="10sp" />
+    </LinearLayout>
+
+    <LinearLayout
+        android:id="@+id/widget_quota"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="8dp"
+        android:orientation="vertical">
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal"
+            android:gravity="center_vertical">
+
+            <TextView
+                android:id="@+id/widget_quota_label"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:maxLines="1"
+                android:ellipsize="end"
+                android:letterSpacing="0.06"
+                android:text="GEMINI QUOTA"
+                android:textColor="#B0B3B8"
+                android:textSize="9sp" />
+
+            <TextView
+                android:id="@+id/widget_quota_value"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:maxLines="1"
+                android:text="312 / 500"
+                android:textColor="#0095F6"
+                android:textSize="10sp"
+                android:textStyle="bold" />
+        </LinearLayout>
+
+        <ProgressBar
+            android:id="@+id/widget_quota_bar"
+            style="@android:style/Widget.ProgressBar.Horizontal"
+            android:layout_width="match_parent"
+            android:layout_height="5dp"
+            android:layout_marginTop="4dp"
+            android:max="100"
+            android:progress="62" />
+
+        <TextView
+            android:id="@+id/widget_quota_reset"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="2dp"
+            android:maxLines="1"
+            android:visibility="gone"
+            android:text=""
+            android:textColor="#B0B3B8"
+            android:textSize="9sp" />
+    </LinearLayout>
+
+    <Space
+        android:layout_width="match_parent"
+        android:layout_height="0dp"
+        android:layout_weight="1" />
+
+    <TextView
+        android:id="@+id/widget_updated"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:gravity="end"
+        android:maxLines="1"
+        android:text=""
+        android:textColor="#B0B3B8"
+        android:textSize="8sp" />
+</LinearLayout>
