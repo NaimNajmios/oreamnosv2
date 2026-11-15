@@ -134,7 +134,10 @@
             android:textSize="9sp" />
     </LinearLayout>
 
-    <Space
+    <!-- Spacer. Must stay a @RemoteView class: `Space` and plain `View` are
+         rejected by the RemoteViews inflater, which surfaces in the launcher
+         as "Problem loading widget". -->
+    <FrameLayout
         android:layout_width="match_parent"
         android:layout_height="0dp"
         android:layout_weight="1" />
