@@ -106,7 +106,9 @@ class _OreamnosAppState extends ConsumerState<OreamnosApp> {
     ref.listenManual(settingsViewModelProvider, (previous, next) {
       if (previous?.themeMode != next.themeMode ||
           previous?.selectedModel != next.selectedModel ||
-          previous?.selectedProvider != next.selectedProvider) {
+          previous?.selectedProvider != next.selectedProvider ||
+          previous?.showWidgetSnippet != next.showWidgetSnippet ||
+          previous?.widgetSecondRow != next.widgetSecondRow) {
         _scheduleHomeWidgetSync();
       }
     });
@@ -309,6 +311,14 @@ class _OreamnosAppState extends ConsumerState<OreamnosApp> {
         quotaResetAt: daily == null || quotas.isEmpty
             ? null
             : now.add(daily.timeUntilPacificReset()),
+        quotaHistory: daily?.geminiQuotaHistory() ?? const {},
+        pages: [
+          for (final page in connection.pages)
+            HomeWidgetPage(id: page.id, name: page.name),
+        ],
+        draftTitle: drafts.isEmpty ? '' : drafts.first.text,
+        showSnippet: settings.showWidgetSnippet,
+        secondRow: settings.widgetSecondRow,
       );
       await _homeWidget.push(snapshot);
     } catch (_) {

@@ -7,6 +7,7 @@ import '../../../../data/services/provider_api_service.dart';
 import '../../../../domain/models/app_theme_mode.dart';
 import '../../../../domain/models/custom_pill.dart';
 import '../../../../domain/models/hashtag_group.dart';
+import '../../../../domain/models/home_widget_snapshot.dart';
 import '../../../../domain/models/vision_mode.dart';
 import 'settings_state.dart';
 
@@ -42,6 +43,8 @@ class SettingsNotifier extends Notifier<SettingsState> {
     final persistGenerationOptions =
         _preferencesService.persistGenerationOptions;
     final visionMode = _preferencesService.visionMode;
+    final showWidgetSnippet = _preferencesService.showWidgetSnippet;
+    final widgetSecondRow = _preferencesService.widgetSecondRow;
     final lastTestOk = _preferencesService.getLastTestOk(selectedProvider);
     final lastTestedAt = _preferencesService.getLastTestedAt(selectedProvider);
     state = state.copyWith(
@@ -63,6 +66,8 @@ class SettingsNotifier extends Notifier<SettingsState> {
       fanClubName: fanClubName,
       persistGenerationOptions: persistGenerationOptions,
       visionMode: visionMode,
+      showWidgetSnippet: showWidgetSnippet,
+      widgetSecondRow: widgetSecondRow,
     );
   }
 
@@ -311,6 +316,22 @@ class SettingsNotifier extends Notifier<SettingsState> {
     return _optimistic(
       state.copyWith(visionMode: mode),
       () => _preferencesService.setVisionMode(mode),
+    );
+  }
+
+  Future<bool> setShowWidgetSnippet(bool show) {
+    if (state.showWidgetSnippet == show) return Future.value(true);
+    return _optimistic(
+      state.copyWith(showWidgetSnippet: show),
+      () => _preferencesService.setShowWidgetSnippet(show),
+    );
+  }
+
+  Future<bool> setWidgetSecondRow(HomeWidgetSecondRow row) {
+    if (state.widgetSecondRow == row) return Future.value(true);
+    return _optimistic(
+      state.copyWith(widgetSecondRow: row),
+      () => _preferencesService.setWidgetSecondRow(row),
     );
   }
 }

@@ -2,4 +2,13 @@
 <resources>
     <string name="widget_description">Next scheduled Page post and today\'s Gemini quota</string>
     <string name="widget_label">Oreamnos next up</string>
+    <string name="widget_config_title">Widget settings</string>
+    <string name="widget_config_second_row">Show under the divider</string>
+    <string name="widget_config_page">Page</string>
+    <string name="widget_config_active_page">Active page</string>
+    <string name="widget_config_save">Add widget</string>
+    <string name="widget_config_row_quota">Gemini quota</string>
+    <string name="widget_config_row_engagement">Last post</string>
+    <string name="widget_config_row_drafts">Drafts</string>
+    <string name="widget_config_row_best_time">Best time</string>
 </resources>

@@ -45,7 +45,7 @@
         android:layout_height="wrap_content"
         android:layout_marginTop="4dp"
         android:ellipsize="end"
-        android:maxLines="3"
+        android:maxLines="2"
         android:text="Kelayakan Piala Asia: Malaysia bertemu Vietnam malam ini"
         android:textColor="#FFFFFF"
         android:textSize="13sp"
@@ -77,17 +77,39 @@
             android:textSize="10sp" />
     </LinearLayout>
 
+    <TextView
+        android:id="@+id/widget_badge"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="2dp"
+        android:maxLines="1"
+        android:ellipsize="end"
+        android:visibility="gone"
+        android:text="Story needs retry"
+        android:textColor="#F59E0B"
+        android:textSize="9sp"
+        android:textStyle="bold" />
+
+    <!-- 1dp rule. Must stay a @RemoteView class. -->
+    <FrameLayout
+        android:id="@+id/widget_divider"
+        android:layout_width="match_parent"
+        android:layout_height="1dp"
+        android:layout_marginTop="8dp"
+        android:background="#33B0B3B8" />
+
     <LinearLayout
         android:id="@+id/widget_quota"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:layout_marginTop="8dp"
+        android:layout_marginTop="6dp"
         android:orientation="vertical">
 
         <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:orientation="horizontal"
+            android:baselineAligned="true"
             android:gravity="center_vertical">
 
             <TextView
@@ -122,14 +144,64 @@
             android:max="100"
             android:progress="62" />
 
+        <!-- Visibility is owned by the provider (hidden in compact). -->
         <TextView
             android:id="@+id/widget_quota_reset"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:layout_marginTop="2dp"
             android:maxLines="1"
-            android:visibility="gone"
             android:text=""
+            android:textColor="#B0B3B8"
+            android:textSize="9sp" />
+    </LinearLayout>
+
+    <LinearLayout
+        android:id="@+id/widget_secondary"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="6dp"
+        android:orientation="vertical"
+        android:visibility="gone">
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal"
+            android:baselineAligned="true"
+            android:gravity="center_vertical">
+
+            <TextView
+                android:id="@+id/widget_secondary_label"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:maxLines="1"
+                android:ellipsize="end"
+                android:letterSpacing="0.06"
+                android:text="LAST POST"
+                android:textColor="#B0B3B8"
+                android:textSize="9sp" />
+
+            <TextView
+                android:id="@+id/widget_secondary_value"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:maxLines="1"
+                android:text="128 · 24 · 9"
+                android:textColor="#0095F6"
+                android:textSize="10sp"
+                android:textStyle="bold" />
+        </LinearLayout>
+
+        <TextView
+            android:id="@+id/widget_secondary_meta"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="2dp"
+            android:maxLines="1"
+            android:ellipsize="end"
+            android:text="Kelayakan Piala Asia · 2h ago"
             android:textColor="#B0B3B8"
             android:textSize="9sp" />
     </LinearLayout>
@@ -142,13 +214,33 @@
         android:layout_height="0dp"
         android:layout_weight="1" />
 
-    <TextView
-        android:id="@+id/widget_updated"
+    <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:gravity="end"
-        android:maxLines="1"
-        android:text=""
-        android:textColor="#B0B3B8"
-        android:textSize="8sp" />
+        android:orientation="horizontal"
+        android:gravity="center_vertical">
+
+        <TextView
+            android:id="@+id/widget_updated"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:maxLines="1"
+            android:ellipsize="end"
+            android:text=""
+            android:textColor="#B0B3B8"
+            android:textSize="9sp" />
+
+        <!-- Exists for id parity; the provider hides it in compact. -->
+        <TextView
+            android:id="@+id/widget_compose"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:maxLines="1"
+            android:visibility="gone"
+            android:text="New post"
+            android:textColor="#0095F6"
+            android:textSize="10sp"
+            android:textStyle="bold" />
+    </LinearLayout>
 </LinearLayout>

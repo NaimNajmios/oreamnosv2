@@ -1,8 +1,10 @@
 import 'dart:async';
 
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:home_widget/home_widget.dart';
 
 import 'package:oreamnos/config/routes/app_router.dart';
 import 'package:oreamnos/config/theme/app_motion.dart';
@@ -17,6 +19,7 @@ import 'package:oreamnos/ui/core/widgets/section_header.dart';
 import 'package:oreamnos/ui/core/widgets/settings_tile.dart';
 import 'package:oreamnos/ui/core/widgets/staggered_entrance.dart';
 import 'package:oreamnos/domain/models/app_theme_mode.dart';
+import 'package:oreamnos/domain/models/home_widget_snapshot.dart';
 import 'package:oreamnos/domain/models/vision_mode.dart';
 
 import '../view_models/settings_view_model.dart';
@@ -324,6 +327,52 @@ class SettingsScreen extends ConsumerWidget {
           ),
         ],
       ),
+      // Widgets are Android-only; other platforms must not see dead switches.
+      if (!kIsWeb && defaultTargetPlatform == TargetPlatform.android) ...[
+        const SectionHeader(title: 'Home screen widget'),
+        sectionCard(
+          children: [
+            SettingsTile(
+              leadingIcon: Icons.visibility_outlined,
+              title: 'Show post caption',
+              subtitle: state.showWidgetSnippet
+                  ? 'The next post’s text appears on the home screen'
+                  : 'Hidden — Page, time and counts still show',
+              trailing: AppSwitch(
+                value: state.showWidgetSnippet,
+                onChanged: (value) =>
+                    apply(() => notifier.setShowWidgetSnippet(value)),
+              ),
+            ),
+            SettingsTile(
+              leadingIcon: Icons.dashboard_customize_outlined,
+              title: 'Second row',
+              subtitle: state.widgetSecondRow.label,
+              onTap: () => _showSecondRowSheet(
+                context,
+                state.widgetSecondRow,
+                (row) => apply(() => notifier.setWidgetSecondRow(row)),
+              ),
+            ),
+            const _AddWidgetTile(),
+          ],
+        ),
+        Padding(
+          padding: const EdgeInsets.fromLTRB(
+            AppSpacing.screenHorizontal,
+            AppSpacing.sm,
+            AppSpacing.screenHorizontal,
+            0,
+          ),
+          child: Text(
+            'The widget is read-only. Every tap opens Oreamnos — '
+            'nothing posts or changes in the background.',
+            style: theme.textTheme.bodySmall?.copyWith(
+              color: theme.colorScheme.onSurfaceVariant,
+            ),
+          ),
+        ),
+      ],
       const SectionHeader(title: 'Advanced'),
       sectionCard(
         children: [
@@ -861,6 +910,107 @@ class _SettingsSkeletonCard extends StatelessWidget {
           borderRadius: AppSpacing.borderRadiusMd,
         ),
       ),
+    );
+  }
+}
+
+/// Bottom sheet for the widget's second-row picker. Falls back silently when
+/// the platform channel is unavailable (tests, unsupported devices).
+Future<void> _showSecondRowSheet(
+  BuildContext context,
+  HomeWidgetSecondRow current,
+  ValueChanged<HomeWidgetSecondRow> onSelect,
+) async {
+  final selected = await showModalBottomSheet<HomeWidgetSecondRow>(
+    context: context,
+    showDragHandle: true,
+    builder: (sheetContext) {
+      final theme = Theme.of(sheetContext);
+      return SafeArea(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Padding(
+              padding: const EdgeInsets.fromLTRB(
+                AppSpacing.base,
+                0,
+                AppSpacing.base,
+                AppSpacing.sm,
+              ),
+              child: Text(
+                'Show under the divider',
+                style: theme.textTheme.titleSmall?.copyWith(
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
+            ),
+            for (final row in HomeWidgetSecondRow.values)
+              ListTile(
+                title: Text(row.label),
+                trailing: row == current
+                    ? Icon(
+                        Icons.check_rounded,
+                        color: theme.colorScheme.primary,
+                      )
+                    : null,
+                onTap: () => Navigator.of(sheetContext).pop(row),
+              ),
+          ],
+        ),
+      );
+    },
+  );
+  if (selected != null && selected != current) onSelect(selected);
+}
+
+/// "Add to home screen" pin request. Hidden unless the launcher supports
+/// pinning (API 26+ and a launcher that implements it).
+class _AddWidgetTile extends StatefulWidget {
+  const _AddWidgetTile();
+
+  @override
+  State<_AddWidgetTile> createState() => _AddWidgetTileState();
+}
+
+class _AddWidgetTileState extends State<_AddWidgetTile> {
+  bool _supported = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _resolveSupport();
+  }
+
+  Future<void> _resolveSupport() async {
+    try {
+      final supported = await HomeWidget.isRequestPinWidgetSupported();
+      if (!mounted) return;
+      setState(() => _supported = supported == true);
+    } catch (_) {
+      // Missing plugin (unit tests) or an old launcher: stay hidden.
+    }
+  }
+
+  Future<void> _pin() async {
+    try {
+      await HomeWidget.requestPinWidget(
+        qualifiedAndroidName:
+            'com.najmi.oreamnos.widget.OreamnosWidgetProvider',
+      );
+    } catch (_) {
+      // A launcher can refuse; nothing to recover from here.
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    if (!_supported) return const SizedBox.shrink();
+    return SettingsTile(
+      leadingIcon: Icons.add_to_home_screen_rounded,
+      title: 'Add to home screen',
+      subtitle: 'Pin the next-up and quota widget',
+      onTap: _pin,
     );
   }
 }

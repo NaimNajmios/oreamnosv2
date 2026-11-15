@@ -57,6 +57,11 @@ class DailyUsageService {
 
   static const String _keyStore = 'daily_usage_v1';
 
+  /// Days of history kept in the store: today plus the six before it. The
+  /// widget's "average per day" line reads this window, so it has to be wider
+  /// than the old today+yesterday prune.
+  static const int historyDays = 7;
+
   /// Known free-tier requests-per-day budgets (ESTIMATES). Prefix-matched
   /// against the model id so dated variants (e.g. `-preview`) map too.
   static const List<MapEntry<String, int>> _budgetRules = [
@@ -110,7 +115,7 @@ class DailyUsageService {
     // Vision pseudo-provider is not quota-counted per model.
     if (providerId.trim().toLowerCase() == 'vision') return;
     final dayKey = pacificDayKey(_now());
-    final store = _load()..removeWhere((k, _) => !_isLiveDayKey(k, dayKey));
+    final store = _load()..removeWhere((k, _) => !_isRetainedDayKey(k, dayKey));
     final bucket = store[dayKey] ?? {};
     final modelKey =
         '${providerId.trim().toLowerCase()}:'
@@ -149,6 +154,39 @@ class DailyUsageService {
     return bucket.keys.any((k) => k.startsWith('gemini:'));
   }
 
+  /// Per-model request counts over the retained window, oldest day first.
+  ///
+  /// Days with no activity for a model are omitted rather than reported as
+  /// zero: a week away from the app must not drag the widget's "avg / day"
+  /// line down. Model keys match [todayGeminiQuota] (`unknown` for a null
+  /// model name).
+  Map<String, List<int>> geminiQuotaHistory({int days = historyDays}) {
+    final todayKey = pacificDayKey(_now());
+    final cutoff = _cutoffDayKey(todayKey, days);
+    final store = _load();
+    final dayKeys =
+        store.keys
+            .where(
+              (key) =>
+                  key.compareTo(cutoff) >= 0 && key.compareTo(todayKey) <= 0,
+            )
+            .toList()
+          ..sort();
+    final byModel = <String, List<int>>{};
+    for (final dayKey in dayKeys) {
+      final bucket = store[dayKey] ?? const {};
+      for (final entry in bucket.entries) {
+        final parts = entry.key.split(':');
+        if (parts.isEmpty || parts.first != 'gemini') continue;
+        final modelId = parts.length > 1 ? parts.sublist(1).join(':') : '';
+        final resolved = modelId.isEmpty ? 'unknown' : modelId;
+        if (entry.value <= 0) continue;
+        (byModel[resolved] ??= <int>[]).add(entry.value);
+      }
+    }
+    return byModel;
+  }
+
   /// Clears every local daily-quota counter. Provider-side RPD windows are not
   /// affected; this only resets the device-local estimate shown in Usage.
   Future<void> clearAll() async {
@@ -160,10 +198,29 @@ class DailyUsageService {
     }
   }
 
-  /// Keep today + yesterday only (yesterday kept for late-night sessions
-  /// spanning the reset).
-  bool _isLiveDayKey(String key, String todayKey) {
-    return key == todayKey || key == _yesterdayKey(todayKey);
+  /// Keep today plus the previous [historyDays] - 1 days.
+  bool _isRetainedDayKey(String key, String todayKey) {
+    return key.compareTo(_cutoffDayKey(todayKey, historyDays)) >= 0 &&
+        key.compareTo(todayKey) <= 0;
+  }
+
+  /// `yyyy-MM-dd` for the oldest retained day. Day keys sort
+  /// lexicographically, so string comparison is enough.
+  static String _cutoffDayKey(String todayKey, int days) {
+    final parts = todayKey.split('-');
+    if (parts.length != 3) return todayKey;
+    final year = int.tryParse(parts[0]);
+    final month = int.tryParse(parts[1]);
+    final day = int.tryParse(parts[2]);
+    if (year == null || month == null || day == null) return todayKey;
+    final cutoff = DateTime(
+      year,
+      month,
+      day,
+    ).subtract(Duration(days: (days - 1).clamp(0, 365)));
+    return '${cutoff.year.toString().padLeft(4, '0')}-'
+        '${cutoff.month.toString().padLeft(2, '0')}-'
+        '${cutoff.day.toString().padLeft(2, '0')}';
   }
 
   Duration timeUntilPacificReset() {
@@ -235,13 +292,5 @@ class DailyUsageService {
         ? 1
         : 1 + (7 - firstWeekday);
     return DateTime.utc(year, month, firstSundayDay + (n - 1) * 7);
-  }
-
-  static String _yesterdayKey(String todayKey) {
-    final date = DateTime.parse('${todayKey}T00:00:00Z')
-        .add(const Duration(days: -1));
-    return '${date.year.toString().padLeft(4, '0')}-'
-        '${date.month.toString().padLeft(2, '0')}-'
-        '${date.day.toString().padLeft(2, '0')}';
   }
 }

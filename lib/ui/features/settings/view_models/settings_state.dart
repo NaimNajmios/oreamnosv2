@@ -2,6 +2,7 @@ import 'package:oreamnos/data/models/ai_provider.dart';
 import 'package:oreamnos/domain/models/app_theme_mode.dart';
 import 'package:oreamnos/domain/models/custom_pill.dart';
 import 'package:oreamnos/domain/models/hashtag_group.dart';
+import 'package:oreamnos/domain/models/home_widget_snapshot.dart';
 import 'package:oreamnos/domain/models/vision_mode.dart';
 
 class SettingsState {
@@ -23,6 +24,8 @@ class SettingsState {
   final DateTime? lastTestedAt;
   final bool persistGenerationOptions;
   final VisionMode visionMode;
+  final bool showWidgetSnippet;
+  final HomeWidgetSecondRow widgetSecondRow;
 
   const SettingsState({
     this.isInitialized = false,
@@ -43,6 +46,8 @@ class SettingsState {
     this.lastTestedAt,
     this.persistGenerationOptions = false,
     this.visionMode = VisionMode.auto,
+    this.showWidgetSnippet = false,
+    this.widgetSecondRow = HomeWidgetSecondRow.quota,
   });
 
   SettingsState copyWith({
@@ -68,6 +73,8 @@ class SettingsState {
     bool clearLastTest = false,
     bool? persistGenerationOptions,
     VisionMode? visionMode,
+    bool? showWidgetSnippet,
+    HomeWidgetSecondRow? widgetSecondRow,
   }) {
     return SettingsState(
       isInitialized: isInitialized ?? this.isInitialized,
@@ -89,6 +96,8 @@ class SettingsState {
       persistGenerationOptions:
           persistGenerationOptions ?? this.persistGenerationOptions,
       visionMode: visionMode ?? this.visionMode,
+      showWidgetSnippet: showWidgetSnippet ?? this.showWidgetSnippet,
+      widgetSecondRow: widgetSecondRow ?? this.widgetSecondRow,
     );
   }
 }

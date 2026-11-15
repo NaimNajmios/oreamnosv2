@@ -115,5 +115,62 @@ void main() {
 
       expect(sets.first, sets.last);
     });
+
+    for (final path in _layouts) {
+      test('$path keeps every text at 9sp or larger', () {
+        final sizes = [
+          for (final match in RegExp(
+            r'android:textSize="([0-9]+)sp"',
+          ).allMatches(_read(path)))
+            int.parse(match.group(1)!),
+        ];
+        expect(sizes, isNotEmpty);
+        expect(
+          sizes.where((size) => size < 9),
+          isEmpty,
+          reason:
+              'The widget is not scrollable; sub-9sp type becomes unreadable '
+              'at 200% font scale without saving a meaningful row.',
+        );
+      });
+    }
+
+    test('every tappable id resolves to a pending intent', () {
+      final java = _read(_provider);
+      final bound = {
+        for (final match in RegExp(
+          r'bindClick\(context,\s*views,\s*R\.id\.([a-z0-9_]+)',
+          dotAll: true,
+        ).allMatches(java))
+          match.group(1)!,
+      };
+
+      // These are the interactive surfaces the provider promises.
+      expect(
+        bound,
+        containsAll(<String>[
+          'widget_root',
+          'widget_snippet',
+          'widget_compose',
+          'widget_badge',
+          'widget_quota',
+          'widget_secondary',
+        ]),
+      );
+    });
+
+    test('pending intents are immutable with unique request codes', () {
+      final java = _read(_provider);
+      expect(java, contains('PendingIntent.FLAG_IMMUTABLE'));
+
+      final codes = [
+        for (final match in RegExp(
+          r'private static final int (REQ_[A-Z_]+) = (\d+);',
+        ).allMatches(java))
+          match.group(2)!,
+      ];
+      expect(codes, isNotEmpty);
+      expect(codes.toSet().length, codes.length);
+    });
   });
 }

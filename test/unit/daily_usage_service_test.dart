@@ -158,20 +158,78 @@ void main() {
         expect(svc.hasGeminiActivityToday(), isFalse);
       });
 
-      test('prunes days older than yesterday on next write', () async {
-        var current = DateTime.utc(2026, 1, 14, 20, 0, 0);
+      test(
+        'prunes days older than the retained window on next write',
+        () async {
+          var current = DateTime.utc(2026, 1, 14, 20, 0, 0);
+          final svc = service(nowOverride: () => current);
+          await svc.recordRequest('gemini', 'gemini-2.0-flash');
+
+          current = DateTime.utc(2026, 1, 22, 20, 0, 0); // 8 days later
+          await svc.recordRequest('groq', 'llama-3.3-70b');
+
+          final raw = prefs.getString('daily_usage_v1');
+          expect(raw, isNotNull);
+          final store = raw!;
+          // The Jan-14 bucket is outside the 7-day window.
+          expect(store.contains('2026-01-14'), isFalse);
+          expect(store.contains('2026-01-22'), isTrue);
+        },
+      );
+    });
+
+    group('geminiQuotaHistory', () {
+      test('empty store returns an empty map', () {
+        expect(service().geminiQuotaHistory(), isEmpty);
+      });
+
+      test('one active day reports that day only', () async {
+        final svc = service(
+          nowOverride: () => DateTime.utc(2026, 1, 14, 20, 0, 0),
+        );
+        await svc.recordRequest('gemini', 'gemini-2.0-flash');
+        await svc.recordRequest('gemini', 'gemini-2.0-flash');
+
+        expect(svc.geminiQuotaHistory(), {
+          'gemini-2.0-flash': [2],
+        });
+      });
+
+      test(
+        'skips days the app was not used instead of reporting zero',
+        () async {
+          var current = DateTime.utc(2026, 1, 10, 20, 0, 0);
+          final svc = service(nowOverride: () => current);
+          await svc.recordRequest('gemini', 'gemini-2.5-flash');
+          await svc.recordRequest('gemini', 'gemini-2.5-flash');
+
+          current = DateTime.utc(2026, 1, 12, 20, 0, 0);
+          await svc.recordRequest('gemini', 'gemini-2.5-flash');
+
+          current = DateTime.utc(2026, 1, 14, 20, 0, 0);
+          await svc.recordRequest('gemini', 'gemini-2.5-flash');
+          await svc.recordRequest('gemini', 'gemini-2.5-flash');
+          await svc.recordRequest('gemini', 'gemini-2.5-flash');
+
+          expect(svc.geminiQuotaHistory(), {
+            'gemini-2.5-flash': [2, 1, 3],
+          });
+        },
+      );
+
+      test('ignores non-Gemini providers and honors the day window', () async {
+        var current = DateTime.utc(2026, 1, 1, 20, 0, 0);
         final svc = service(nowOverride: () => current);
         await svc.recordRequest('gemini', 'gemini-2.0-flash');
 
-        current = DateTime.utc(2026, 1, 20, 20, 0, 0); // 6 days later
+        current = DateTime.utc(2026, 1, 14, 20, 0, 0);
         await svc.recordRequest('groq', 'llama-3.3-70b');
+        await svc.recordRequest('gemini', 'gemini-2.0-flash');
 
-        final raw = prefs.getString('daily_usage_v1');
-        expect(raw, isNotNull);
-        final store = raw!;
-        // Stale Jan-14 bucket must be gone after the keep-today+yesterday
-        // prune on write.
-        expect(store.contains('2026-01-14'), isFalse);
+        // The Jan-1 bucket is pruned; only today survives.
+        expect(svc.geminiQuotaHistory(), {
+          'gemini-2.0-flash': [1],
+        });
       });
     });
 

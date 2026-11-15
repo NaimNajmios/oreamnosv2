@@ -48,9 +48,10 @@ abstract final class RoutePaths {
   static const String facebookDiagnostics = '/facebook-diagnostics';
 
   /// Maps a `home_widget` click URI (`oreamnos://scheduled`, `oreamnos://usage`,
-  /// `oreamnos://compose`, `oreamnos://publish`, `oreamnos://generate`) onto a
-  /// go_router location. The widget provider only speaks in these stable
-  /// host names, never in route literals, so paths can change in one place.
+  /// `oreamnos://compose`, `oreamnos://publish`, `oreamnos://generate`,
+  /// `oreamnos://calendar?date=yyyy-MM-dd`) onto a go_router location. The
+  /// widget provider only speaks in these stable host names, never in route
+  /// literals, so paths can change in one place.
   static String? forWidgetUri(Uri? uri) {
     if (uri == null) return null;
     final host = uri.host.isNotEmpty
@@ -62,8 +63,26 @@ abstract final class RoutePaths {
       'compose' => facebookCompose,
       'publish' => publish,
       'generate' => generate,
+      'calendar' => _calendarLocation(uri),
       _ => null,
     };
+  }
+
+  /// A malformed or absent date opens the calendar on today rather than
+  /// dropping the tap entirely.
+  static String _calendarLocation(Uri uri) {
+    final raw = uri.queryParameters['date'];
+    if (raw == null || !_isIsoDate(raw)) return facebookCalendar;
+    return '$facebookCalendar?date=$raw';
+  }
+
+  static bool _isIsoDate(String value) {
+    if (!RegExp(r'^\d{4}-\d{2}-\d{2}$').hasMatch(value)) return false;
+    final parsed = DateTime.tryParse('${value}T00:00:00');
+    return parsed != null &&
+        parsed.year.toString().padLeft(4, '0') == value.substring(0, 4) &&
+        parsed.month.toString().padLeft(2, '0') == value.substring(5, 7) &&
+        parsed.day.toString().padLeft(2, '0') == value.substring(8, 10);
   }
 }
 
@@ -280,8 +299,13 @@ GoRouter createAppRouter({String? initialLocation}) {
       ),
       GoRoute(
         path: RoutePaths.facebookCalendar,
-        pageBuilder: (context, state) =>
-            _kickoffPage(child: const FacebookCalendarScreen()),
+        pageBuilder: (context, state) => _kickoffPage(
+          child: FacebookCalendarScreen(
+            initialDate: DateTime.tryParse(
+              state.uri.queryParameters['date'] ?? '',
+            ),
+          ),
+        ),
       ),
       GoRoute(
         path: RoutePaths.facebookPerformance,

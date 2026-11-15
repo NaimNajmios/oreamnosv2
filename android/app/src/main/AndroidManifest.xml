@@ -70,10 +70,27 @@
                 android:resource="@xml/oreamnos_widget_info"/>
         </receiver>
         <!-- Re-arms the widget refresh after the next post goes live and at
-             the Pacific quota reset (inexact alarms, no exact-alarm grant). -->
+             the Pacific quota reset (inexact alarms, no exact-alarm grant).
+             The intent filters are required: alarms do not survive reboot or an
+             app update, and the plugin only re-arms from these broadcasts. -->
         <receiver
             android:name="es.antonborri.home_widget.HomeWidgetScheduledUpdateReceiver"
-            android:exported="false"/>
+            android:exported="false">
+            <intent-filter>
+                <action android:name="android.intent.action.BOOT_COMPLETED"/>
+                <action android:name="android.intent.action.MY_PACKAGE_REPLACED"/>
+                <action android:name="android.app.action.SCHEDULE_EXACT_ALARM_PERMISSION_STATE_CHANGED"/>
+            </intent-filter>
+        </receiver>
+
+        <!-- Native per-widget configuration. Exported because the system
+             launcher launches it by component; the activity validates the
+             appWidgetId against our provider before trusting anything. -->
+        <activity
+            android:name=".widget.WidgetConfigActivity"
+            android:exported="true"
+            android:excludeFromRecents="true"
+            android:label="@string/widget_label" />
     </application>
     <!-- Required to query activities that can process text, see:
          https://developer.android.com/training/package-visibility and

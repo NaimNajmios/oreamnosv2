@@ -113,6 +113,12 @@ abstract final class AppConstants {
   static const String keyUsageRangeDays = 'usage_range_days';
   static const String keyUsageProviderFilter = 'usage_provider_filter';
 
+  // === Home-screen widget ===
+  // Default off: the home screen is a shared surface and the caption is the
+  // most sensitive field in the widget payload.
+  static const String keyShowWidgetSnippet = 'show_widget_snippet';
+  static const String keyWidgetSecondRow = 'widget_second_row';
+
   /// Manually bumped alongside `pubspec.yaml`; keeps diagnostics export
   /// informative without adding a `package_info_plus` dependency.
   static const String appVersionLabel = '1.0.0+1';

@@ -25,6 +25,31 @@ void main() {
         RoutePaths.forWidgetUri(Uri.parse('oreamnos://generate')),
         RoutePaths.generate,
       );
+      expect(
+        RoutePaths.forWidgetUri(
+          Uri.parse('oreamnos://calendar?date=2026-11-15'),
+        ),
+        '${RoutePaths.facebookCalendar}?date=2026-11-15',
+      );
+    });
+
+    test('calendar ignores a malformed date instead of throwing', () {
+      expect(
+        RoutePaths.forWidgetUri(
+          Uri.parse('oreamnos://calendar?date=15-11-2026'),
+        ),
+        RoutePaths.facebookCalendar,
+      );
+      expect(
+        RoutePaths.forWidgetUri(
+          Uri.parse('oreamnos://calendar?date=2026-02-31'),
+        ),
+        RoutePaths.facebookCalendar,
+      );
+      expect(
+        RoutePaths.forWidgetUri(Uri.parse('oreamnos://calendar')),
+        RoutePaths.facebookCalendar,
+      );
     });
 
     test('accepts a bare path as well as a host', () {

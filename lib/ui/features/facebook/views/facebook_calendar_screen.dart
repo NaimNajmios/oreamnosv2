@@ -17,7 +17,10 @@ import 'package:oreamnos/ui/features/facebook/widgets/facebook_post_actions_shee
 /// Month view of scheduled and published posts. Tap a day to inspect it and
 /// reschedule or cancel; long-press a scheduled day to drag it to another.
 class FacebookCalendarScreen extends ConsumerStatefulWidget {
-  const FacebookCalendarScreen({super.key});
+  const FacebookCalendarScreen({super.key, this.initialDate});
+
+  /// Widget deep-link target (`?date=yyyy-MM-dd`). Null means today.
+  final DateTime? initialDate;
 
   @override
   ConsumerState<FacebookCalendarScreen> createState() =>
@@ -34,8 +37,9 @@ class _FacebookCalendarScreenState
   void initState() {
     super.initState();
     final now = DateTime.now();
-    _month = DateTime(now.year, now.month);
-    _selectedDay = facebookCalendarDayKey(now);
+    final target = widget.initialDate ?? now;
+    _month = DateTime(target.year, target.month);
+    _selectedDay = facebookCalendarDayKey(target);
     try {
       _remindersEnabled = getIt<FacebookReminderService>().enabled;
     } catch (_) {
