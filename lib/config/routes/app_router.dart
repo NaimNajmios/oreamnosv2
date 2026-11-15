@@ -84,6 +84,21 @@ abstract final class RoutePaths {
         parsed.month.toString().padLeft(2, '0') == value.substring(5, 7) &&
         parsed.day.toString().padLeft(2, '0') == value.substring(8, 10);
   }
+
+  /// Maps a platform-supplied route (Flutter's deep-link handler) onto a
+  /// go_router location. Widget launch intents carry an `oreamnos://` URI, but
+  /// Flutter's automatic deep linking delivers that URI as if it were an app
+  /// route; without this normalisation go_router shows "Page Not Found" for a
+  /// valid widget tap. Returns null for anything that is not an in-app path,
+  /// so the caller can fall back to the default tab.
+  static String? forPlatformRoute(String? route) {
+    if (route == null || route.isEmpty) return null;
+    final uri = Uri.tryParse(route);
+    if (uri == null) return null;
+    if (uri.scheme == 'oreamnos') return forWidgetUri(uri);
+    if (route == '/') return null;
+    return route.startsWith('/') ? route : null;
+  }
 }
 
 final rootNavigatorKey = GlobalKey<NavigatorState>();
@@ -146,13 +161,19 @@ GoRouter createAppRouter({String? initialLocation}) {
       WidgetsBinding.instance.platformDispatcher.defaultRouteName;
   final effectiveInitialLocation =
       initialLocation ??
-      (defaultRoute.isNotEmpty && defaultRoute != '/'
-          ? defaultRoute
-          : RoutePaths.generate);
+      RoutePaths.forPlatformRoute(defaultRoute) ??
+      RoutePaths.generate;
 
   return GoRouter(
     navigatorKey: rootNavigatorKey,
     initialLocation: effectiveInitialLocation,
+    // A widget tap can also reach the router as a new-intent deep link after
+    // first frame. Both paths land on the same app location instead of the
+    // error screen.
+    redirect: (context, state) {
+      if (state.uri.scheme != 'oreamnos') return null;
+      return RoutePaths.forWidgetUri(state.uri) ?? RoutePaths.generate;
+    },
     routes: [
       ShellRoute(
         builder: (context, state, child) => ModernAppShell(child: child),

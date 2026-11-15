@@ -23,6 +23,13 @@
               android:name="io.flutter.embedding.android.NormalTheme"
               android:resource="@style/NormalTheme"
               />
+            <!-- Widget taps use home_widget's own launch action and method
+                 channel. Flutter's automatic deep-link handler would treat the
+                 raw `oreamnos://` URI as an app route and show "Page Not
+                 Found" before the Dart handler can map it. -->
+            <meta-data
+                android:name="flutter_deeplinking_enabled"
+                android:value="false" />
             <intent-filter>
                 <action android:name="android.intent.action.MAIN"/>
                 <category android:name="android.intent.category.LAUNCHER"/>

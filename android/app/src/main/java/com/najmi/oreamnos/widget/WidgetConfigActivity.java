@@ -163,7 +163,7 @@ public class WidgetConfigActivity extends Activity {
         update.putExtra(AppWidgetManager.EXTRA_APPWIDGET_IDS, new int[] {appWidgetId});
         sendBroadcast(update);
 
-        Toast.makeText(this, R.string.widget_config_save, Toast.LENGTH_SHORT).show();
+        Toast.makeText(this, R.string.widget_config_saved, Toast.LENGTH_SHORT).show();
         Intent result = new Intent();
         result.putExtra(AppWidgetManager.EXTRA_APPWIDGET_ID, appWidgetId);
         setResult(RESULT_OK, result);
