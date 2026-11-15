@@ -38,6 +38,8 @@ const _remoteViewClasses = <String>{
 const _layouts = <String>[
   'android/app/src/main/res/layout/oreamnos_widget.xml',
   'android/app/src/main/res/layout/oreamnos_widget_compact.xml',
+  'android/app/src/main/res/layout/oreamnos_widget_small.xml',
+  'android/app/src/main/res/layout/oreamnos_widget_wide.xml',
 ];
 
 const _provider =
@@ -171,6 +173,32 @@ void main() {
       ];
       expect(codes, isNotEmpty);
       expect(codes.toSet().length, codes.length);
+    });
+
+    test('provider maps every size class to its own layout', () {
+      final java = _read(_provider);
+      final referenced = {
+        for (final match in RegExp(
+          r'R\.layout\.(oreamnos_widget[a-z_]*)',
+        ).allMatches(java))
+          match.group(1)!,
+      };
+      expect(referenced, {
+        'oreamnos_widget',
+        'oreamnos_widget_compact',
+        'oreamnos_widget_small',
+        'oreamnos_widget_wide',
+      });
+    });
+
+    test('widget info allows shrinking to a one-row strip', () {
+      final info = _read(
+        'android/app/src/main/res/xml/oreamnos_widget_info.xml',
+      );
+      expect(info, contains('android:minResizeWidth="110dp"'));
+      expect(info, contains('android:minResizeHeight="40dp"'));
+      expect(info, contains('android:resizeMode="horizontal|vertical"'));
+      expect(info, contains('android:configure='));
     });
   });
 }

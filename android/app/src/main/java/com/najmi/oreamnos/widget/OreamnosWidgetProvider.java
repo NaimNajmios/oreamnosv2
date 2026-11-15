@@ -100,7 +100,20 @@ public class OreamnosWidgetProvider extends HomeWidgetProvider {
     private static final int COLOR_AMBER = 0xFFF59E0B;
     private static final int COLOR_RED = 0xFFEF4444;
 
-    private static final int COMPACT_MAX_WIDTH_DP = 250;
+    private static final int WIDE_MIN_WIDTH_DP = 250;
+    private static final int TALL_MIN_HEIGHT_DP = 110;
+
+    /** Size bucket for one placed widget. */
+    private enum WidgetSize {
+        /** Narrow and one row: status + next-up only. */
+        SMALL,
+        /** Narrow and two or more rows. */
+        COMPACT,
+        /** Wide and one row: a single editorial strip. */
+        WIDE,
+        /** Wide and two or more rows: the full widget. */
+        EXPANDED
+    }
 
     /** Home-screen surfaces go stale quietly; after this they say so. */
     private static final long STALE_AFTER_MS = 24L * 60 * 60 * 1000;
@@ -143,10 +156,13 @@ public class OreamnosWidgetProvider extends HomeWidgetProvider {
             AppWidgetManager manager,
             int appWidgetId,
             SharedPreferences data) {
-        boolean compact = isCompact(manager, appWidgetId);
+        WidgetSize size = resolveSize(manager, appWidgetId);
+        boolean dense = size == WidgetSize.COMPACT;
+        boolean shortSize = size == WidgetSize.SMALL || size == WidgetSize.WIDE;
+        boolean showSecondHalf = !shortSize;
+
         RemoteViews views = new RemoteViews(
-                context.getPackageName(),
-                compact ? R.layout.oreamnos_widget_compact : R.layout.oreamnos_widget);
+                context.getPackageName(), layoutFor(size));
 
         int surface = parseColor(data.getString(KEY_SURFACE, null), 0xFF1C1C1C);
         int onSurface = parseColor(data.getString(KEY_ON_SURFACE, null), 0xFFFFFFFF);
@@ -169,11 +185,18 @@ public class OreamnosWidgetProvider extends HomeWidgetProvider {
         views.setInt(R.id.widget_divider, "setBackgroundColor", withAlpha(muted, 51));
 
         // The whole widget is one tap target per state; the chip is the only
-        // sibling action.
-        views.setViewVisibility(R.id.widget_compose, compact ? View.GONE : View.VISIBLE);
-        if (!compact) {
+        // sibling action and needs the expanded height to breathe.
+        boolean showCompose = size == WidgetSize.EXPANDED;
+        views.setViewVisibility(
+                R.id.widget_compose, showCompose ? View.VISIBLE : View.GONE);
+        if (showCompose) {
             bindClick(context, views, R.id.widget_compose, URI_COMPOSE, REQ_COMPOSE);
         }
+        // A one-row strip has no room for the divider or the footer.
+        views.setViewVisibility(
+                R.id.widget_divider, showSecondHalf ? View.VISIBLE : View.GONE);
+        views.setViewVisibility(
+                R.id.widget_updated, showSecondHalf ? View.VISIBLE : View.GONE);
 
         long now = System.currentTimeMillis();
         long updatedAt = readLong(data, KEY_UPDATED_AT);
@@ -188,6 +211,9 @@ public class OreamnosWidgetProvider extends HomeWidgetProvider {
             views.setTextViewText(R.id.widget_when, "Tap to refresh");
             hideDynamicBlocks(views);
             views.setViewVisibility(R.id.widget_countdown, View.GONE);
+            views.setViewVisibility(R.id.widget_divider, View.GONE);
+            views.setViewVisibility(R.id.widget_updated, View.GONE);
+            views.setViewVisibility(R.id.widget_compose, View.GONE);
             bindRootAndSnippet(context, views, URI_PUBLISH);
             views.setTextViewText(R.id.widget_updated, "");
             views.setContentDescription(
@@ -268,10 +294,15 @@ public class OreamnosWidgetProvider extends HomeWidgetProvider {
 
         bindRootAndSnippet(context, views, tapUri);
 
-        // A live countdown only makes sense soon, and never over stale data.
+        // A live countdown only makes sense soon, never over stale data, and
+        // never in the one-row strip where it would crowd out the time.
         long delta = nextAt - now;
         boolean showCountdown =
-                futureNext && !stale && delta > 0 && delta < 24L * 60 * 60 * 1000;
+                futureNext
+                        && !stale
+                        && size != WidgetSize.SMALL
+                        && delta > 0
+                        && delta < 24L * 60 * 60 * 1000;
         views.setViewVisibility(
                 R.id.widget_countdown,
                 showCountdown ? View.VISIBLE : View.GONE);
@@ -281,8 +312,19 @@ public class OreamnosWidgetProvider extends HomeWidgetProvider {
             views.setChronometer(R.id.widget_countdown, base, "in %s", true);
         }
 
-        String quotaSummary = bindSecondHalf(context, views, data, appWidgetId, compact, primary, muted);
-        String footer = bindFooter(views, data, now, stale, muted);
+        String quotaSummary = null;
+        if (showSecondHalf) {
+            quotaSummary =
+                    bindSecondHalf(
+                            context, views, data, appWidgetId, dense, primary, muted);
+        } else {
+            hideDynamicBlocks(views);
+        }
+        String footer =
+                showSecondHalf ? bindFooter(views, data, now, stale, muted) : "";
+        if (footer.isEmpty()) {
+            views.setViewVisibility(R.id.widget_updated, View.GONE);
+        }
 
         String description = snippet + ". " + when;
         if (quotaSummary != null) description = description + ". " + quotaSummary;
@@ -652,10 +694,33 @@ public class OreamnosWidgetProvider extends HomeWidgetProvider {
         return "oreamnos://calendar?date=" + day;
     }
 
-    private static boolean isCompact(AppWidgetManager manager, int appWidgetId) {
+    private static WidgetSize resolveSize(
+            AppWidgetManager manager, int appWidgetId) {
         Bundle options = manager.getAppWidgetOptions(appWidgetId);
-        int minWidth = options.getInt(AppWidgetManager.OPTION_APPWIDGET_MIN_WIDTH, 320);
-        return minWidth < COMPACT_MAX_WIDTH_DP;
+        // MIN_* is the smaller of the portrait/landscape spans, so it is the
+        // stable dimension to bucket on. Defaults keep the full layout.
+        int minWidth = options.getInt(
+                AppWidgetManager.OPTION_APPWIDGET_MIN_WIDTH, 320);
+        int minHeight = options.getInt(
+                AppWidgetManager.OPTION_APPWIDGET_MIN_HEIGHT, 160);
+        boolean wide = minWidth >= WIDE_MIN_WIDTH_DP;
+        boolean tall = minHeight >= TALL_MIN_HEIGHT_DP;
+        if (wide) return tall ? WidgetSize.EXPANDED : WidgetSize.WIDE;
+        return tall ? WidgetSize.COMPACT : WidgetSize.SMALL;
+    }
+
+    private static int layoutFor(WidgetSize size) {
+        switch (size) {
+            case SMALL:
+                return R.layout.oreamnos_widget_small;
+            case WIDE:
+                return R.layout.oreamnos_widget_wide;
+            case COMPACT:
+                return R.layout.oreamnos_widget_compact;
+            case EXPANDED:
+            default:
+                return R.layout.oreamnos_widget;
+        }
     }
 
     private static String whenLabel(Context context, long epoch) {
