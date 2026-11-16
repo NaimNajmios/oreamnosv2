@@ -1,8 +1,9 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- Expanded (4x2 and wider) layout for the Oreamnos widget.
+<!-- Next up, expanded (4x2 and wider).
      Defaults are only shown before Dart writes the first snapshot or in the
      launcher preview; every text view is overwritten at runtime.
-     Every id here must also exist in oreamnos_widget_compact.xml:
+     Every layout of this widget declares the same ids; only visibility
+     differs, so the provider binds all four with one code path.
      test/unit/home_widget_layout_test.dart enforces the parity. -->
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
     android:id="@+id/widget_root"
@@ -13,245 +14,143 @@
     android:background="#1C1C1C">
 
     <LinearLayout
+        android:id="@+id/widget_body"
         android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:orientation="horizontal"
-        android:gravity="center_vertical">
-
-        <TextView
-            android:id="@+id/widget_kicker"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:maxLines="1"
-            android:ellipsize="end"
-            android:letterSpacing="0.08"
-            android:text="NEXT UP"
-            android:textColor="#0095F6"
-            android:textSize="10sp"
-            android:textStyle="bold" />
-
-        <TextView
-            android:id="@+id/widget_page"
-            android:layout_width="0dp"
-            android:layout_height="wrap_content"
-            android:layout_weight="1"
-            android:gravity="end"
-            android:maxLines="1"
-            android:ellipsize="end"
-            android:text="Football Malaysia"
-            android:textColor="#B0B3B8"
-            android:textSize="10sp" />
-    </LinearLayout>
-
-    <TextView
-        android:id="@+id/widget_snippet"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:layout_marginTop="6dp"
-        android:ellipsize="end"
-        android:maxLines="2"
-        android:text="Kelayakan Piala Asia: Malaysia bertemu Vietnam malam ini"
-        android:textColor="#FFFFFF"
-        android:textSize="15sp"
-        android:textStyle="bold" />
-
-    <LinearLayout
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:layout_marginTop="4dp"
-        android:orientation="horizontal"
-        android:gravity="center_vertical">
-
-        <TextView
-            android:id="@+id/widget_when"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:maxLines="1"
-            android:text="Today 20:45"
-            android:textColor="#B0B3B8"
-            android:textSize="11sp" />
-
-        <Chronometer
-            android:id="@+id/widget_countdown"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:layout_marginStart="6dp"
-            android:format="in %s"
-            android:textColor="#B0B3B8"
-            android:textSize="11sp" />
-    </LinearLayout>
-
-    <!-- Story retry warning. Amber by design; hidden unless the payload has a
-         failed Story. Tappable -> Publish. -->
-    <TextView
-        android:id="@+id/widget_badge"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:layout_marginTop="4dp"
-        android:maxLines="1"
-        android:ellipsize="end"
-        android:visibility="gone"
-        android:text="Story needs retry"
-        android:textColor="#F59E0B"
-        android:textSize="10sp"
-        android:textStyle="bold" />
-
-    <!-- 1dp rule. Must be a @RemoteView class (FrameLayout), never a plain
-         View or Space, or the launcher fails to inflate the widget. -->
-    <FrameLayout
-        android:id="@+id/widget_divider"
-        android:layout_width="match_parent"
-        android:layout_height="1dp"
-        android:layout_marginTop="10dp"
-        android:background="#33B0B3B8" />
-
-    <!-- Quota block: the default second row. -->
-    <LinearLayout
-        android:id="@+id/widget_quota"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:layout_marginTop="8dp"
+        android:layout_height="match_parent"
         android:orientation="vertical">
 
         <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:orientation="horizontal"
-            android:baselineAligned="true"
             android:gravity="center_vertical">
 
             <TextView
-                android:id="@+id/widget_quota_label"
-                android:layout_width="0dp"
-                android:layout_height="wrap_content"
-                android:layout_weight="1"
-                android:maxLines="1"
-                android:ellipsize="end"
-                android:letterSpacing="0.06"
-                android:text="GEMINI · 2.5-FLASH"
-                android:textColor="#B0B3B8"
-                android:textSize="9sp" />
-
-            <TextView
-                android:id="@+id/widget_quota_value"
+                android:id="@+id/widget_kicker"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:maxLines="1"
-                android:text="312 / 500"
+                android:ellipsize="end"
+                android:letterSpacing="0.08"
+                android:text="NEXT UP"
                 android:textColor="#0095F6"
                 android:textSize="10sp"
                 android:textStyle="bold" />
+
+            <TextView
+                android:id="@+id/widget_page"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:gravity="end"
+                android:maxLines="1"
+                android:ellipsize="end"
+                android:text="Football Malaysia"
+                android:textColor="#B0B3B8"
+                android:textSize="10sp" />
         </LinearLayout>
 
-        <ProgressBar
-            android:id="@+id/widget_quota_bar"
-            style="@android:style/Widget.ProgressBar.Horizontal"
-            android:layout_width="match_parent"
-            android:layout_height="5dp"
-            android:layout_marginTop="4dp"
-            android:max="100"
-            android:progress="62" />
-
         <TextView
-            android:id="@+id/widget_quota_reset"
+            android:id="@+id/widget_snippet"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:layout_marginTop="2dp"
-            android:maxLines="1"
-            android:text="resets 6h 41m"
-            android:textColor="#B0B3B8"
-            android:textSize="9sp" />
-    </LinearLayout>
+            android:layout_marginTop="6dp"
+            android:ellipsize="end"
+            android:maxLines="2"
+            android:text="Kelayakan Piala Asia: Malaysia bertemu Vietnam malam ini"
+            android:textColor="#FFFFFF"
+            android:textSize="15sp"
+            android:textStyle="bold" />
 
-    <!-- Generic second row: engagement / drafts / best time. Exactly one of
-         this block and the quota block is visible. -->
-    <LinearLayout
-        android:id="@+id/widget_secondary"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:layout_marginTop="8dp"
-        android:orientation="vertical"
-        android:visibility="gone">
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="4dp"
+            android:orientation="horizontal"
+            android:gravity="center_vertical">
+
+            <TextView
+                android:id="@+id/widget_when"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:maxLines="1"
+                android:text="Today 20:45"
+                android:textColor="#B0B3B8"
+                android:textSize="11sp" />
+
+            <Chronometer
+                android:id="@+id/widget_countdown"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginStart="6dp"
+                android:format="in %s"
+                android:textColor="#B0B3B8"
+                android:textSize="11sp" />
+        </LinearLayout>
+
+        <!-- Story retry warning. Amber by design; hidden unless the payload has
+             a failed Story. Tappable -> Publish. -->
+        <TextView
+            android:id="@+id/widget_badge"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="4dp"
+            android:maxLines="1"
+            android:ellipsize="end"
+            android:visibility="gone"
+            android:text="Story needs retry"
+            android:textColor="#F59E0B"
+            android:textSize="10sp"
+            android:textStyle="bold" />
+
+        <!-- Spacer. Must stay a @RemoteView class: `Space` and plain `View` are
+             rejected by the RemoteViews inflater, which surfaces in the launcher
+             as "Problem loading widget". -->
+        <FrameLayout
+            android:layout_width="match_parent"
+            android:layout_height="0dp"
+            android:layout_weight="1" />
 
         <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:orientation="horizontal"
-            android:baselineAligned="true"
             android:gravity="center_vertical">
 
             <TextView
-                android:id="@+id/widget_secondary_label"
+                android:id="@+id/widget_updated"
                 android:layout_width="0dp"
                 android:layout_height="wrap_content"
                 android:layout_weight="1"
                 android:maxLines="1"
                 android:ellipsize="end"
-                android:letterSpacing="0.06"
-                android:text="LAST POST"
+                android:text=""
                 android:textColor="#B0B3B8"
                 android:textSize="9sp" />
 
             <TextView
-                android:id="@+id/widget_secondary_value"
+                android:id="@+id/widget_compose"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
+                android:paddingStart="8dp"
+                android:paddingTop="2dp"
+                android:paddingEnd="8dp"
+                android:paddingBottom="2dp"
                 android:maxLines="1"
-                android:text="128 · 24 · 9"
+                android:text="New post"
                 android:textColor="#0095F6"
                 android:textSize="10sp"
                 android:textStyle="bold" />
         </LinearLayout>
-
-        <TextView
-            android:id="@+id/widget_secondary_meta"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="2dp"
-            android:maxLines="2"
-            android:ellipsize="end"
-            android:text="Kelayakan Piala Asia · 2h ago"
-            android:textColor="#B0B3B8"
-            android:textSize="9sp" />
     </LinearLayout>
 
-    <!-- Spacer. Must stay a @RemoteView class: `Space` and plain `View` are
-         rejected by the RemoteViews inflater, which surfaces in the launcher
-         as "Problem loading widget". -->
-    <FrameLayout
+    <TextView
+        android:id="@+id/widget_notice"
         android:layout_width="match_parent"
-        android:layout_height="0dp"
-        android:layout_weight="1" />
-
-    <LinearLayout
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:orientation="horizontal"
-        android:gravity="center_vertical">
-
-        <TextView
-            android:id="@+id/widget_updated"
-            android:layout_width="0dp"
-            android:layout_height="wrap_content"
-            android:layout_weight="1"
-            android:maxLines="1"
-            android:ellipsize="end"
-            android:text=""
-            android:textColor="#B0B3B8"
-            android:textSize="9sp" />
-
-        <TextView
-            android:id="@+id/widget_compose"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:paddingStart="8dp"
-            android:paddingTop="2dp"
-            android:paddingEnd="8dp"
-            android:paddingBottom="2dp"
-            android:maxLines="1"
-            android:text="New post"
-            android:textColor="#0095F6"
-            android:textSize="10sp"
-            android:textStyle="bold" />
-    </LinearLayout>
+        android:layout_height="match_parent"
+        android:gravity="center"
+        android:visibility="gone"
+        android:text="Open Oreamnos to update this widget"
+        android:textColor="#B0B3B8"
+        android:textSize="11sp" />
 </LinearLayout>

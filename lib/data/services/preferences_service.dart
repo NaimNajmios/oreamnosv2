@@ -8,7 +8,6 @@ import '../../config/constants.dart';
 import '../../domain/models/app_theme_mode.dart';
 import '../../domain/models/custom_pill.dart';
 import '../../domain/models/hashtag_group.dart';
-import '../../domain/models/home_widget_snapshot.dart';
 import '../../domain/models/vision_mode.dart';
 import '../models/ai_provider.dart';
 import 'facebook_publisher_service.dart';
@@ -620,16 +619,6 @@ class PreferencesService {
 
   Future<bool> setShowWidgetSnippet(bool show) {
     return _prefs.setBool(AppConstants.keyShowWidgetSnippet, show);
-  }
-
-  /// What the widget draws under the divider. Fell back to `quota` for any
-  /// unknown stored value, so a downgrade cannot leave the widget blank.
-  HomeWidgetSecondRow get widgetSecondRow => HomeWidgetSecondRow.fromWire(
-    _prefs.getString(AppConstants.keyWidgetSecondRow),
-  );
-
-  Future<bool> setWidgetSecondRow(HomeWidgetSecondRow row) {
-    return _prefs.setString(AppConstants.keyWidgetSecondRow, row.wireName);
   }
 
   String get lastPromptLength =>

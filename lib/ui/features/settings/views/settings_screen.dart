@@ -19,7 +19,7 @@ import 'package:oreamnos/ui/core/widgets/section_header.dart';
 import 'package:oreamnos/ui/core/widgets/settings_tile.dart';
 import 'package:oreamnos/ui/core/widgets/staggered_entrance.dart';
 import 'package:oreamnos/domain/models/app_theme_mode.dart';
-import 'package:oreamnos/domain/models/home_widget_snapshot.dart';
+import 'package:oreamnos/data/services/home_widget_service.dart';
 import 'package:oreamnos/domain/models/vision_mode.dart';
 
 import '../view_models/settings_view_model.dart';
@@ -329,7 +329,7 @@ class SettingsScreen extends ConsumerWidget {
       ),
       // Widgets are Android-only; other platforms must not see dead switches.
       if (!kIsWeb && defaultTargetPlatform == TargetPlatform.android) ...[
-        const SectionHeader(title: 'Home screen widget'),
+        const SectionHeader(title: 'Home screen widgets'),
         sectionCard(
           children: [
             SettingsTile(
@@ -344,17 +344,7 @@ class SettingsScreen extends ConsumerWidget {
                     apply(() => notifier.setShowWidgetSnippet(value)),
               ),
             ),
-            SettingsTile(
-              leadingIcon: Icons.dashboard_customize_outlined,
-              title: 'Second row',
-              subtitle: state.widgetSecondRow.label,
-              onTap: () => _showSecondRowSheet(
-                context,
-                state.widgetSecondRow,
-                (row) => apply(() => notifier.setWidgetSecondRow(row)),
-              ),
-            ),
-            const _AddWidgetTile(),
+            const _WidgetPins(),
           ],
         ),
         Padding(
@@ -365,7 +355,7 @@ class SettingsScreen extends ConsumerWidget {
             0,
           ),
           child: Text(
-            'The widget is read-only. Every tap opens Oreamnos — '
+            'Every widget is read-only and resizable. Taps open Oreamnos — '
             'nothing posts or changes in the background.',
             style: theme.textTheme.bodySmall?.copyWith(
               color: theme.colorScheme.onSurfaceVariant,
@@ -914,67 +904,18 @@ class _SettingsSkeletonCard extends StatelessWidget {
   }
 }
 
-/// Bottom sheet for the widget's second-row picker. Falls back silently when
-/// the platform channel is unavailable (tests, unsupported devices).
-Future<void> _showSecondRowSheet(
-  BuildContext context,
-  HomeWidgetSecondRow current,
-  ValueChanged<HomeWidgetSecondRow> onSelect,
-) async {
-  final selected = await showModalBottomSheet<HomeWidgetSecondRow>(
-    context: context,
-    showDragHandle: true,
-    builder: (sheetContext) {
-      final theme = Theme.of(sheetContext);
-      return SafeArea(
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            Padding(
-              padding: const EdgeInsets.fromLTRB(
-                AppSpacing.base,
-                0,
-                AppSpacing.base,
-                AppSpacing.sm,
-              ),
-              child: Text(
-                'Show under the divider',
-                style: theme.textTheme.titleSmall?.copyWith(
-                  fontWeight: FontWeight.w700,
-                ),
-              ),
-            ),
-            for (final row in HomeWidgetSecondRow.values)
-              ListTile(
-                title: Text(row.label),
-                trailing: row == current
-                    ? Icon(
-                        Icons.check_rounded,
-                        color: theme.colorScheme.primary,
-                      )
-                    : null,
-                onTap: () => Navigator.of(sheetContext).pop(row),
-              ),
-          ],
-        ),
-      );
-    },
-  );
-  if (selected != null && selected != current) onSelect(selected);
-}
-
-/// "Add to home screen" pin request. Hidden unless the launcher supports
-/// pinning (API 26+ and a launcher that implements it).
-class _AddWidgetTile extends StatefulWidget {
-  const _AddWidgetTile();
+/// "Add to home screen" pin requests, one per purpose-built widget. Hidden
+/// unless the launcher supports pinning (API 26+ and a launcher that
+/// implements it).
+class _WidgetPins extends StatefulWidget {
+  const _WidgetPins();
 
   @override
-  State<_AddWidgetTile> createState() => _AddWidgetTileState();
+  State<_WidgetPins> createState() => _WidgetPinsState();
 }
 
-class _AddWidgetTileState extends State<_AddWidgetTile> {
-  bool _supported = false;
+class _WidgetPinsState extends State<_WidgetPins> {
+  bool? _supported;
 
   @override
   void initState() {
@@ -989,28 +930,91 @@ class _AddWidgetTileState extends State<_AddWidgetTile> {
       setState(() => _supported = supported == true);
     } catch (_) {
       // Missing plugin (unit tests) or an old launcher: stay hidden.
+      if (mounted) setState(() => _supported = false);
     }
   }
 
-  Future<void> _pin() async {
+  Future<void> _pin(String provider) async {
     try {
-      await HomeWidget.requestPinWidget(
-        qualifiedAndroidName:
-            'com.najmi.oreamnos.widget.OreamnosWidgetProvider',
-      );
+      await HomeWidget.requestPinWidget(qualifiedAndroidName: provider);
     } catch (_) {
       // A launcher can refuse; nothing to recover from here.
     }
   }
 
+  static const _widgets = <_WidgetSpec>[
+    _WidgetSpec(
+      provider: HomeWidgetService.nextUpProvider,
+      title: 'Next up',
+      purpose: 'When the next scheduled Page post goes live',
+      icon: Icons.schedule_rounded,
+    ),
+    _WidgetSpec(
+      provider: HomeWidgetService.quotaProvider,
+      title: 'AI quota',
+      purpose: "Today's usage for two providers side by side",
+      icon: Icons.donut_large_rounded,
+    ),
+    _WidgetSpec(
+      provider: HomeWidgetService.engagementProvider,
+      title: 'Engagement',
+      purpose: 'How the last post and this week are doing',
+      icon: Icons.favorite_border_rounded,
+    ),
+    _WidgetSpec(
+      provider: HomeWidgetService.draftsProvider,
+      title: 'Drafts',
+      purpose: 'What is half-written, ready to continue',
+      icon: Icons.edit_note_rounded,
+    ),
+    _WidgetSpec(
+      provider: HomeWidgetService.bestTimeProvider,
+      title: 'Best time',
+      purpose: 'When your audience is usually listening',
+      icon: Icons.insights_rounded,
+    ),
+  ];
+
   @override
   Widget build(BuildContext context) {
-    if (!_supported) return const SizedBox.shrink();
-    return SettingsTile(
-      leadingIcon: Icons.add_to_home_screen_rounded,
-      title: 'Add to home screen',
-      subtitle: 'Pin the next-up and quota widget',
-      onTap: _pin,
+    // While resolving (or on a launcher without pinning) show the picker hint
+    // instead of five dead rows.
+    if (_supported != true) {
+      return const SettingsTile(
+        leadingIcon: Icons.widgets_outlined,
+        title: 'Five widgets',
+        subtitle: 'Long-press your home screen → Widgets → Oreamnos',
+      );
+    }
+    return Column(
+      children: [
+        for (final widget in _widgets)
+          SettingsTile(
+            leadingIcon: widget.icon,
+            title: widget.title,
+            subtitle: widget.purpose,
+            trailing: Icon(
+              Icons.add_circle_outline_rounded,
+              size: 20,
+              color: Theme.of(context).colorScheme.primary,
+            ),
+            onTap: () => _pin(widget.provider),
+          ),
+      ],
     );
   }
+}
+
+class _WidgetSpec {
+  const _WidgetSpec({
+    required this.provider,
+    required this.title,
+    required this.purpose,
+    required this.icon,
+  });
+
+  final String provider;
+  final String title;
+  final String purpose;
+  final IconData icon;
 }

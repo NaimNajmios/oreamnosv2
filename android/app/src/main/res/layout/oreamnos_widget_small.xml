@@ -1,152 +1,104 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- Small (narrow and one row, e.g. 2x1) layout: a single strip. One row is
-     the only thing that fits 40dp, so the page label, second half, divider and
-     footer are hidden. Every id from the expanded layout is still declared so
-     the provider can bind all four sizes with one code path. -->
+<!-- Next up, small (narrow and one row, e.g. 2x1): a single strip. One row is
+     the only thing that fits 40dp, so the page label, badge and footer are
+     hidden. Every id from the expanded layout is still declared so the provider
+     can bind all four sizes with one code path. -->
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
     android:id="@+id/widget_root"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:orientation="horizontal"
-    android:gravity="center_vertical"
+    android:orientation="vertical"
     android:padding="8dp"
     android:background="#1C1C1C">
 
-    <TextView
-        android:id="@+id/widget_kicker"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:maxLines="1"
-        android:ellipsize="end"
-        android:letterSpacing="0.08"
-        android:text="NEXT"
-        android:textColor="#0095F6"
-        android:textSize="9sp"
-        android:textStyle="bold" />
-
-    <TextView
-        android:id="@+id/widget_snippet"
-        android:layout_width="0dp"
-        android:layout_height="wrap_content"
-        android:layout_weight="1"
-        android:layout_marginStart="6dp"
-        android:ellipsize="end"
-        android:maxLines="1"
-        android:text="Kelayakan Piala Asia"
-        android:textColor="#FFFFFF"
-        android:textSize="11sp"
-        android:textStyle="bold" />
-
-    <TextView
-        android:id="@+id/widget_when"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:layout_marginStart="6dp"
-        android:maxLines="1"
-        android:text="Today 20:45"
-        android:textColor="#B0B3B8"
-        android:textSize="9sp" />
-
-    <Chronometer
-        android:id="@+id/widget_countdown"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:layout_marginStart="5dp"
-        android:format="in %s"
-        android:textColor="#B0B3B8"
-        android:textSize="9sp" />
-
-    <!-- Not rendered at this size; declared for id parity. -->
-    <TextView
-        android:id="@+id/widget_page"
-        android:layout_width="0dp"
-        android:layout_height="wrap_content"
-        android:visibility="gone"
-        android:text="" />
-
-    <TextView
-        android:id="@+id/widget_badge"
-        android:layout_width="0dp"
-        android:layout_height="wrap_content"
-        android:visibility="gone"
-        android:text="" />
-
-    <FrameLayout
-        android:id="@+id/widget_divider"
-        android:layout_width="0dp"
-        android:layout_height="1dp"
-        android:visibility="gone" />
-
     <LinearLayout
-        android:id="@+id/widget_quota"
-        android:layout_width="0dp"
-        android:layout_height="wrap_content"
-        android:orientation="vertical"
-        android:visibility="gone">
+        android:id="@+id/widget_body"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:orientation="horizontal"
+        android:gravity="center_vertical">
 
         <TextView
-            android:id="@+id/widget_quota_label"
-            android:layout_width="match_parent"
+            android:id="@+id/widget_kicker"
+            android:layout_width="wrap_content"
             android:layout_height="wrap_content"
+            android:maxLines="1"
+            android:ellipsize="end"
+            android:letterSpacing="0.08"
+            android:text="NEXT"
+            android:textColor="#0095F6"
+            android:textSize="9sp"
+            android:textStyle="bold" />
+
+        <TextView
+            android:id="@+id/widget_snippet"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:layout_marginStart="6dp"
+            android:ellipsize="end"
+            android:maxLines="1"
+            android:text="Kelayakan Piala Asia"
+            android:textColor="#FFFFFF"
+            android:textSize="11sp"
+            android:textStyle="bold" />
+
+        <TextView
+            android:id="@+id/widget_when"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginStart="6dp"
+            android:maxLines="1"
+            android:text="Today 20:45"
+            android:textColor="#B0B3B8"
+            android:textSize="9sp" />
+
+        <Chronometer
+            android:id="@+id/widget_countdown"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginStart="5dp"
+            android:format="in %s"
+            android:textColor="#B0B3B8"
+            android:textSize="9sp" />
+
+        <!-- Not rendered at this size; declared for id parity. -->
+        <TextView
+            android:id="@+id/widget_page"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:visibility="gone"
             android:text="" />
 
         <TextView
-            android:id="@+id/widget_quota_value"
-            android:layout_width="match_parent"
+            android:id="@+id/widget_badge"
+            android:layout_width="0dp"
             android:layout_height="wrap_content"
-            android:text="" />
-
-        <ProgressBar
-            android:id="@+id/widget_quota_bar"
-            style="@android:style/Widget.ProgressBar.Horizontal"
-            android:layout_width="match_parent"
-            android:layout_height="5dp"
-            android:max="100" />
-
-        <TextView
-            android:id="@+id/widget_quota_reset"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:text="" />
-    </LinearLayout>
-
-    <LinearLayout
-        android:id="@+id/widget_secondary"
-        android:layout_width="0dp"
-        android:layout_height="wrap_content"
-        android:orientation="vertical"
-        android:visibility="gone">
-
-        <TextView
-            android:id="@+id/widget_secondary_label"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
+            android:visibility="gone"
             android:text="" />
 
         <TextView
-            android:id="@+id/widget_secondary_value"
-            android:layout_width="match_parent"
+            android:id="@+id/widget_updated"
+            android:layout_width="0dp"
             android:layout_height="wrap_content"
+            android:visibility="gone"
             android:text="" />
 
         <TextView
-            android:id="@+id/widget_secondary_meta"
-            android:layout_width="match_parent"
+            android:id="@+id/widget_compose"
+            android:layout_width="0dp"
             android:layout_height="wrap_content"
+            android:visibility="gone"
             android:text="" />
     </LinearLayout>
 
     <TextView
-        android:id="@+id/widget_updated"
-        android:layout_width="0dp"
-        android:layout_height="wrap_content"
+        android:id="@+id/widget_notice"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:gravity="center"
         android:visibility="gone"
-        android:text="" />
-
-    <TextView
-        android:id="@+id/widget_compose"
-        android:layout_width="0dp"
-        android:layout_height="wrap_content"
-        android:visibility="gone"
-        android:text="" />
+        android:text="Open Oreamnos to update this widget"
+        android:textColor="#B0B3B8"
+        android:textSize="10sp" />
 </LinearLayout>

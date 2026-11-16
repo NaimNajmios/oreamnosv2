@@ -47,6 +47,35 @@ FacebookPostRecord _record({
   );
 }
 
+/// Gemini with a budget — the only provider the app can honestly gauge.
+HomeWidgetQuota _gemini({
+  String modelId = '2.5-flash',
+  int requestsToday = 312,
+  int? budget = 500,
+  int? average = 40,
+  DateTime? resetAt,
+}) => HomeWidgetQuota(
+  providerId: 'gemini',
+  displayName: 'Gemini',
+  modelId: modelId,
+  requestsToday: requestsToday,
+  budget: budget,
+  average: average,
+  resetAt: resetAt,
+);
+
+/// Count-only provider: no budget, like every non-Gemini provider.
+HomeWidgetQuota _countOnly({
+  required String providerId,
+  required String displayName,
+  int requestsToday = 12,
+}) => HomeWidgetQuota(
+  providerId: providerId,
+  displayName: displayName,
+  modelId: '',
+  requestsToday: requestsToday,
+);
+
 HomeWidgetSnapshot _build({
   required List<FacebookPostRecord> records,
   List<HomeWidgetQuota> quotas = const [],
@@ -54,14 +83,13 @@ HomeWidgetSnapshot _build({
   bool pageConnected = true,
   bool pageExpired = false,
   int draftCount = 0,
-  String? selectedProviderId = 'gemini',
-  String? selectedModel = 'gemini-2.5-flash',
+  String activeProvider = 'gemini',
+  String fallbackProvider = 'groq',
   DateTime? now,
-  Map<String, List<int>> quotaHistory = const {},
   List<HomeWidgetPage> pages = const [],
   String draftTitle = '',
+  DateTime? draftUpdatedAt,
   bool showSnippet = true,
-  HomeWidgetSecondRow secondRow = HomeWidgetSecondRow.quota,
 }) {
   final reference = now ?? DateTime(2026, 11, 14, 12);
   return const HomeWidgetSnapshotBuilder().build(
@@ -73,18 +101,17 @@ HomeWidgetSnapshot _build({
     pageExpired: pageExpired,
     draftCount: draftCount,
     palette: _palette,
-    selectedProviderId: selectedProviderId,
-    selectedModel: selectedModel,
-    quotaResetAt: quotas.isEmpty
-        ? null
-        : reference.add(const Duration(hours: 6)),
-    quotaHistory: quotaHistory,
+    activeProvider: activeProvider,
+    fallbackProvider: fallbackProvider,
     pages: pages,
     draftTitle: draftTitle,
+    draftUpdatedAt: draftUpdatedAt,
     showSnippet: showSnippet,
-    secondRow: secondRow,
   );
 }
+
+List<dynamic> _quotaEntries(HomeWidgetSnapshot snapshot) =>
+    jsonDecode(snapshot.quotaJson) as List<dynamic>;
 
 void main() {
   group('HomeWidgetSnapshotBuilder next-up', () {
@@ -163,75 +190,121 @@ void main() {
   });
 
   group('HomeWidgetSnapshotBuilder quota', () {
-    const quotas = [
-      HomeWidgetQuota(
-        modelId: 'gemini-2.5-flash',
-        requestsToday: 312,
-        budget: 500,
-      ),
-      HomeWidgetQuota(
-        modelId: 'gemini-2.0-flash-lite',
-        requestsToday: 40,
-        budget: 1500,
-      ),
-    ];
-
-    test('prefers the selected model, including a models/ prefix', () {
+    test('carries every provider, with a budget only where one exists', () {
       final snapshot = _build(
         records: const [],
-        quotas: quotas,
-        selectedModel: 'models/gemini-2.5-flash',
+        quotas: [
+          _gemini(resetAt: DateTime(2026, 11, 14, 18)),
+          _countOnly(providerId: 'groq', displayName: 'Groq'),
+        ],
       );
+      final entries = _quotaEntries(snapshot);
+      expect(entries, hasLength(2));
 
-      expect(snapshot.quotaModel, '2.5-flash');
-      expect(snapshot.quotaUsed, 312);
-      expect(snapshot.quotaBudget, 500);
+      final gemini = entries.first as Map<String, dynamic>;
+      expect(gemini['p'], 'gemini');
+      expect(gemini['n'], 'Gemini');
+      expect(gemini['u'], 312);
+      expect(gemini['b'], 500);
+      expect(gemini['pc'], 62);
+      expect(gemini['s'], 0);
+      expect(gemini['a'], 40);
+      expect(gemini['r'], DateTime(2026, 11, 14, 18).millisecondsSinceEpoch);
+
+      final groq = entries.last as Map<String, dynamic>;
+      expect(groq['p'], 'groq');
+      expect(groq['u'], 12);
+      // No budget means no ring, no percentage and no severity on the wire.
+      expect(groq.containsKey('b'), isFalse);
+      expect(groq.containsKey('pc'), isFalse);
+      expect(groq.containsKey('s'), isFalse);
     });
 
-    test('falls back to the busiest model when the selection is unknown', () {
-      final snapshot = _build(
-        records: const [],
-        quotas: quotas,
-        selectedModel: 'gemini-3.0-pro',
-      );
+    test('severity warns at 80% and trips at the budget', () {
+      final warn = _gemini(requestsToday: 400, budget: 500);
+      final over = _gemini(requestsToday: 500, budget: 500);
+      final ok = _gemini(requestsToday: 399, budget: 500);
 
-      expect(snapshot.quotaModel, '2.5-flash');
+      expect(ok.severity(0.8), 0);
+      expect(warn.severity(0.8), 1);
+      expect(over.severity(0.8), 2);
+      // No real budget: never a severity.
+      expect(
+        _countOnly(providerId: 'groq', displayName: 'Groq').severity(0.8),
+        0,
+      );
     });
 
-    test('falls back to the busiest model for a non-Gemini provider', () {
-      final snapshot = _build(
-        records: const [],
-        quotas: quotas,
-        selectedProviderId: 'groq',
-        selectedModel: 'llama-3.3-70b-versatile',
-      );
-
-      expect(snapshot.quotaModel, '2.5-flash');
+    test('percentage clamps at 100 when the budget is exceeded', () {
+      final over = _gemini(requestsToday: 900, budget: 500);
+      final encoded = over.toJson(0.8);
+      expect(encoded['pc'], 100);
+      expect(encoded['s'], 2);
     });
 
-    test('no quota activity hides the quota half and its reset', () {
-      final snapshot = _build(records: const [], quotas: const []);
-
-      expect(snapshot.hasQuota, isFalse);
-      expect(snapshot.quotaUsed, isNull);
+    test('no quota activity still ships a parseable empty array', () {
+      final snapshot = _build(records: const []);
+      expect(snapshot.quotaJson, '[]');
+      expect(_quotaEntries(snapshot), isEmpty);
       expect(snapshot.quotaResetAt, isNull);
+    });
+
+    test('quota reset is the earliest future reset with a budget', () {
+      final early = DateTime(2026, 11, 14, 15);
+      final late = DateTime(2026, 11, 14, 20);
+      final snapshot = _build(
+        records: const [],
+        quotas: [
+          _gemini(resetAt: late),
+          HomeWidgetQuota(
+            providerId: 'groq',
+            displayName: 'Groq',
+            modelId: '',
+            requestsToday: 5,
+            resetAt: early,
+          ),
+        ],
+      );
+
+      // Groq has no budget, so its reset cannot drive a quota alarm.
+      expect(snapshot.quotaResetAt, late);
+    });
+
+    test('encodes at most four providers so the payload cannot overflow', () {
+      final snapshot = _build(
+        records: const [],
+        quotas: [
+          _gemini(),
+          _countOnly(providerId: 'groq', displayName: 'Groq'),
+          _countOnly(providerId: 'openrouter', displayName: 'OpenRouter'),
+          _countOnly(providerId: 'cerebras', displayName: 'Cerebras'),
+          _countOnly(providerId: 'extra', displayName: 'Extra'),
+        ],
+      );
+
+      expect(_quotaEntries(snapshot), hasLength(4));
+      expect(
+        snapshot.quotaJson.length,
+        lessThanOrEqualTo(HomeWidgetSnapshotBuilder.maxQuotaJsonChars),
+      );
+    });
+
+    test('exposes the active and fallback provider for the default pair', () {
+      final snapshot = _build(
+        records: const [],
+        activeProvider: 'openrouter',
+        fallbackProvider: 'cerebras',
+      );
       final map = snapshot.toMap();
-      expect(map[HomeWidgetKeys.quotaUsed], isEmpty);
-      expect(map[HomeWidgetKeys.quotaBudget], isEmpty);
-      expect(map[HomeWidgetKeys.quotaResetAt], isEmpty);
+      expect(map[HomeWidgetKeys.activeProvider], 'openrouter');
+      expect(map[HomeWidgetKeys.fallbackProvider], 'cerebras');
     });
   });
 
   test('payload only contains whitelisted string keys', () {
     final snapshot = _build(
       records: [_record(id: 'x', scheduledAt: DateTime(2026, 11, 14, 15))],
-      quotas: const [
-        HomeWidgetQuota(
-          modelId: 'gemini-2.5-flash',
-          requestsToday: 10,
-          budget: 500,
-        ),
-      ],
+      quotas: [_gemini(requestsToday: 10)],
       draftCount: 2,
     );
 
@@ -256,7 +329,10 @@ void main() {
 
     // Long captions belong in the app, not on a shared home screen.
     for (final entry in map.entries) {
-      if (entry.key == HomeWidgetKeys.pagesJson) continue;
+      if (entry.key == HomeWidgetKeys.pagesJson ||
+          entry.key == HomeWidgetKeys.quotaJson) {
+        continue;
+      }
       expect(
         entry.value.length,
         lessThanOrEqualTo(HomeWidgetSnapshotBuilder.maxPayloadChars),
@@ -267,6 +343,13 @@ void main() {
       map[HomeWidgetKeys.pagesJson]!.length,
       lessThanOrEqualTo(HomeWidgetSnapshotBuilder.maxPagesJsonChars),
     );
+    expect(
+      map[HomeWidgetKeys.quotaJson]!.length,
+      lessThanOrEqualTo(HomeWidgetSnapshotBuilder.maxQuotaJsonChars),
+    );
+
+    // The retired combined widget's setting must not linger.
+    expect(map.containsKey('second_row_mode'), isFalse);
   });
 
   test('colours serialize as 8-digit uppercase ARGB hex', () {
@@ -281,21 +364,24 @@ void main() {
     final at = DateTime(2026, 11, 14, 14, 30);
     final map = _build(
       records: [_record(id: 'x', scheduledAt: at)],
-      quotas: const [
-        HomeWidgetQuota(
-          modelId: 'gemini-2.5-flash',
-          requestsToday: 1,
-          budget: 500,
-        ),
-      ],
+      quotas: [_gemini(requestsToday: 1, resetAt: at)],
       now: at,
     ).toMap();
 
     expect(map[HomeWidgetKeys.nextAt], '${at.millisecondsSinceEpoch}');
-    expect(
-      map[HomeWidgetKeys.quotaResetAt],
-      '${at.add(const Duration(hours: 6)).millisecondsSinceEpoch}',
-    );
+    // quota_reset_at is deliberately not in the payload: the reset instant
+    // already travels inside quota_json.
+    expect(map.containsKey('quota_reset_at'), isFalse);
+    final entry =
+        _quotaEntries(
+              _build(
+                records: const [],
+                quotas: [_gemini(requestsToday: 1, resetAt: at)],
+                now: at,
+              ),
+            ).first
+            as Map<String, dynamic>;
+    expect(entry['r'], at.millisecondsSinceEpoch);
   });
 
   group('caption privacy', () {
@@ -390,6 +476,60 @@ void main() {
       expect(none.hasLastPost, isFalse);
       expect(none.toMap()[HomeWidgetKeys.lastPostAt], isEmpty);
     });
+
+    test('week totals add up this week only', () {
+      final snapshot = _build(
+        records: [
+          _record(
+            id: 'this-week',
+            status: FacebookPostStatus.published,
+            timestamp: DateTime(2026, 11, 13, 9),
+            reactions: 10,
+            comments: 2,
+            shares: 1,
+          ),
+          _record(
+            id: 'also-this-week',
+            status: FacebookPostStatus.published,
+            timestamp: DateTime(2026, 11, 12, 9),
+            reactions: 5,
+            comments: 1,
+          ),
+          _record(
+            id: 'last-week',
+            status: FacebookPostStatus.published,
+            timestamp: DateTime(2026, 11, 2, 9),
+            reactions: 100,
+          ),
+        ],
+        now: DateTime(2026, 11, 14, 12),
+      );
+
+      expect(snapshot.weekReactions, 15);
+      expect(snapshot.weekComments, 3);
+      expect(snapshot.weekShares, 1);
+      expect(snapshot.weekPostCount, 2);
+      expect(snapshot.toMap()[HomeWidgetKeys.weekReactions], '15');
+    });
+
+    test('a week without posts reports zeros, not last week', () {
+      final snapshot = _build(
+        records: [
+          _record(
+            id: 'last-week',
+            status: FacebookPostStatus.published,
+            timestamp: DateTime(2026, 11, 2, 9),
+            reactions: 100,
+          ),
+        ],
+        now: DateTime(2026, 11, 14, 12),
+      );
+
+      expect(snapshot.weekReactions, 0);
+      expect(snapshot.weekComments, 0);
+      expect(snapshot.weekShares, 0);
+      expect(snapshot.weekPostCount, 0);
+    });
   });
 
   group('best time', () {
@@ -479,6 +619,24 @@ void main() {
       final none = _build(records: const []);
       expect(none.draftCount, 0);
       expect(none.draftTitle, isEmpty);
+      expect(none.draftUpdatedAt, isNull);
+    });
+
+    test('draft timestamp survives as an epoch string', () {
+      final at = DateTime(2026, 11, 14, 10, 5);
+      final map = _build(
+        records: const [],
+        draftCount: 1,
+        draftUpdatedAt: at,
+      ).toMap();
+      expect(
+        map[HomeWidgetKeys.draftUpdatedAt],
+        '${at.millisecondsSinceEpoch}',
+      );
+      expect(
+        _build(records: const []).toMap()[HomeWidgetKeys.draftUpdatedAt],
+        isEmpty,
+      );
     });
 
     test('week-to-date resets on Monday 00:00', () {
@@ -489,37 +647,24 @@ void main() {
           id: 'monday',
           status: FacebookPostStatus.published,
           timestamp: DateTime(2026, 11, 9, 0, 1),
+          reactions: 3,
         ),
         _record(
           id: 'sunday',
           status: FacebookPostStatus.published,
           timestamp: DateTime(2026, 11, 15, 12),
+          reactions: 4,
         ),
       ];
       final snapshot = _build(records: records, now: sunday);
       expect(snapshot.weekPostCount, 2);
+      expect(snapshot.weekReactions, 7);
 
       // Monday 16 Nov 00:30 — both belong to the previous week now.
       final monday = DateTime(2026, 11, 16, 0, 30);
       final next = _build(records: records, now: monday);
       expect(next.weekPostCount, 0);
-    });
-
-    test('quota average skips days with no activity', () {
-      final snapshot = _build(
-        records: const [],
-        quotas: const [
-          HomeWidgetQuota(
-            modelId: 'gemini-2.5-flash',
-            requestsToday: 40,
-            budget: 500,
-          ),
-        ],
-        quotaHistory: const {
-          'gemini-2.5-flash': [40, 0, 60, 0, 20],
-        },
-      );
-      expect(snapshot.quotaAverage, 40);
+      expect(next.weekReactions, 0);
     });
   });
 
@@ -568,17 +713,5 @@ void main() {
       );
       expect(snapshot.pagesJson, isNot(contains('Private caption')));
     });
-  });
-
-  test('second row modes round-trip through the payload', () {
-    for (final mode in HomeWidgetSecondRow.values) {
-      final map = _build(records: const [], secondRow: mode).toMap();
-      expect(map[HomeWidgetKeys.secondRowMode], mode.wireName);
-      expect(
-        HomeWidgetSecondRow.fromWire(map[HomeWidgetKeys.secondRowMode]),
-        mode,
-      );
-    }
-    expect(HomeWidgetSecondRow.fromWire('nonsense'), HomeWidgetSecondRow.quota);
   });
 }

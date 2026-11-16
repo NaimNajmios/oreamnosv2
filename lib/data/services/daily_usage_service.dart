@@ -32,6 +32,27 @@ class DailyQuota {
   bool get isExhausted => budget > 0 && requestsToday >= budget;
 }
 
+/// Today's request count for one provider/model pair.
+///
+/// [budget] is null for providers whose daily limit the app does not know
+/// (everything except the Gemini free tier). A null budget must render as a
+/// count, never as "0 of something".
+class ProviderQuota {
+  const ProviderQuota({
+    required this.providerId,
+    required this.modelId,
+    required this.requestsToday,
+    required this.budget,
+  });
+
+  final String providerId;
+  final String modelId;
+  final int requestsToday;
+  final int? budget;
+
+  bool get hasBudget => budget != null && budget! > 0;
+}
+
 /// Daily (RPD-style) request counter for quota-budget visibility.
 ///
 /// `UsageService` caps its history at 50 entries, so daily counts cannot be
@@ -85,6 +106,16 @@ class DailyUsageService {
     return AppConstants.defaultDailyQuota;
   }
 
+  /// Daily budget for a provider/model pair, or null when the app only knows
+  /// Gemini's free tier. Groq, OpenRouter and Cerebras limits depend on the
+  /// user's own account tier, so guessing one would be a lie on the home
+  /// screen.
+  static int? budgetForProviderModel(String providerId, String? modelId) {
+    final provider = providerId.trim().toLowerCase();
+    if (provider != 'gemini') return null;
+    return budgetForModel(modelId);
+  }
+
   Map<String, Map<String, int>> _load() {
     final raw = _prefs.getString(_keyStore);
     if (raw == null || raw.isEmpty) return {};
@@ -125,42 +156,87 @@ class DailyUsageService {
     await _save(store);
   }
 
-  /// Today's Gemini (provider `gemini`) counts grouped by model.
-  List<DailyQuota> todayGeminiQuota() {
+  /// Today's counts for [providerId], one entry per model that ran.
+  ///
+  /// [providerId] is matched case-insensitively against the `provider:model`
+  /// keys written by [recordRequest].
+  List<ProviderQuota> todayQuotaFor(String providerId) {
+    final target = providerId.trim().toLowerCase();
     final dayKey = pacificDayKey(_now());
     final bucket = _load()[dayKey] ?? const {};
     final byModel = <String, int>{};
     for (final entry in bucket.entries) {
       final parts = entry.key.split(':');
-      if (parts.isEmpty || parts.first != 'gemini') continue;
+      if (parts.isEmpty || parts.first != target) continue;
       final modelId = parts.length > 1 ? parts.sublist(1).join(':') : '';
       byModel[modelId] = (byModel[modelId] ?? 0) + entry.value;
     }
-    final ids = byModel.keys.toList()..sort();
+    final ids = byModel.keys.toList()
+      ..sort((a, b) => byModel[b]!.compareTo(byModel[a]!));
     return [
       for (final id in ids)
-        DailyQuota(
+        ProviderQuota(
+          providerId: target,
           modelId: id.isEmpty ? 'unknown' : id,
           requestsToday: byModel[id]!,
-          budget: budgetForModel(id),
+          budget: budgetForProviderModel(target, id),
+        ),
+    ];
+  }
+
+  /// Every provider that ran today, one entry per model, busiest first.
+  List<ProviderQuota> todayQuotaForAll() {
+    final dayKey = pacificDayKey(_now());
+    final bucket = _load()[dayKey] ?? const {};
+    final providers = <String>{};
+    for (final key in bucket.keys) {
+      final provider = key.split(':').first;
+      if (provider.isNotEmpty) providers.add(provider);
+    }
+    final all = <ProviderQuota>[
+      for (final provider in providers) ...todayQuotaFor(provider),
+    ]..sort((a, b) => b.requestsToday.compareTo(a.requestsToday));
+    return all;
+  }
+
+  /// True when [providerId] recorded a request today. Null checks every
+  /// provider.
+  bool hasActivityToday([String? providerId]) {
+    final dayKey = pacificDayKey(_now());
+    final bucket = _load()[dayKey] ?? const {};
+    if (providerId == null) {
+      return bucket.values.any((count) => count > 0);
+    }
+    final prefix = '${providerId.trim().toLowerCase()}:';
+    return bucket.keys.any((key) => key.startsWith(prefix) && bucket[key]! > 0);
+  }
+
+  /// Today's Gemini (provider `gemini`) counts grouped by model.
+  List<DailyQuota> todayGeminiQuota() {
+    return [
+      for (final quota in todayQuotaFor('gemini'))
+        DailyQuota(
+          modelId: quota.modelId,
+          requestsToday: quota.requestsToday,
+          budget: quota.budget ?? budgetForModel(quota.modelId),
         ),
     ];
   }
 
   /// True when any Gemini request was recorded today (drives card visibility).
-  bool hasGeminiActivityToday() {
-    final dayKey = pacificDayKey(_now());
-    final bucket = _load()[dayKey] ?? const {};
-    return bucket.keys.any((k) => k.startsWith('gemini:'));
-  }
+  bool hasGeminiActivityToday() => hasActivityToday('gemini');
 
   /// Per-model request counts over the retained window, oldest day first.
   ///
   /// Days with no activity for a model are omitted rather than reported as
   /// zero: a week away from the app must not drag the widget's "avg / day"
-  /// line down. Model keys match [todayGeminiQuota] (`unknown` for a null
-  /// model name).
-  Map<String, List<int>> geminiQuotaHistory({int days = historyDays}) {
+  /// line down. Model keys match [todayQuotaFor] (`unknown` for a null model
+  /// name).
+  Map<String, List<int>> quotaHistoryFor(
+    String providerId, {
+    int days = historyDays,
+  }) {
+    final target = providerId.trim().toLowerCase();
     final todayKey = pacificDayKey(_now());
     final cutoff = _cutoffDayKey(todayKey, days);
     final store = _load();
@@ -177,7 +253,7 @@ class DailyUsageService {
       final bucket = store[dayKey] ?? const {};
       for (final entry in bucket.entries) {
         final parts = entry.key.split(':');
-        if (parts.isEmpty || parts.first != 'gemini') continue;
+        if (parts.isEmpty || parts.first != target) continue;
         final modelId = parts.length > 1 ? parts.sublist(1).join(':') : '';
         final resolved = modelId.isEmpty ? 'unknown' : modelId;
         if (entry.value <= 0) continue;
@@ -185,6 +261,31 @@ class DailyUsageService {
       }
     }
     return byModel;
+  }
+
+  Map<String, List<int>> geminiQuotaHistory({int days = historyDays}) =>
+      quotaHistoryFor('gemini', days: days);
+
+  /// Mean requests per active day over the retained window for one model.
+  /// Null when the model has no activity in that window.
+  int? averageFor(String providerId, String modelId) {
+    final target = _normalizeModel(modelId);
+    for (final entry in quotaHistoryFor(providerId).entries) {
+      if (_normalizeModel(entry.key) != target) continue;
+      final counts = entry.value.where((value) => value > 0).toList();
+      if (counts.isEmpty) return null;
+      final total = counts.fold<int>(0, (sum, value) => sum + value);
+      return (total / counts.length).round();
+    }
+    return null;
+  }
+
+  static String _normalizeModel(String? modelId) {
+    var value = (modelId ?? '').trim().toLowerCase();
+    if (value.startsWith('models/')) {
+      value = value.substring('models/'.length);
+    }
+    return value;
   }
 
   /// Clears every local daily-quota counter. Provider-side RPD windows are not

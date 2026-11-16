@@ -1,0 +1,223 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- AI quota, expanded (4x2): two providers side by side, each with its own
+     ring. Every quota layout declares the same id set so the provider binds
+     all four sizes with one code path; the blocks that do not fit are hidden
+     by the provider, never omitted from the file. -->
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:id="@+id/widget_root"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:orientation="vertical"
+    android:padding="14dp"
+    android:background="#1C1C1C">
+
+    <LinearLayout
+        android:id="@+id/widget_body"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:orientation="vertical">
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal"
+            android:gravity="center_vertical">
+
+            <TextView
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:maxLines="1"
+                android:ellipsize="end"
+                android:letterSpacing="0.08"
+                android:text="AI QUOTA · TODAY"
+                android:textColor="#0095F6"
+                android:textSize="10sp"
+                android:textStyle="bold" />
+
+            <TextView
+                android:id="@+id/quota_window"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:maxLines="1"
+                android:text="Pacific day"
+                android:textColor="#B0B3B8"
+                android:textSize="9sp" />
+        </LinearLayout>
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="0dp"
+            android:layout_weight="1"
+            android:layout_marginTop="10dp"
+            android:orientation="horizontal"
+            android:gravity="center_vertical">
+
+            <LinearLayout
+                android:id="@+id/quota_a_column"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:orientation="vertical"
+                android:gravity="center_horizontal">
+
+                <FrameLayout
+                    android:id="@+id/quota_a_ringbox"
+                    android:layout_width="76dp"
+                    android:layout_height="76dp">
+
+                    <ImageView
+                        android:id="@+id/quota_a_ring"
+                        android:layout_width="76dp"
+                        android:layout_height="76dp"
+                        android:scaleType="fitCenter"
+                        android:importantForAccessibility="no" />
+
+                    <TextView
+                        android:id="@+id/quota_a_pct"
+                        android:layout_width="match_parent"
+                        android:layout_height="match_parent"
+                        android:gravity="center"
+                        android:maxLines="1"
+                        android:text="62%"
+                        android:textColor="#FFFFFF"
+                        android:textSize="16sp"
+                        android:textStyle="bold" />
+                </FrameLayout>
+
+                <TextView
+                    android:id="@+id/quota_a_name"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="6dp"
+                    android:gravity="center"
+                    android:maxLines="1"
+                    android:ellipsize="end"
+                    android:letterSpacing="0.06"
+                    android:text="GEMINI"
+                    android:textColor="#B0B3B8"
+                    android:textSize="9sp" />
+
+                <TextView
+                    android:id="@+id/quota_a_value"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:gravity="center"
+                    android:maxLines="1"
+                    android:text="312 / 500"
+                    android:textColor="#0095F6"
+                    android:textSize="12sp"
+                    android:textStyle="bold" />
+
+                <TextView
+                    android:id="@+id/quota_a_meta"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:gravity="center"
+                    android:maxLines="1"
+                    android:ellipsize="end"
+                    android:text="resets 6h · avg 42/day"
+                    android:textColor="#B0B3B8"
+                    android:textSize="9sp" />
+            </LinearLayout>
+
+            <!-- Must be a @RemoteView class, never a plain View or Space. -->
+            <FrameLayout
+                android:id="@+id/quota_divider"
+                android:layout_width="1dp"
+                android:layout_height="match_parent"
+                android:layout_marginStart="10dp"
+                android:layout_marginEnd="10dp"
+                android:background="#33B0B3B8" />
+
+            <LinearLayout
+                android:id="@+id/quota_b_column"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:orientation="vertical"
+                android:gravity="center_horizontal">
+
+                <FrameLayout
+                    android:id="@+id/quota_b_ringbox"
+                    android:layout_width="76dp"
+                    android:layout_height="76dp">
+
+                    <ImageView
+                        android:id="@+id/quota_b_ring"
+                        android:layout_width="76dp"
+                        android:layout_height="76dp"
+                        android:scaleType="fitCenter"
+                        android:importantForAccessibility="no" />
+
+                    <TextView
+                        android:id="@+id/quota_b_pct"
+                        android:layout_width="match_parent"
+                        android:layout_height="match_parent"
+                        android:gravity="center"
+                        android:maxLines="1"
+                        android:text="12"
+                        android:textColor="#FFFFFF"
+                        android:textSize="16sp"
+                        android:textStyle="bold" />
+                </FrameLayout>
+
+                <TextView
+                    android:id="@+id/quota_b_name"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="6dp"
+                    android:gravity="center"
+                    android:maxLines="1"
+                    android:ellipsize="end"
+                    android:letterSpacing="0.06"
+                    android:text="GROQ"
+                    android:textColor="#B0B3B8"
+                    android:textSize="9sp" />
+
+                <TextView
+                    android:id="@+id/quota_b_value"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:gravity="center"
+                    android:maxLines="1"
+                    android:text="12 today"
+                    android:textColor="#0095F6"
+                    android:textSize="12sp"
+                    android:textStyle="bold" />
+
+                <TextView
+                    android:id="@+id/quota_b_meta"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:gravity="center"
+                    android:maxLines="1"
+                    android:ellipsize="end"
+                    android:text="no daily limit"
+                    android:textColor="#B0B3B8"
+                    android:textSize="9sp" />
+            </LinearLayout>
+        </LinearLayout>
+
+        <TextView
+            android:id="@+id/widget_updated"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="6dp"
+            android:maxLines="1"
+            android:ellipsize="end"
+            android:text=""
+            android:textColor="#B0B3B8"
+            android:textSize="9sp" />
+    </LinearLayout>
+
+    <TextView
+        android:id="@+id/widget_notice"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:gravity="center"
+        android:visibility="gone"
+        android:text="Open Oreamnos to update this widget"
+        android:textColor="#B0B3B8"
+        android:textSize="11sp" />
+</LinearLayout>

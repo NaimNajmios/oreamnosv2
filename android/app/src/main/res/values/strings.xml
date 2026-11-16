@@ -1,15 +1,29 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <string name="widget_description">Next scheduled Page post and today\'s Gemini quota</string>
+    <string name="widget_description">When your next scheduled Page post goes live</string>
     <string name="widget_label">Oreamnos next up</string>
+
+    <string name="widget_quota_label">Oreamnos AI quota</string>
+    <string name="widget_quota_description">Today\'s usage for two AI providers side by side</string>
+
+    <string name="widget_engagement_label">Oreamnos engagement</string>
+    <string name="widget_engagement_description">How your last post and this week are doing</string>
+
+    <string name="widget_drafts_label">Oreamnos drafts</string>
+    <string name="widget_drafts_description">What is half-written and ready to continue</string>
+
+    <string name="widget_best_time_label">Oreamnos best time</string>
+    <string name="widget_best_time_description">When your audience is usually listening</string>
+
     <string name="widget_config_title">Widget settings</string>
-    <string name="widget_config_second_row">Show under the divider</string>
     <string name="widget_config_page">Page</string>
     <string name="widget_config_active_page">Active page</string>
+    <string name="widget_config_providers">Providers, side by side</string>
+    <string name="widget_config_primary">First</string>
+    <string name="widget_config_secondary">Second</string>
+    <string name="widget_config_active_provider">Active provider</string>
+    <string name="widget_config_fallback_provider">App fallback</string>
+    <string name="widget_config_no_second">No second provider</string>
     <string name="widget_config_save">Save</string>
     <string name="widget_config_saved">Widget saved</string>
-    <string name="widget_config_row_quota">Gemini quota</string>
-    <string name="widget_config_row_engagement">Last post</string>
-    <string name="widget_config_row_drafts">Drafts</string>
-    <string name="widget_config_row_best_time">Best time</string>
 </resources>

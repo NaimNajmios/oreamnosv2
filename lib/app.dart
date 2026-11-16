@@ -11,6 +11,7 @@ import 'config/constants.dart';
 import 'config/routes/app_router.dart';
 import 'config/theme/app_theme.dart';
 import 'core/di/injection.dart';
+import 'data/models/ai_provider.dart';
 import 'domain/models/app_theme_mode.dart';
 import 'domain/models/card_brief.dart';
 import 'domain/models/curated_post.dart';
@@ -107,8 +108,7 @@ class _OreamnosAppState extends ConsumerState<OreamnosApp> {
       if (previous?.themeMode != next.themeMode ||
           previous?.selectedModel != next.selectedModel ||
           previous?.selectedProvider != next.selectedProvider ||
-          previous?.showWidgetSnippet != next.showWidgetSnippet ||
-          previous?.widgetSecondRow != next.widgetSecondRow) {
+          previous?.showWidgetSnippet != next.showWidgetSnippet) {
         _scheduleHomeWidgetSync();
       }
     });
@@ -286,17 +286,42 @@ class _OreamnosAppState extends ConsumerState<OreamnosApp> {
       if (getIt.isRegistered<DailyUsageService>()) {
         daily = getIt<DailyUsageService>();
       }
-      final quotas = daily == null
-          ? const <HomeWidgetQuota>[]
-          : [
-              for (final quota in daily.todayGeminiQuota())
-                HomeWidgetQuota(
-                  modelId: quota.modelId,
-                  requestsToday: quota.requestsToday,
-                  budget: quota.budget,
-                ),
-            ];
 
+      // One entry per provider so the quota widget can show any two side by
+      // side, including a provider that recorded nothing today. Only Gemini
+      // carries a budget; the rest are counts.
+      final quotas = <HomeWidgetQuota>[];
+      if (daily != null) {
+        final resetAt = now.add(daily.timeUntilPacificReset());
+        final byProvider = <String, List<ProviderQuota>>{};
+        for (final quota in daily.todayQuotaForAll()) {
+          (byProvider[quota.providerId] ??= <ProviderQuota>[]).add(quota);
+        }
+        for (final provider in AiProvider.values) {
+          final id = provider.name.toLowerCase();
+          final models = byProvider[id] ?? const <ProviderQuota>[];
+          final chosen = _preferredQuota(
+            models,
+            id == 'gemini' ? settings.selectedModel : null,
+          );
+          final budget = chosen?.budget;
+          quotas.add(
+            HomeWidgetQuota(
+              providerId: id,
+              displayName: provider.displayName,
+              modelId: _shortModel(chosen?.modelId),
+              requestsToday: chosen?.requestsToday ?? 0,
+              budget: budget,
+              average: chosen == null
+                  ? null
+                  : daily.averageFor(id, chosen.modelId),
+              resetAt: budget == null ? null : resetAt,
+            ),
+          );
+        }
+      }
+
+      final activeProvider = settings.selectedProvider.name.toLowerCase();
       final snapshot = const HomeWidgetSnapshotBuilder().build(
         now: now,
         records: records,
@@ -306,19 +331,17 @@ class _OreamnosAppState extends ConsumerState<OreamnosApp> {
         pageExpired: connection.isExpired,
         draftCount: drafts.length,
         palette: _paletteFor(settings.themeMode),
-        selectedProviderId: settings.selectedProvider.name,
-        selectedModel: settings.selectedModel,
-        quotaResetAt: daily == null || quotas.isEmpty
-            ? null
-            : now.add(daily.timeUntilPacificReset()),
-        quotaHistory: daily?.geminiQuotaHistory() ?? const {},
+        activeProvider: activeProvider,
+        fallbackProvider: settings.selectedProvider.nextFallback.name
+            .toLowerCase(),
         pages: [
           for (final page in connection.pages)
             HomeWidgetPage(id: page.id, name: page.name),
         ],
         draftTitle: drafts.isEmpty ? '' : drafts.first.text,
+        draftUpdatedAt: drafts.isEmpty ? null : drafts.first.updatedAt,
         showSnippet: settings.showWidgetSnippet,
-        secondRow: settings.widgetSecondRow,
+        warnFraction: AppConstants.dailyQuotaWarnThreshold,
       );
       await _homeWidget.push(snapshot);
     } catch (_) {
@@ -326,6 +349,44 @@ class _OreamnosAppState extends ConsumerState<OreamnosApp> {
     } finally {
       _widgetSyncInFlight = false;
     }
+  }
+
+  /// The model a provider's widget tile should speak for: the app's selected
+  /// model when it ran, otherwise the busiest one. Guessing would make the
+  /// quota look wrong.
+  ProviderQuota? _preferredQuota(
+    List<ProviderQuota> models,
+    String? preferred,
+  ) {
+    if (models.isEmpty) return null;
+    final target = _normalizeModel(preferred);
+    if (target.isNotEmpty) {
+      for (final model in models) {
+        if (_normalizeModel(model.modelId) == target) return model;
+      }
+    }
+    return models.first;
+  }
+
+  /// Recorded ids are sometimes `models/gemini-2.5-flash`, sometimes the bare
+  /// name; compare them in the one shape the quota widget understands.
+  static String _normalizeModel(String? modelId) {
+    var value = (modelId ?? '').trim().toLowerCase();
+    if (value.startsWith('models/')) {
+      value = value.substring('models/'.length);
+    }
+    return value;
+  }
+
+  /// `gemini-2.5-flash` → `2.5-flash`; the widget has no room for the vendor.
+  static String _shortModel(String? modelId) {
+    var value = (modelId ?? '').trim().toLowerCase();
+    if (value.startsWith('models/')) {
+      value = value.substring('models/'.length);
+    }
+    return value.startsWith('gemini-')
+        ? value.substring('gemini-'.length)
+        : value;
   }
 
   /// Palm-sized mirror of the app palette. Dynamic colour is intentionally

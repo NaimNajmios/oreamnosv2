@@ -4,48 +4,56 @@ import android.content.Context;
 import android.content.SharedPreferences;
 
 /**
- * Per-widget personalisation (second row + pinned Page).
+ * Per-widget personalisation: which Page, and which two AI providers the quota
+ * widget follows.
  *
- * <p>Stored in a dedicated prefs file, never in the {@code home_widget}
- * plugin's {@code HomeWidgetPreferences}: a Dart payload push must never
- * clobber a user's per-widget choice.
+ * <p>Stored in a dedicated prefs file, never in the {@code home_widget} plugin's
+ * {@code HomeWidgetPreferences}: a Dart payload push must never clobber a user's
+ * per-widget choice.
  */
 final class WidgetConfig {
 
     static final String PREFS = "oreamnos_widget_config";
 
-    static final String ROW_QUOTA = "quota";
-    static final String ROW_ENGAGEMENT = "engagement";
-    static final String ROW_DRAFTS = "drafts";
-    static final String ROW_BEST_TIME = "bestTime";
+    /** Explicit "no second slot" for the quota widget. */
+    static final String NONE = "-";
 
-    private static final String KEY_ROW_PREFIX = "row_";
     private static final String KEY_PAGE_PREFIX = "page_";
+    private static final String KEY_PRIMARY_PREFIX = "primary_";
+    private static final String KEY_SECONDARY_PREFIX = "secondary_";
 
     private WidgetConfig() {}
 
-    /** Empty when the widget follows the global preference. */
-    static String row(Context context, int appWidgetId) {
-        return prefs(context).getString(KEY_ROW_PREFIX + appWidgetId, "");
-    }
-
-    /** Empty when the widget follows the app's active Page. */
+    /** Empty when the Next-up widget follows the app's active Page. */
     static String page(Context context, int appWidgetId) {
-        return prefs(context).getString(KEY_PAGE_PREFIX + appWidgetId, "");
+        String value = prefs(context).getString(KEY_PAGE_PREFIX + appWidgetId, "");
+        return value == null ? "" : value;
     }
 
-    static void save(Context context, int appWidgetId, String row, String page) {
+    /** Empty when the quota widget follows the app's active provider. */
+    static String primaryProvider(Context context, int appWidgetId) {
+        String value = prefs(context).getString(KEY_PRIMARY_PREFIX + appWidgetId, "");
+        return value == null ? "" : value;
+    }
+
+    /**
+     * Empty means "not configured — use the fallback provider"; {@link #NONE}
+     * means the user explicitly hid the second slot.
+     */
+    static String secondaryProvider(Context context, int appWidgetId) {
+        String value = prefs(context).getString(KEY_SECONDARY_PREFIX + appWidgetId, "");
+        return value == null ? "" : value;
+    }
+
+    static void savePage(Context context, int appWidgetId, String page) {
+        write(context, KEY_PAGE_PREFIX + appWidgetId, page);
+    }
+
+    static void saveProviders(
+            Context context, int appWidgetId, String primary, String secondary) {
         SharedPreferences.Editor editor = prefs(context).edit();
-        if (row == null || row.isEmpty()) {
-            editor.remove(KEY_ROW_PREFIX + appWidgetId);
-        } else {
-            editor.putString(KEY_ROW_PREFIX + appWidgetId, row);
-        }
-        if (page == null || page.isEmpty()) {
-            editor.remove(KEY_PAGE_PREFIX + appWidgetId);
-        } else {
-            editor.putString(KEY_PAGE_PREFIX + appWidgetId, page);
-        }
+        put(editor, KEY_PRIMARY_PREFIX + appWidgetId, primary);
+        put(editor, KEY_SECONDARY_PREFIX + appWidgetId, secondary);
         editor.apply();
     }
 
@@ -53,9 +61,25 @@ final class WidgetConfig {
     static void delete(Context context, int appWidgetId) {
         prefs(context)
                 .edit()
-                .remove(KEY_ROW_PREFIX + appWidgetId)
                 .remove(KEY_PAGE_PREFIX + appWidgetId)
+                .remove(KEY_PRIMARY_PREFIX + appWidgetId)
+                .remove(KEY_SECONDARY_PREFIX + appWidgetId)
                 .apply();
+    }
+
+    private static void write(Context context, String key, String value) {
+        SharedPreferences.Editor editor = prefs(context).edit();
+        put(editor, key, value);
+        editor.apply();
+    }
+
+    private static void put(
+            SharedPreferences.Editor editor, String key, String value) {
+        if (value == null || value.isEmpty()) {
+            editor.remove(key);
+        } else {
+            editor.putString(key, value);
+        }
     }
 
     private static SharedPreferences prefs(Context context) {

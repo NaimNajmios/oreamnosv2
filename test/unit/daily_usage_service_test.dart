@@ -233,6 +233,115 @@ void main() {
       });
     });
 
+    group('provider-agnostic quota accessors', () {
+      test('only Gemini gets a budget; the rest are counts', () {
+        expect(
+          DailyUsageService.budgetForProviderModel(
+            'gemini',
+            'gemini-2.5-flash',
+          ),
+          500,
+        );
+        expect(
+          DailyUsageService.budgetForProviderModel('groq', 'llama-3.3-70b'),
+          isNull,
+        );
+        expect(
+          DailyUsageService.budgetForProviderModel('openrouter', 'anything'),
+          isNull,
+        );
+        expect(
+          DailyUsageService.budgetForProviderModel('cerebras', 'llama-3.3-70b'),
+          isNull,
+        );
+      });
+
+      test(
+        'todayQuotaFor reads any provider with a case-insensitive id',
+        () async {
+          final svc = service();
+          await svc.recordRequest('groq', 'llama-3.3-70b');
+          await svc.recordRequest('groq', 'llama-3.3-70b');
+          await svc.recordRequest('groq', 'llama-3.1-8b');
+
+          final quotas = svc.todayQuotaFor('GROQ');
+          expect(quotas, hasLength(2));
+          expect(quotas.first.modelId, 'llama-3.3-70b');
+          expect(quotas.first.requestsToday, 2);
+          expect(quotas.first.providerId, 'groq');
+          expect(quotas.first.budget, isNull);
+          expect(quotas.first.hasBudget, isFalse);
+        },
+      );
+
+      test('todayQuotaForAll covers every provider, busiest first', () async {
+        final svc = service();
+        await svc.recordRequest('gemini', 'gemini-2.5-flash');
+        await svc.recordRequest('groq', 'llama-3.3-70b');
+        await svc.recordRequest('groq', 'llama-3.3-70b');
+        await svc.recordRequest('cerebras', 'llama-3.3-70b');
+
+        final all = svc.todayQuotaForAll();
+        expect(all, hasLength(3));
+        expect(all.first.providerId, 'groq');
+        expect(all.first.requestsToday, 2);
+        expect(all.map((q) => q.providerId).toSet(), {
+          'gemini',
+          'groq',
+          'cerebras',
+        });
+      });
+
+      test('hasActivityToday can be scoped to one provider', () async {
+        final svc = service();
+        await svc.recordRequest('gemini', 'gemini-2.5-flash');
+
+        expect(svc.hasActivityToday(), isTrue);
+        expect(svc.hasActivityToday('gemini'), isTrue);
+        expect(svc.hasActivityToday('Groq'), isFalse);
+        expect(svc.hasActivityToday('vision'), isFalse);
+      });
+
+      test('quotaHistoryFor keeps each provider separate', () async {
+        var current = DateTime.utc(2026, 1, 14, 20, 0, 0);
+        final svc = service(nowOverride: () => current);
+        await svc.recordRequest('gemini', 'gemini-2.5-flash');
+        await svc.recordRequest('groq', 'llama-3.3-70b');
+        await svc.recordRequest('groq', 'llama-3.3-70b');
+
+        expect(svc.quotaHistoryFor('gemini'), {
+          'gemini-2.5-flash': [1],
+        });
+        expect(svc.quotaHistoryFor('groq'), {
+          'llama-3.3-70b': [2],
+        });
+        expect(svc.quotaHistoryFor('openrouter'), isEmpty);
+      });
+
+      test(
+        'averageFor skips idle days and tolerates a models/ prefix',
+        () async {
+          var current = DateTime.utc(2026, 1, 10, 20, 0, 0);
+          final svc = service(nowOverride: () => current);
+          await svc.recordRequest('gemini', 'gemini-2.5-flash');
+          await svc.recordRequest('gemini', 'gemini-2.5-flash');
+
+          current = DateTime.utc(2026, 1, 12, 20, 0, 0);
+          await svc.recordRequest('gemini', 'gemini-2.5-flash');
+
+          current = DateTime.utc(2026, 1, 14, 20, 0, 0);
+          await svc.recordRequest('gemini', 'gemini-2.5-flash');
+          await svc.recordRequest('gemini', 'gemini-2.5-flash');
+          await svc.recordRequest('gemini', 'gemini-2.5-flash');
+
+          // Active days only: (2 + 1 + 3) / 3, not / 7.
+          expect(svc.averageFor('gemini', 'models/gemini-2.5-flash'), 2);
+          expect(svc.averageFor('gemini', 'gemini-2.0-flash'), isNull);
+          expect(svc.averageFor('groq', 'llama-3.3-70b'), isNull);
+        },
+      );
+    });
+
     group('threshold classification', () {
       test('amber at 80%, red at 100%', () {
         // dailyQuotaWarnThreshold is 0.8 → warn from 8/10, exhausted at 10/10.

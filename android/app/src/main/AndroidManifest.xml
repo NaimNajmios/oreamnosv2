@@ -62,9 +62,10 @@
             </intent-filter>
         </receiver>
 
-        <!-- Home-screen widget: next scheduled post + today's Gemini quota.
-             Reads the string payload the app writes through `home_widget`;
-             taps are explicit intents back into MainActivity. -->
+        <!-- Home-screen widgets. Each reads the same string payload the app
+             writes through `home_widget`; taps are explicit intents back into
+             MainActivity. Only Next up and AI quota declare a configure
+             activity, because the other three have nothing to choose. -->
         <receiver
             android:name=".widget.OreamnosWidgetProvider"
             android:exported="true"
@@ -75,6 +76,50 @@
             <meta-data
                 android:name="android.appwidget.provider"
                 android:resource="@xml/oreamnos_widget_info"/>
+        </receiver>
+        <receiver
+            android:name=".widget.OreamnosQuotaWidgetProvider"
+            android:exported="true"
+            android:label="@string/widget_quota_label">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_UPDATE"/>
+            </intent-filter>
+            <meta-data
+                android:name="android.appwidget.provider"
+                android:resource="@xml/oreamnos_quota_widget_info"/>
+        </receiver>
+        <receiver
+            android:name=".widget.OreamnosEngagementWidgetProvider"
+            android:exported="true"
+            android:label="@string/widget_engagement_label">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_UPDATE"/>
+            </intent-filter>
+            <meta-data
+                android:name="android.appwidget.provider"
+                android:resource="@xml/oreamnos_engagement_widget_info"/>
+        </receiver>
+        <receiver
+            android:name=".widget.OreamnosDraftsWidgetProvider"
+            android:exported="true"
+            android:label="@string/widget_drafts_label">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_UPDATE"/>
+            </intent-filter>
+            <meta-data
+                android:name="android.appwidget.provider"
+                android:resource="@xml/oreamnos_drafts_widget_info"/>
+        </receiver>
+        <receiver
+            android:name=".widget.OreamnosBestTimeWidgetProvider"
+            android:exported="true"
+            android:label="@string/widget_best_time_label">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_UPDATE"/>
+            </intent-filter>
+            <meta-data
+                android:name="android.appwidget.provider"
+                android:resource="@xml/oreamnos_best_time_widget_info"/>
         </receiver>
         <!-- Re-arms the widget refresh after the next post goes live and at
              the Pacific quota reset (inexact alarms, no exact-alarm grant).

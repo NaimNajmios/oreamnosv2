@@ -1,4 +1,6 @@
-/// Snapshot of the data the Android home-screen widget renders.
+import 'dart:convert';
+
+/// Snapshot of the data the Android home-screen widgets render.
 ///
 /// Every value is serialized as a [String]. The plugin maps a Dart `int` that
 /// does not fit a signed 32-bit value (for example an opaque ARGB colour) to a
@@ -14,28 +16,30 @@ class HomeWidgetSnapshot {
     required this.nextIsStory,
     required this.scheduledCount,
     required this.draftCount,
-    required this.quotaModel,
-    required this.quotaUsed,
-    required this.quotaBudget,
-    required this.quotaResetAt,
+    required this.quotaJson,
     required this.pageName,
     required this.pageConnected,
     required this.pageExpired,
     required this.palette,
-    this.secondRow = HomeWidgetSecondRow.quota,
+    required this.activeProvider,
+    required this.fallbackProvider,
     this.lastPostSnippet = '',
     this.lastPostReactions,
     this.lastPostComments,
     this.lastPostShares,
     this.lastPostAt,
+    this.weekReactions = 0,
+    this.weekComments = 0,
+    this.weekShares = 0,
     this.bestSlotLabel = '',
     this.bestSlotDetail = '',
     this.bestSlotConfident = false,
     this.storyFailedCount = 0,
     this.draftTitle = '',
+    this.draftUpdatedAt,
     this.weekPostCount = 0,
-    this.quotaAverage,
     this.pagesJson = '[]',
+    this.quotaResetAt,
   });
 
   /// When this snapshot was built. The widget shows it when data goes stale.
@@ -48,16 +52,15 @@ class HomeWidgetSnapshot {
   final int scheduledCount;
   final int draftCount;
 
-  /// `null` when no Gemini requests were recorded today, which hides the
-  /// quota half of the widget instead of pretending "0 / 0".
-  final String? quotaModel;
-  final int? quotaUsed;
-  final int? quotaBudget;
-  final DateTime? quotaResetAt;
+  /// Every provider's daily request count, as a compact JSON array. The quota
+  /// widget picks two of them from its own per-widget config, so one payload
+  /// serves every placed widget. See [HomeWidgetQuota.toJson].
+  final String quotaJson;
 
-  /// Mean requests per active day over the last week for the same model as the
-  /// quota row. `null` hides the trend line.
-  final int? quotaAverage;
+  /// Gemini's Pacific reset instant. Not sent to the widgets — it only drives
+  /// the scheduled refresh alarm — because each provider's reset time already
+  /// travels inside [quotaJson].
+  final DateTime? quotaResetAt;
 
   final String pageName;
   final bool pageConnected;
@@ -65,19 +68,25 @@ class HomeWidgetSnapshot {
 
   final HomeWidgetPalette palette;
 
-  /// Which block the provider draws under the divider. Every block is always
-  /// in the payload; the mode is a pure render decision.
-  final HomeWidgetSecondRow secondRow;
+  /// The app's selected provider and its rate-limit fallback. The quota
+  /// widget uses them as its default pair; the user can override each slot.
+  final String activeProvider;
+  final String fallbackProvider;
 
   /// Newest published post that has cached engagement. Empty keys hide the
-  /// engagement block.
+  /// engagement widget's metrics.
   final String lastPostSnippet;
   final int? lastPostReactions;
   final int? lastPostComments;
   final int? lastPostShares;
   final DateTime? lastPostAt;
 
-  /// Deterministic local suggestion from [BestTimeToPost]. Empty when there is
+  /// Totals across the published posts of the current week.
+  final int weekReactions;
+  final int weekComments;
+  final int weekShares;
+
+  /// Deterministic local suggestion from `BestTimeToPost`. Empty when there is
   /// not enough history to name a slot.
   final String bestSlotLabel;
   final String bestSlotDetail;
@@ -85,13 +94,12 @@ class HomeWidgetSnapshot {
 
   final int storyFailedCount;
   final String draftTitle;
+  final DateTime? draftUpdatedAt;
   final int weekPostCount;
 
   /// Per-Page next-up, so a widget can be configured to pin one Page. A single
   /// JSON string keeps every payload value a `String`.
   final String pagesJson;
-
-  bool get hasQuota => quotaUsed != null && quotaBudget != null;
 
   bool get hasLastPost =>
       lastPostAt != null &&
@@ -109,11 +117,7 @@ class HomeWidgetSnapshot {
     HomeWidgetKeys.nextIsStory: nextIsStory ? '1' : '0',
     HomeWidgetKeys.scheduledCount: '$scheduledCount',
     HomeWidgetKeys.draftCount: '$draftCount',
-    HomeWidgetKeys.quotaModel: quotaModel ?? '',
-    HomeWidgetKeys.quotaUsed: quotaUsed == null ? '' : '$quotaUsed',
-    HomeWidgetKeys.quotaBudget: quotaBudget == null ? '' : '$quotaBudget',
-    HomeWidgetKeys.quotaResetAt: _epoch(quotaResetAt),
-    HomeWidgetKeys.quotaAverage: quotaAverage == null ? '' : '$quotaAverage',
+    HomeWidgetKeys.quotaJson: quotaJson,
     HomeWidgetKeys.pageName: pageName,
     HomeWidgetKeys.pageConnected: pageConnected ? '1' : '0',
     HomeWidgetKeys.pageExpired: pageExpired ? '1' : '0',
@@ -121,17 +125,22 @@ class HomeWidgetSnapshot {
     HomeWidgetKeys.onSurface: palette.onSurfaceHex,
     HomeWidgetKeys.muted: palette.mutedHex,
     HomeWidgetKeys.primary: palette.primaryHex,
-    HomeWidgetKeys.secondRowMode: secondRow.wireName,
+    HomeWidgetKeys.activeProvider: activeProvider,
+    HomeWidgetKeys.fallbackProvider: fallbackProvider,
     HomeWidgetKeys.lastPostSnippet: lastPostSnippet,
     HomeWidgetKeys.lastPostReactions: _number(lastPostReactions),
     HomeWidgetKeys.lastPostComments: _number(lastPostComments),
     HomeWidgetKeys.lastPostShares: _number(lastPostShares),
     HomeWidgetKeys.lastPostAt: _epoch(lastPostAt),
+    HomeWidgetKeys.weekReactions: '$weekReactions',
+    HomeWidgetKeys.weekComments: '$weekComments',
+    HomeWidgetKeys.weekShares: '$weekShares',
     HomeWidgetKeys.bestSlotLabel: bestSlotLabel,
     HomeWidgetKeys.bestSlotDetail: bestSlotDetail,
     HomeWidgetKeys.bestSlotConfident: bestSlotConfident ? '1' : '0',
     HomeWidgetKeys.storyFailedCount: '$storyFailedCount',
     HomeWidgetKeys.draftTitle: draftTitle,
+    HomeWidgetKeys.draftUpdatedAt: _epoch(draftUpdatedAt),
     HomeWidgetKeys.weekPostCount: '$weekPostCount',
     HomeWidgetKeys.pagesJson: pagesJson,
   };
@@ -151,34 +160,72 @@ class HomeWidgetPage {
   final String name;
 }
 
-/// What the provider draws under the divider.
+/// Today's request count for one AI provider.
 ///
-/// The payload always carries every block, so switching costs one push and no
-/// data loss; the provider owns the fallback chain when a block is empty.
-enum HomeWidgetSecondRow {
-  quota('quota', 'Gemini quota'),
-  engagement('engagement', 'Last post'),
-  drafts('drafts', 'Drafts'),
-  bestTime('bestTime', 'Best time');
+/// [budget] is only non-null when the app actually knows a daily limit (the
+/// Gemini free tier). The quota widget must never imply a limit it does not
+/// have, so an absent budget renders a count instead of a ring.
+class HomeWidgetQuota {
+  const HomeWidgetQuota({
+    required this.providerId,
+    required this.displayName,
+    required this.modelId,
+    required this.requestsToday,
+    this.budget,
+    this.average,
+    this.resetAt,
+  });
 
-  const HomeWidgetSecondRow(this.wireName, this.label);
+  /// Lower-case provider id, matching `AiProvider.name` and the key stored by
+  /// `DailyUsageService` (`gemini`, `groq`, `openrouter`, `cerebras`).
+  final String providerId;
+  final String displayName;
 
-  /// Stable identifier shared with the native provider. Never translate this.
-  final String wireName;
+  /// Short model label (`2.5 Flash`), empty when nothing ran today.
+  final String modelId;
+  final int requestsToday;
+  final int? budget;
 
-  /// Human label for the settings sheet.
-  final String label;
+  /// Mean requests per active day over the retained week.
+  final int? average;
+  final DateTime? resetAt;
 
-  static HomeWidgetSecondRow fromWire(String? value) {
-    final normalized = (value ?? '').trim();
-    for (final row in values) {
-      if (row.wireName == normalized) return row;
-    }
-    return HomeWidgetSecondRow.quota;
+  bool get hasBudget => budget != null && budget! > 0;
+
+  /// Severity bucket 0 = ok, 1 = warn, 2 = at/over budget.
+  ///
+  /// Computed on the Dart side so the native renderer never re-derives a
+  /// business rule, and so the threshold stays aligned with the Usage screen.
+  int severity(double warnFraction) {
+    if (!hasBudget) return 0;
+    if (requestsToday >= budget!) return 2;
+    return requestsToday >= (budget! * warnFraction).ceil() ? 1 : 0;
   }
+
+  /// Compact wire form. Short keys keep the whole array inside
+  /// `HomeWidgetSnapshotBuilder.maxQuotaJsonChars`.
+  ///
+  /// `p` provider id · `n` display name · `m` model · `u` used · `b` budget ·
+  /// `pc` percent · `s` severity · `r` reset epoch · `a` average.
+  Map<String, Object> toJson(double warnFraction) => {
+    'p': providerId,
+    'n': displayName,
+    'm': modelId,
+    'u': requestsToday,
+    if (hasBudget) ...{
+      'b': budget!,
+      'pc': ((requestsToday * 100) / budget!).clamp(0, 100).round(),
+      's': severity(warnFraction),
+    },
+    'a': ?average,
+    if (resetAt != null) 'r': resetAt!.millisecondsSinceEpoch,
+  };
+
+  static String encodeAll(List<HomeWidgetQuota> quotas, double warnFraction) =>
+      jsonEncode([for (final quota in quotas) quota.toJson(warnFraction)]);
 }
 
-/// Colours mirrored from the active app theme so the widget does not look
+/// Colours mirrored from the active app theme so the widgets do not look
 /// bolted on. Values are opaque ARGB ints.
 class HomeWidgetPalette {
   const HomeWidgetPalette({
@@ -204,7 +251,7 @@ class HomeWidgetPalette {
 
 /// SharedPreferences keys written through `home_widget`.
 abstract final class HomeWidgetKeys {
-  static const String currentVersion = '2';
+  static const String currentVersion = '3';
 
   static const String version = 'widget_version';
   static const String updatedAt = 'updated_at';
@@ -214,11 +261,7 @@ abstract final class HomeWidgetKeys {
   static const String nextIsStory = 'next_is_story';
   static const String scheduledCount = 'scheduled_count';
   static const String draftCount = 'draft_count';
-  static const String quotaModel = 'quota_model';
-  static const String quotaUsed = 'quota_used';
-  static const String quotaBudget = 'quota_budget';
-  static const String quotaResetAt = 'quota_reset_at';
-  static const String quotaAverage = 'quota_average';
+  static const String quotaJson = 'quota_json';
   static const String pageName = 'page_name';
   static const String pageConnected = 'page_connected';
   static const String pageExpired = 'page_expired';
@@ -226,17 +269,22 @@ abstract final class HomeWidgetKeys {
   static const String onSurface = 'theme_on_surface';
   static const String muted = 'theme_muted';
   static const String primary = 'theme_primary';
-  static const String secondRowMode = 'second_row_mode';
+  static const String activeProvider = 'active_provider';
+  static const String fallbackProvider = 'fallback_provider';
   static const String lastPostSnippet = 'last_post_snippet';
   static const String lastPostReactions = 'last_post_reactions';
   static const String lastPostComments = 'last_post_comments';
   static const String lastPostShares = 'last_post_shares';
   static const String lastPostAt = 'last_post_at';
+  static const String weekReactions = 'week_reactions';
+  static const String weekComments = 'week_comments';
+  static const String weekShares = 'week_shares';
   static const String bestSlotLabel = 'best_slot_label';
   static const String bestSlotDetail = 'best_slot_detail';
   static const String bestSlotConfident = 'best_slot_confident';
   static const String storyFailedCount = 'story_failed_count';
   static const String draftTitle = 'draft_title';
+  static const String draftUpdatedAt = 'draft_updated_at';
   static const String weekPostCount = 'week_post_count';
   static const String pagesJson = 'pages_json';
 
@@ -252,11 +300,7 @@ abstract final class HomeWidgetKeys {
     nextIsStory,
     scheduledCount,
     draftCount,
-    quotaModel,
-    quotaUsed,
-    quotaBudget,
-    quotaResetAt,
-    quotaAverage,
+    quotaJson,
     pageName,
     pageConnected,
     pageExpired,
@@ -264,17 +308,22 @@ abstract final class HomeWidgetKeys {
     onSurface,
     muted,
     primary,
-    secondRowMode,
+    activeProvider,
+    fallbackProvider,
     lastPostSnippet,
     lastPostReactions,
     lastPostComments,
     lastPostShares,
     lastPostAt,
+    weekReactions,
+    weekComments,
+    weekShares,
     bestSlotLabel,
     bestSlotDetail,
     bestSlotConfident,
     storyFailedCount,
     draftTitle,
+    draftUpdatedAt,
     weekPostCount,
     pagesJson,
   };

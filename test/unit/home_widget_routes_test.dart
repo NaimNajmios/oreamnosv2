@@ -12,6 +12,14 @@ void main() {
         '${RoutePaths.facebookHistory}?tab=scheduled',
       );
       expect(
+        RoutePaths.forWidgetUri(Uri.parse('oreamnos://history')),
+        RoutePaths.facebookHistory,
+      );
+      expect(
+        RoutePaths.forWidgetUri(Uri.parse('oreamnos://performance')),
+        RoutePaths.facebookPerformance,
+      );
+      expect(
         RoutePaths.forWidgetUri(Uri.parse('oreamnos://usage')),
         RoutePaths.usage,
       );

@@ -1,4 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
+<!-- One screen for both configurable widgets. Only the section that applies is
+     visible: Next up picks a Page, AI quota picks two providers. -->
 <ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
@@ -17,59 +19,69 @@
             android:textAppearance="?android:attr/textAppearanceLarge"
             android:textStyle="bold" />
 
-        <TextView
+        <LinearLayout
+            android:id="@+id/widget_config_page_section"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:layout_marginTop="20dp"
-            android:text="@string/widget_config_second_row"
-            android:textAppearance="?android:attr/textAppearanceMedium"
-            android:textStyle="bold" />
+            android:orientation="vertical"
+            android:visibility="gone">
 
-        <RadioGroup
-            android:id="@+id/widget_config_rows"
+            <TextView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="20dp"
+                android:text="@string/widget_config_page"
+                android:textAppearance="?android:attr/textAppearanceMedium"
+                android:textStyle="bold" />
+
+            <Spinner
+                android:id="@+id/widget_config_page"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="8dp" />
+        </LinearLayout>
+
+        <LinearLayout
+            android:id="@+id/widget_config_providers_section"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:layout_marginTop="8dp"
-            android:orientation="vertical">
+            android:orientation="vertical"
+            android:visibility="gone">
 
-            <RadioButton
-                android:id="@+id/widget_config_row_quota"
+            <TextView
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:text="@string/widget_config_row_quota" />
+                android:layout_marginTop="20dp"
+                android:text="@string/widget_config_providers"
+                android:textAppearance="?android:attr/textAppearanceMedium"
+                android:textStyle="bold" />
 
-            <RadioButton
-                android:id="@+id/widget_config_row_engagement"
+            <TextView
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:text="@string/widget_config_row_engagement" />
+                android:layout_marginTop="12dp"
+                android:text="@string/widget_config_primary"
+                android:textAppearance="?android:attr/textAppearanceSmall" />
 
-            <RadioButton
-                android:id="@+id/widget_config_row_drafts"
+            <Spinner
+                android:id="@+id/widget_config_primary"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:text="@string/widget_config_row_drafts" />
+                android:layout_marginTop="4dp" />
 
-            <RadioButton
-                android:id="@+id/widget_config_row_best_time"
+            <TextView
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:text="@string/widget_config_row_best_time" />
-        </RadioGroup>
+                android:layout_marginTop="12dp"
+                android:text="@string/widget_config_secondary"
+                android:textAppearance="?android:attr/textAppearanceSmall" />
 
-        <TextView
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="20dp"
-            android:text="@string/widget_config_page"
-            android:textAppearance="?android:attr/textAppearanceMedium"
-            android:textStyle="bold" />
-
-        <Spinner
-            android:id="@+id/widget_config_page"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="8dp" />
+            <Spinner
+                android:id="@+id/widget_config_secondary"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="4dp" />
+        </LinearLayout>
 
         <Button
             android:id="@+id/widget_config_save"

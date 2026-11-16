@@ -59,6 +59,8 @@ abstract final class RoutePaths {
         : uri.path.replaceAll('/', '').toLowerCase();
     return switch (host) {
       'scheduled' => '$facebookHistory?tab=scheduled',
+      'history' => facebookHistory,
+      'performance' => facebookPerformance,
       'usage' => usage,
       'compose' => facebookCompose,
       'publish' => publish,

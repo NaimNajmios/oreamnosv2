@@ -4,20 +4,6 @@ import 'package:oreamnos/domain/models/facebook_post_record.dart';
 import 'package:oreamnos/domain/models/home_widget_snapshot.dart';
 import 'package:oreamnos/domain/services/best_time_to_post.dart';
 
-/// One Gemini model's daily request count, decoupled from the data-layer
-/// `DailyQuota` so this domain service stays free of `data/` imports.
-class HomeWidgetQuota {
-  const HomeWidgetQuota({
-    required this.modelId,
-    required this.requestsToday,
-    required this.budget,
-  });
-
-  final String modelId;
-  final int requestsToday;
-  final int budget;
-}
-
 /// Builds the home-screen widget payload from already-loaded app state.
 ///
 /// Pure and clock-injected so the whole contract is unit-testable without the
@@ -31,10 +17,12 @@ class HomeWidgetSnapshotBuilder {
   static const int maxBestSlotDetailChars = 60;
   static const int maxPageEntries = 5;
 
-  /// `pages_json` is the one value allowed to exceed [maxPayloadChars]: it
-  /// carries every Page so a widget can be configured to pin one.
+  /// `pages_json` and `quota_json` are the values allowed to exceed
+  /// [maxPayloadChars]: one carries every Page so a widget can pin one, the
+  /// other every provider so the quota widget can show two side by side.
   static const int maxPayloadChars = 120;
   static const int maxPagesJsonChars = 600;
+  static const int maxQuotaJsonChars = 600;
 
   HomeWidgetSnapshot build({
     required DateTime now,
@@ -45,14 +33,13 @@ class HomeWidgetSnapshotBuilder {
     required bool pageExpired,
     required int draftCount,
     required HomeWidgetPalette palette,
-    String? selectedProviderId,
-    String? selectedModel,
-    DateTime? quotaResetAt,
-    Map<String, List<int>> quotaHistory = const {},
+    String activeProvider = 'gemini',
+    String fallbackProvider = 'groq',
     List<HomeWidgetPage> pages = const [],
     String draftTitle = '',
+    DateTime? draftUpdatedAt,
     bool showSnippet = false,
-    HomeWidgetSecondRow secondRow = HomeWidgetSecondRow.quota,
+    double warnFraction = 0.8,
   }) {
     final scheduled =
         records
@@ -61,12 +48,13 @@ class HomeWidgetSnapshotBuilder {
           ..sort((a, b) => a.scheduledAt!.compareTo(b.scheduledAt!));
     final next = scheduled.isEmpty ? null : scheduled.first;
 
-    final quota = _pickQuota(quotas, selectedProviderId, selectedModel);
     final lastPost = _lastEngagedPost(records);
     // Only worth naming a slot when there is nothing to count down to.
     final bestSlots = next == null
         ? BestTimeToPost.compute(records, now: now, limit: 1)
         : const [];
+    final week = _weekEngagement(records, now);
+    final quotaJson = _quotaJson(quotas, warnFraction);
 
     return HomeWidgetSnapshot(
       updatedAt: now,
@@ -80,23 +68,22 @@ class HomeWidgetSnapshotBuilder {
       nextIsStory: next?.isStoryOnly ?? false,
       scheduledCount: scheduled.length,
       draftCount: draftCount,
-      quotaModel: quota == null ? null : _shortModel(quota.modelId),
-      quotaUsed: quota?.requestsToday,
-      quotaBudget: quota?.budget,
-      quotaResetAt: quota == null ? null : quotaResetAt,
-      quotaAverage: quota == null
-          ? null
-          : _averageRequests(quotaHistory, quota.modelId),
+      quotaJson: quotaJson,
+      quotaResetAt: _nextQuotaReset(quotas, now),
       pageName: pageName.trim(),
       pageConnected: pageConnected,
       pageExpired: pageExpired,
       palette: palette,
-      secondRow: secondRow,
+      activeProvider: activeProvider,
+      fallbackProvider: fallbackProvider,
       lastPostSnippet: _clean(lastPost?.snippet ?? '', max: maxDraftChars),
       lastPostReactions: lastPost?.reactions,
       lastPostComments: lastPost?.comments,
       lastPostShares: lastPost?.shares,
       lastPostAt: lastPost?.timestamp,
+      weekReactions: week.reactions,
+      weekComments: week.comments,
+      weekShares: week.shares,
       bestSlotLabel: bestSlots.isEmpty
           ? ''
           : _clean(bestSlots.first.label, max: maxBestSlotChars),
@@ -106,9 +93,35 @@ class HomeWidgetSnapshotBuilder {
       bestSlotConfident: bestSlots.isNotEmpty && bestSlots.first.confidence,
       storyFailedCount: records.where((record) => record.storyFailed).length,
       draftTitle: _clean(draftTitle, max: maxDraftChars),
+      draftUpdatedAt: draftUpdatedAt,
       weekPostCount: _publishedThisWeek(records, now),
       pagesJson: _pagesJson(pages, scheduled, showSnippet),
     );
+  }
+
+  /// Encoded for the quota widget. Entries are dropped from the end until the
+  /// array fits, so a future provider can never overflow the payload — the
+  /// widget shows fewer slots instead of failing to parse.
+  static String _quotaJson(List<HomeWidgetQuota> quotas, double warnFraction) {
+    final entries = quotas.take(4).toList();
+    while (entries.isNotEmpty) {
+      final encoded = HomeWidgetQuota.encodeAll(entries, warnFraction);
+      if (encoded.length <= maxQuotaJsonChars) return encoded;
+      entries.removeLast();
+    }
+    return '[]';
+  }
+
+  /// The earliest reset among providers with a known budget; it is the only
+  /// quota event that can change what a widget shows without the app running.
+  static DateTime? _nextQuotaReset(List<HomeWidgetQuota> quotas, DateTime now) {
+    DateTime? earliest;
+    for (final quota in quotas) {
+      final reset = quota.resetAt;
+      if (!quota.hasBudget || reset == null || !reset.isAfter(now)) continue;
+      if (earliest == null || reset.isBefore(earliest)) earliest = reset;
+    }
+    return earliest;
   }
 
   /// Newest published post that actually has cached engagement. Posts without
@@ -131,6 +144,29 @@ class HomeWidgetSnapshotBuilder {
     return newest;
   }
 
+  static const _WeekEngagement _emptyWeek = _WeekEngagement(0, 0, 0);
+
+  static _WeekEngagement _weekEngagement(
+    List<FacebookPostRecord> records,
+    DateTime now,
+  ) {
+    final today = DateTime(now.year, now.month, now.day);
+    final startOfWeek = today.subtract(Duration(days: now.weekday - 1));
+    var reactions = 0;
+    var comments = 0;
+    var shares = 0;
+    var any = false;
+    for (final record in records) {
+      if (!record.isPublished) continue;
+      if (record.timestamp.isBefore(startOfWeek)) continue;
+      any = true;
+      reactions += record.reactions ?? 0;
+      comments += record.comments ?? 0;
+      shares += record.shares ?? 0;
+    }
+    return any ? _WeekEngagement(reactions, comments, shares) : _emptyWeek;
+  }
+
   static int _publishedThisWeek(
     List<FacebookPostRecord> records,
     DateTime now,
@@ -144,21 +180,6 @@ class HomeWidgetSnapshotBuilder {
       count++;
     }
     return count;
-  }
-
-  /// Mean requests per active day over the retained window. Days with no
-  /// activity are excluded rather than counted as zero, which would drag the
-  /// average down after a week off.
-  static int? _averageRequests(Map<String, List<int>> history, String modelId) {
-    final target = _normalizeModel(modelId);
-    for (final entry in history.entries) {
-      if (_normalizeModel(entry.key) != target) continue;
-      final counts = entry.value.where((value) => value > 0).toList();
-      if (counts.isEmpty) return null;
-      final total = counts.fold<int>(0, (sum, value) => sum + value);
-      return (total / counts.length).round();
-    }
-    return null;
   }
 
   /// Per-Page next-up, so one widget can pin a Page while another follows the
@@ -189,49 +210,17 @@ class HomeWidgetSnapshotBuilder {
     return encoded.length <= maxPagesJsonChars ? encoded : '[]';
   }
 
-  /// The selected model's own row when Gemini is active, otherwise the busiest
-  /// model of the day. Guessing a model would make the quota look wrong.
-  static HomeWidgetQuota? _pickQuota(
-    List<HomeWidgetQuota> quotas,
-    String? selectedProviderId,
-    String? selectedModel,
-  ) {
-    if (quotas.isEmpty) return null;
-
-    final provider = (selectedProviderId ?? 'gemini').trim().toLowerCase();
-    final model = _normalizeModel(selectedModel);
-    if (provider == 'gemini' && model.isNotEmpty) {
-      for (final quota in quotas) {
-        if (_normalizeModel(quota.modelId) == model) return quota;
-      }
-    }
-
-    var busiest = quotas.first;
-    for (final quota in quotas) {
-      if (quota.requestsToday > busiest.requestsToday) busiest = quota;
-    }
-    return busiest;
-  }
-
-  static String _normalizeModel(String? modelId) {
-    var value = (modelId ?? '').trim().toLowerCase();
-    if (value.startsWith('models/')) {
-      value = value.substring('models/'.length);
-    }
-    return value;
-  }
-
-  /// `gemini-2.5-flash` → `2.5-flash`; the widget has no room for the vendor.
-  static String _shortModel(String modelId) {
-    final normalized = _normalizeModel(modelId);
-    return normalized.startsWith('gemini-')
-        ? normalized.substring('gemini-'.length)
-        : normalized;
-  }
-
   static String _clean(String value, {int max = maxSnippetChars}) {
     final collapsed = value.replaceAll(RegExp(r'\s+'), ' ').trim();
     if (collapsed.length <= max) return collapsed;
     return '${collapsed.substring(0, max - 1).trimRight()}…';
   }
+}
+
+class _WeekEngagement {
+  const _WeekEngagement(this.reactions, this.comments, this.shares);
+
+  final int reactions;
+  final int comments;
+  final int shares;
 }
