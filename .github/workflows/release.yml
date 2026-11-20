@@ -1,0 +1,144 @@
+name: Release APK
+
+# The tag is the single source of truth for the version. `scripts/release.sh`
+# creates it; nothing is published from a branch push.
+on:
+  push:
+    tags:
+      - 'v*'
+
+permissions:
+  contents: write
+
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  build-and-release:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Validate tag and derive version
+        id: ver
+        env:
+          BUILD_NUMBER_OFFSET: ${{ vars.BUILD_NUMBER_OFFSET }}
+        run: |
+          TAG="${GITHUB_REF_NAME}"
+          VERSION="${TAG#v}"
+          if ! [[ "$VERSION" =~ ^[0-9]+\.[0-9]+\.[0-9]+(-[0-9A-Za-z.-]+)?$ ]]; then
+            echo "::error::Tag '$TAG' must look like vMAJOR.MINOR.PATCH[-prerelease]"
+            exit 1
+          fi
+          OFFSET="${BUILD_NUMBER_OFFSET:-0}"
+          if ! [[ "$OFFSET" =~ ^[0-9]+$ ]]; then
+            echo "::error::BUILD_NUMBER_OFFSET must be a non-negative integer"
+            exit 1
+          fi
+          BUILD=$(( GITHUB_RUN_NUMBER + OFFSET ))
+          if [ "$BUILD" -lt 1 ]; then
+            echo "::error::Computed build number must be >= 1"
+            exit 1
+          fi
+          {
+            echo "tag=$TAG"
+            echo "version=$VERSION"
+            echo "build=$BUILD"
+          } >> "$GITHUB_OUTPUT"
+          # Hyphenated tags are pre-releases. GitHub's /releases/latest ignores
+          # them, so a test tag can never trigger an in-app update prompt.
+          if [[ "$VERSION" == *-* ]]; then
+            echo "prerelease=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "prerelease=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          flutter-version: '3.47.1'
+          cache: true
+
+      - name: Restore keystore and key.properties
+        env:
+          KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
+          STORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+          KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
+          KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
+        run: |
+          set -euo pipefail
+          # Never echo any of these values. Fail loudly instead of silently
+          # producing a debug-signed APK.
+          for name in KEYSTORE_BASE64 STORE_PASSWORD KEY_PASSWORD KEY_ALIAS; do
+            if [ -z "${!name}" ]; then
+              echo "::error::Secret for $name is not set"
+              exit 1
+            fi
+          done
+          echo "$KEYSTORE_BASE64" | base64 -d > android/app/release-keystore.jks
+          {
+            echo "storePassword=$STORE_PASSWORD"
+            echo "keyPassword=$KEY_PASSWORD"
+            echo "keyAlias=$KEY_ALIAS"
+            echo "storeFile=release-keystore.jks"
+          } > android/key.properties
+
+      - name: Install dependencies
+        run: flutter pub get
+
+      - name: Verify formatting
+        run: dart format --output=none --set-exit-if-changed .
+
+      - name: Analyze
+        run: flutter analyze
+
+      - name: Run tests
+        run: flutter test
+
+      - name: Build release APK
+        run: |
+          flutter build apk --release \
+            --build-name="${{ steps.ver.outputs.version }}" \
+            --build-number="${{ steps.ver.outputs.build }}"
+
+      - name: Verify APK is NOT debug-signed
+        run: |
+          set -euo pipefail
+          APKSIGNER=$(ls "$ANDROID_HOME"/build-tools/*/apksigner | sort -V | tail -1)
+          APK=build/app/outputs/flutter-apk/app-release.apk
+          "$APKSIGNER" verify --print-certs "$APK" | tee cert.txt
+          if grep -qi "Android Debug" cert.txt; then
+            echo "::error::APK is signed with the debug key. Aborting release."
+            exit 1
+          fi
+          echo "### Release APK certificate" >> "$GITHUB_STEP_SUMMARY"
+          echo '```' >> "$GITHUB_STEP_SUMMARY"
+          grep -E "Signer #1 certificate (DN|SHA-256 digest)" cert.txt >> "$GITHUB_STEP_SUMMARY"
+          echo '```' >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Prepare release assets
+        run: |
+          set -euo pipefail
+          mkdir -p dist
+          NAME="oreamnosv2-${{ steps.ver.outputs.tag }}.apk"
+          cp build/app/outputs/flutter-apk/app-release.apk "dist/$NAME"
+          (cd dist && sha256sum "$NAME" > "$NAME.sha256")
+
+      - name: Publish GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ steps.ver.outputs.tag }}
+          name: ${{ steps.ver.outputs.tag }}
+          files: |
+            dist/*.apk
+            dist/*.sha256
+          generate_release_notes: true
+          prerelease: ${{ steps.ver.outputs.prerelease == 'true' }}
+          fail_on_unmatched_files: true
