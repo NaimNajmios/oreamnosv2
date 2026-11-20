@@ -40,17 +40,32 @@ android {
     }
 
     signingConfigs {
-        create("release") {
-            keyAlias = keystoreProperties["keyAlias"] as String? ?: ""
-            keyPassword = keystoreProperties["keyPassword"] as String? ?: ""
-            storeFile = file(keystoreProperties["storeFile"] as String? ?: "")
-            storePassword = keystoreProperties["storePassword"] as String? ?: ""
+        // `android/key.properties` is git-ignored and only exists on a machine
+        // set up for release signing (or in CI, where it is generated from
+        // repository secrets). Registering the config unconditionally leaves
+        // `storeFile` pointing at the project directory when the file is
+        // missing, which breaks every local build.
+        if (keystorePropertiesFile.exists()) {
+            create("release") {
+                keyAlias = keystoreProperties["keyAlias"] as String?
+                keyPassword = keystoreProperties["keyPassword"] as String?
+                storeFile = keystoreProperties["storeFile"]
+                    ?.let { file(it as String) }
+                storePassword = keystoreProperties["storePassword"] as String?
+            }
         }
     }
 
     buildTypes {
         release {
-            signingConfig = signingConfigs.getByName("release")
+            // Without a keystore the release build falls back to the debug key
+            // so `flutter run --release` keeps working locally. CI verifies the
+            // published APK is not debug-signed before it uploads a release.
+            signingConfig = if (keystorePropertiesFile.exists()) {
+                signingConfigs.getByName("release")
+            } else {
+                signingConfigs.getByName("debug")
+            }
         }
     }
 }
