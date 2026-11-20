@@ -21,6 +21,9 @@ import 'package:oreamnos/ui/core/widgets/staggered_entrance.dart';
 import 'package:oreamnos/domain/models/app_theme_mode.dart';
 import 'package:oreamnos/data/services/home_widget_service.dart';
 import 'package:oreamnos/domain/models/vision_mode.dart';
+import 'package:oreamnos/ui/features/update/view_models/update_state.dart';
+import 'package:oreamnos/ui/features/update/view_models/update_view_model.dart';
+import 'package:oreamnos/ui/features/update/widgets/update_dialog.dart';
 
 import '../view_models/settings_view_model.dart';
 import 'widgets/api_key_dialog.dart';
@@ -374,6 +377,8 @@ class SettingsScreen extends ConsumerWidget {
           ),
         ],
       ),
+      const SectionHeader(title: 'About'),
+      sectionCard(children: const [_UpdateCheckTile()]),
     ];
 
     return Scaffold(
@@ -1017,4 +1022,67 @@ class _WidgetSpec {
   final String title;
   final String purpose;
   final IconData icon;
+}
+
+/// About-tile that runs a manual GitHub release lookup.
+class _UpdateCheckTile extends ConsumerWidget {
+  const _UpdateCheckTile();
+
+  Future<void> _check(BuildContext context, WidgetRef ref) async {
+    final notifier = ref.read(updateViewModelProvider.notifier);
+    await notifier.checkForUpdates(manual: true);
+    if (!context.mounted) return;
+
+    final state = ref.read(updateViewModelProvider);
+    switch (state.status) {
+      case UpdateStatus.available:
+        final release = state.latestRelease;
+        if (release != null) {
+          await showUpdateDialog(
+            context,
+            ref,
+            release: release,
+            currentVersion: state.currentVersion,
+          );
+        }
+        break;
+      case UpdateStatus.upToDate:
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text("You're up to date — ${state.currentVersion}."),
+          ),
+        );
+        break;
+      case UpdateStatus.error:
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(state.errorMessage ?? 'The update check failed.'),
+          ),
+        );
+        break;
+      case UpdateStatus.idle:
+      case UpdateStatus.checking:
+        break;
+    }
+  }
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final state = ref.watch(updateViewModelProvider);
+    final label = state.versionLabel;
+
+    return SettingsTile(
+      leadingIcon: Icons.system_update_alt_rounded,
+      title: 'Check for updates',
+      subtitle: label.isEmpty ? 'Tap to check GitHub Releases' : label,
+      trailing: state.isChecking
+          ? const SizedBox(
+              width: 18,
+              height: 18,
+              child: CircularProgressIndicator(strokeWidth: 2),
+            )
+          : null,
+      onTap: state.isChecking ? null : () => _check(context, ref),
+    );
+  }
 }

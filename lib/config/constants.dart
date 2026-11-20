@@ -147,4 +147,8 @@ abstract final class AppConstants {
   /// Per-Page token key. Only derived Page tokens ever use this shape.
   static String facebookPageTokenKey(String pageId) =>
       'facebook_page_token_$pageId';
+
+  // === Update check ===
+  static const String keyUpdateLastCheck = 'update_last_check_ms';
+  static const String keyUpdateSkippedTag = 'update_skipped_tag';
 }

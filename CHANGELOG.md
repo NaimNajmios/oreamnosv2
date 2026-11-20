@@ -1,5 +1,12 @@
 # Changelog — Oreamnos
 
+## v26 — Automated Releases + In-App Update Check (2026-11-20)
+
+* **Release pipeline:** pushing a `vMAJOR.MINOR.PATCH[-prerelease]` tag now builds one universal, release-signed APK on GitHub Actions, refuses to publish anything debug-signed, attaches a `.sha256`, and publishes auto-generated notes. Hyphenated tags are pre-releases, so test builds never reach users. `scripts/release.sh` + `RELEASING.md` document the flow; the existing `upload-keystore.jks` stays the only signing key.
+* **Gradle:** the `release` signing config is only registered when `android/key.properties` exists, and falls back to the debug key otherwise, so a clean checkout can still `flutter run --release`.
+* **In-app update check:** `UpdateService` reads `releases/latest` from GitHub (unauthenticated, 10s timeout, explicit 404/403/429 handling), `compareVersions` is a pure semver comparison, and `UpdateNotifier` throttles automatic checks to 6 hours, fails silently at launch, and surfaces friendly errors only for manual checks. The Settings **About** row shows `Version X.Y.Z (build N)`; the dialog renders markdown notes with Update / Later / Skip this version.
+* **Tests:** +32 for version comparison, the GitHub service, and the throttle/skip/error contract; `dart format` 0, `flutter analyze` 0.
+
 ## v25 — Story Redirect to Feed Post (2026-11-08)
 
 - **Story redirect:** the Story chip in Published history, the Story icon on the Publish hub, and the “Story published” status line on the compose success screen are now tappable and open the associated Facebook **feed post** externally.

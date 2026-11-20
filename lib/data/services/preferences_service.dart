@@ -657,4 +657,32 @@ class PreferencesService {
   Future<bool> setVisionMode(VisionMode mode) {
     return _prefs.setString('vision_mode', mode.name);
   }
+
+  // === Update check ===
+
+  /// When the last successful GitHub release lookup happened.
+  DateTime? get updateLastCheck {
+    final millis = _prefs.getInt(AppConstants.keyUpdateLastCheck);
+    if (millis == null) return null;
+    return DateTime.fromMillisecondsSinceEpoch(millis);
+  }
+
+  Future<bool> setUpdateLastCheck(DateTime at) {
+    return _prefs.setInt(
+      AppConstants.keyUpdateLastCheck,
+      at.millisecondsSinceEpoch,
+    );
+  }
+
+  /// Tag the user asked not to be reminded about on automatic checks.
+  String? get updateSkippedTag =>
+      _prefs.getString(AppConstants.keyUpdateSkippedTag);
+
+  Future<bool> setUpdateSkippedTag(String tag) {
+    return _prefs.setString(AppConstants.keyUpdateSkippedTag, tag);
+  }
+
+  Future<bool> clearUpdateSkippedTag() {
+    return _prefs.remove(AppConstants.keyUpdateSkippedTag);
+  }
 }

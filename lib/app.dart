@@ -21,6 +21,9 @@ import 'domain/services/home_widget_snapshot_builder.dart';
 import 'ui/features/settings/view_models/settings_view_model.dart';
 import 'ui/features/generate/view_models/generate_view_model.dart';
 import 'ui/features/facebook/view_models/facebook_view_model.dart';
+import 'ui/features/update/view_models/update_state.dart';
+import 'ui/features/update/view_models/update_view_model.dart';
+import 'ui/features/update/widgets/update_dialog.dart';
 import 'data/services/facebook_history_service.dart';
 import 'data/services/facebook_reminder_service.dart';
 import 'data/services/daily_usage_service.dart';
@@ -52,6 +55,10 @@ class _OreamnosAppState extends ConsumerState<OreamnosApp> {
   /// starting two generations of the same input. Shares with *different*
   /// content always supersede (session-id cancel model handles the rest).
   String? _inFlightShareContent;
+
+  /// The update prompt is shown at most once per app session. "Later" only
+  /// dismisses it; the next launch checks again.
+  bool _updatePromptShown = false;
 
   @override
   void initState() {
@@ -110,6 +117,36 @@ class _OreamnosAppState extends ConsumerState<OreamnosApp> {
           previous?.selectedProvider != next.selectedProvider ||
           previous?.showWidgetSnippet != next.showWidgetSnippet) {
         _scheduleHomeWidgetSync();
+      }
+    });
+
+    // Automatic update check. Throttled to one lookup every six hours and
+    // silent on failure — it must never delay or break startup.
+    ref.listenManual(updateViewModelProvider, (previous, next) {
+      if (next.status != UpdateStatus.available || _updatePromptShown) return;
+      final release = next.latestRelease;
+      if (release == null) return;
+      _updatePromptShown = true;
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (!mounted) return;
+        final dialogContext = rootNavigatorKey.currentContext;
+        if (dialogContext == null) return;
+        showUpdateDialog(
+          dialogContext,
+          ref,
+          release: release,
+          currentVersion: next.currentVersion,
+        );
+      });
+    });
+
+    Future.microtask(() async {
+      try {
+        final notifier = ref.read(updateViewModelProvider.notifier);
+        await notifier.init();
+        await notifier.checkForUpdates();
+      } catch (_) {
+        // An update check must never affect launch.
       }
     });
 

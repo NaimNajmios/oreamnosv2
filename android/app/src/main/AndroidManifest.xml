@@ -154,7 +154,8 @@
             <action android:name="android.intent.action.PROCESS_TEXT"/>
             <data android:mimeType="text/plain"/>
         </intent>
-        <!-- url_launcher: open Facebook post permalinks in the browser -->
+        <!-- url_launcher: open Facebook post permalinks, the APK download and
+             the release page in the browser (Android 11+ visibility). -->
         <intent>
             <action android:name="android.intent.action.VIEW"/>
             <data android:scheme="https"/>
