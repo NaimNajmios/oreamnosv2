@@ -39,6 +39,7 @@ import '../../data/services/ml_kit_vision_extractor.dart' as _i560;
 import '../../data/services/preferences_service.dart' as _i867;
 import '../../data/services/provider_api_service.dart' as _i581;
 import '../../data/services/token_usage_side_channel.dart' as _i952;
+import '../../data/services/update_service.dart' as _i846;
 import '../../data/services/usage_service.dart' as _i1062;
 import '../../data/services/vision_curator_chain.dart' as _i652;
 import '../../data/services/web_scraper_service.dart' as _i978;
@@ -79,6 +80,7 @@ extension GetItInjectableX on _i174.GetIt {
     gh.lazySingleton<_i952.TokenUsageSideChannel>(
       () => _i952.TokenUsageSideChannel(),
     );
+    gh.lazySingleton<_i846.UpdateService>(() => _i846.UpdateService());
     gh.lazySingleton<_i739.IContentRepository>(() => _i739.ContentRepository());
     gh.lazySingleton<_i867.PreferencesService>(
       () => _i867.PreferencesService(
