@@ -53,3 +53,6 @@ android/app/upload-keystore.jks
 android/app/*.jks
 *.keystore
 *.b64
+
+# Local release artifacts (APK + checksum) produced by scripts/release-local
+/dist/
