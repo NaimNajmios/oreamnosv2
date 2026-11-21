@@ -72,6 +72,12 @@ void main() {
   });
 
   testWidgets('tapping a day opens its list', (tester) async {
+    // The default 800x600 test surface clips the month grid, so the cell tap
+    // would land outside the viewport.
+    tester.view.physicalSize = const Size(800, 1600);
+    tester.view.devicePixelRatio = 1.0;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
     final now = DateTime.now();
     final today = facebookCalendarDayKey(now);
     final grouped = {
