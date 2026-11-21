@@ -68,7 +68,13 @@ Useful flags:
 .\scripts\release-local.ps1 1.3.0 -DryRun      # validate + print the plan, change nothing
 .\scripts\release-local.ps1 1.3.0 -Notes "- Faster generation`n- Fixed calendar tap"
 .\scripts\release-local.ps1 1.3.0 -SkipPush    # build + publish, leave the bump uncommitted
+.\scripts\release-local.ps1 1.3.0 -NoPublish   # build, verify + stage only; no commit, push or release
 ```
+
+`-NoPublish` is the safe way to test a build or to upload the APK by hand: it
+still bumps `pubspec.yaml` (uncommitted), builds, verifies the version/signature
+and writes `dist/oreamnos-v<tag>.apk`, then stops and prints the exact
+`gh release create` line to publish it later.
 
 ### Doing it by hand (if the script is unavailable)
 

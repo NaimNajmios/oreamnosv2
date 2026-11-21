@@ -28,6 +28,10 @@
 .PARAMETER DryRun
     Validate everything and print the plan, but change nothing.
 
+.PARAMETER NoPublish
+    Build, verify and stage the assets, but do not commit, push or publish.
+    Useful for checking a build or uploading the file by hand.
+
 .EXAMPLE
     .\scripts\release-local.ps1 1.2.0
 
@@ -46,7 +50,9 @@ param(
 
     [switch]$SkipPush,
 
-    [switch]$DryRun
+    [switch]$DryRun,
+
+    [switch]$NoPublish
 )
 
 $ErrorActionPreference = 'Stop'
@@ -69,6 +75,22 @@ function Step([string]$Message) {
 
 function Ok([string]$Message) {
     Write-Host "  $Message" -ForegroundColor DarkGray
+}
+
+# Windows PowerShell 5.1 turns anything a native tool writes to stderr into a
+# terminating error while $ErrorActionPreference is 'Stop'. flutter, aapt2 and
+# apksigner all write harmless warnings to stderr, so run them with the
+# preference relaxed and rely on $LASTEXITCODE afterwards.
+function Invoke-Native([scriptblock]$Command) {
+    $previous = $ErrorActionPreference
+    $ErrorActionPreference = 'Continue'
+    try {
+        & $Command 2>&1 | ForEach-Object {
+            if ($_ -is [System.Management.Automation.ErrorRecord]) { $_.Exception.Message } else { $_ }
+        }
+    } finally {
+        $ErrorActionPreference = $previous
+    }
 }
 
 function Find-Gh {
@@ -138,7 +160,7 @@ if ($Version -notmatch '^\d+\.\d+\.\d+$') {
 
 $gh = Find-Gh
 
-$auth = & $gh auth status 2>&1
+$auth = Invoke-Native { & $gh auth status 2>&1 }
 if ($LASTEXITCODE -ne 0) {
     Fail "GitHub CLI is not authenticated. Run: gh auth login"
 }
@@ -169,15 +191,15 @@ if ($latestTag) {
 }
 
 # Tag must be free.
-$existingTag = (git ls-remote --tags origin "refs/tags/$tag")
+$existingTag = Invoke-Native { git ls-remote --tags origin "refs/tags/$tag" }
 if ($existingTag) {
     Fail "Tag $tag already exists. Never re-tag a published version; bump the version instead."
 }
 
 if (-not $Notes) { $Notes = "Release $tag" }
 
-$dirty = git status --porcelain
-if ($dirty -and -not $DryRun -and -not $SkipPush) {
+$dirty = Invoke-Native { git status --porcelain }
+if ($dirty -and -not $DryRun -and -not $SkipPush -and -not $NoPublish) {
     Fail "Working tree is not clean. Commit or stash first (or pass -SkipPush to leave the bump uncommitted)."
 }
 
@@ -192,6 +214,9 @@ Ok "version:  $($current.Name)+$($current.Build)  ->  $Version+$newBuild"
 Ok "tag:      $tag  (target $Branch)"
 Ok "asset:    $DistDir/oreamnos-$tag.apk"
 Ok "notes:    $($Notes.Substring(0, [Math]::Min(60, $Notes.Length)))"
+if ($NoPublish) {
+    Ok "mode:     -NoPublish (build, verify and stage only; no commit, push or release)"
+}
 
 if ($DryRun) {
     Write-Host ""
@@ -206,7 +231,7 @@ Step "Bumping pubspec.yaml to $Version+$newBuild"
 
 # --- 2. Build ----------------------------------------------------------------
 Step "Building the release APK (this takes a few minutes)"
-flutter build apk --release
+Invoke-Native { flutter build apk --release }
 if ($LASTEXITCODE -ne 0) { Fail "flutter build apk failed." }
 
 $builtApk = 'build\app\outputs\flutter-apk\app-release.apk'
@@ -217,7 +242,7 @@ $apksigner = Get-AndroidTool 'apksigner.bat'
 $aapt2 = Get-AndroidTool 'aapt2.exe'
 
 if ($aapt2) {
-    $badging = (& $aapt2 dump badging $builtApk 2>&1) -join "`n"
+    $badging = (Invoke-Native { & $aapt2 dump badging $builtApk 2>&1 }) -join "`n"
     if ($badging -match "versionName='([^']+)'") { $apkName = $Matches[1] }
     if ($badging -match "versionCode='([^']+)'") { $apkCode = [int]$Matches[1] }
     Ok "APK reports versionName=$apkName versionCode=$apkCode"
@@ -228,7 +253,7 @@ if ($aapt2) {
 }
 
 if ($apksigner) {
-    $certs = (& $apksigner verify --print-certs $builtApk 2>&1) -join "`n"
+    $certs = (Invoke-Native { & $apksigner verify --print-certs $builtApk 2>&1 }) -join "`n"
     if ($certs -match 'Android Debug') {
         Fail "APK is signed with the debug key. Check android/key.properties and android/app/upload-keystore.jks."
     }
@@ -254,29 +279,46 @@ Ok "$apkPath ($([Math]::Round((Get-Item $apkPath).Length / 1MB, 1)) MB)"
 Ok "sha256 $hash"
 
 # --- 5. Commit + push the bump -----------------------------------------------
-if (-not $SkipPush) {
+if ($NoPublish) {
+    Ok "Skipping commit and push (-NoPublish)."
+} elseif (-not $SkipPush) {
     Step "Committing the version bump"
-    git add pubspec.yaml
-    git commit -m "chore(release): $tag" --quiet
+    Invoke-Native { git add pubspec.yaml }
+    if ($LASTEXITCODE -ne 0) { Fail "git add failed." }
+    Invoke-Native { git commit -m "chore(release): $tag" --quiet }
     if ($LASTEXITCODE -ne 0) { Fail "git commit failed." }
 
     Step "Pushing $Branch"
-    git push origin $Branch
+    Invoke-Native { git push origin $Branch }
     if ($LASTEXITCODE -ne 0) { Fail "git push failed. The release was NOT published (assets are in $DistDir)." }
+}
+
+if ($NoPublish) {
+    Write-Host ""
+    Write-Host "Staged $tag (nothing was published)" -ForegroundColor Yellow
+    Write-Host "  apk:   $apkPath"
+    Write-Host "  sum:   $sumPath"
+    Write-Host "  pubspec.yaml is now at $Version+$newBuild (not committed)"
+    Write-Host ""
+    Write-Host "Publish later with:" -ForegroundColor DarkGray
+    Write-Host "  gh release create $tag `"$apkPath`" `"$sumPath`" --repo $Repo --target $Branch --title $tag --notes `"$Notes`""
+    exit 0
 }
 
 # --- 6. Publish --------------------------------------------------------------
 Step "Publishing $tag"
-& $gh release create $tag $apkPath $sumPath `
-    --repo $Repo `
-    --target $Branch `
-    --title $tag `
-    --notes $Notes
+Invoke-Native {
+    & $gh release create $tag $apkPath $sumPath `
+        --repo $Repo `
+        --target $Branch `
+        --title $tag `
+        --notes $Notes
+}
 if ($LASTEXITCODE -ne 0) { Fail "gh release create failed. Assets are still in $DistDir." }
 
 # --- 7. Verify what the app will see -----------------------------------------
 Step "Verifying the published release"
-$releaseJson = & $gh api "repos/$Repo/releases/latest" 2>$null
+$releaseJson = Invoke-Native { & $gh api "repos/$Repo/releases/latest" 2>$null }
 if ($LASTEXITCODE -ne 0) { Fail "Could not read /releases/latest." }
 $published = $releaseJson | ConvertFrom-Json
 if ($published.tag_name -ne $tag) {
