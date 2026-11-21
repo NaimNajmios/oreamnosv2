@@ -24,6 +24,17 @@ if [ "$BRANCH" = "HEAD" ]; then
   exit 1
 fi
 
+# Route B only works while .github/workflows/release.yml exists. It is parked at
+# docs/ci/release-workflow.yml.disabled by default (no signing secrets), and a
+# tag pushed in that state publishes nothing at all.
+if [ ! -f ".github/workflows/release.yml" ]; then
+  echo "No tag-driven release workflow (.github/workflows/release.yml is missing),"
+  echo "so a tag would publish nothing."
+  echo "  - publish locally instead:  scripts/release-local.ps1 ${VERSION}"
+  echo "  - or restore the workflow:  see docs/ci/README.md (Route B in RELEASING.md)"
+  exit 1
+fi
+
 git fetch origin --tags
 
 if git rev-parse -q --verify "refs/tags/v$VERSION" >/dev/null; then
