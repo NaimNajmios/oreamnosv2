@@ -197,3 +197,18 @@ silently return nothing.
 Checks are throttled to once every 6 hours and fail silently at launch; the
 **Settings → About → Check for updates** row forces a check and reports errors.
 "Skip this version" is stored per tag in `update_skipped_tag`.
+
+## How the update is applied
+
+Tapping **Update** in the prompt no longer opens a browser. The app:
+
+1. Downloads the release APK (direct `releases/download` URL) into the app cache
+   via the existing `Dio` client, with progress reported to the dialog;
+2. Verifies the SHA-256 against the digest GitHub reported for the asset;
+3. Hands the file to the OS installer through the `oreamnos_update_installer`
+   method channel (`MainActivity` → FileProvider → `ACTION_VIEW` with
+   `application/vnd.android.package-archive`).
+
+If the download fails, the dialog shows the error and the user can retry. The
+`REQUEST_INSTALL_PACKAGES` permission and the FileProvider are declared in
+`android/app/src/main/`.

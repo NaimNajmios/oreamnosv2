@@ -15,6 +15,7 @@ class AppRelease {
     required this.isPrerelease,
     this.apkUrl,
     this.apkSizeBytes,
+    this.apkSha256,
   });
 
   /// Raw tag as published, e.g. `v1.2.0`.
@@ -38,6 +39,10 @@ class AppRelease {
   final String? apkUrl;
   final int? apkSizeBytes;
 
+  /// SHA-256 hex digest of the APK (`sha256:` prefix stripped), when GitHub
+  /// reports it. Used to verify a downloaded update before installing.
+  final String? apkSha256;
+
   bool get hasApk => apkUrl != null && apkUrl!.isNotEmpty;
 
   factory AppRelease.fromJson(Map<String, dynamic> json) {
@@ -47,6 +52,7 @@ class AppRelease {
 
     String? apkUrl;
     int? apkSize;
+    String? apkSha256;
     if (assets is List) {
       for (final asset in assets) {
         if (asset is! Map) continue;
@@ -57,6 +63,12 @@ class AppRelease {
         apkUrl = url;
         final size = asset['size'];
         apkSize = size is num ? size.toInt() : null;
+        final digest = asset['digest'];
+        if (digest is String && digest.isNotEmpty) {
+          apkSha256 = digest.toLowerCase().startsWith('sha256:')
+              ? digest.substring('sha256:'.length).toLowerCase()
+              : digest.toLowerCase();
+        }
         break;
       }
     }
@@ -77,6 +89,7 @@ class AppRelease {
       isPrerelease: json['prerelease'] == true || version.contains('-'),
       apkUrl: apkUrl,
       apkSizeBytes: apkSize,
+      apkSha256: apkSha256,
     );
   }
 }

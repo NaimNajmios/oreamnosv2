@@ -1,3 +1,5 @@
+import 'dart:io';
+
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -15,6 +17,8 @@ class _FakeUpdateService extends UpdateService {
   AppRelease? release;
   Object? error;
   int calls = 0;
+  int downloads = 0;
+  final List<String> downloadTargets = <String>[];
 
   @override
   Future<AppRelease?> fetchLatestRelease() async {
@@ -22,6 +26,19 @@ class _FakeUpdateService extends UpdateService {
     final failure = error;
     if (failure != null) throw failure;
     return release;
+  }
+
+  @override
+  Future<void> downloadUpdate(
+    AppRelease release,
+    String targetPath, {
+    void Function(int received, int total)? onProgress,
+  }) async {
+    downloads++;
+    downloadTargets.add(targetPath);
+    final failure = error;
+    if (failure != null) throw failure;
+    onProgress?.call(512, 1024);
   }
 }
 
@@ -74,6 +91,10 @@ void main() {
             buildNumber: '7',
           ),
         ),
+        updateCacheDirProvider.overrideWithValue(
+          () async => Directory.systemTemp,
+        ),
+        updateInstallerProvider.overrideWithValue((apkPath) async => true),
       ],
     );
     addTearDown(container.dispose);
@@ -122,6 +143,57 @@ void main() {
     expect(state.latestRelease?.version, '1.1.0');
     expect(preferences.updateLastCheck, isNotNull);
   });
+
+  test(
+    'startDownload downloads the APK, then exposes the install action',
+    () async {
+      final container = containerWith();
+      final notifier = await readyNotifier(container);
+      final release = _release('v1.1.0');
+      service.release = release;
+      await notifier.checkForUpdates(manual: true);
+      expect(
+        container.read(updateViewModelProvider).status,
+        UpdateStatus.available,
+      );
+
+      await notifier.startDownload(release: release);
+
+      final state = container.read(updateViewModelProvider);
+      expect(state.downloadInProgress, isFalse);
+      expect(state.downloadProgress, 1);
+      expect(state.downloadedApkPath, isNotNull);
+      expect(state.downloadError, isNull);
+      expect(service.downloads, 1);
+      expect(service.downloadTargets.single, contains('updates'));
+
+      final installed = await notifier.installUpdate();
+      expect(installed, isTrue);
+
+      final after = container.read(updateViewModelProvider);
+      expect(after.installInProgress, isFalse);
+      expect(after.downloadedApkPath, isNull);
+    },
+  );
+
+  test(
+    'a failed download surfaces an error and keeps no install path',
+    () async {
+      final container = containerWith();
+      final notifier = await readyNotifier(container);
+      service.error = const UpdateCheckException(
+        'The download timed out.',
+        isNetwork: true,
+      );
+
+      await notifier.startDownload(release: _release('v1.1.0'));
+
+      final state = container.read(updateViewModelProvider);
+      expect(state.downloadInProgress, isFalse);
+      expect(state.downloadError, contains('timed out'));
+      expect(state.downloadedApkPath, isNull);
+    },
+  );
 
   test('the same or an older release is up to date', () async {
     for (final tag in ['v1.0.0', 'v0.9.0']) {

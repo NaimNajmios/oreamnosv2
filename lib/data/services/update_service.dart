@@ -1,6 +1,8 @@
 import 'dart:async';
 import 'dart:convert';
+import 'dart:io';
 
+import 'package:crypto/crypto.dart';
 import 'package:dio/dio.dart';
 import 'package:injectable/injectable.dart';
 
@@ -132,6 +134,55 @@ class UpdateService {
       return AppRelease.fromJson(decoded.cast<String, dynamic>());
     }
     throw const UpdateCheckException('GitHub sent an unexpected response.');
+  }
+
+  /// Downloads [release]'s APK to [targetPath] and verifies its SHA-256
+  /// against the release digest reported by GitHub.
+  ///
+  /// Reports byte progress through [onProgress] (`received` / `total`). Any
+  /// failure throws [UpdateCheckException] so the caller owns the UI state
+  /// machine around the download.
+  Future<void> downloadUpdate(
+    AppRelease release,
+    String targetPath, {
+    void Function(int received, int total)? onProgress,
+  }) async {
+    final url = release.apkUrl;
+    if (url == null || url.isEmpty) {
+      throw const UpdateCheckException(
+        'No APK is available to download for this release.',
+      );
+    }
+
+    try {
+      await _dio.downloadUri(
+        Uri.parse(url),
+        targetPath,
+        onReceiveProgress: (int received, int? total) {
+          onProgress?.call(received, total ?? 0);
+        },
+        options: Options(receiveTimeout: const Duration(minutes: 5)),
+      );
+    } on DioException catch (error) {
+      throw _mapDioError(error);
+    }
+
+    final file = File(targetPath);
+    if (!await file.exists()) {
+      throw const UpdateCheckException(
+        'The update download finished without producing a file.',
+      );
+    }
+    final bytes = await file.readAsBytes();
+    final actualHex = sha256.convert(bytes).toString();
+    final expectedHex = release.apkSha256;
+    if (expectedHex != null &&
+        expectedHex.isNotEmpty &&
+        expectedHex != actualHex) {
+      throw const UpdateCheckException(
+        'The downloaded update failed its checksum verification.',
+      );
+    }
   }
 
   UpdateCheckException _mapDioError(DioException error) {

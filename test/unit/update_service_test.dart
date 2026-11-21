@@ -1,5 +1,7 @@
 import 'dart:convert';
+import 'dart:io';
 
+import 'package:crypto/crypto.dart';
 import 'package:dio/dio.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:oreamnos/data/models/app_release.dart';
@@ -26,6 +28,32 @@ class _StubAdapter implements HttpClientAdapter {
       status,
       headers: {
         Headers.contentTypeHeader: [Headers.jsonContentType],
+      },
+    );
+  }
+
+  @override
+  void close({bool force = false}) {}
+}
+
+class _DownloadStubAdapter implements HttpClientAdapter {
+  _DownloadStubAdapter(this.status, this.bytes);
+
+  final int status;
+  final List<int> bytes;
+
+  @override
+  Future<ResponseBody> fetch(
+    RequestOptions options,
+    Stream<List<int>>? requestStream,
+    Future<void>? cancelFuture,
+  ) async {
+    return ResponseBody.fromBytes(
+      bytes,
+      status,
+      headers: {
+        Headers.contentTypeHeader: ['application/octet-stream'],
+        Headers.contentLengthHeader: [bytes.length.toString()],
       },
     );
   }
@@ -70,6 +98,30 @@ Map<String, dynamic> _releaseJson({
   'prerelease': false,
   'assets': assets ?? [],
 };
+
+AppRelease _releaseWithApk({
+  String tag = 'v1.2.0',
+  required List<int> bytes,
+  String? digest,
+}) {
+  final hex = sha256.convert(bytes).toString();
+  return AppRelease.fromJson({
+    'tag_name': tag,
+    'name': 'Oreamnos $tag',
+    'body': '## What changed\n- Something',
+    'html_url': 'https://github.com/NaimNajmios/oreamnosv2/releases/tag/$tag',
+    'published_at': '2026-11-01T10:00:00Z',
+    'prerelease': false,
+    'assets': [
+      {
+        'name': 'oreamnos-$tag.apk',
+        'browser_download_url': 'https://x/oreamnos-$tag.apk',
+        'size': bytes.length,
+        'digest': digest ?? 'sha256:$hex',
+      },
+    ],
+  });
+}
 
 void main() {
   test('requests the latest release with GitHub headers', () async {
@@ -228,5 +280,61 @@ void main() {
   test('a hyphenated tag is treated as a pre-release', () {
     final release = AppRelease.fromJson({'tag_name': 'v2.0.0-beta.1'});
     expect(release.isPrerelease, isTrue);
+  });
+
+  test('downloadUpdate writes the APK and accepts a matching digest', () async {
+    final bytes = List<int>.generate(64, (i) => i & 0xff);
+    final release = _releaseWithApk(bytes: bytes);
+    final adapter = _DownloadStubAdapter(200, bytes);
+    final service = _service(adapter);
+
+    final temp = await Directory.systemTemp.createTemp('oreamnos_update');
+    addTearDown(() => temp.delete(recursive: true));
+    final target = '${temp.path}/oreamnos-v1.2.0.apk';
+
+    final progress = <int>[];
+    await service.downloadUpdate(
+      release,
+      target,
+      onProgress: (received, total) => progress.add(received),
+    );
+
+    expect(File(target).existsSync(), isTrue);
+    expect(File(target).readAsBytesSync(), bytes);
+    expect(progress, isNotEmpty);
+  });
+
+  test('downloadUpdate rejects a mismatching digest', () async {
+    final bytes = List<int>.generate(32, (i) => i & 0xff);
+    final release = _releaseWithApk(bytes: bytes, digest: 'sha256:${'0' * 64}');
+    final service = _service(_DownloadStubAdapter(200, bytes));
+
+    final temp = await Directory.systemTemp.createTemp('oreamnos_update');
+    addTearDown(() => temp.delete(recursive: true));
+
+    await expectLater(
+      () => service.downloadUpdate(release, '${temp.path}/oreamnos-v1.2.0.apk'),
+      throwsA(
+        isA<UpdateCheckException>().having(
+          (e) => e.message,
+          'message',
+          contains('checksum'),
+        ),
+      ),
+    );
+  });
+
+  test('downloadUpdate without an APK asset fails', () async {
+    final service = _service(_StubAdapter(200, jsonEncode(_releaseJson())));
+    final temp = await Directory.systemTemp.createTemp('oreamnos_update');
+    addTearDown(() => temp.delete(recursive: true));
+
+    await expectLater(
+      () => service.downloadUpdate(
+        AppRelease.fromJson(_releaseJson()),
+        '${temp.path}/oreamnos-v1.2.0.apk',
+      ),
+      throwsA(isA<UpdateCheckException>()),
+    );
   });
 }

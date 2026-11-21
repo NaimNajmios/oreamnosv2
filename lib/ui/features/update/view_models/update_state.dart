@@ -25,6 +25,11 @@ class UpdateState {
     this.currentBuildNumber = '',
     this.latestRelease,
     this.errorMessage,
+    this.downloadInProgress = false,
+    this.downloadProgress = 0,
+    this.downloadedApkPath,
+    this.installInProgress = false,
+    this.downloadError,
   });
 
   final UpdateStatus status;
@@ -39,6 +44,22 @@ class UpdateState {
 
   /// Only set for [UpdateStatus.error] (manual checks).
   final String? errorMessage;
+
+  /// True while the newer APK is being downloaded for an install.
+  final bool downloadInProgress;
+
+  /// 0..1 fraction of the APK downloaded so far.
+  final double downloadProgress;
+
+  /// Absolute path of the downloaded + verified APK; the dialog swaps the
+  /// Update action for an Install action once this is set.
+  final String? downloadedApkPath;
+
+  /// True while the verified APK is being handed to the OS installer.
+  final bool installInProgress;
+
+  /// Set when a download failed; cleared when a new download starts.
+  final String? downloadError;
 
   bool get isChecking => status == UpdateStatus.checking;
 
@@ -60,6 +81,13 @@ class UpdateState {
     bool clearLatest = false,
     String? errorMessage,
     bool clearError = false,
+    bool? downloadInProgress,
+    double? downloadProgress,
+    String? downloadedApkPath,
+    bool clearDownloadedApkPath = false,
+    bool? installInProgress,
+    String? downloadError,
+    bool clearDownloadError = false,
   }) {
     return UpdateState(
       status: status ?? this.status,
@@ -67,6 +95,15 @@ class UpdateState {
       currentBuildNumber: currentBuildNumber ?? this.currentBuildNumber,
       latestRelease: clearLatest ? null : (latestRelease ?? this.latestRelease),
       errorMessage: clearError ? null : (errorMessage ?? this.errorMessage),
+      downloadInProgress: downloadInProgress ?? this.downloadInProgress,
+      downloadProgress: downloadProgress ?? this.downloadProgress,
+      downloadedApkPath: clearDownloadedApkPath
+          ? null
+          : (downloadedApkPath ?? this.downloadedApkPath),
+      installInProgress: installInProgress ?? this.installInProgress,
+      downloadError: clearDownloadError
+          ? null
+          : (downloadError ?? this.downloadError),
     );
   }
 }

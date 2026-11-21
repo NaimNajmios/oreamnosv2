@@ -1,9 +1,14 @@
+import 'dart:io';
+
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:package_info_plus/package_info_plus.dart';
-import 'package:url_launcher/url_launcher.dart';
+import 'package:path_provider/path_provider.dart';
+import 'package:riverpod/riverpod.dart';
 
 import '../../../../core/di/injection.dart';
 import '../../../../core/utils/version_compare.dart';
+import '../../../../data/models/app_release.dart';
 import '../../../../data/services/preferences_service.dart';
 import '../../../../data/services/update_service.dart';
 import 'update_state.dart';
@@ -12,6 +17,28 @@ import 'update_state.dart';
 final updatePackageInfoProvider = Provider<Future<PackageInfo> Function()>(
   (ref) => PackageInfo.fromPlatform,
 );
+
+/// Indirection so tests can supply a cache directory for the update APK.
+final updateCacheDirProvider = Provider<Future<Directory> Function()>(
+  (ref) => getTemporaryDirectory,
+);
+
+/// Seam for the native install handoff; tests override it.
+final updateInstallerProvider = Provider<Future<bool> Function(String apkPath)>(
+  (ref) => _installViaChannel,
+);
+
+final MethodChannel _installChannel = MethodChannel(
+  'oreamnos_update_installer',
+);
+
+Future<bool> _installViaChannel(String apkPath) async {
+  final installed = await _installChannel.invokeMethod<bool>(
+    'install',
+    <String, String>{'apkPath': apkPath},
+  );
+  return installed == true;
+}
 
 /// Indirection so tests can supply a clock for the throttle.
 final updateClockProvider = Provider<DateTime Function()>(
@@ -131,18 +158,77 @@ class UpdateNotifier extends Notifier<UpdateState> {
     state = state.copyWith(status: UpdateStatus.idle, clearLatest: true);
   }
 
-  /// Opens the APK download, falling back to the release page.
-  Future<bool> openDownload() async {
-    final release = state.latestRelease;
-    if (release == null) return false;
-    final target = release.hasApk ? release.apkUrl! : release.htmlUrl;
-    if (target.isEmpty) return false;
+  /// Downloads the newer APK from GitHub Releases into the app cache dir and
+  /// verifies its SHA-256. On success [UpdateState.downloadedApkPath] points
+  /// at the verified file and the dialog swaps the Update action for an
+  /// Install action. On failure the error is surfaced through
+  /// [UpdateState.downloadError].
+  Future<void> startDownload({required AppRelease release}) async {
+    if (state.downloadInProgress) return;
+    state = state.copyWith(
+      downloadInProgress: true,
+      downloadProgress: 0,
+      installInProgress: false,
+      downloadedApkPath: null,
+      downloadError: null,
+    );
+
+    final dir = await ref.read(updateCacheDirProvider)();
+    final targetPath = '${dir.path}/updates/oreamnos-${release.tag}.apk';
     try {
-      return await launchUrl(
-        Uri.parse(target),
-        mode: LaunchMode.externalApplication,
+      await ref
+          .read(updateServiceProvider)
+          .downloadUpdate(
+            release,
+            targetPath,
+            onProgress: (received, total) {
+              final fraction = total > 0
+                  ? (received / total).clamp(0.0, 1.0)
+                  : 0.0;
+              state = state.copyWith(downloadProgress: fraction);
+            },
+          );
+      state = state.copyWith(
+        downloadInProgress: false,
+        downloadProgress: 1,
+        downloadedApkPath: targetPath,
+      );
+    } on UpdateCheckException catch (error) {
+      state = state.copyWith(
+        downloadInProgress: false,
+        downloadProgress: 0,
+        downloadError: error.message,
       );
     } catch (_) {
+      state = state.copyWith(
+        downloadInProgress: false,
+        downloadProgress: 0,
+        downloadError: 'The update download failed.',
+      );
+    }
+  }
+
+  /// Hands the verified downloaded APK to the OS installer via the native
+  /// `oreamnos_update_installer` channel. Returns whether the install intent
+  /// was accepted.
+  Future<bool> installUpdate() async {
+    final path = state.downloadedApkPath;
+    if (path == null || state.installInProgress) return false;
+    state = state.copyWith(installInProgress: true);
+    try {
+      final installed = await ref.read(updateInstallerProvider)(path);
+      if (installed) {
+        state = state.copyWith(
+          installInProgress: false,
+          downloadedApkPath: null,
+          clearDownloadedApkPath: true,
+        );
+        return true;
+      }
+      state = state.copyWith(installInProgress: false);
+      return false;
+    } catch (_) {
+      state = state.copyWith(installInProgress: false);
       return false;
     }
   }

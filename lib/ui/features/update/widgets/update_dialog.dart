@@ -41,6 +41,8 @@ class _UpdateDialog extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final theme = Theme.of(context);
+    final state = ref.watch(updateViewModelProvider);
+    final downloading = state.downloadInProgress;
     final notes = release.body.trim();
     final size = _sizeLabel;
     final versionLine = currentVersion.isEmpty
@@ -82,7 +84,14 @@ class _UpdateDialog extends ConsumerWidget {
                 ),
               ],
               const SizedBox(height: AppSpacing.md),
-              if (notes.isEmpty)
+              if (state.downloadError != null && !downloading)
+                Text(
+                  state.downloadError!,
+                  style: theme.textTheme.bodySmall?.copyWith(
+                    color: theme.colorScheme.error,
+                  ),
+                )
+              else if (notes.isEmpty)
                 Text(
                   'No release notes were published for this version.',
                   style: theme.textTheme.bodyMedium?.copyWith(
@@ -93,43 +102,76 @@ class _UpdateDialog extends ConsumerWidget {
                 MarkdownBody(
                   data: notes,
                   styleSheet: MarkdownStyleSheet.fromTheme(theme).copyWith(
-                    p: theme.textTheme.bodyMedium,
-                    listBullet: theme.textTheme.bodyMedium,
+                    p: theme.textTheme.bodyMedium?.copyWith(
+                      color: theme.colorScheme.onSurfaceVariant,
+                    ),
+                    listBullet: theme.textTheme.bodyMedium?.copyWith(
+                      color: theme.colorScheme.onSurfaceVariant,
+                    ),
                   ),
                 ),
+              if (downloading) ...[
+                const SizedBox(height: AppSpacing.md),
+                LinearProgressIndicator(
+                  value: state.downloadProgress.clamp(0.0, 1.0),
+                ),
+                const SizedBox(height: AppSpacing.xs),
+                Text(
+                  'Downloading update… ${(state.downloadProgress * 100).round()}%',
+                  style: theme.textTheme.bodySmall?.copyWith(
+                    color: theme.colorScheme.onSurfaceVariant,
+                  ),
+                ),
+              ],
             ],
           ),
         ),
       ),
       actions: [
         TextButton(
-          onPressed: () => Navigator.of(context).pop(),
+          onPressed: downloading ? null : () => Navigator.of(context).pop(),
           child: const Text('Later'),
         ),
         TextButton(
-          onPressed: () async {
-            await ref.read(updateViewModelProvider.notifier).skipThisVersion();
-            if (context.mounted) Navigator.of(context).pop();
-          },
+          onPressed: downloading
+              ? null
+              : () async {
+                  await ref
+                      .read(updateViewModelProvider.notifier)
+                      .skipThisVersion();
+                  if (context.mounted) Navigator.of(context).pop();
+                },
           child: const Text('Skip this version'),
         ),
         FilledButton(
-          onPressed: () async {
-            final opened = await ref
-                .read(updateViewModelProvider.notifier)
-                .openDownload();
-            if (!context.mounted) return;
-            if (opened) {
-              Navigator.of(context).pop();
-            } else {
-              ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(
-                  content: Text("Couldn't open the download link."),
-                ),
-              );
-            }
-          },
-          child: const Text('Update'),
+          onPressed: downloading || state.installInProgress
+              ? null
+              : () async {
+                  final notifier = ref.read(updateViewModelProvider.notifier);
+                  if (state.downloadedApkPath != null) {
+                    final installed = await notifier.installUpdate();
+                    if (context.mounted) {
+                      if (installed) {
+                        Navigator.of(context).pop();
+                      } else {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          const SnackBar(
+                            content: Text("Couldn't install the update."),
+                          ),
+                        );
+                      }
+                    }
+                  } else {
+                    await notifier.startDownload(release: release);
+                  }
+                },
+          child: Text(
+            state.installInProgress
+                ? 'Installing…'
+                : state.downloadedApkPath != null
+                ? 'Install'
+                : 'Update',
+          ),
         ),
       ],
     );
