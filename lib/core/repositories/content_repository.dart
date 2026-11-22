@@ -41,6 +41,9 @@ abstract class IContentRepository {
     required AiProvider provider,
     bool includeSource = true,
     bool keepStructure = false,
+    String length = 'medium',
+    bool isFanModeEnabled = false,
+    String fanClubName = '',
     CancelToken? cancelToken,
   });
 
@@ -151,6 +154,9 @@ class ContentRepository implements IContentRepository {
     required AiProvider provider,
     bool includeSource = true,
     bool keepStructure = false,
+    String length = 'medium',
+    bool isFanModeEnabled = false,
+    String fanClubName = '',
     CancelToken? cancelToken,
   }) async {
     try {
@@ -162,6 +168,9 @@ class ContentRepository implements IContentRepository {
         apiKey: apiKey,
         includeSource: includeSource,
         keepStructure: keepStructure,
+        length: length,
+        isFanModeEnabled: isFanModeEnabled,
+        fanClubName: fanClubName,
         cancelToken: cancelToken,
       );
       return ResultSuccess(res);

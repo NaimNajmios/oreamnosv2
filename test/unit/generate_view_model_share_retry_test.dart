@@ -71,6 +71,9 @@ class _MockContentRepository implements IContentRepository {
     required AiProvider provider,
     bool includeSource = true,
     bool keepStructure = false,
+    String length = 'medium',
+    bool isFanModeEnabled = false,
+    String fanClubName = '',
     CancelToken? cancelToken,
   }) async {
     callCount++;

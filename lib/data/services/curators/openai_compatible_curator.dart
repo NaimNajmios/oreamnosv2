@@ -347,11 +347,17 @@ class OpenAICompatibleCurator implements IContentCurator {
     required String apiKey,
     bool includeSource = true,
     bool keepStructure = false,
+    String length = 'medium',
+    bool isFanModeEnabled = false,
+    String fanClubName = '',
     CancelToken? cancelToken,
   }) async {
     final systemPrompt = GenerationPromptManager.buildSystemPrompt(
       sourceUrl: original.source.url,
       keepStructure: keepStructure,
+      length: length,
+      isFanModeEnabled: isFanModeEnabled,
+      fanClubName: fanClubName,
       sourceText: original.rawMarkdown,
     );
     final userPrompt =
@@ -370,7 +376,10 @@ class OpenAICompatibleCurator implements IContentCurator {
             {"role": "user", "content": userPrompt},
           ],
           "temperature": 0.7,
-          "max_tokens": AppConstants.generationMaxTokens,
+          // Per-length cap (mirrors GeminiCurator) — see
+          // `generationMaxTokensFor`. Sized to the requested length range
+          // so the refined post is not cut off before meaningful content.
+          "max_tokens": AppConstants.generationMaxTokensFor(length),
           "response_format": {
             "type": "json_schema",
             "json_schema": {

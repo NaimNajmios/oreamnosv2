@@ -73,14 +73,22 @@ abstract final class AppConstants {
   static const int guardRpmUntilCapMs = 90000;
   static const int guardRpmDefaultCooldownMs = 30000;
 
-  /// `maxOutputTokens` per [PromptLength] ('short'/'medium'/'long') for
-  /// full-post generation. Squeeze: shorter requests burn less of the
-  /// per-minute token budget and complete faster under the 90s receive
-  /// window; `JsonCleaner.repairTruncated` remains the truncation safety
-  /// net, and the 90s receive window still bounds latency.
-  static const int generationMaxTokensShort = 400;
-  static const int generationMaxTokensMedium = 1200;
-  static const int generationMaxTokensLong = 2400;
+  /// `maxOutputTokens`/`max_tokens` per [PromptLength] ('short'/'medium'/'long')
+  /// for full-post generation and refinement.
+  ///
+  /// Sized to the worst case of the length range the system prompt requests
+  /// (`lengthRange`: up to 0.3/0.6/0.9 of the source text for
+  /// short/medium/long) so the JSON body + title + source fit under the cap
+  /// and the post is not cut off mid-content when it hits the cap. Malay
+  /// tokenizes poorly, so each cap carries a little headroom above the bare
+  /// text size.
+  ///
+  /// The squeeze trade-off is acknowledged: caps still bound the per-minute
+  /// token burn and the 90s receive window still bounds latency;
+  /// `JsonCleaner.repairTruncated` remains the pathological-case safety net.
+  static const int generationMaxTokensShort = 1000;
+  static const int generationMaxTokensMedium = 1800;
+  static const int generationMaxTokensLong = 4096;
 
   static int generationMaxTokensFor(String length) => switch (length) {
     'short' => generationMaxTokensShort,
@@ -105,11 +113,10 @@ abstract final class AppConstants {
   /// Maximum pasted/generated input length accepted by the Generate screen.
   static const int maxInputChars = 8000;
 
-  /// Output cap for full post generation/refinement. Malay tokenizes poorly
-  /// on most models, so 2048 used to cut long posts mid-sentence (and left
-  /// the JSON unterminated). The 90s receive window still bounds latency;
-  /// `JsonCleaner.repairTruncated` is the safety net if this is hit.
-  static const int generationMaxTokens = 4096;
+  /// Ceiling output cap for full post generation/refinement (equals the long
+  /// per-length cap). Generation and refinement use the per-length caps
+  /// above; this remains the full-post ceiling constant.
+  static const int generationMaxTokens = generationMaxTokensLong;
 
   // === UI ===
   static const int typewriterCharsPerStep = 3;

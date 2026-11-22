@@ -1131,10 +1131,10 @@ class GenerateViewModel extends Notifier<GenerateUiState>
       }
     }
 
-    try {
-      final settings = ref.read(settingsViewModelProvider);
-      final modelId = _resolveModelId(provider, settings);
+    final settings = ref.read(settingsViewModelProvider);
+    final modelId = _resolveModelId(provider, settings);
 
+    try {
       final apiKey = await ref
           .read(settingsViewModelProvider.notifier)
           .getApiKeyForProvider(provider);
@@ -1156,6 +1156,11 @@ class GenerateViewModel extends Notifier<GenerateUiState>
             provider: provider,
             includeSource: state.showSource,
             keepStructure: state.keepStructure,
+            // Inherit the user's selected length and fan-mode context so the
+            // refinement prompt matches how the original post was generated.
+            length: state.promptLength.name,
+            isFanModeEnabled: settings.isFanModeEnabled,
+            fanClubName: settings.fanClubName,
             cancelToken: attemptToken,
           )
           .timeout(
@@ -1251,7 +1256,7 @@ class GenerateViewModel extends Notifier<GenerateUiState>
           id: const Uuid().v4(),
           timestamp: DateTime.now(),
           providerId: provider.name,
-          modelName: ref.read(settingsViewModelProvider).selectedModel,
+          modelName: modelId,
           latencyMs: stopwatch.elapsedMilliseconds,
           estimatedTokens: 0,
           isSuccess: false,

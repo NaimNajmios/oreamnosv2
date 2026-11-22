@@ -170,9 +170,9 @@ class GeminiCurator implements IContentCurator {
             // Bound both latency and token burn; long posts with the strict
             // JSON schema used to run unbounded on the default token limit
             // and trip the (15s) receive timeout before completing.
-            // Squeeze: per-length caps (AppConstants) cut the per-minute
-            // token burn of short/medium posts; `JsonCleaner.repairTruncated`
-            // remains the safety net.
+            // Per-length caps (AppConstants) sized to the requested length
+            // range so the post is not cut off mid-content;
+            // `JsonCleaner.repairTruncated` remains the safety net.
             "maxOutputTokens": AppConstants.generationMaxTokensFor(length),
             "responseMimeType": "application/json",
             "responseSchema": GenerationPromptManager.geminiResponseSchema(
@@ -239,11 +239,17 @@ class GeminiCurator implements IContentCurator {
     required String apiKey,
     bool includeSource = true,
     bool keepStructure = false,
+    String length = 'medium',
+    bool isFanModeEnabled = false,
+    String fanClubName = '',
     CancelToken? cancelToken,
   }) async {
     final systemPrompt = GenerationPromptManager.buildSystemPrompt(
       sourceUrl: original.source.url,
       keepStructure: keepStructure,
+      length: length,
+      isFanModeEnabled: isFanModeEnabled,
+      fanClubName: fanClubName,
       sourceText: original.rawMarkdown,
     );
     final userPrompt =
@@ -274,7 +280,10 @@ class GeminiCurator implements IContentCurator {
           ],
           "generationConfig": {
             "temperature": 0.7,
-            "maxOutputTokens": AppConstants.generationMaxTokens,
+            // Per-length cap (see `generationMaxTokensFor`) so the refined
+            // post is not cut off before meaningful content when the output
+            // is long; the 90s receive window still bounds latency.
+            "maxOutputTokens": AppConstants.generationMaxTokensFor(length),
             "responseMimeType": "application/json",
             "responseSchema": GenerationPromptManager.geminiResponseSchema(
               keepStructure: keepStructure,

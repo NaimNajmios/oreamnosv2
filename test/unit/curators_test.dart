@@ -173,9 +173,9 @@ void main() {
         AppConstants.generationMaxTokensFor('long'),
         AppConstants.generationMaxTokensLong,
       );
-      expect(AppConstants.generationMaxTokensShort, 400);
-      expect(AppConstants.generationMaxTokensMedium, 1200);
-      expect(AppConstants.generationMaxTokensLong, 2400);
+      expect(AppConstants.generationMaxTokensShort, 1000);
+      expect(AppConstants.generationMaxTokensMedium, 1800);
+      expect(AppConstants.generationMaxTokensLong, 4096);
     });
 
     test(

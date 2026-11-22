@@ -44,6 +44,8 @@ abstract class IContentCurator {
   /// Full refinement pipeline (Android `refinePost` parity): applies a list
   /// of refinement keys (`rephrase`, `recheck_flow`, `recheck_wording`) and/or
   /// free-text custom instructions (user pills) to [original] in one pass.
+  /// Inherits the user's [length] selection and fan-mode context from the
+  /// generating screen so the system prompt matches the original post.
   Future<CuratedPost> refinePost({
     required CuratedPost original,
     required List<String> refinements,
@@ -51,6 +53,9 @@ abstract class IContentCurator {
     required String apiKey,
     bool includeSource = true,
     bool keepStructure = false,
+    String length = 'medium',
+    bool isFanModeEnabled = false,
+    String fanClubName = '',
     CancelToken? cancelToken,
   });
 

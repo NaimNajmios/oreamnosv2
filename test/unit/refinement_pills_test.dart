@@ -316,6 +316,11 @@ void main() {
         {'default_rephrase', 'default_shorter'},
       );
 
+      // Non-default length + fan-mode context: refinement inherits both.
+      notifier.setPromptLength(PromptLength.long);
+      await settings.setFanModeEnabled(true);
+      await settings.setFanClubName('Oreamnos FC');
+
       // Refine with selected pills
       final pillMap = {
         for (final p in kDefaultRefinementPills) p.id: p.instruction,
@@ -324,6 +329,10 @@ void main() {
 
       final postState = overrideContainer.read(generateViewModelProvider);
       expect(postState.status, GenerateState.success);
+      // Refinement inherits the user's selected length + fan-mode context.
+      expect(fakeRepo.lastLength, 'long');
+      expect(fakeRepo.lastIsFanModeEnabled, isTrue);
+      expect(fakeRepo.lastFanClubName, 'Oreamnos FC');
       expect(fakeRepo.lastRefinements.length, 2);
       expect(
         fakeRepo.lastRefinements,
@@ -342,6 +351,9 @@ void main() {
 
 class _FakeContentRepository implements IContentRepository {
   List<String> lastRefinements = [];
+  String? lastLength;
+  bool lastIsFanModeEnabled = false;
+  String lastFanClubName = '';
 
   @override
   Future<Result<CuratedPost>> generateStructuredPost({
@@ -383,9 +395,15 @@ class _FakeContentRepository implements IContentRepository {
     required AiProvider provider,
     bool includeSource = true,
     bool keepStructure = false,
+    String length = 'medium',
+    bool isFanModeEnabled = false,
+    String fanClubName = '',
     CancelToken? cancelToken,
   }) async {
     lastRefinements = refinements;
+    lastLength = length;
+    lastIsFanModeEnabled = isFanModeEnabled;
+    lastFanClubName = fanClubName;
     return ResultSuccess(
       original.copyWith(bodyMarkdown: 'Refined: ${refinements.join(", ")}'),
     );
