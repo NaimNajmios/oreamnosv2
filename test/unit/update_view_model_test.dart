@@ -91,7 +91,7 @@ void main() {
             buildNumber: '7',
           ),
         ),
-        updateCacheDirProvider.overrideWithValue(
+        updateApkDirectoryProvider.overrideWithValue(
           () async => Directory.systemTemp,
         ),
         updateInstallerProvider.overrideWithValue((apkPath) async => true),
@@ -165,7 +165,7 @@ void main() {
       expect(state.downloadedApkPath, isNotNull);
       expect(state.downloadError, isNull);
       expect(service.downloads, 1);
-      expect(service.downloadTargets.single, contains('updates'));
+      expect(service.downloadTargets.single, contains('oreamnos-v1.1.0.apk'));
 
       final installed = await notifier.installUpdate();
       expect(installed, isTrue);

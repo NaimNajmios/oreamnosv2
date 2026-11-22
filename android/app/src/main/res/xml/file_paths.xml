@@ -1,5 +1,11 @@
 <?xml version="1.0" encoding="utf-8"?>
 <paths>
-    <!-- In-app update downloads land here: <cache-dir>/updates/oreamnos-<tag>.apk -->
+    <!-- In-app update downloads.
+         - <external-files-path path="Download"> is the app's downloads dir on
+           Android (path_provider getDownloadsDirectory() resolves to
+           /storage/emulated/0/Android/data/com.najmi.oreamnos/files/Download).
+         - <cache-path path="updates/"> is the fallback location when the
+           system reports no downloads directory. -->
+    <external-files-path name="app_files" path="Download" />
     <cache-path name="update_cache" path="updates/" />
 </paths>

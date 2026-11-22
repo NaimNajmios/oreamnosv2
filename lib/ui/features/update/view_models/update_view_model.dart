@@ -18,9 +18,16 @@ final updatePackageInfoProvider = Provider<Future<PackageInfo> Function()>(
   (ref) => PackageInfo.fromPlatform,
 );
 
-/// Indirection so tests can supply a cache directory for the update APK.
-final updateCacheDirProvider = Provider<Future<Directory> Function()>(
-  (ref) => getTemporaryDirectory,
+/// Indirection so tests can supply the downloads directory for the update
+/// APK. Falls back to the cache directory when the system reports no
+/// downloads directory.
+final updateApkDirectoryProvider = Provider<Future<Directory> Function()>(
+  (ref) => () async {
+    final downloads = await getDownloadsDirectory();
+    if (downloads != null) return downloads;
+    final temp = await getTemporaryDirectory();
+    return Directory('${temp.path}/updates');
+  },
 );
 
 /// Seam for the native install handoff; tests override it.
@@ -158,7 +165,8 @@ class UpdateNotifier extends Notifier<UpdateState> {
     state = state.copyWith(status: UpdateStatus.idle, clearLatest: true);
   }
 
-  /// Downloads the newer APK from GitHub Releases into the app cache dir and
+  /// Downloads the newer APK from GitHub Releases into the app downloads
+  /// directory (falling back to the cache when there is none) and
   /// verifies its SHA-256. On success [UpdateState.downloadedApkPath] points
   /// at the verified file and the dialog swaps the Update action for an
   /// Install action. On failure the error is surfaced through
@@ -173,8 +181,8 @@ class UpdateNotifier extends Notifier<UpdateState> {
       downloadError: null,
     );
 
-    final dir = await ref.read(updateCacheDirProvider)();
-    final targetPath = '${dir.path}/updates/oreamnos-${release.tag}.apk';
+    final dir = await ref.read(updateApkDirectoryProvider)();
+    final targetPath = '${dir.path}/oreamnos-${release.tag}.apk';
     try {
       await ref
           .read(updateServiceProvider)
