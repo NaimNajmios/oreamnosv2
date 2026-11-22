@@ -149,7 +149,7 @@ abstract final class AppConstants {
 
   /// Manually bumped alongside `pubspec.yaml`; keeps diagnostics export
   /// informative without adding a `package_info_plus` dependency.
-  static const String appVersionLabel = '1.0.0+1';
+  static const String appVersionLabel = '1.3.0+4';
 
   // === Facebook Publishing (secure + prefs) ===
   static const String keyFacebookPageToken = 'facebook_page_token';
