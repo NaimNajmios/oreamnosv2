@@ -283,6 +283,7 @@ class _PublishHubScreenState extends ConsumerState<PublishHubScreen> {
     final activeDraft = ref.watch(facebookDraftProvider);
     final handoff = ref.watch(publishHandoffProvider);
     final performance = ref.watch(facebookPerformanceProvider);
+    final topPosts = ref.watch(facebookTopPostsProvider);
     final bestSlots = ref.watch(bestTimeToPostProvider);
     final bestReason = ref.watch(bestTimeToPostReasonProvider);
     final store = getIt<FacebookWorkflowStore>();
@@ -388,7 +389,11 @@ class _PublishHubScreenState extends ConsumerState<PublishHubScreen> {
                 onConnect: () => FacebookConnectionDialog.show(context),
               ),
             const SizedBox(height: AppSpacing.base),
-            _PerformanceCard(state: performance, onTap: _openPerformance),
+            _PerformanceCard(
+              state: performance,
+              topPosts: topPosts,
+              onTap: _openPerformance,
+            ),
             const SizedBox(height: AppSpacing.base),
             _BestTimeCard(
               slots: bestSlots,
@@ -845,9 +850,14 @@ class _ReadyToPublishCard extends StatelessWidget {
 }
 
 class _PerformanceCard extends StatelessWidget {
-  const _PerformanceCard({required this.state, required this.onTap});
+  const _PerformanceCard({
+    required this.state,
+    required this.topPosts,
+    required this.onTap,
+  });
 
   final FacebookPerformanceState state;
+  final List<FacebookPostRecord> topPosts;
   final VoidCallback onTap;
 
   @override
@@ -855,6 +865,12 @@ class _PerformanceCard extends StatelessWidget {
     final theme = Theme.of(context);
     final data = state.data;
     final earnings = state.monetization;
+    final deltas = data == null
+        ? const <FacebookMetricDelta>[]
+        : computePerformanceDeltas(
+            current: data.currentTotals,
+            previous: data.previousTotals,
+          );
     return AppCard(
       onTap: onTap,
       child: Column(
@@ -956,6 +972,33 @@ class _PerformanceCard extends StatelessWidget {
                 ),
               ),
             ],
+            if (topPosts.isNotEmpty) ...[
+              const SizedBox(height: AppSpacing.sm),
+              _TopPostRow(record: topPosts.first),
+            ],
+            if (deltas.isNotEmpty) ...[
+              const SizedBox(height: AppSpacing.sm),
+              Text.rich(
+                TextSpan(
+                  style: theme.textTheme.labelSmall?.copyWith(
+                    color: theme.colorScheme.onSurfaceVariant,
+                  ),
+                  children: [
+                    const TextSpan(text: 'vs last period'),
+                    for (final delta in deltas) ...[
+                      const TextSpan(text: ' · '),
+                      TextSpan(text: '${delta.label} '),
+                      TextSpan(
+                        text: delta.value,
+                        style: delta.negative
+                            ? TextStyle(color: theme.colorScheme.error)
+                            : null,
+                      ),
+                    ],
+                  ],
+                ),
+              ),
+            ],
           ],
         ],
       ),
@@ -979,6 +1022,61 @@ class _PerformanceCard extends StatelessWidget {
   static String _money(double? value) {
     if (value == null) return '—';
     return value.toStringAsFixed(2);
+  }
+}
+
+class _TopPostRow extends StatelessWidget {
+  const _TopPostRow({required this.record});
+
+  final FacebookPostRecord record;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final text = record.snippet.trim().isEmpty
+        ? record.message.trim().split('\n').first
+        : record.snippet.trim();
+    final stats = _statsLine(record);
+    return InkWell(
+      onTap: record.hasOpenableFeedPost
+          ? () => openFacebookPost(context, record)
+          : null,
+      borderRadius: AppSpacing.borderRadiusSm,
+      child: Row(
+        children: [
+          Icon(
+            Icons.leaderboard_rounded,
+            size: 16,
+            color: theme.colorScheme.onSurfaceVariant,
+          ),
+          const SizedBox(width: AppSpacing.xs),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  text.isEmpty ? 'Photo post' : text,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: theme.textTheme.bodySmall?.copyWith(
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+                if (stats.isNotEmpty)
+                  Text(
+                    stats,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: theme.textTheme.labelSmall?.copyWith(
+                      color: theme.colorScheme.onSurfaceVariant,
+                    ),
+                  ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
   }
 }
 

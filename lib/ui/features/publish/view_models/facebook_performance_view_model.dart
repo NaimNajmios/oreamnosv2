@@ -202,3 +202,70 @@ final facebookTopPostsProvider = Provider<List<FacebookPostRecord>>((ref) {
   });
   return records.take(5).toList(growable: false);
 });
+
+/// Compact number formatter for the Publish hub performance card.
+String compactMetric(int? value) {
+  if (value == null) return '—';
+  if (value >= 1000000) return '${(value / 1000000).toStringAsFixed(1)}m';
+  if (value >= 1000) return '${(value / 1000).toStringAsFixed(1)}k';
+  return '$value';
+}
+
+/// One period-over-period metric comparison shown on the Publish hub.
+class FacebookMetricDelta {
+  const FacebookMetricDelta({
+    required this.label,
+    required this.value,
+    required this.negative,
+  });
+
+  /// Metric label, e.g. 'Media views'.
+  final String label;
+
+  /// Signed, compact value, e.g. '+12.3k', '-450' or 'same'.
+  final String value;
+
+  /// True when [value] indicates a drop; widgets color it as a decrease.
+  final bool negative;
+}
+
+/// Deltas between [current] and [previous] for media views and engagements.
+///
+/// A metric is included only when both windows have a value; a zero
+/// difference reads as 'same'.
+List<FacebookMetricDelta> computePerformanceDeltas({
+  required FacebookInsightTotals current,
+  required FacebookInsightTotals previous,
+}) {
+  final deltas = <FacebookMetricDelta>[];
+
+  void addDelta(String label, int? cur, int? prev) {
+    if (cur == null || prev == null) return;
+    final diff = cur - prev;
+    if (diff == 0) {
+      deltas.add(
+        FacebookMetricDelta(label: label, value: 'same', negative: false),
+      );
+    } else if (diff > 0) {
+      deltas.add(
+        FacebookMetricDelta(
+          label: label,
+          value: '+${compactMetric(diff)}',
+          negative: false,
+        ),
+      );
+    } else {
+      deltas.add(
+        FacebookMetricDelta(
+          label: label,
+          value: '-${compactMetric(-diff)}',
+          negative: true,
+        ),
+      );
+    }
+  }
+
+  addDelta('Media views', current.mediaViews, previous.mediaViews);
+  addDelta('Engagements', current.engagements, previous.engagements);
+  return deltas;
+}
