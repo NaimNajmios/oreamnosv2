@@ -136,7 +136,10 @@ class OpenAICompatibleCurator implements IContentCurator {
             {"role": "user", "content": userContent},
           ],
           "temperature": 0.7,
-          "max_tokens": AppConstants.generationMaxTokens,
+          // Squeeze: per-length caps (AppConstants) mirror GeminiCurator —
+          // see `generationMaxTokensFor`. Same refusal of longer unbounded
+          // outputs on the OpenAI-compatible path.
+          "max_tokens": AppConstants.generationMaxTokensFor(length),
           "response_format": responseFormat,
         },
         cancelToken: cancelToken,

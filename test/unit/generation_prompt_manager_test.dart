@@ -142,5 +142,54 @@ void main() {
       );
       expect(s, contains('PRESERVE structural emojis'));
     });
+
+    group('squeezeTextForGemini', () {
+      test('collapses 3+ newlines to one blank line', () {
+        expect(
+          GenerationPromptManager.squeezeTextForGemini('a\n\n\n\n\nb'),
+          'a\n\nb',
+        );
+      });
+      test('trims trailing spaces on lines', () {
+        expect(
+          GenerationPromptManager.squeezeTextForGemini('a   \nb\t\t'),
+          'a\nb',
+        );
+      });
+      test('collapses horizontal runs to a single space', () {
+        expect(
+          GenerationPromptManager.squeezeTextForGemini('a   b\t\t\tc'),
+          'a b c',
+        );
+      });
+      test('never removes facts: single newlines are kept', () {
+        final source = 'First line\nSecond line';
+        expect(GenerationPromptManager.squeezeTextForGemini(source), source);
+      });
+    });
+
+    group('squeezeForGemini', () {
+      test('squeezes String payloads', () {
+        expect(
+          GenerationPromptManager.squeezeForGemini('a\n\n\n\n\nb'),
+          'a\n\nb',
+        );
+      });
+      test('squeezes ExtractedArticle text and keeps the payload shape', () {
+        const article = ExtractedArticle(
+          text: 'Alpha\n\n\n\n\nBeta',
+          url: 'https://example.com/story',
+          domain: 'example.com',
+        );
+        final squeezed = GenerationPromptManager.squeezeForGemini(article);
+        expect(squeezed, isA<ExtractedArticle>());
+        expect(squeezed.text, 'Alpha\n\nBeta');
+        expect(squeezed.url, 'https://example.com/story');
+      });
+      test('passes through other payloads unchanged', () {
+        expect(GenerationPromptManager.squeezeForGemini(42), 42);
+        expect(GenerationPromptManager.squeezeForGemini(null), isNull);
+      });
+    });
   });
 }

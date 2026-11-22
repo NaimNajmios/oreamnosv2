@@ -11,13 +11,16 @@ import 'package:oreamnos/core/di/injection.dart';
 import 'package:oreamnos/core/error/failures.dart';
 import 'package:oreamnos/core/repositories/content_repository.dart';
 import 'package:oreamnos/data/models/ai_provider.dart';
+import 'package:oreamnos/data/services/daily_usage_service.dart';
 import 'package:oreamnos/data/services/log_service.dart';
 import 'package:oreamnos/data/services/notification_service.dart';
+import 'package:oreamnos/data/services/rate_limit_guard.dart';
 import 'package:oreamnos/data/services/token_usage_side_channel.dart';
 import 'package:oreamnos/data/services/usage_service.dart';
 import 'package:oreamnos/data/services/web_scraper_service.dart';
 import 'package:oreamnos/domain/models/curated_post.dart';
 import 'package:oreamnos/domain/models/usage_log.dart';
+import 'package:oreamnos/domain/services/generation_prompt_manager.dart';
 import 'package:oreamnos/domain/repositories/search_repository.dart';
 import 'package:oreamnos/domain/services/enrich_context_usecase.dart';
 import 'package:oreamnos/domain/services/intent_classifier.dart';
@@ -63,6 +66,7 @@ enum PromptLength { short, medium, long }
 class GenerateViewModel extends Notifier<GenerateUiState>
     with WidgetsBindingObserver {
   late final UsageService _usageService;
+  late final RateLimitGuard _guard;
   bool _isBackgrounded = false;
   int _generationSessionId = 0;
 
@@ -107,30 +111,36 @@ class GenerateViewModel extends Notifier<GenerateUiState>
     return token;
   }
 
-  /// In-memory cooldown per provider after a 429 — subsequent requests
-  /// within the window skip the doomed provider entirely.
-  ///
-  /// Default floor is 60s: Google's RPM windows reset per minute, so a 30s
-  /// cooldown can collide with the same still-closing window.
-  static const int _defaultCooldownMs = 60000;
-  static const int _maxCooldownMs = 120000;
-  final Map<AiProvider, DateTime> _cooldownUntil = {};
+  /// Cooldown per provider after a 429 — subsequent requests within the
+  /// window skip the doomed provider entirely. Persisted in
+  /// [RateLimitGuard]: RPM waits close in the near-minute window; RPD
+  /// exhaustion closes until the real Pacific-midnight reset.
+  bool _isCoolingDown(AiProvider provider) => _guard.isCoolingDown(provider);
 
-  void _recordCooldown(AiProvider provider, int? retryDelayMs) {
-    final delay = (retryDelayMs ?? _defaultCooldownMs).clamp(0, _maxCooldownMs);
-    _cooldownUntil[provider] = DateTime.now().add(
-      Duration(milliseconds: delay),
-    );
-  }
+  Future<void> _recordCooldown(AiProvider provider, int? retryDelayMs) =>
+      _guard.recordCooldown(provider: provider, retryDelayMs: retryDelayMs);
 
-  bool _isCoolingDown(AiProvider provider) {
-    final until = _cooldownUntil[provider];
-    return until != null && until.isAfter(DateTime.now());
+  /// User-facing wait hint for a guarded provider. Explaining the reset
+  /// time only for Gemini: it is the one provider with a real long
+  /// (daily-reset) cooldown worth naming, unlike RPM retries.
+  String? _waitMessageFor(AiProvider provider) {
+    if (provider != AiProvider.gemini) return null;
+    final daily = getIt.isRegistered<DailyUsageService>()
+        ? getIt<DailyUsageService>()
+        : null;
+    if (daily == null) return null;
+    final reset = daily.timeUntilPacificReset();
+    if (reset <= Duration.zero) return null;
+    final label = reset.inHours >= 1
+        ? '${reset.inHours}h ${reset.inMinutes % 60}m'
+        : '${reset.inMinutes}m';
+    return 'Gemini quota exhausted — resets in $label (midnight PT).';
   }
 
   @override
   GenerateUiState build() {
     _usageService = getIt<UsageService>();
+    _guard = getIt<RateLimitGuard>();
     WidgetsBinding.instance.addObserver(this);
     ref.onDispose(() {
       WidgetsBinding.instance.removeObserver(this);
@@ -512,12 +522,27 @@ class GenerateViewModel extends Notifier<GenerateUiState>
     } else if (shareAttempt > 0) {
       notice = 'Retrying (attempt ${shareAttempt + 1})…';
     } else if (_isCoolingDown(provider)) {
-      // Cooldown-aware start: the selected provider just got rate-limited;
-      // jump straight to a healthy fallback instead of a doomed request.
+      // Cooldown-aware start: the selected provider is rate-limited —
+      // hop to a healthy fallback instead of a doomed request. When
+      // nothing is healthy, surface the wait instead of firing.
       final switched = await _switchToNextHealthyProvider(provider);
       if (switched != null && sessionId == _generationSessionId) {
         provider = switched;
         notice = 'Retrying with ${switched.displayName}…';
+      } else if (sessionId == _generationSessionId) {
+        final waitMessage = _waitMessageFor(provider);
+        state = state.copyWith(
+          errorMessage:
+              'Rate limit exceeded for ${provider.displayName}. '
+              'Try another provider.'
+              '${waitMessage != null ? ' $waitMessage' : ''}',
+          suggestedFallbackProvider: _getNextProvider(provider),
+          rateLimitWaitMessage: waitMessage,
+          status: GenerateState.rateLimited,
+          generatingStep: GeneratingStep.idle,
+          fallbackNotice: null,
+        );
+        return;
       }
     }
     if (notice != null && sessionId == _generationSessionId) {
@@ -713,6 +738,15 @@ class GenerateViewModel extends Notifier<GenerateUiState>
               '$contentToCurate\n\nLENGTH REQUIREMENT: $_lengthInstruction';
         }
       }
+      // Quota squeeze (Gemini only): collapse whitespace noise in the source
+      // so the request burns fewer tokens. Shapes text only — facts
+      // unchanged — so the next-request quality is identical.
+      if (provider == AiProvider.gemini) {
+        contentToCurate = GenerationPromptManager.squeezeForGemini(
+          contentToCurate,
+        );
+      }
+
       // API resilience: via pooled IContentRepository + Result fold + timeout
       // aligned with the per-request generation receive window (long posts
       // legitimately take >30s; 30s used to orphan mid-flight generations).
@@ -781,7 +815,7 @@ class GenerateViewModel extends Notifier<GenerateUiState>
             (failure is NetworkFailure);
         if (failure is RateLimitFailure || failure is PaymentRequiredFailure) {
           if (failure is RateLimitFailure) {
-            _recordCooldown(provider, failure.retryDelayMs);
+            await _recordCooldown(provider, failure.retryDelayMs);
           }
           // Silent auto-fallback: walk the chain to the first healthy
           // provider with a key instead of stopping at the dialog. The hop
@@ -879,6 +913,9 @@ class GenerateViewModel extends Notifier<GenerateUiState>
       }
 
       var curated = (repoResult as ResultSuccess<CuratedPost>).data;
+
+      // The RPM window has moved on — let the next request through.
+      _guard.clearOnSuccess(provider);
 
       if (ref.read(settingsViewModelProvider).defaultHashtags.isNotEmpty) {
         final tags = ref
@@ -1063,8 +1100,36 @@ class GenerateViewModel extends Notifier<GenerateUiState>
 
     final stopwatch = Stopwatch()..start();
     // Volatile fallback target — see _switchToNextHealthyProvider.
-    final provider =
+    var provider =
         forceProvider ?? ref.read(settingsViewModelProvider).selectedProvider;
+
+    // Pre-flight quota gate — same as generatePost: never burn a request on
+    // a provider the guard still has cooling down.
+    if (_isCoolingDown(provider)) {
+      final switched = await _switchToNextHealthyProvider(provider);
+      if (switched != null && sessionId == _generationSessionId) {
+        provider = switched;
+        state = state.copyWith(
+          status: GenerateState.generating,
+          generatingStep: GeneratingStep.prompting,
+          fallbackNotice: 'Retrying with ${switched.displayName}…',
+        );
+      } else if (sessionId == _generationSessionId) {
+        final waitMessage = _waitMessageFor(provider);
+        state = state.copyWith(
+          status: GenerateState.rateLimited,
+          generatingStep: GeneratingStep.idle,
+          fallbackNotice: null,
+          errorMessage:
+              'Rate limit exceeded for ${provider.displayName}. '
+              'Try another provider.'
+              '${waitMessage != null ? ' $waitMessage' : ''}',
+          suggestedFallbackProvider: _getNextProvider(provider),
+          rateLimitWaitMessage: waitMessage,
+        );
+        return;
+      }
+    }
 
     try {
       final settings = ref.read(settingsViewModelProvider);
@@ -1111,6 +1176,7 @@ class GenerateViewModel extends Notifier<GenerateUiState>
         throw repoResult.failure;
       }
       final refined = (repoResult as ResultSuccess<CuratedPost>).data;
+      _guard.clearOnSuccess(provider);
 
       var merged = CuratedPost(
         title: refined.title.isEmpty ? cp.title : refined.title,
@@ -1200,7 +1266,7 @@ class GenerateViewModel extends Notifier<GenerateUiState>
 
       if (e is RateLimitFailure || e is PaymentRequiredFailure) {
         if (e is RateLimitFailure) {
-          _recordCooldown(provider, e.retryDelayMs);
+          await _recordCooldown(provider, e.retryDelayMs);
         }
         // Silent auto-fallback (same chain as generatePost, volatile).
         if (fallbackDepth < _maxFallbackHops) {

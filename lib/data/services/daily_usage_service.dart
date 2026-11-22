@@ -83,13 +83,14 @@ class DailyUsageService {
   /// than the old today+yesterday prune.
   static const int historyDays = 7;
 
-  /// Known free-tier requests-per-day budgets (ESTIMATES). Prefix-matched
-  /// against the model id so dated variants (e.g. `-preview`) map too.
+  /// Known free-tier requests-per-day budgets (ESTIMATES — verify current
+  /// figures in Google AI Studio). Prefix-matched against the model id so
+  /// dated variants (e.g. `-preview`) map too.
   static const List<MapEntry<String, int>> _budgetRules = [
     MapEntry('gemini-2.0-flash-lite', 1500),
     MapEntry('gemini-2.0-flash', 1500),
     MapEntry('gemini-2.5-flash-lite', 1000),
-    MapEntry('gemini-2.5-flash', 500),
+    MapEntry('gemini-2.5-flash', 1000),
   ];
 
   /// Free-tier budget for [modelId], conservative default for unknowns.

@@ -11,6 +11,7 @@ import 'package:oreamnos/core/repositories/content_repository.dart';
 import 'package:oreamnos/data/models/ai_provider.dart';
 import 'package:oreamnos/data/services/log_service.dart';
 import 'package:oreamnos/data/services/preferences_service.dart';
+import 'package:oreamnos/data/services/rate_limit_guard.dart';
 import 'package:oreamnos/data/services/usage_service.dart';
 import 'package:oreamnos/domain/models/curated_post.dart';
 import 'package:oreamnos/ui/features/generate/view_models/generate_view_model.dart';
@@ -346,5 +347,105 @@ void main() {
 
       container.dispose();
     });
+
+    test(
+      'guard pre-flight: guarded provider hops to fallback without a request',
+      () async {
+        SharedPreferences.setMockInitialValues({});
+        FlutterSecureStorage.setMockInitialValues({});
+        final prefs = await SharedPreferences.getInstance();
+        const storage = FlutterSecureStorage();
+        final prefService = PreferencesService(
+          prefs: prefs,
+          secureStorage: storage,
+        );
+        await prefService.setApiKey(AiProvider.gemini, 'fake-gemini-key');
+        await prefService.setSelectedModel(
+          AiProvider.gemini,
+          'gemini-1.5-flash',
+        );
+        await prefService.setApiKey(AiProvider.groq, 'fake-groq-key');
+
+        final mockRepo = _MockContentRepository(); // empty script → success
+        await getIt.reset();
+        await configureDependencies();
+        getIt.allowReassignment = true;
+        getIt.registerLazySingleton<PreferencesService>(() => prefService);
+        getIt.registerLazySingleton<UsageService>(() => UsageService(prefs));
+        getIt.registerLazySingleton<LogService>(() => LogService(prefs));
+        // Guard gemini as cooling down BEFORE tapping Generate.
+        await getIt<RateLimitGuard>().recordCooldown(
+          provider: AiProvider.gemini,
+          retryDelayMs: 60000,
+        );
+
+        final container = ProviderContainer(
+          overrides: [contentRepositoryProvider.overrideWithValue(mockRepo)],
+        );
+        final settings = container.read(settingsViewModelProvider.notifier);
+        await settings.setSelectedProvider(AiProvider.gemini);
+        await settings.setSelectedModel('gemini-1.5-flash');
+
+        final vm = container.read(generateViewModelProvider.notifier);
+        await vm.generatePost('Guarded generation');
+
+        final state = container.read(generateViewModelProvider);
+        expect(state.status, GenerateState.success);
+        expect(state.curatedPost, isNotNull);
+        expect(mockRepo.callCount, 1);
+        expect(mockRepo.lastProvider, AiProvider.groq);
+        container.dispose();
+      },
+    );
+
+    test(
+      'guard pre-flight: no healthy fallback → rateLimited, no request fired',
+      () async {
+        SharedPreferences.setMockInitialValues({});
+        FlutterSecureStorage.setMockInitialValues({});
+        final prefs = await SharedPreferences.getInstance();
+        const storage = FlutterSecureStorage();
+        final prefService = PreferencesService(
+          prefs: prefs,
+          secureStorage: storage,
+        );
+        await prefService.setApiKey(AiProvider.gemini, 'fake-gemini-key');
+        await prefService.setSelectedModel(
+          AiProvider.gemini,
+          'gemini-1.5-flash',
+        );
+        // No other keys — the chain has nothing healthy.
+
+        final mockRepo = _MockContentRepository();
+        await getIt.reset();
+        await configureDependencies();
+        getIt.allowReassignment = true;
+        getIt.registerLazySingleton<PreferencesService>(() => prefService);
+        getIt.registerLazySingleton<UsageService>(() => UsageService(prefs));
+        getIt.registerLazySingleton<LogService>(() => LogService(prefs));
+        await getIt<RateLimitGuard>().recordCooldown(
+          provider: AiProvider.gemini,
+          retryDelayMs: 60000,
+        );
+
+        final container = ProviderContainer(
+          overrides: [contentRepositoryProvider.overrideWithValue(mockRepo)],
+        );
+        final settings = container.read(settingsViewModelProvider.notifier);
+        await settings.setSelectedProvider(AiProvider.gemini);
+        await settings.setSelectedModel('gemini-1.5-flash');
+
+        final vm = container.read(generateViewModelProvider.notifier);
+        await vm.generatePost('Guarded generation');
+
+        final state = container.read(generateViewModelProvider);
+        expect(state.status, GenerateState.rateLimited);
+        expect(state.suggestedFallbackProvider, AiProvider.groq);
+        expect(state.errorMessage, contains('Gemini quota exhausted'));
+        // Nothing was fired while blocked.
+        expect(mockRepo.callCount, 0);
+        container.dispose();
+      },
+    );
   });
 }

@@ -59,6 +59,35 @@ abstract final class AppConstants {
   static const int maxRetriesOn429 = 1;
   static const int retry429MaxWaitMs = 10000;
 
+  // === Quota Guard (Gemini squeeze) ===
+  // 429 seam for Gemini free tier is RPM (per minute, resets within ~a
+  // minute) vs RPD (daily, resets at midnight Pacific). [RateLimitGuard]
+  // records a persisted cooldown per provider:
+  //  - delays ≤ [guardRpmSuspectThresholdMs] are treated as RPM-window
+  //    waits and close in [guardRpmUntilFloorMs]…[guardRpmUntilCapMs];
+  //  - longer delays are treated as RPD exhaustion and close until the
+  //    real Pacific-midnight reset, never past it (so the next user
+  //    request after reset is allowed again).
+  static const int guardRpmSuspectThresholdMs = 900000; // 15 min
+  static const int guardRpmUntilFloorMs = 5000;
+  static const int guardRpmUntilCapMs = 90000;
+  static const int guardRpmDefaultCooldownMs = 30000;
+
+  /// `maxOutputTokens` per [PromptLength] ('short'/'medium'/'long') for
+  /// full-post generation. Squeeze: shorter requests burn less of the
+  /// per-minute token budget and complete faster under the 90s receive
+  /// window; `JsonCleaner.repairTruncated` remains the truncation safety
+  /// net, and the 90s receive window still bounds latency.
+  static const int generationMaxTokensShort = 400;
+  static const int generationMaxTokensMedium = 1200;
+  static const int generationMaxTokensLong = 2400;
+
+  static int generationMaxTokensFor(String length) => switch (length) {
+    'short' => generationMaxTokensShort,
+    'long' => generationMaxTokensLong,
+    _ => generationMaxTokensMedium,
+  };
+
   // === Daily Quota Visibility (estimated free-tier RPD) ===
   // Amber warning on the Usage tab when the day's request count crosses
   // this fraction of the model budget.

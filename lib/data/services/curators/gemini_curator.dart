@@ -170,7 +170,10 @@ class GeminiCurator implements IContentCurator {
             // Bound both latency and token burn; long posts with the strict
             // JSON schema used to run unbounded on the default token limit
             // and trip the (15s) receive timeout before completing.
-            "maxOutputTokens": AppConstants.generationMaxTokens,
+            // Squeeze: per-length caps (AppConstants) cut the per-minute
+            // token burn of short/medium posts; `JsonCleaner.repairTruncated`
+            // remains the safety net.
+            "maxOutputTokens": AppConstants.generationMaxTokensFor(length),
             "responseMimeType": "application/json",
             "responseSchema": GenerationPromptManager.geminiResponseSchema(
               keepStructure: keepStructure,

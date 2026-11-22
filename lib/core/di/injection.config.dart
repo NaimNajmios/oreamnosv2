@@ -38,6 +38,7 @@ import '../../data/services/log_service.dart' as _i713;
 import '../../data/services/ml_kit_vision_extractor.dart' as _i560;
 import '../../data/services/preferences_service.dart' as _i867;
 import '../../data/services/provider_api_service.dart' as _i581;
+import '../../data/services/rate_limit_guard.dart' as _i466;
 import '../../data/services/token_usage_side_channel.dart' as _i952;
 import '../../data/services/update_service.dart' as _i846;
 import '../../data/services/usage_service.dart' as _i1062;
@@ -132,6 +133,9 @@ extension GetItInjectableX on _i174.GetIt {
     );
     gh.lazySingleton<_i713.LogService>(
       () => _i713.LogService(gh<_i460.SharedPreferences>()),
+    );
+    gh.lazySingleton<_i466.RateLimitGuard>(
+      () => _i466.RateLimitGuard(gh<_i460.SharedPreferences>()),
     );
     gh.lazySingleton<_i519.FacebookExportService>(
       () => _i519.FacebookExportService(

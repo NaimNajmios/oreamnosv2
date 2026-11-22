@@ -76,7 +76,7 @@ void main() {
           1500,
         );
         expect(DailyUsageService.budgetForModel('gemini-2.0-flash-lite'), 1500);
-        expect(DailyUsageService.budgetForModel('gemini-2.5-flash'), 500);
+        expect(DailyUsageService.budgetForModel('gemini-2.5-flash'), 1000);
         expect(DailyUsageService.budgetForModel('gemini-2.5-flash-lite'), 1000);
       });
 
@@ -240,7 +240,7 @@ void main() {
             'gemini',
             'gemini-2.5-flash',
           ),
-          500,
+          1000,
         );
         expect(
           DailyUsageService.budgetForProviderModel('groq', 'llama-3.3-70b'),
@@ -377,7 +377,7 @@ void main() {
         final svc = service();
         await svc.recordRequest('gemini', 'gemini-2.5-flash');
         final q = svc.todayGeminiQuota().single;
-        expect(q.budget, 500);
+        expect(q.budget, 1000);
         expect(q.requestsToday, 1);
         expect(q.isWarning, isFalse);
       });

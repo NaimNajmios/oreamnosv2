@@ -510,6 +510,32 @@ class GenerationPromptManager {
     return content.toString();
   }
 
+  /// Collapses whitespace noise in long source text (article scrapes can
+  /// carry triple newlines / trailing spaces) so the Gemini request burns
+  /// fewer tokens. Never cuts mid-sentence: 2+ blank lines collapse to one,
+  /// trailing spaces are trimmed, horizontal runs shrink to a single space.
+  /// This only reduces token burn — it cannot remove a fact.
+  static String squeezeTextForGemini(String text) {
+    return text
+        .replaceAll(RegExp(r'[ \t]+\n'), '\n')
+        .replaceAll(RegExp(r'\n{3,}'), '\n\n')
+        .replaceAll(RegExp(r'[ \t]{3,}'), ' ')
+        .trim();
+  }
+
+  /// [squeezeTextForGemini] for any curator payload shape:
+  /// [ExtractedArticle] → squeezed copy, [String] → squeezed string,
+  /// anything else → unchanged.
+  static dynamic squeezeForGemini(dynamic content) {
+    if (content is ExtractedArticle) {
+      return content.copyWith(text: squeezeTextForGemini(content.text));
+    }
+    if (content is String) {
+      return squeezeTextForGemini(content);
+    }
+    return content;
+  }
+
   // --- Detection helpers (parity with PromptManager.kt) ---
   static bool containsQuotes(String? text) {
     if (text == null || text.isEmpty) return false;
