@@ -186,4 +186,72 @@ void main() {
       expect(restored.read(facebookPerformanceProvider).days, 7);
     });
   });
+
+  group('compactMetric', () {
+    test('formats null, small, thousands and millions', () {
+      expect(compactMetric(null), '—');
+      expect(compactMetric(0), '0');
+      expect(compactMetric(999), '999');
+      expect(compactMetric(1000), '1.0k');
+      expect(compactMetric(1500), '1.5k');
+      expect(compactMetric(2_500_000), '2.5m');
+    });
+  });
+
+  group('computePerformanceDeltas', () {
+    FacebookInsightTotals totals({int? mediaViews, int? engagements}) =>
+        FacebookInsightTotals(mediaViews: mediaViews, engagements: engagements);
+
+    test('returns positive deltas when the window grew', () {
+      final deltas = computePerformanceDeltas(
+        current: totals(mediaViews: 2500, engagements: 40),
+        previous: totals(mediaViews: 1000, engagements: 20),
+      );
+      expect(deltas, hasLength(2));
+      expect(deltas[0].label, 'Media views');
+      expect(deltas[0].value, '+1.5k');
+      expect(deltas[0].negative, isFalse);
+      expect(deltas[1].label, 'Engagements');
+      expect(deltas[1].value, '+20');
+      expect(deltas[1].negative, isFalse);
+    });
+
+    test('marks drops as negative', () {
+      final deltas = computePerformanceDeltas(
+        current: totals(mediaViews: 1000, engagements: 10),
+        previous: totals(mediaViews: 2000, engagements: 50),
+      );
+      expect(deltas, hasLength(2));
+      expect(deltas[0].value, '-1.0k');
+      expect(deltas[0].negative, isTrue);
+      expect(deltas[1].value, '-40');
+      expect(deltas[1].negative, isTrue);
+    });
+
+    test('reads zero differences as same', () {
+      final deltas = computePerformanceDeltas(
+        current: totals(mediaViews: 100, engagements: 5),
+        previous: totals(mediaViews: 100, engagements: 5),
+      );
+      expect(deltas.map((delta) => delta.value), everyElement('same'));
+      expect(deltas.every((delta) => !delta.negative), isTrue);
+    });
+
+    test('skips metrics that are missing in either window', () {
+      expect(
+        computePerformanceDeltas(
+          current: const FacebookInsightTotals(),
+          previous: const FacebookInsightTotals(),
+        ),
+        isEmpty,
+      );
+      final oneSided = computePerformanceDeltas(
+        current: totals(mediaViews: 500),
+        previous: totals(mediaViews: 100),
+      );
+      expect(oneSided, hasLength(1));
+      expect(oneSided[0].label, 'Media views');
+      expect(oneSided[0].value, '+400');
+    });
+  });
 }
