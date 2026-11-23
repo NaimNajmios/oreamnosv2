@@ -7,6 +7,7 @@ import '../../ui/features/settings/views/settings_screen.dart';
 import '../../ui/features/shell/views/modern_app_shell.dart';
 import '../../ui/features/settings/views/pill_manager_screen.dart';
 import '../../ui/features/settings/views/hashtag_manager_screen.dart';
+import '../../ui/features/settings/views/widgets_manager_screen.dart';
 import '../../ui/features/usage/views/usage_screen.dart';
 import '../../ui/features/usage/views/session_list_screen.dart';
 import '../../ui/features/card_generator/views/card_generator_screen.dart';
@@ -34,6 +35,7 @@ abstract final class RoutePaths {
   static const String hashtagManager = '/hashtag-manager';
   static const String usage = '/usage';
   static const String library = '/library';
+  static const String widgets = '/widgets';
   static const String cardGenerator = '/card-generator';
   static const String debugLogs = '/debug-logs';
   static const String sessionHistory = '/sessions';
@@ -303,6 +305,11 @@ GoRouter createAppRouter({String? initialLocation}) {
         path: RoutePaths.pillManager,
         pageBuilder: (context, state) =>
             _kickoffPage(child: const PillManagerScreen()),
+      ),
+      GoRoute(
+        path: RoutePaths.widgets,
+        pageBuilder: (context, state) =>
+            _kickoffPage(child: const WidgetsManagerScreen()),
       ),
       GoRoute(
         path: RoutePaths.facebookCompose,

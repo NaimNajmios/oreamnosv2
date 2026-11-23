@@ -1,5 +1,6 @@
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:oreamnos/config/constants.dart';
 import 'package:oreamnos/data/models/ai_provider.dart';
 import 'package:oreamnos/domain/models/app_theme_mode.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -89,6 +90,35 @@ void main() {
       expect(svc.lastPromptLength, 'long');
       expect(svc.lastIsResearchMode, isTrue);
       expect(svc.lastKeepStructure, isTrue);
+    });
+
+    test('exportSettings/importSettings round-trip typed settings', () async {
+      final prefs = await createMockPrefs();
+      final svc = createTestPreferencesService(prefs);
+
+      await svc.setThemeMode(AppThemeMode.midnightNoir);
+      await svc.setToneMode('casual');
+      await svc.setReadingTextSize(19.5);
+      await svc.setFanModeEnabled(true);
+      await svc.setFanClubName('Arsenal');
+      await svc.setShowWidgetSnippet(true);
+
+      final snapshot = await svc.exportSettings();
+      expect(
+        snapshot[AppConstants.keyThemeMode],
+        AppThemeMode.midnightNoir.name,
+      );
+      expect(snapshot[AppConstants.keyReadingTextSize], 19.5);
+
+      final prefs2 = await createMockPrefs();
+      final svc2 = createTestPreferencesService(prefs2);
+      await svc2.importSettings(snapshot);
+      expect(svc2.themeMode, AppThemeMode.midnightNoir);
+      expect(svc2.toneMode, 'casual');
+      expect(svc2.readingTextSize, 19.5);
+      expect(svc2.isFanModeEnabled, isTrue);
+      expect(svc2.fanClubName, 'Arsenal');
+      expect(svc2.showWidgetSnippet, isTrue);
     });
   });
 }

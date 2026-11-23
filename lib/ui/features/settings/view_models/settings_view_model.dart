@@ -2,8 +2,13 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:oreamnos/core/di/injection.dart';
 
 import '../../../../data/models/ai_provider.dart';
+import '../../../../data/services/daily_usage_service.dart';
+import '../../../../data/services/facebook_draft_store.dart';
+import '../../../../data/services/facebook_storage_service.dart';
+import '../../../../data/services/log_service.dart';
 import '../../../../data/services/preferences_service.dart';
 import '../../../../data/services/provider_api_service.dart';
+import '../../../../data/services/usage_service.dart';
 import '../../../../domain/models/app_theme_mode.dart';
 import '../../../../domain/models/custom_pill.dart';
 import '../../../../domain/models/hashtag_group.dart';
@@ -323,4 +328,40 @@ class SettingsNotifier extends Notifier<SettingsState> {
       () => _preferencesService.setShowWidgetSnippet(show),
     );
   }
+
+  /// Deletes local data: logs, usage history and Facebook drafts/cached
+  /// images. Settings and API keys are deliberately untouched.
+  Future<void> clearLocalData() async {
+    // Sweep first: FacebookStorageService logs diagnostics (via
+    // FacebookDiagnostics) into the same log ring, so the log clear below
+    // must run after it.
+    try {
+      await getIt<FacebookStorageService>().sweep();
+    } catch (_) {}
+    try {
+      getIt<LogService>().clear();
+    } catch (_) {}
+    try {
+      await getIt<UsageService>().clearLogs();
+    } catch (_) {}
+    try {
+      if (getIt.isRegistered<DailyUsageService>()) {
+        await getIt<DailyUsageService>().clearAll();
+      }
+    } catch (_) {}
+    try {
+      await getIt<FacebookDraftStore>().clearAll();
+    } catch (_) {}
+  }
+
+  /// Snapshot of app settings as stored in shared preferences. API keys
+  /// live in secure storage and are not included.
+  Future<Map<String, Object?>> exportSettings() =>
+      _preferencesService.exportSettings();
+
+  /// Applies an exported settings snapshot (see [exportSettings]) through
+  /// the typed setters. Keys with missing or wrongly-typed values are
+  /// skipped.
+  Future<void> importSettings(Map<String, Object?> exported) =>
+      _preferencesService.importSettings(exported);
 }

@@ -180,4 +180,27 @@ void main() {
     expect(prefs.getString(AppConstants.keyFacebookDraft), isNull);
     expect(store.activeDraftId, record.id);
   });
+
+  test('clearAll removes drafts, media and draft prefs', () async {
+    final prefs = await SharedPreferences.getInstance();
+    final store = FacebookDraftStore(prefs);
+    final source = File('${docs.path}/source.png');
+    await source.writeAsBytes([5, 5]);
+    final media = await store.importMedia('x1', [
+      {'path': source.path},
+    ]);
+    await store.save(record('x1', media: media));
+    await store.setActive('x1');
+    final copied = File(media.single['path'] as String);
+    expect(copied.existsSync(), isTrue);
+    expect(store.loadAll(), isNotEmpty);
+
+    await store.clearAll();
+
+    expect(store.loadAll(), isEmpty);
+    expect(store.activeDraftId, isNull);
+    expect(copied.existsSync(), isFalse);
+    expect(prefs.containsKey(AppConstants.keyFacebookDrafts), isFalse);
+    expect(prefs.containsKey(AppConstants.keyFacebookActiveDraft), isFalse);
+  });
 }

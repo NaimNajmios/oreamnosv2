@@ -204,6 +204,19 @@ class FacebookDraftStore {
     await _deleteDraftImages(id);
   }
 
+  /// Deletes every stored draft (and its media), clears the active
+  /// selection and the draft prefs. Used by the Settings → Clear Local Data
+  /// flow.
+  Future<void> clearAll() async {
+    for (final record in loadAll()) {
+      await delete(record.id);
+    }
+    await _prefs.remove(AppConstants.keyFacebookDrafts);
+    await _prefs.remove(AppConstants.keyFacebookActiveDraft);
+    // Legacy single-draft key, still read by importMedia paths.
+    await _prefs.remove(AppConstants.keyFacebookDraft);
+  }
+
   /// Copies a draft (and its images) under a new id. Returns the new id.
   Future<String?> duplicate(String id) async {
     FacebookDraftRecord? source;

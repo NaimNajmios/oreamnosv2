@@ -1,11 +1,16 @@
 import 'dart:async';
+import 'dart:convert';
+import 'dart:io';
 
-import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
-import 'package:home_widget/home_widget.dart';
+import 'package:path_provider/path_provider.dart';
+import 'package:share_plus/share_plus.dart';
+import 'package:url_launcher/url_launcher.dart';
 
+import 'package:oreamnos/config/constants.dart';
 import 'package:oreamnos/config/routes/app_router.dart';
 import 'package:oreamnos/config/theme/app_motion.dart';
 import 'package:oreamnos/config/theme/app_spacing.dart';
@@ -19,7 +24,6 @@ import 'package:oreamnos/ui/core/widgets/section_header.dart';
 import 'package:oreamnos/ui/core/widgets/settings_tile.dart';
 import 'package:oreamnos/ui/core/widgets/staggered_entrance.dart';
 import 'package:oreamnos/domain/models/app_theme_mode.dart';
-import 'package:oreamnos/data/services/home_widget_service.dart';
 import 'package:oreamnos/domain/models/vision_mode.dart';
 import 'package:oreamnos/ui/features/update/view_models/update_state.dart';
 import 'package:oreamnos/ui/features/update/view_models/update_view_model.dart';
@@ -29,6 +33,7 @@ import '../view_models/settings_view_model.dart';
 import 'widgets/api_key_dialog.dart';
 import 'widgets/model_selection_dialog.dart';
 import 'widgets/provider_selection_dialog.dart';
+import 'widgets/reading_size_dialog.dart';
 import 'widgets/tavily_api_key_dialog.dart';
 import 'widgets/test_connection_tile.dart';
 import 'widgets/tone_selection_dialog.dart';
@@ -217,6 +222,12 @@ class SettingsScreen extends ConsumerWidget {
             onTap: () => ApiKeyDialog.show(context, state.selectedProvider),
           ),
           const TestConnectionTile(),
+          SettingsTile(
+            leadingIcon: Icons.restart_alt_rounded,
+            title: 'Reset AI Setup',
+            subtitle: 'Removes your API key and model choice',
+            onTap: () => _showResetAiSetup(context, ref),
+          ),
         ],
       ),
       const SectionHeader(title: 'Search & Context'),
@@ -292,6 +303,13 @@ class SettingsScreen extends ConsumerWidget {
             ),
           ),
           SettingsTile(
+            leadingIcon: Icons.format_size_rounded,
+            title: 'Reading text size',
+            subtitle:
+                '${state.readingTextSize.toStringAsFixed(1)} pt — applies in reading mode',
+            onTap: () => ReadingSizeDialog.show(context),
+          ),
+          SettingsTile(
             leadingIcon: Icons.tag_rounded,
             title: 'Hashtag Manager',
             subtitle: state.hashtagGroups.isEmpty
@@ -328,44 +346,62 @@ class SettingsScreen extends ConsumerWidget {
             subtitle: 'View token usage & latency',
             onTap: () => context.go(RoutePaths.usage),
           ),
+          SettingsTile(
+            leadingIcon: Icons.menu_open_rounded,
+            title: 'Session History',
+            subtitle: 'Tap to review past conversations',
+            onTap: () => context.go(RoutePaths.sessionHistory),
+          ),
         ],
       ),
-      // Widgets are Android-only; other platforms must not see dead switches.
-      if (!kIsWeb && defaultTargetPlatform == TargetPlatform.android) ...[
-        const SectionHeader(title: 'Home screen widgets'),
-        sectionCard(
-          children: [
-            SettingsTile(
-              leadingIcon: Icons.visibility_outlined,
-              title: 'Show post caption',
-              subtitle: state.showWidgetSnippet
-                  ? 'The next post’s text appears on the home screen'
-                  : 'Hidden — Page, time and counts still show',
-              trailing: AppSwitch(
-                value: state.showWidgetSnippet,
-                onChanged: (value) =>
-                    apply(() => notifier.setShowWidgetSnippet(value)),
-              ),
-            ),
-            const _WidgetPins(),
-          ],
-        ),
-        Padding(
-          padding: const EdgeInsets.fromLTRB(
-            AppSpacing.screenHorizontal,
-            AppSpacing.sm,
-            AppSpacing.screenHorizontal,
-            0,
+      const SectionHeader(title: 'Home screen widgets'),
+      sectionCard(
+        children: [
+          SettingsTile(
+            leadingIcon: Icons.widgets_outlined,
+            title: 'Home screen widgets',
+            subtitle:
+                'Five widgets available — tap to see what fits your device',
+            onTap: () => context.push(RoutePaths.widgets),
           ),
-          child: Text(
-            'Every widget is read-only and resizable. Taps open Oreamnos — '
-            'nothing posts or changes in the background.',
-            style: theme.textTheme.bodySmall?.copyWith(
-              color: theme.colorScheme.onSurfaceVariant,
+        ],
+      ),
+      const SectionHeader(title: 'Data'),
+      sectionCard(
+        children: [
+          SettingsTile(
+            leadingIcon: Icons.delete_sweep_rounded,
+            title: 'Clear Local Data',
+            subtitle: 'Logs, usage history, Facebook drafts & cached images — settings are kept',
+            onTap: () => _showClearLocalData(context, ref),
+          ),
+        ],
+      ),
+      const SectionHeader(title: 'Legal'),
+      sectionCard(
+        children: [
+          SettingsTile(
+            leadingIcon: Icons.description_rounded,
+            title: 'Privacy Policy',
+            subtitle: _legalSubtitle(AppConstants.privacyPolicyUrl),
+            onTap: () => _launchLegal(
+              context,
+              AppConstants.privacyPolicyUrl,
+              'Privacy Policy',
             ),
           ),
-        ),
-      ],
+          SettingsTile(
+            leadingIcon: Icons.gavel_rounded,
+            title: 'Terms of Service',
+            subtitle: _legalSubtitle(AppConstants.termsOfServiceUrl),
+            onTap: () => _launchLegal(
+              context,
+              AppConstants.termsOfServiceUrl,
+              'Terms of Service',
+            ),
+          ),
+        ],
+      ),
       const SectionHeader(title: 'Advanced'),
       sectionCard(
         children: [
@@ -378,7 +414,23 @@ class SettingsScreen extends ConsumerWidget {
         ],
       ),
       const SectionHeader(title: 'About'),
-      sectionCard(children: const [_UpdateCheckTile()]),
+      sectionCard(
+        children: [
+          const _UpdateCheckTile(),
+          SettingsTile(
+            leadingIcon: Icons.ios_share_rounded,
+            title: 'Export Settings',
+            subtitle: 'Share a JSON backup of your settings',
+            onTap: () => _exportSettings(context, ref),
+          ),
+          SettingsTile(
+            leadingIcon: Icons.file_download_rounded,
+            title: 'Import Settings',
+            subtitle: 'Apply settings from a JSON backup',
+            onTap: () => _importSettings(context, ref),
+          ),
+        ],
+      ),
     ];
 
     return Scaffold(
@@ -420,6 +472,164 @@ class SettingsScreen extends ConsumerWidget {
         ),
       ),
     );
+  }
+
+  /// "Reset AI Setup" — clears the active provider's key and model choice.
+  Future<void> _showResetAiSetup(BuildContext context, WidgetRef ref) async {
+    final provider = ref.read(settingsViewModelProvider).selectedProvider;
+    final theme = Theme.of(context);
+    final result = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Reset AI Setup'),
+        content: const Text(
+          'Remove the current API key and model choice? '
+          'You will set them up again.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop(false),
+            child: const Text('Cancel'),
+          ),
+          TextButton(
+            style: TextButton.styleFrom(
+              foregroundColor: theme.colorScheme.error,
+            ),
+            onPressed: () => Navigator.of(ctx).pop(true),
+            child: const Text('Reset'),
+          ),
+        ],
+      ),
+    );
+    if (result != true) return;
+    Haptics.heavyImpact();
+    final notifier = ref.read(settingsViewModelProvider.notifier);
+    await notifier.clearApiKey(provider);
+    await notifier.clearSelectedModel();
+    if (!context.mounted) return;
+    ScaffoldMessenger.of(context)
+        .showSnackBar(const SnackBar(content: Text('AI setup reset')));
+  }
+
+  /// "Clear Local Data" — destructive confirm, then clears logs/usage data.
+  Future<void> _showClearLocalData(BuildContext context, WidgetRef ref) async {
+    final theme = Theme.of(context);
+    final result = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Clear Local Data'),
+        content: const Text(
+          'Logs, usage history, Facebook drafts and cached images will be '
+          'deleted. Settings and API keys are kept.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop(false),
+            child: const Text('Cancel'),
+          ),
+          TextButton(
+            style: TextButton.styleFrom(
+              foregroundColor: theme.colorScheme.error,
+            ),
+            onPressed: () => Navigator.of(ctx).pop(true),
+            child: const Text('Clear'),
+          ),
+        ],
+      ),
+    );
+    if (result != true) return;
+    Haptics.heavyImpact();
+    await ref.read(settingsViewModelProvider.notifier).clearLocalData();
+    if (!context.mounted) return;
+    ScaffoldMessenger.of(context)
+        .showSnackBar(const SnackBar(content: Text('Local data cleared')));
+  }
+
+  /// "Export Settings" — share a JSON backup of the app settings.
+  Future<void> _exportSettings(BuildContext context, WidgetRef ref) async {
+    final notifier = ref.read(settingsViewModelProvider.notifier);
+    try {
+      final json = jsonEncode(await notifier.exportSettings());
+      final dir = await getTemporaryDirectory();
+      final file = File(
+        '${dir.path}/oreamnos-settings-'
+        '${DateTime.now().millisecondsSinceEpoch}.json',
+      );
+      await file.writeAsString(json, flush: true);
+      await SharePlus.instance.share(
+        ShareParams(
+          files: [XFile(file.path, mimeType: 'application/json')],
+          text: 'Oreamnos settings backup',
+        ),
+      );
+    } catch (_) {
+      if (!context.mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text("Couldn't export your settings")),
+      );
+    }
+  }
+
+  /// "Import Settings" — apply settings from JSON pasted into the clipboard.
+  Future<void> _importSettings(BuildContext context, WidgetRef ref) async {
+    final notifier = ref.read(settingsViewModelProvider.notifier);
+    String text;
+    try {
+      final clipboardData = await Clipboard.getData(Clipboard.kTextPlain);
+      text = clipboardData?.text ?? '';
+    } catch (_) {
+      text = '';
+    }
+    if (text.trim().isEmpty) {
+      if (!context.mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Nothing to import from the clipboard')),
+      );
+      return;
+    }
+    try {
+      final decoded = jsonDecode(text);
+      if (decoded is! Map<String, dynamic>) throw const FormatException();
+      await notifier.importSettings(decoded.cast<String, Object?>());
+    } catch (_) {
+      if (!context.mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Paste valid settings JSON to import.')),
+      );
+      return;
+    }
+    if (!context.mounted) return;
+    ScaffoldMessenger.of(context)
+        .showSnackBar(const SnackBar(content: Text('Settings imported')));
+  }
+
+  static String _legalSubtitle(String url) => url.isEmpty ? 'Not set yet' : url;
+
+  /// Opens a Legal URL, with a snackbar when it is not configured.
+  Future<void> _launchLegal(
+    BuildContext context,
+    String url,
+    String label,
+  ) async {
+    if (url.isEmpty) {
+      ScaffoldMessenger.of(context)
+          .showSnackBar(SnackBar(content: Text('$label URL is not set yet.')));
+      return;
+    }
+    try {
+      final opened = await launchUrl(Uri.parse(url));
+      if (!opened && context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text("Couldn't open that page")),
+        );
+      }
+    } catch (_) {
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text("Couldn't open that page")),
+        );
+      }
+    }
   }
 }
 
@@ -907,121 +1117,6 @@ class _SettingsSkeletonCard extends StatelessWidget {
       ),
     );
   }
-}
-
-/// "Add to home screen" pin requests, one per purpose-built widget. Hidden
-/// unless the launcher supports pinning (API 26+ and a launcher that
-/// implements it).
-class _WidgetPins extends StatefulWidget {
-  const _WidgetPins();
-
-  @override
-  State<_WidgetPins> createState() => _WidgetPinsState();
-}
-
-class _WidgetPinsState extends State<_WidgetPins> {
-  bool? _supported;
-
-  @override
-  void initState() {
-    super.initState();
-    _resolveSupport();
-  }
-
-  Future<void> _resolveSupport() async {
-    try {
-      final supported = await HomeWidget.isRequestPinWidgetSupported();
-      if (!mounted) return;
-      setState(() => _supported = supported == true);
-    } catch (_) {
-      // Missing plugin (unit tests) or an old launcher: stay hidden.
-      if (mounted) setState(() => _supported = false);
-    }
-  }
-
-  Future<void> _pin(String provider) async {
-    try {
-      await HomeWidget.requestPinWidget(qualifiedAndroidName: provider);
-    } catch (_) {
-      // A launcher can refuse; nothing to recover from here.
-    }
-  }
-
-  static const _widgets = <_WidgetSpec>[
-    _WidgetSpec(
-      provider: HomeWidgetService.nextUpProvider,
-      title: 'Next up',
-      purpose: 'When the next scheduled Page post goes live',
-      icon: Icons.schedule_rounded,
-    ),
-    _WidgetSpec(
-      provider: HomeWidgetService.quotaProvider,
-      title: 'AI quota',
-      purpose: "Today's usage for two providers side by side",
-      icon: Icons.donut_large_rounded,
-    ),
-    _WidgetSpec(
-      provider: HomeWidgetService.engagementProvider,
-      title: 'Engagement',
-      purpose: 'How the last post and this week are doing',
-      icon: Icons.favorite_border_rounded,
-    ),
-    _WidgetSpec(
-      provider: HomeWidgetService.draftsProvider,
-      title: 'Drafts',
-      purpose: 'What is half-written, ready to continue',
-      icon: Icons.edit_note_rounded,
-    ),
-    _WidgetSpec(
-      provider: HomeWidgetService.bestTimeProvider,
-      title: 'Best time',
-      purpose: 'When your audience is usually listening',
-      icon: Icons.insights_rounded,
-    ),
-  ];
-
-  @override
-  Widget build(BuildContext context) {
-    // While resolving (or on a launcher without pinning) show the picker hint
-    // instead of five dead rows.
-    if (_supported != true) {
-      return const SettingsTile(
-        leadingIcon: Icons.widgets_outlined,
-        title: 'Five widgets',
-        subtitle: 'Long-press your home screen → Widgets → Oreamnos',
-      );
-    }
-    return Column(
-      children: [
-        for (final widget in _widgets)
-          SettingsTile(
-            leadingIcon: widget.icon,
-            title: widget.title,
-            subtitle: widget.purpose,
-            trailing: Icon(
-              Icons.add_circle_outline_rounded,
-              size: 20,
-              color: Theme.of(context).colorScheme.primary,
-            ),
-            onTap: () => _pin(widget.provider),
-          ),
-      ],
-    );
-  }
-}
-
-class _WidgetSpec {
-  const _WidgetSpec({
-    required this.provider,
-    required this.title,
-    required this.purpose,
-    required this.icon,
-  });
-
-  final String provider;
-  final String title;
-  final String purpose;
-  final IconData icon;
 }
 
 /// About-tile that runs a manual GitHub release lookup.
