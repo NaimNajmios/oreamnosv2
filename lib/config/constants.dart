@@ -4,6 +4,11 @@ abstract final class AppConstants {
   static const String appName = 'Oreamnos';
   static const String appDescription = 'AI Assisted Social Media Curator';
 
+  /// Privacy policy / terms of service URLs for Settings → Legal. Empty
+  /// until the team publishes them; the tiles show a "not set" subtitle.
+  static const String privacyPolicyUrl = '';
+  static const String termsOfServiceUrl = '';
+
   // === AI Provider API URLs ===
   static const String geminiBaseUrl =
       'https://generativelanguage.googleapis.com/v1beta/models';
@@ -148,6 +153,13 @@ abstract final class AppConstants {
   static const String keyLastUppercaseTitle = 'last_uppercase_title';
   static const String keyUsageRangeDays = 'usage_range_days';
   static const String keyUsageProviderFilter = 'usage_provider_filter';
+
+  /// Adjustable `UsageService` history ring size (Google-era parity era was
+  /// 50; the app keeps a richer history now).
+  static const String keyUsageLogMaxSize = 'usage_log_max_size';
+  static const int usageLogDefaultMaxSize = 500;
+  static const int usageLogMinSize = 50;
+  static const int usageLogMaxSize = 2000;
 
   // === Home-screen widget ===
   // Default off: the home screen is a shared surface and the caption is the

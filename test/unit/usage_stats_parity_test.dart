@@ -24,13 +24,10 @@ void main() {
       final svc = UsageService(prefs);
 
       expect(svc.getSuccessRateByProvider('gemini'), 0.0);
-      expect(svc.getAverageResponseTimeByProvider('gemini'), 0.0);
-      expect(svc.getFastestResponseTimeByProvider('gemini'), isNull);
-      expect(svc.getSlowestResponseTimeByProvider('gemini'), isNull);
       expect(svc.getAllSuccessRates(), isEmpty);
     });
 
-    test('average/fastest/slowest per provider', () async {
+    test('success rates track per-provider attempt mix', () async {
       SharedPreferences.setMockInitialValues({});
       final prefs = await SharedPreferences.getInstance();
       final svc = UsageService(prefs);
@@ -40,11 +37,27 @@ void main() {
       await svc.logUsage(_log('groq', 50, true));
 
       expect(svc.getSuccessRateByProvider('gemini'), 50.0);
-      expect(svc.getAverageResponseTimeByProvider('gemini'), 200.0);
-      expect(svc.getFastestResponseTimeByProvider('gemini'), 100);
-      expect(svc.getSlowestResponseTimeByProvider('gemini'), 300);
-      expect(svc.getAverageResponseTimeByProvider('groq'), 50.0);
       expect(svc.getAllSuccessRates()['groq'], 100.0);
+      expect(svc.getAllSuccessRates()['cerebras'], isNull);
+    });
+
+    test('median/P95 track provider latencies', () async {
+      SharedPreferences.setMockInitialValues({});
+      final prefs = await SharedPreferences.getInstance();
+      final svc = UsageService(prefs);
+
+      await svc.logUsage(_log('gemini', 100, true));
+      await svc.logUsage(_log('gemini', 300, true));
+      await svc.logUsage(_log('gemini', 200, true));
+      await svc.logUsage(_log('groq', 150, true));
+
+      expect(svc.getMedianResponseTimeByProvider('gemini'), closeTo(200, 0.01));
+      expect(svc.getMedianResponseTimeByProvider('groq'), 150);
+      final p95 = svc.getP95ResponseTimeByProvider('gemini')!;
+      expect(p95, greaterThanOrEqualTo(200));
+      expect(p95, lessThanOrEqualTo(300));
+      expect(svc.getMedianResponseTimeByProvider('cerebras'), isNull);
+      expect(svc.getP95ResponseTimeByProvider('cerebras'), isNull);
     });
   });
 }

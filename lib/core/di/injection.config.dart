@@ -51,7 +51,6 @@ import '../network/api_client.dart' as _i557;
 import '../repositories/card_repository.dart' as _i83;
 import '../repositories/content_repository.dart' as _i739;
 import '../repositories/settings_repository.dart' as _i2;
-import '../repositories/usage_repository.dart' as _i671;
 import 'register_module.dart' as _i291;
 
 extension GetItInjectableX on _i174.GetIt {
@@ -89,20 +88,11 @@ extension GetItInjectableX on _i174.GetIt {
         secureStorage: gh<_i558.FlutterSecureStorage>(),
       ),
     );
-    gh.lazySingleton<_i1062.UsageService>(
-      () => _i1062.UsageService(
-        gh<_i460.SharedPreferences>(),
-        gh<_i267.DailyUsageService>(),
-      ),
-    );
     gh.lazySingleton<_i727.FacebookReminderService>(
       () => _i727.FacebookReminderService(
         gh<_i460.SharedPreferences>(),
         gh<_i727.FacebookReminderScheduler>(),
       ),
-    );
-    gh.lazySingleton<_i671.IUsageRepository>(
-      () => _i671.UsageRepository(gh<_i1062.UsageService>()),
     );
     gh.lazySingleton<_i2.ISettingsRepository>(
       () => _i2.SettingsRepository(gh<_i867.PreferencesService>()),
@@ -176,6 +166,13 @@ extension GetItInjectableX on _i174.GetIt {
       () => _i9.FacebookPageService(
         gh<_i557.ApiClient>(),
         gh<_i493.FacebookPublisherService>(),
+      ),
+    );
+    gh.lazySingleton<_i1062.UsageService>(
+      () => _i1062.UsageService(
+        gh<_i460.SharedPreferences>(),
+        gh<_i267.DailyUsageService>(),
+        gh<int>(),
       ),
     );
     gh.lazySingleton<_i141.FacebookStorageService>(

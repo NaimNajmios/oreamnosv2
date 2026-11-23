@@ -6,6 +6,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:oreamnos/core/di/injection.dart';
 
+import '../../config/constants.dart';
 import '../../domain/models/usage_log.dart';
 import 'daily_usage_service.dart';
 
@@ -29,25 +30,38 @@ class UsageNotifier extends Notifier<List<UsageLog>> {
   Future<void> logUsage(UsageLog log) => _service.logUsage(log);
   Future<void> clearLogs() => _service.clearLogs();
   Future<void> reload() => _service.reload();
-  double getSuccessRateByProvider(String providerId) =>
-      _service.getSuccessRateByProvider(providerId);
-  Map<String, double> getAllSuccessRates() => _service.getAllSuccessRates();
+  int get maxLogs => _service.maxLogs;
 }
 
 @lazySingleton
 class UsageService {
   static const String _keyLogs = 'usage_logs';
 
-  /// Ring-buffer cap. Exposed so the UI can be honest about truncation.
-  static const int maxLogs = 50;
+  /// Historical default ring size.
+  static const int defaultMaxLogs = AppConstants.usageLogDefaultMaxSize;
+
+  /// Adjusted value range for the user-adjustable history cap.
+  static const int minMaxLogs = AppConstants.usageLogMinSize;
+  static const int maxMaxLogs = AppConstants.usageLogMaxSize;
 
   final SharedPreferences _prefs;
   final DailyUsageService? _dailyUsage;
+  int _maxLogs;
   List<UsageLog> _logs = [];
   final List<void Function(List<UsageLog>)> _listeners = [];
 
-  UsageService(this._prefs, [this._dailyUsage]) {
+  UsageService(this._prefs, [this._dailyUsage, int? maxLogs])
+    : _maxLogs = _resolveMaxLogs(_prefs, maxLogs) {
     _loadLogs();
+  }
+
+  /// Current ring-buffer cap. Read live so pref changes surface via reload().
+  int get maxLogs => _maxLogs;
+
+  static int _resolveMaxLogs(SharedPreferences prefs, int? override) {
+    final v = override ?? prefs.getInt(AppConstants.keyUsageLogMaxSize);
+    if (v == null || v <= 0) return defaultMaxLogs;
+    return v.clamp(minMaxLogs, maxMaxLogs);
   }
 
   void Function() addListener(void Function(List<UsageLog>) listener) {
@@ -65,8 +79,18 @@ class UsageService {
   List<UsageLog> get logs => List.unmodifiable(_logs);
 
   void _loadLogs() {
-    final list = _prefs.getStringList(_keyLogs) ?? [];
-    _logs = list.map((e) => UsageLog.fromJson(jsonDecode(e))).toList();
+    final list = _prefs.getStringList(_keyLogs) ?? const [];
+    final loaded = <UsageLog>[];
+    for (final entry in list) {
+      try {
+        loaded.add(UsageLog.fromJson(jsonDecode(entry)));
+      } catch (_) {
+        // Skip malformed entries instead of crashing the whole ring.
+      }
+    }
+    _logs = loaded.length > _maxLogs
+        ? loaded.sublist(loaded.length - _maxLogs)
+        : loaded;
     _notify();
   }
 
@@ -74,6 +98,7 @@ class UsageService {
     try {
       await _prefs.reload();
     } catch (_) {}
+    _maxLogs = _resolveMaxLogs(_prefs, null);
     _loadLogs();
   }
 
@@ -84,8 +109,8 @@ class UsageService {
       await _dailyUsage?.recordRequest(log.providerId, log.modelName);
     } catch (_) {}
     _logs = List.of(_logs)..insert(0, log);
-    if (_logs.length > maxLogs) {
-      _logs = _logs.sublist(0, maxLogs);
+    if (_logs.length > _maxLogs) {
+      _logs = _logs.sublist(0, _maxLogs);
     }
     await _saveLogs();
     _notify();
@@ -121,32 +146,45 @@ class UsageService {
     return map;
   }
 
-  /// Average response latency in ms for a provider (Android
-  /// `getAverageResponseTimeByProvider` parity). Returns 0 when no logs.
-  double getAverageResponseTimeByProvider(String providerId) {
-    final providerLogs = _logs
-        .where((l) => l.providerId.toLowerCase() == providerId.toLowerCase())
-        .toList();
-    if (providerLogs.isEmpty) return 0.0;
-    final total = providerLogs.fold<int>(0, (sum, l) => sum + l.latencyMs);
-    return total / providerLogs.length;
+  /// Median latency of a provider's logs, or null when the provider has no
+  /// logs. Uses the sorted middle when the count is odd, and the later of
+  /// the two middle values when even (matches common "percentile"
+  /// conventions for display).
+  double? getMedianResponseTimeByProvider(String providerId) {
+    final latencies =
+        _logs
+            .where(
+              (l) => l.providerId.toLowerCase() == providerId.toLowerCase(),
+            )
+            .map((l) => l.latencyMs)
+            .toList()
+          ..sort();
+    if (latencies.isEmpty) return null;
+    final mid = latencies.length ~/ 2;
+    return latencies.length.isOdd
+        ? latencies[mid].toDouble()
+        : (latencies[mid - 1] + latencies[mid]) / 2;
   }
 
-  /// Fastest recorded latency in ms for a provider, or null when no logs.
-  int? getFastestResponseTimeByProvider(String providerId) {
-    final providerLogs = _logs
-        .where((l) => l.providerId.toLowerCase() == providerId.toLowerCase())
-        .toList();
-    if (providerLogs.isEmpty) return null;
-    return providerLogs.map((l) => l.latencyMs).reduce((a, b) => a < b ? a : b);
-  }
-
-  /// Slowest recorded latency in ms for a provider, or null when no logs.
-  int? getSlowestResponseTimeByProvider(String providerId) {
-    final providerLogs = _logs
-        .where((l) => l.providerId.toLowerCase() == providerId.toLowerCase())
-        .toList();
-    if (providerLogs.isEmpty) return null;
-    return providerLogs.map((l) => l.latencyMs).reduce((a, b) => a > b ? a : b);
+  /// Approximate 95th-percentile latency of a provider's logs (linear
+  /// interpolation), or null when the provider has no logs.
+  int? getP95ResponseTimeByProvider(String providerId) {
+    final latencies =
+        _logs
+            .where(
+              (l) => l.providerId.toLowerCase() == providerId.toLowerCase(),
+            )
+            .map((l) => l.latencyMs)
+            .toList()
+          ..sort();
+    if (latencies.isEmpty) return null;
+    if (latencies.length == 1) return latencies.first;
+    final rank = 0.95 * (latencies.length - 1);
+    final lower = rank.floor();
+    final upper = rank.ceil();
+    if (lower == upper) return latencies[lower];
+    final weight = rank - lower;
+    return (latencies[lower] * (1 - weight) + latencies[upper] * weight)
+        .round();
   }
 }

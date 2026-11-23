@@ -1,5 +1,8 @@
+import 'dart:convert';
+
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:oreamnos/config/constants.dart';
 import 'package:oreamnos/data/services/usage_service.dart';
 import 'package:oreamnos/domain/models/usage_log.dart';
 
@@ -50,8 +53,8 @@ void main() {
       expect(usageService.logs.last.id, '1');
     });
 
-    test('logUsage caps at 50 logs', () async {
-      for (int i = 0; i < 55; i++) {
+    test('logUsage caps at UsageService.defaultMaxLogs (500) logs', () async {
+      for (int i = 0; i < 505; i++) {
         await usageService.logUsage(
           UsageLog(
             id: 'log_$i',
@@ -64,9 +67,53 @@ void main() {
         );
       }
 
-      expect(usageService.logs.length, 50);
-      expect(usageService.logs.first.id, 'log_54');
+      expect(usageService.logs.length, 500);
+      expect(usageService.logs.first.id, 'log_504');
       expect(usageService.logs.last.id, 'log_5');
+    });
+
+    test(
+      'maxLogs is user-adjustable via the usage_log_max_size pref',
+      () async {
+        await prefs.setInt(AppConstants.keyUsageLogMaxSize, 75);
+        final svc = UsageService(prefs);
+        expect(svc.maxLogs, 75);
+
+        // reload() re-reads the ring size from prefs.
+        await prefs.setInt(AppConstants.keyUsageLogMaxSize, 120);
+        await svc.reload();
+        expect(svc.maxLogs, 120);
+      },
+    );
+
+    test('out-of-range usage_log_max_size pref is clamped', () async {
+      // Below the minimum clamps to minMaxLogs.
+      await prefs.setInt(AppConstants.keyUsageLogMaxSize, 1);
+      expect(UsageService(prefs).maxLogs, UsageService.minMaxLogs);
+      // Above the maximum clamps to maxMaxLogs.
+      await prefs.setInt(AppConstants.keyUsageLogMaxSize, 99999);
+      expect(UsageService(prefs).maxLogs, UsageService.maxMaxLogs);
+      // Non-positive falls back to the default.
+      await prefs.setInt(AppConstants.keyUsageLogMaxSize, 0);
+      expect(UsageService(prefs).maxLogs, UsageService.defaultMaxLogs);
+    });
+
+    test('_loadLogs skips malformed entries instead of crashing', () async {
+      final good = UsageLog(
+        id: 'ok',
+        timestamp: DateTime.now(),
+        providerId: 'gemini',
+        isSuccess: true,
+        latencyMs: 5,
+        estimatedTokens: 1,
+      );
+      await prefs.setStringList('usage_logs', [
+        'not json',
+        jsonEncode(good.toJson()),
+        '{"id": "broken"}',
+      ]);
+      final svc = UsageService(prefs);
+      expect(svc.logs.single.id, 'ok');
     });
 
     test('clearLogs removes all logs from memory and storage', () async {

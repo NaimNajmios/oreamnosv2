@@ -28,11 +28,15 @@ class TokenUsageSideChannel {
     lastProvider = provider;
   }
 
-  int? consumeTotal() {
-    final v = lastTotalTokens;
-    // Clear after consume to avoid stale reuse
+  /// Returns the latest captured usage snapshot and clears it. The record
+  /// fields are all null when no response supplied a usage payload.
+  ({int? total, int? prompt, int? completion})? consume() {
+    final prompt = lastPromptTokens;
+    final completion = lastCompletionTokens;
+    final total = lastTotalTokens;
+    if (total == null && prompt == null && completion == null) return null;
     clear();
-    return v;
+    return (total: total, prompt: prompt, completion: completion);
   }
 
   void clear() {

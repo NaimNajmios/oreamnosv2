@@ -1,7 +1,11 @@
+import 'dart:io';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
+import 'package:path_provider/path_provider.dart';
+import 'package:share_plus/share_plus.dart';
 
 import '../../../../config/routes/app_router.dart';
 
@@ -10,8 +14,10 @@ import '../../../../config/theme/app_motion.dart';
 import '../../../../config/theme/app_spacing.dart';
 import '../../../../config/theme/app_typography.dart';
 import '../../../core/widgets/staggered_entrance.dart';
+import '../../../../data/services/usage_export_formatter.dart';
 import '../../../../data/services/usage_service.dart';
 import '../../../../data/services/daily_usage_service.dart';
+import '../../../../data/services/preferences_service.dart';
 import '../../../../data/models/ai_provider.dart';
 import '../../../../domain/models/usage_log.dart';
 import '../../../../core/di/injection.dart';
@@ -22,6 +28,7 @@ import '../../../core/widgets/empty_state.dart';
 import '../../../core/widgets/section_header.dart';
 import '../../../core/widgets/stat_card.dart';
 import '../../../core/widgets/app_chip.dart';
+import '../../../core/widgets/segmented_pill_toggle.dart';
 import '../view_models/usage_analytics.dart';
 import '../view_models/usage_filter_view_model.dart';
 import 'widgets/provider_charts.dart';
@@ -41,12 +48,14 @@ class _UsageScreenState extends ConsumerState<UsageScreen> {
   bool _showTokenTable = false;
   bool _showSuccessTable = false;
   bool _showLatencyTable = false;
+  String? _bannerDismissedKey;
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final logsAll = ref.watch(usageNotifierProvider);
+    final usageNotifier = ref.watch(usageNotifierProvider.notifier);
     final filter = ref.watch(usageFilterProvider);
     final filterNotifier = ref.read(usageFilterProvider.notifier);
     final analytics = UsageAnalytics.from(
@@ -57,7 +66,7 @@ class _UsageScreenState extends ConsumerState<UsageScreen> {
     final logs = analytics.logs;
     final rangeLabel = analytics.rangeLabel;
     final truncated =
-        filter.rangeDays != 0 && logsAll.length >= UsageService.maxLogs;
+        filter.rangeDays != 0 && logsAll.length >= usageNotifier.maxLogs;
 
     // Daily RPD budget (device-local estimate; refreshes with usage logs).
     DailyUsageService? dailyUsage;
@@ -68,6 +77,23 @@ class _UsageScreenState extends ConsumerState<UsageScreen> {
     } catch (_) {
       dailyUsage = null;
     }
+
+    // Budget warning banner: exhausted first, then warning. Dismissible per
+    // (model, Pacific day) — re-appears tomorrow or when usage climbs again.
+    DailyQuota? bannerQuota;
+    final geminiQuota = dailyUsage?.todayGeminiQuota() ?? const [];
+    if (_bannerDismissedKey != _todayKey() && geminiQuota.isNotEmpty) {
+      bannerQuota = geminiQuota.firstWhere(
+        (q) => q.isExhausted,
+        orElse: () => geminiQuota.firstWhere(
+          (q) => q.isWarning,
+          orElse: () =>
+              const DailyQuota(modelId: '', requestsToday: 0, budget: 0),
+        ),
+      );
+      if (bannerQuota.modelId.isEmpty) bannerQuota = null;
+    }
+    final historyOptions = _historySizeOptions(usageNotifier.maxLogs);
 
     final totalTokens = analytics.totalTokens;
     final successCount = analytics.successCount;
@@ -128,6 +154,13 @@ class _UsageScreenState extends ConsumerState<UsageScreen> {
         ),
         actions: [
           IconButton(
+            icon: const Icon(Icons.ios_share_rounded),
+            tooltip: 'Export History',
+            onPressed: logsAll.isEmpty
+                ? null
+                : () => _exportDialog(context, analytics),
+          ),
+          IconButton(
             icon: const Icon(Icons.history_rounded),
             tooltip: 'Session History',
             onPressed: () => context.push(RoutePaths.sessionHistory),
@@ -168,6 +201,18 @@ class _UsageScreenState extends ConsumerState<UsageScreen> {
                       vertical: AppSpacing.base,
                     ),
                     children: [
+                      // Budget warning banner when the Gemini free tier is
+                      // nearing (or at) its daily window.
+                      if (bannerQuota != null) ...[
+                        _UsageBudgetBanner(
+                          quota: bannerQuota,
+                          onDismiss: () {
+                            setState(() => _bannerDismissedKey = _todayKey());
+                            Haptics.lightImpact();
+                          },
+                        ),
+                        const SizedBox(height: AppSpacing.base),
+                      ],
                       // 3 Metric StatCards — responsive, no truncation
                       LayoutBuilder(
                         builder: (context, constraints) {
@@ -293,6 +338,13 @@ class _UsageScreenState extends ConsumerState<UsageScreen> {
                       ),
                       const SizedBox(height: AppSpacing.base),
 
+                      // BY MODEL — per-model requests/tokens/latency summary
+                      AppCard(
+                        padding: const EdgeInsets.all(AppSpacing.base),
+                        child: ModelBreakdownTable(logs: logs),
+                      ),
+                      const SizedBox(height: AppSpacing.base),
+
                       // DAILY QUOTA — Gemini estimated free-tier budget
                       if (dailyUsage != null &&
                           dailyUsage.hasGeminiActivityToday()) ...[
@@ -352,11 +404,37 @@ class _UsageScreenState extends ConsumerState<UsageScreen> {
                                 ),
                               ],
                             ),
+                            const SizedBox(height: AppSpacing.xs),
+                            SingleChildScrollView(
+                              scrollDirection: Axis.horizontal,
+                              child: Row(
+                                children: [
+                                  SizedBox(
+                                    width: 74,
+                                    child: Text(
+                                      'History',
+                                      style: theme.textTheme.labelSmall
+                                          ?.copyWith(
+                                            color: theme.colorScheme.onSurface
+                                                .withValues(alpha: 0.6),
+                                          ),
+                                    ),
+                                  ),
+                                  SegmentedPillToggle<int>(
+                                    items: historyOptions,
+                                    selectedItem: usageNotifier.maxLogs,
+                                    itemLabelBuilder: (v) => v.toString(),
+                                    onChanged: _setHistorySize,
+                                  ),
+                                ],
+                              ),
+                            ),
+                            const SizedBox(height: AppSpacing.xs),
                             if (truncated) ...[
                               const SizedBox(height: AppSpacing.xs),
                               Text(
                                 'Showing the most recent '
-                                '${UsageService.maxLogs} requests',
+                                '${usageNotifier.maxLogs} requests',
                                 style: theme.textTheme.labelSmall?.copyWith(
                                   color: theme.colorScheme.onSurfaceVariant,
                                 ),
@@ -888,6 +966,141 @@ class _UsageScreenState extends ConsumerState<UsageScreen> {
         }
       } catch (_) {}
     }
+  }
+
+  static const List<int> _baseHistorySizes = [50, 100, 200, 500, 1000, 2000];
+
+  List<int> _historySizeOptions(int current) {
+    if (_baseHistorySizes.contains(current)) return _baseHistorySizes;
+    return [..._baseHistorySizes, current]..sort();
+  }
+
+  static String _todayKey() => DailyUsageService.pacificDayKey(DateTime.now());
+
+  /// Persist the adjustable history ring size and re-read the logs.
+  Future<void> _setHistorySize(int size) async {
+    if (size < UsageService.minMaxLogs || size > UsageService.maxMaxLogs) {
+      return;
+    }
+    await getIt<PreferencesService>().setUsageLogMaxSize(size);
+    Haptics.lightImpact();
+    await ref.read(usageNotifierProvider.notifier).reload();
+  }
+
+  Future<void> _exportDialog(
+    BuildContext context,
+    UsageAnalytics analytics,
+  ) async {
+    final choice = await showDialog<String>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Export Usage'),
+        content: const Text(
+          'Export the filtered usage history as CSV or JSON.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop('csv'),
+            child: const Text('CSV'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.of(ctx).pop('json'),
+            child: const Text('JSON'),
+          ),
+        ],
+      ),
+    );
+    if (choice == null) return;
+    final logs = analytics.logs;
+    if (logs.isEmpty) return;
+    final content = choice == 'json'
+        ? UsageExportFormatter.json(
+            logs,
+            rangeLabel: analytics.rangeLabel,
+            providerFilter: analytics.providerFilter,
+          )
+        : UsageExportFormatter.csv(logs);
+    try {
+      final dir = await getTemporaryDirectory();
+      final now = DateTime.now();
+      final stamp =
+          '${now.year.toString().padLeft(4, '0')}'
+          '${now.month.toString().padLeft(2, '0')}'
+          '${now.day.toString().padLeft(2, '0')}';
+      final file = File('${dir.path}/oreamnos_usage_$stamp.$choice');
+      await file.writeAsString(content, flush: true);
+      await SharePlus.instance.share(
+        ShareParams(
+          files: [
+            XFile(
+              file.path,
+              mimeType: choice == 'json' ? 'application/json' : 'text/csv',
+            ),
+          ],
+          subject: 'Oreamnos usage history',
+        ),
+      );
+    } catch (_) {
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text("Couldn't export the history")),
+        );
+      }
+    }
+  }
+}
+
+/// Dismissible banner shown on the Usage tab when the Gemini free-tier
+/// daily budget is at/over the warning threshold.
+class _UsageBudgetBanner extends StatelessWidget {
+  const _UsageBudgetBanner({required this.quota, required this.onDismiss});
+
+  final DailyQuota quota;
+  final VoidCallback onDismiss;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final isExhausted = quota.isExhausted;
+    final color = isExhausted ? AppColors.error : AppColors.warning;
+    return AppCard(
+      padding: const EdgeInsets.all(AppSpacing.base),
+      child: Row(
+        children: [
+          Icon(Icons.gpp_maybe_rounded, color: color, size: 20),
+          const SizedBox(width: AppSpacing.sm),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  isExhausted
+                      ? 'Gemini free-tier budget is full'
+                      : 'Gemini free-tier budget nearing limit',
+                  style: theme.textTheme.titleSmall?.copyWith(
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+                const SizedBox(height: 2),
+                Text(
+                  '${quota.requestsToday} / ${quota.budget} requests today — '
+                  'resets at midnight PT (device-local estimate).',
+                  style: theme.textTheme.bodySmall?.copyWith(
+                    color: theme.colorScheme.onSurface.withValues(alpha: 0.7),
+                    fontSize: 11,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          IconButton(
+            icon: const Icon(Icons.close_rounded, size: 18),
+            color: theme.colorScheme.onSurface.withValues(alpha: 0.6),
+            onPressed: onDismiss,
+          ),
+        ],
+      ),
+    );
   }
 }
 

@@ -214,6 +214,9 @@ class LogService implements ILogService {
             );
           } catch (_) {}
         }
+        if (_logs.length > _maxLogs) {
+          _logs.removeRange(0, _logs.length - _maxLogs);
+        }
         _scheduleThrottledNotify();
       }
     } catch (_) {}
@@ -224,7 +227,7 @@ class LogService implements ILogService {
     _persistTimer = Timer(const Duration(milliseconds: 500), () async {
       try {
         final list = _logs
-            .take(100)
+            .take(_maxLogs)
             .map((e) => jsonEncode(e.toJson()))
             .toList();
         await _prefs.setStringList(_keyLogs, list);
@@ -270,7 +273,7 @@ class LogService implements ILogService {
     _persistTimer?.cancel();
     _prefs.setStringList(
       _keyLogs,
-      _logs.take(100).map((e) => jsonEncode(e.toJson())).toList(),
+      _logs.take(_maxLogs).map((e) => jsonEncode(e.toJson())).toList(),
     );
     _scheduleThrottledNotify();
   }

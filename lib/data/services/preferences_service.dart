@@ -11,6 +11,7 @@ import '../../domain/models/hashtag_group.dart';
 import '../../domain/models/vision_mode.dart';
 import '../models/ai_provider.dart';
 import 'facebook_publisher_service.dart';
+import 'usage_service.dart';
 
 /// Thrown when the platform secure store rejects a credential write even
 /// after a single retry. Callers should surface this instead of claiming the
@@ -411,6 +412,25 @@ class PreferencesService {
     return _prefs.setString(AppConstants.keyUsageProviderFilter, safe);
   }
 
+  /// User-adjustable `UsageService` ring size; clamped to the valid range
+  /// so a corrupted pref falls back to the default instead of lying.
+  int get usageLogMaxSize {
+    final value = _prefs.getInt(AppConstants.keyUsageLogMaxSize);
+    if (value == null ||
+        value < UsageService.minMaxLogs ||
+        value > UsageService.maxMaxLogs) {
+      return UsageService.defaultMaxLogs;
+    }
+    return value;
+  }
+
+  Future<bool> setUsageLogMaxSize(int size) {
+    final safe = size
+        .clamp(UsageService.minMaxLogs, UsageService.maxMaxLogs)
+        .toInt();
+    return _prefs.setInt(AppConstants.keyUsageLogMaxSize, safe);
+  }
+
   DateTime? _readMillis(String key) {
     final value = _prefs.getInt(key);
     if (value == null) return null;
@@ -684,5 +704,57 @@ class PreferencesService {
 
   Future<bool> clearUpdateSkippedTag() {
     return _prefs.remove(AppConstants.keyUpdateSkippedTag);
+  }
+
+  // === Settings snapshot (export/import) ===
+
+  /// Snapshot of every shared preference, suitable for [jsonEncode].
+  /// Secure-storage API keys are not included — they live in the credential
+  /// store.
+  Future<Map<String, Object?>> exportSettings() async {
+    final map = <String, Object?>{};
+    for (final key in _prefs.getKeys()) {
+      final value = _prefs.get(key);
+      if (value != null) map[key] = value;
+    }
+    return map;
+  }
+
+  /// Applies an exported snapshot (see [exportSettings]) through the typed
+  /// setters. Keys with missing or wrongly-typed values are skipped.
+  Future<void> importSettings(Map<String, Object?> exported) async {
+    final themeName = exported[AppConstants.keyThemeMode];
+    if (themeName is String) {
+      final mode = AppThemeMode.values
+          .where((m) => m.name == themeName)
+          .firstOrNull;
+      if (mode != null) await setThemeMode(mode);
+    }
+    final tone = exported[AppConstants.keyToneMode];
+    if (tone is String) await setToneMode(tone);
+    final vision = exported['vision_mode'];
+    if (vision is String) await setVisionMode(VisionMode.fromString(vision));
+    final readingSize = exported[AppConstants.keyReadingTextSize];
+    if (readingSize is num) {
+      await setReadingTextSize(readingSize.toDouble());
+    }
+    final persist = exported[AppConstants.keyPersistGenerationOptions];
+    if (persist is bool) await setPersistGenerationOptions(persist);
+    final showSnippet = exported[AppConstants.keyShowWidgetSnippet];
+    if (showSnippet is bool) await setShowWidgetSnippet(showSnippet);
+    final autoAppend = exported[AppConstants.keyAutoAppendHashtags];
+    if (autoAppend is bool) {
+      await setAutoAppendHashtags(enabled: autoAppend);
+    }
+    final fanMode = exported['is_fan_mode_enabled'];
+    if (fanMode is bool) await setFanModeEnabled(fanMode);
+    final fanName = exported['fan_club_name'];
+    if (fanName is String) await setFanClubName(fanName);
+    final rangeDays = exported[AppConstants.keyUsageRangeDays];
+    if (rangeDays is int) await setUsageRangeDays(rangeDays);
+    final providerFilter = exported[AppConstants.keyUsageProviderFilter];
+    if (providerFilter is String) {
+      await setUsageProviderFilter(providerFilter);
+    }
   }
 }

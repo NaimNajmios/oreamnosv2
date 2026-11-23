@@ -374,6 +374,11 @@ class _DebugLogScreenState extends ConsumerState<DebugLogScreen> {
                               ],
                             ),
                           ),
+                          if (allLogs.isNotEmpty) ...[
+                            const SizedBox(height: AppSpacing.xs),
+                            _LevelCountSummary(logs: allLogs),
+                            const SizedBox(height: AppSpacing.xs),
+                          ],
                           if (tags.isNotEmpty) ...[
                             const SizedBox(height: AppSpacing.xs),
                             SingleChildScrollView(
@@ -549,6 +554,35 @@ class _DebugLogScreenState extends ConsumerState<DebugLogScreen> {
                 ),
               ),
             ),
+    );
+  }
+}
+
+/// Small level-frequency summary shown under the level chips
+/// ("INFO 3 · WARN 1 · ERROR 2").
+class _LevelCountSummary extends StatelessWidget {
+  const _LevelCountSummary({required this.logs});
+
+  final List<LogEntry> logs;
+
+  @override
+  Widget build(BuildContext context) {
+    final counts = <String, int>{};
+    for (final log in logs) {
+      final level = log.level.toUpperCase();
+      counts[level] = (counts[level] ?? 0) + 1;
+    }
+    if (counts.isEmpty) return const SizedBox.shrink();
+    final text = counts.entries.map((e) => '${e.key} ${e.value}').join(' · ');
+    return Align(
+      alignment: Alignment.centerLeft,
+      child: Text(
+        text,
+        style: AppTypography.mono(
+          fontSize: 10,
+          color: Theme.of(context).colorScheme.onSurfaceVariant,
+        ),
+      ),
     );
   }
 }

@@ -788,15 +788,18 @@ class GenerateViewModel extends Notifier<GenerateUiState>
       if (repoResult is ResultError<CuratedPost>) {
         final failure = repoResult.failure;
         stopwatch.stop();
+        final requestId = const Uuid().v4();
         _usageService.logUsage(
           UsageLog(
-            id: const Uuid().v4(),
+            id: requestId,
             timestamp: DateTime.now(),
             providerId: provider.name,
             modelName: modelId,
             latencyMs: stopwatch.elapsedMilliseconds,
             estimatedTokens: 0,
             isSuccess: false,
+            requestId: requestId,
+            error: _errorText(failure),
           ),
         );
         getIt<LogService>().error(
@@ -929,25 +932,26 @@ class GenerateViewModel extends Notifier<GenerateUiState>
       }
 
       stopwatch.stop();
+      final requestId = const Uuid().v4();
       int estimatedTokens = ((input.length + (curated.rawMarkdown.length)) / 4)
           .round();
       // Side-channel: use real total_tokens if captured
-      try {
-        if (getIt.isRegistered<TokenUsageSideChannel>()) {
-          final side = getIt<TokenUsageSideChannel>();
-          final real = side.consumeTotal();
-          if (real != null && real > 0) estimatedTokens = real;
-        }
-      } catch (_) {}
+      final tokenSnapshot = _consumeSideChannelTokens();
+      if (tokenSnapshot.total != null && tokenSnapshot.total! > 0) {
+        estimatedTokens = tokenSnapshot.total!;
+      }
       _usageService.logUsage(
         UsageLog(
-          id: const Uuid().v4(),
+          id: requestId,
           timestamp: DateTime.now(),
           providerId: provider.name,
           modelName: modelId,
           latencyMs: stopwatch.elapsedMilliseconds,
           estimatedTokens: estimatedTokens,
           isSuccess: true,
+          requestId: requestId,
+          promptTokens: tokenSnapshot.prompt,
+          completionTokens: tokenSnapshot.completion,
         ),
       );
 
@@ -974,15 +978,18 @@ class GenerateViewModel extends Notifier<GenerateUiState>
       if (sessionId != _generationSessionId) return;
       // Only for non-API failures (Twitter, scrape, timeout before repo call)
       stopwatch.stop();
+      final requestId = const Uuid().v4();
       _usageService.logUsage(
         UsageLog(
-          id: const Uuid().v4(),
+          id: requestId,
           timestamp: DateTime.now(),
           providerId: provider.name,
           modelName: ref.read(settingsViewModelProvider).selectedModel,
           latencyMs: stopwatch.elapsedMilliseconds,
           estimatedTokens: 0,
           isSuccess: false,
+          requestId: requestId,
+          error: _errorText(e),
         ),
       );
 
@@ -1200,6 +1207,7 @@ class GenerateViewModel extends Notifier<GenerateUiState>
       });
 
       stopwatch.stop();
+      final requestId = const Uuid().v4();
       final combinedLength = instructions.fold<int>(
         0,
         (sum, i) => sum + i.length,
@@ -1210,21 +1218,22 @@ class GenerateViewModel extends Notifier<GenerateUiState>
                       (merged.rawMarkdown.length)) /
                   4)
               .round();
-      try {
-        if (getIt.isRegistered<TokenUsageSideChannel>()) {
-          final real = getIt<TokenUsageSideChannel>().consumeTotal();
-          if (real != null && real > 0) estimatedTokens = real;
-        }
-      } catch (_) {}
+      final tokenSnapshot = _consumeSideChannelTokens();
+      if (tokenSnapshot.total != null && tokenSnapshot.total! > 0) {
+        estimatedTokens = tokenSnapshot.total!;
+      }
       _usageService.logUsage(
         UsageLog(
-          id: const Uuid().v4(),
+          id: requestId,
           timestamp: DateTime.now(),
           providerId: provider.name,
           modelName: modelId,
           latencyMs: stopwatch.elapsedMilliseconds,
           estimatedTokens: estimatedTokens,
           isSuccess: true,
+          requestId: requestId,
+          promptTokens: tokenSnapshot.prompt,
+          completionTokens: tokenSnapshot.completion,
         ),
       );
 
@@ -1251,15 +1260,18 @@ class GenerateViewModel extends Notifier<GenerateUiState>
     } catch (e, st) {
       if (sessionId != _generationSessionId) return;
       stopwatch.stop();
+      final requestId = const Uuid().v4();
       _usageService.logUsage(
         UsageLog(
-          id: const Uuid().v4(),
+          id: requestId,
           timestamp: DateTime.now(),
           providerId: provider.name,
           modelName: modelId,
           latencyMs: stopwatch.elapsedMilliseconds,
           estimatedTokens: 0,
           isSuccess: false,
+          requestId: requestId,
+          error: _errorText(e),
         ),
       );
 
@@ -1522,7 +1534,14 @@ class GenerateViewModel extends Notifier<GenerateUiState>
     if (sessionId != _generationSessionId) return;
     stopwatch.stop();
     if (text.trim().isEmpty) {
-      _logVisionUsage(stopwatch, false, 0);
+      _logVisionUsage(
+        stopwatch,
+        false,
+        0,
+        error:
+            'No readable text found in this image. '
+            'Try a clearer screenshot.',
+      );
       state = state.copyWith(
         errorMessage:
             'No readable text found in this image. Try a clearer screenshot.',
@@ -1541,7 +1560,12 @@ class GenerateViewModel extends Notifier<GenerateUiState>
     await generatePost(text);
   }
 
-  void _logVisionUsage(Stopwatch stopwatch, bool success, int chars) {
+  void _logVisionUsage(
+    Stopwatch stopwatch,
+    bool success,
+    int chars, {
+    String? error,
+  }) {
     try {
       _usageService.logUsage(
         UsageLog(
@@ -1552,9 +1576,30 @@ class GenerateViewModel extends Notifier<GenerateUiState>
           latencyMs: stopwatch.elapsedMilliseconds,
           estimatedTokens: (chars / 4).round(),
           isSuccess: success,
+          error: error,
         ),
       );
     } catch (_) {}
+  }
+
+  /// Consumes the side channel and returns real token counts when present.
+  ({int? total, int? prompt, int? completion}) _consumeSideChannelTokens() {
+    try {
+      if (getIt.isRegistered<TokenUsageSideChannel>()) {
+        return getIt<TokenUsageSideChannel>().consume() ??
+            (total: null, prompt: null, completion: null);
+      }
+    } catch (_) {}
+    return (total: null, prompt: null, completion: null);
+  }
+
+  /// Short single-line description of a failure for [UsageLog.error].
+  static String? _errorText(Object? error) {
+    if (error == null) return null;
+    final raw = error is Failure ? error.message : error.toString();
+    final text = raw.replaceAll('\n', ' ').trim();
+    if (text.isEmpty) return null;
+    return text.length > 200 ? '${text.substring(0, 197)}...' : text;
   }
 }
 

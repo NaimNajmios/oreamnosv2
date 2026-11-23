@@ -29,9 +29,6 @@ class UsageAnalytics {
 
   String get rangeLabel => isAllTime ? 'all time' : 'the last $rangeDays days';
 
-  List<UsageLog> get successes =>
-      logs.where((log) => log.isSuccess).toList(growable: false);
-
   factory UsageAnalytics.from(
     List<UsageLog> all, {
     required int rangeDays,

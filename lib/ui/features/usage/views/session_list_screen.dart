@@ -190,7 +190,7 @@ class _SessionListScreenState extends ConsumerState<SessionListScreen> {
                                         child: Text(
                                           isSuccess
                                               ? '${log.estimatedTokens} tokens'
-                                              : 'Failed',
+                                              : (log.error ?? 'Failed'),
                                           style: AppTypography.mono(
                                             fontSize: 11,
                                             fontWeight: FontWeight.w700,
