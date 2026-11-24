@@ -123,6 +123,7 @@ public class OreamnosQuotaWidgetProvider extends BaseOreamnosWidget {
                 strokeDp,
                 compactChrome,
                 strip,
+                shape != Shape.STRIP && shape != Shape.SQUARE,
                 R.id.quota_a_name,
                 R.id.quota_a_ringbox,
                 R.id.quota_a_ring,
@@ -147,12 +148,33 @@ public class OreamnosQuotaWidgetProvider extends BaseOreamnosWidget {
                     strokeDp,
                     compactChrome,
                     strip,
+                    shape != Shape.STRIP && shape != Shape.SQUARE,
                     R.id.quota_b_name,
                     R.id.quota_b_ringbox,
                     R.id.quota_b_ring,
                     R.id.quota_b_pct,
                     R.id.quota_b_value,
                     R.id.quota_b_meta);
+        }
+
+        // The payload can carry four providers; the third one gets a quiet
+        // count line in the shapes that have room, using no new data.
+        Quota third = null;
+        for (Quota candidate : quotas.values()) {
+            if (candidate.providerId.equals(primaryId)
+                    || candidate.providerId.equals(secondaryId)) {
+                continue;
+            }
+            third = candidate;
+            break;
+        }
+        boolean showThird = third != null && (shape == Shape.CARD || shape == Shape.EXPANDED);
+        views.setViewVisibility(R.id.quota_c_meta, showThird ? View.VISIBLE : View.GONE);
+        if (showThird) {
+            views.setTextViewText(
+                    R.id.quota_c_meta,
+                    third.name.toUpperCase(Locale.ROOT) + " · " + third.used + " today");
+            views.setTextColor(R.id.quota_c_meta, theme.muted);
         }
 
         boolean showWindow = shape == Shape.CARD || shape == Shape.EXPANDED;
@@ -194,6 +216,7 @@ public class OreamnosQuotaWidgetProvider extends BaseOreamnosWidget {
             int strokeDp,
             boolean compactChrome,
             boolean strip,
+            boolean showMeta,
             int nameId,
             int ringBoxId,
             int ringId,
@@ -260,20 +283,35 @@ public class OreamnosQuotaWidgetProvider extends BaseOreamnosWidget {
             if (strip && hasBudget) {
                 valueText = quota.used + " / " + quota.budget + " · " + quota.percent + "%";
             } else if (hasBudget) {
-                valueText = quota.used + " / " + quota.budget;
+                valueText =
+                        quota.used
+                                + " / "
+                                + quota.budget
+                                + " · "
+                                + Math.max(0, quota.budget - quota.used)
+                                + " left";
             } else {
                 valueText = quota.used + " today";
             }
             views.setTextViewText(valueId, valueText);
         }
 
-        String meta = compactChrome || strip ? "" : (hasBudget
-                ? (quota.resetAt > 0
-                        ? "resets "
-                                + durationLabel(quota.resetAt - System.currentTimeMillis())
-                                + (quota.average > 0 ? " · avg " + quota.average + "/day" : "")
-                        : "")
-                : "no daily limit");
+        // A banner has room for the cached reset/average; a square does not.
+        // Unbudgeted providers still say so rather than implying a fake limit.
+        String meta =
+                !showMeta || (!hasBudget && compactChrome)
+                        ? ""
+                        : (hasBudget
+                                ? (quota.resetAt > 0
+                                        ? "resets "
+                                                + durationLabel(
+                                                        quota.resetAt
+                                                                - System.currentTimeMillis())
+                                                + (quota.average > 0
+                                                        ? " · avg " + quota.average + "/day"
+                                                        : "")
+                                        : "")
+                                : "no daily limit");
         views.setTextViewText(metaId, meta);
         views.setViewVisibility(metaId, meta.isEmpty() ? View.GONE : View.VISIBLE);
     }

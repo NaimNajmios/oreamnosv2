@@ -37,6 +37,7 @@ class HomeWidgetSnapshotBuilder {
     String fallbackProvider = 'groq',
     List<HomeWidgetPage> pages = const [],
     String draftTitle = '',
+    List<String> draftTitles = const [],
     DateTime? draftUpdatedAt,
     bool showSnippet = false,
     double warnFraction = 0.8,
@@ -80,6 +81,8 @@ class HomeWidgetSnapshotBuilder {
       lastPostReactions: lastPost?.reactions,
       lastPostComments: lastPost?.comments,
       lastPostShares: lastPost?.shares,
+      lastPostImpressions: lastPost?.impressions,
+      lastPostUniqueViewers: lastPost?.uniqueViewers,
       lastPostAt: lastPost?.timestamp,
       weekReactions: week.reactions,
       weekComments: week.comments,
@@ -91,8 +94,13 @@ class HomeWidgetSnapshotBuilder {
           ? ''
           : _clean(bestSlots.first.detail, max: maxBestSlotDetailChars),
       bestSlotConfident: bestSlots.isNotEmpty && bestSlots.first.confidence,
+      bestSlotNextAt: bestSlots.isEmpty
+          ? null
+          : BestTimeToPost.nextOccurrence(bestSlots.first, now: now),
+      bestSlotSamples: bestSlots.isEmpty ? 0 : bestSlots.first.sampleSize,
       storyFailedCount: records.where((record) => record.storyFailed).length,
       draftTitle: _clean(draftTitle, max: maxDraftChars),
+      draftTitlesJson: _draftTitlesJson(draftTitles),
       draftUpdatedAt: draftUpdatedAt,
       weekPostCount: _publishedThisWeek(records, now),
       pagesJson: _pagesJson(pages, scheduled, showSnippet),
@@ -135,7 +143,9 @@ class HomeWidgetSnapshotBuilder {
       final hasMetrics =
           record.reactions != null ||
           record.comments != null ||
-          record.shares != null;
+          record.shares != null ||
+          record.impressions != null ||
+          record.uniqueViewers != null;
       if (!hasMetrics) continue;
       if (newest == null || record.timestamp.isAfter(newest.timestamp)) {
         newest = record;
@@ -208,6 +218,17 @@ class HomeWidgetSnapshotBuilder {
     }
     final encoded = jsonEncode(entries);
     return encoded.length <= maxPagesJsonChars ? encoded : '[]';
+  }
+
+  /// Two drafts are enough for the widget's continuation line; more would
+  /// crowd a home screen and inflate the payload for no benefit.
+  static String _draftTitlesJson(List<String> titles) {
+    final cleaned = <String>[];
+    for (final title in titles.take(2)) {
+      final value = _clean(title, max: maxDraftChars);
+      if (value.isNotEmpty) cleaned.add(value);
+    }
+    return jsonEncode(cleaned);
   }
 
   static String _clean(String value, {int max = maxSnippetChars}) {

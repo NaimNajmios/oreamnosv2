@@ -203,5 +203,25 @@ void main() {
         expect(state.isFromShare, isFalse);
       },
     );
+
+    test(
+      'cancelGeneration exits the generating flow with a terminal state',
+      () async {
+        mockRepo.queue(const ResultError(NetworkFailure('n1')));
+
+        final vm = container.read(generateViewModelProvider.notifier);
+        await vm.generatePost('plain text news');
+        expect(
+          container.read(generateViewModelProvider).status,
+          GenerateState.error,
+        );
+
+        vm.cancelGeneration();
+        final state = container.read(generateViewModelProvider);
+        expect(state.status, GenerateState.idle);
+        expect(state.errorMessage, 'Generation cancelled.');
+        expect(state.generatingStep, GeneratingStep.idle);
+      },
+    );
   });
 }

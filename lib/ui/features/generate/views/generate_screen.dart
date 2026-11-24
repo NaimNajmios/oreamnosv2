@@ -1031,12 +1031,25 @@ class _GenerateScreenState extends ConsumerState<GenerateScreen> {
       final isScraping =
           viewModel.generatingStep == GeneratingStep.scraping ||
           viewModel.status == GenerateState.researching;
-      return EnhancedLoadingCard(
+      return Column(
         key: const ValueKey('generating'),
-        type: isScraping ? LoadingType.extracting : LoadingType.generating,
-        // Inline hint for intermediate share retries / silent provider
-        // fallbacks (e.g. "Gemini rate-limited — retrying with Groq…").
-        customMessage: viewModel.fallbackNotice,
+        children: [
+          EnhancedLoadingCard(
+            type: isScraping ? LoadingType.extracting : LoadingType.generating,
+            // Inline hint for intermediate share retries / silent provider
+            // fallbacks (e.g. "Gemini rate-limited — retrying with Groq…").
+            customMessage: viewModel.fallbackNotice,
+          ),
+          const SizedBox(height: AppSpacing.md),
+          // Safety valve: cancels the in-flight attempt (token + watchdog) so
+          // the loading card can never strand the user at its progress ceiling.
+          AppOutlinedButton(
+            label: 'Stop',
+            icon: Icons.stop_circle,
+            onPressed: () =>
+                ref.read(generateViewModelProvider.notifier).cancelGeneration(),
+          ),
+        ],
       );
     }
 

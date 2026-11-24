@@ -1286,7 +1286,10 @@ class FacebookDraftNotifier extends Notifier<FacebookComposeState> {
           );
         }
         unawaited(
-          ref.read(facebookInsightsRefresherProvider.notifier).refreshStale(),
+          ref
+              .read(facebookInsightsRefresherProvider.notifier)
+              .refreshStale()
+              .then<void>((_) {}, onError: (_) {}),
         );
       } catch (_) {}
     } on FacebookApiException catch (e) {

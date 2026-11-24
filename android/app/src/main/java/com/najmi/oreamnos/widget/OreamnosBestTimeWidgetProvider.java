@@ -60,9 +60,13 @@ public class OreamnosBestTimeWidgetProvider extends BaseOreamnosWidget {
         boolean stale = isStale(data, now);
         boolean hasSlot = !TextUtils.isEmpty(label);
 
+        long nextAt = readLongOrNone(data, KEY_BEST_SLOT_NEXT_AT);
+        int samples = (int) readLong(data, KEY_BEST_SLOT_SAMPLES);
+
         views.setTextColor(R.id.best_kicker, theme.primary);
         views.setTextColor(R.id.best_detail, theme.muted);
         views.setTextColor(R.id.best_note, theme.muted);
+        views.setTextColor(R.id.best_next, theme.primary);
 
         views.setTextViewText(
                 R.id.best_kicker, shape == Shape.ROW ? "BEST" : "BEST TIME");
@@ -79,17 +83,27 @@ public class OreamnosBestTimeWidgetProvider extends BaseOreamnosWidget {
                     R.id.best_detail, "Publish a few posts to see a pattern");
         }
 
+        // The clock motif: name the next time this window actually occurs,
+        // rather than leaving the user to work it out from a weekday label.
+        boolean showNext = hasSlot && nextAt > 0 && shape != Shape.ROW;
+        views.setViewVisibility(
+                R.id.best_next, showNext ? View.VISIBLE : View.GONE);
+        if (showNext) {
+            views.setTextViewText(R.id.best_next, "Next · " + whenLabel(context, nextAt));
+        }
+
         // A confidence caveat is the difference between a suggestion and a
         // claim; only the expanded size has room to state it.
         boolean showNote = shape == Shape.EXPANDED;
         views.setViewVisibility(
                 R.id.best_note, showNote ? View.VISIBLE : View.GONE);
         if (showNote) {
-            views.setTextViewText(
-                    R.id.best_note,
-                    hasSlot && !confident
-                            ? "Early estimate — based on few posts"
-                            : "Based on your published posts");
+            String note = !hasSlot
+                    ? "Based on your published posts"
+                    : !confident
+                            ? "Early estimate — " + samples + " posts so far"
+                            : "Based on " + samples + " published posts";
+            views.setTextViewText(R.id.best_note, note);
         }
 
         String footer = "";

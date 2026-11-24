@@ -59,6 +59,17 @@
             android:textSize="15sp"
             android:textStyle="bold" />
 
+        <TextView
+            android:id="@+id/draft_title_2"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:maxLines="1"
+            android:ellipsize="end"
+            android:visibility="gone"
+            android:text=""
+            android:textColor="#B0B3B8"
+            android:textSize="11sp" />
+
         <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
@@ -81,7 +92,7 @@
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:maxLines="1"
-                android:text="Continue"
+                android:text="Continue editing"
                 android:textColor="#0095F6"
                 android:textSize="10sp"
                 android:textStyle="bold" />

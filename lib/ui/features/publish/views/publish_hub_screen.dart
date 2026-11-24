@@ -61,7 +61,10 @@ class _PublishHubScreenState extends ConsumerState<PublishHubScreen> {
           .read(facebookViewModelProvider.notifier)
           .checkConnectionHealth(force: force);
       unawaited(
-        ref.read(facebookInsightsRefresherProvider.notifier).refreshStale(),
+        ref
+            .read(facebookInsightsRefresherProvider.notifier)
+            .refreshStale()
+            .then<void>((_) {}, onError: (_) {}),
       );
       await ref
           .read(facebookDraftProvider.notifier)

@@ -62,6 +62,14 @@
             android:textColor="#B0B3B8"
             android:textSize="10sp" />
 
+        <!-- Declared for id parity; one-row strips hide both countdown views. -->
+        <TextView
+            android:id="@+id/widget_countdown_label"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:visibility="gone"
+            android:text="" />
+
         <TextView
             android:id="@+id/widget_page"
             android:layout_width="0dp"

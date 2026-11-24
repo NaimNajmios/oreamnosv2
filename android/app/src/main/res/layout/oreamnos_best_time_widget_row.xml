@@ -37,6 +37,14 @@
             android:textSize="13sp"
             android:textStyle="bold" />
 
+        <!-- Declared for id parity; the one-row strip keeps label + basis. -->
+        <TextView
+            android:id="@+id/best_next"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:visibility="gone"
+            android:text="" />
+
         <TextView
             android:id="@+id/best_detail"
             android:layout_width="0dp"

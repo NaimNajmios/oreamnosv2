@@ -86,6 +86,16 @@ class GenerateViewModel extends Notifier<GenerateUiState>
   /// inside a single share handling.
   static const int _maxAttemptsPerShare = 4;
 
+  /// Safety-net watchdog for the whole generation pipeline. The AI request
+  /// already carries a receive window (`AppConstants.generationReceiveTimeout`)
+  /// that cancels its own attempt, so this exists for the awaits *around* the
+  /// AI call (Twitter scrape, tweet enrichment, article scrape, research
+  /// enrichment) that had no ceiling — without it a hung step used to leave the
+  /// UI stuck on the loading card's progress ceiling indefinitely.
+  static const Duration _generationWatchdogTimeout = Duration(seconds: 150);
+
+  Timer? _generationWatchdog;
+
   bool _canAttemptMore({
     required bool isFromShare,
     required int shareAttempt,
@@ -93,6 +103,41 @@ class GenerateViewModel extends Notifier<GenerateUiState>
   }) {
     if (!isFromShare) return fallbackDepth < _maxFallbackHops;
     return shareAttempt + fallbackDepth < _maxAttemptsPerShare;
+  }
+
+  void _armGenerationWatchdog() {
+    _disarmGenerationWatchdog();
+    _generationWatchdog = Timer(
+      _generationWatchdogTimeout,
+      _onGenerationWatchdog,
+    );
+  }
+
+  void _disarmGenerationWatchdog() {
+    _generationWatchdog?.cancel();
+    _generationWatchdog = null;
+  }
+
+  void _onGenerationWatchdog() {
+    _generationWatchdog = null;
+    final isBusy =
+        state.status == GenerateState.generating ||
+        state.status == GenerateState.researching;
+    if (!isBusy) return;
+    // Force-cancel the in-flight attempt and land on a terminal error so the
+    // loading card can never hang on its progress ceiling. The in-flight
+    // pipeline observes the cancel and funnels into its own error handling.
+    final token = _attemptCancelToken;
+    if (token != null && !token.isCancelled) {
+      token.cancel('Generation watchdog fired (session $_generationSessionId)');
+    }
+    state = state.copyWith(
+      status: GenerateState.error,
+      generatingStep: GeneratingStep.idle,
+      fallbackNotice: null,
+      errorMessage: 'Generation did not complete in time. Please try again.',
+      twitterExtractionUrl: null,
+    );
   }
 
   /// Cancellation token for the in-flight network attempt. A newer session
@@ -144,6 +189,7 @@ class GenerateViewModel extends Notifier<GenerateUiState>
     WidgetsBinding.instance.addObserver(this);
     ref.onDispose(() {
       WidgetsBinding.instance.removeObserver(this);
+      _disarmGenerationWatchdog();
       // Cancel any in-flight provider request — a disposed Notifier's state
       // will never be read, so the only sane outcome for the network call is
       // cancellation (this also stops background quota burn).
@@ -552,6 +598,8 @@ class GenerateViewModel extends Notifier<GenerateUiState>
       );
     }
 
+    _armGenerationWatchdog();
+
     final stopwatch = Stopwatch()..start();
 
     try {
@@ -782,7 +830,17 @@ class GenerateViewModel extends Notifier<GenerateUiState>
             },
           );
 
-      if (sessionId != _generationSessionId) return;
+      if (sessionId != _generationSessionId) {
+        // A newer session superseded this attempt (share re-delivery, fallback
+        // hop, manual regenerate). The newer session owns the UI state from
+        // here on; the usage log above already recorded this attempt's real
+        // outcome, so the only correct action is to drop the stale result.
+        final currentSessionId = _generationSessionId;
+        getIt<LogService>().info(
+          'Superseded generation attempt $sessionId finished before current session $currentSessionId could apply it',
+        );
+        return;
+      }
 
       // Handle Result via typed Failure — no string contains
       if (repoResult is ResultError<CuratedPost>) {
@@ -848,6 +906,7 @@ class GenerateViewModel extends Notifier<GenerateUiState>
           final waitMessage = failure is RateLimitFailure
               ? failure.waitTimeMessage
               : null;
+          _disarmGenerationWatchdog();
           state = state.copyWith(
             errorMessage:
                 'Rate limit exceeded for ${provider.displayName}. Try another provider.${waitMessage != null ? ' $waitMessage' : ''}',
@@ -967,6 +1026,7 @@ class GenerateViewModel extends Notifier<GenerateUiState>
         generatingStep: GeneratingStep.idle,
         fallbackNotice: null,
       );
+      _disarmGenerationWatchdog();
 
       if (_isBackgrounded) {
         NotificationService().showGenerationCompleteNotification(
@@ -975,6 +1035,7 @@ class GenerateViewModel extends Notifier<GenerateUiState>
         );
       }
     } catch (e, st) {
+      _disarmGenerationWatchdog();
       if (sessionId != _generationSessionId) return;
       // Only for non-API failures (Twitter, scrape, timeout before repo call)
       stopwatch.stop();
@@ -1104,6 +1165,8 @@ class GenerateViewModel extends Notifier<GenerateUiState>
       validationMessage: null,
       fallbackNotice: null,
     );
+
+    _armGenerationWatchdog();
 
     final stopwatch = Stopwatch()..start();
     // Volatile fallback target — see _switchToNextHealthyProvider.
@@ -1250,6 +1313,7 @@ class GenerateViewModel extends Notifier<GenerateUiState>
         selectedPillIds: const {},
         fallbackNotice: null,
       );
+      _disarmGenerationWatchdog();
 
       if (_isBackgrounded) {
         NotificationService().showGenerationCompleteNotification(
@@ -1258,6 +1322,7 @@ class GenerateViewModel extends Notifier<GenerateUiState>
         );
       }
     } catch (e, st) {
+      _disarmGenerationWatchdog();
       if (sessionId != _generationSessionId) return;
       stopwatch.stop();
       final requestId = const Uuid().v4();
@@ -1305,6 +1370,7 @@ class GenerateViewModel extends Notifier<GenerateUiState>
             return;
           }
         }
+        _disarmGenerationWatchdog();
         state = state.copyWith(
           errorMessage:
               'Rate limit exceeded for ${provider.displayName}. ${e is RateLimitFailure ? e.waitTimeMessage : ''}',
@@ -1397,8 +1463,34 @@ class GenerateViewModel extends Notifier<GenerateUiState>
     await generatePost(effectiveText, isFromShare: true);
   }
 
+  /// User-initiated stop: cancels the in-flight attempt (and the watchdog) and
+  /// drops the UI out of the generating state so the loading card can dismiss.
+  /// The session bump makes any in-flight pipeline continuation stale, so its
+  /// late success/error writes no longer touch the (now idle) state.
+  void cancelGeneration() {
+    _disarmGenerationWatchdog();
+    final token = _attemptCancelToken;
+    if (token != null && !token.isCancelled) {
+      token.cancel('Generation cancelled by user');
+    }
+    _generationSessionId++;
+    state = state.copyWith(
+      status: GenerateState.idle,
+      generatingStep: GeneratingStep.idle,
+      errorMessage: 'Generation cancelled.',
+      validationMessage: null,
+      fallbackNotice: null,
+      twitterExtractionUrl: null,
+      pendingInput: null,
+      isEditMode: false,
+      selectedPillIds: const {},
+      isFromShare: false,
+    );
+  }
+
   void reset() {
     _generationSessionId++;
+    _disarmGenerationWatchdog();
     final stale = _attemptCancelToken;
     if (stale != null && !stale.isCancelled) {
       stale.cancel('Reset');

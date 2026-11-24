@@ -72,18 +72,27 @@ class _OreamnosAppState extends ConsumerState<OreamnosApp> {
         // Cheap presence probe: a stale token or lost connection should be
         // visible before the user spends a minute composing a post.
         try {
-          ref.read(facebookViewModelProvider.notifier).checkConnectionHealth();
+          unawaited(
+            ref
+                .read(facebookViewModelProvider.notifier)
+                .checkConnectionHealth()
+                .then<void>((_) {}, onError: (_) {}),
+          );
           // A failed scheduled-post sync may have exhausted its 2s/8s/30s
           // backoff while the app was backgrounded. Retry on resume once the
           // 15-minute floor passes.
           if (ref.read(facebookViewModelProvider).isConnected) {
             unawaited(
-              ref.read(facebookDraftProvider.notifier).reconcileIfStale(),
+              ref
+                  .read(facebookDraftProvider.notifier)
+                  .reconcileIfStale()
+                  .then<void>((_) {}, onError: (_) {}),
             );
             unawaited(
               ref
                   .read(facebookInsightsRefresherProvider.notifier)
-                  .refreshStale(),
+                  .refreshStale()
+                  .then<void>((_) {}, onError: (_) {}),
             );
           }
         } catch (_) {}
@@ -214,18 +223,22 @@ class _OreamnosAppState extends ConsumerState<OreamnosApp> {
     ShareIntentService().onSharedTextReceived = (text) {
       if (!mounted) return;
       final trimmed = text.trim();
-      if (_inFlightShareContent == trimmed) {
+      // Compare on the *normalized* logical key (tracking params / casing /
+      // whitespace stripped) so a re-share that arrives in a different byte
+      // form still dedups against an in-flight share of the same content.
+      final dedupKey = ShareIntentService.normalizeDedupKey(trimmed);
+      if (_inFlightShareContent == dedupKey) {
         // Identical share already being processed (double delivery).
         return;
       }
-      _inFlightShareContent = trimmed;
+      _inFlightShareContent = dedupKey;
       // Late stream bounces (beyond the service's 1500ms dedup window) must
       // not re-trigger generation of the same share. But the guard must not
       // pin "in flight" for the whole multi-minute retry/fallback chain
       // either, or a deliberate re-share minutes later gets dropped — so
       // the pin expires after 8s (the bounce window) as a hard cap.
       Timer(const Duration(seconds: 8), () {
-        if (_inFlightShareContent == trimmed) _inFlightShareContent = null;
+        if (_inFlightShareContent == dedupKey) _inFlightShareContent = null;
       });
 
       // Defer to the first frame so the router/shell exists before the
@@ -265,9 +278,9 @@ class _OreamnosAppState extends ConsumerState<OreamnosApp> {
 
           _router.go(RoutePaths.generate);
           final notifier = ref.read(generateViewModelProvider.notifier);
-          await notifier.handleExternalSharedInput(text);
+          await notifier.handleExternalSharedInput(trimmed);
         } finally {
-          if (_inFlightShareContent == trimmed) {
+          if (_inFlightShareContent == dedupKey) {
             _inFlightShareContent = null;
           }
         }
@@ -280,7 +293,7 @@ class _OreamnosAppState extends ConsumerState<OreamnosApp> {
     try {
       final service = getIt<FacebookReminderService>();
       final records = ref.read(facebookHistoryProvider);
-      unawaited(service.sync(records));
+      unawaited(service.sync(records).then<void>((_) {}, onError: (_) {}));
     } catch (_) {}
   }
 
@@ -382,6 +395,7 @@ class _OreamnosAppState extends ConsumerState<OreamnosApp> {
             HomeWidgetPage(id: page.id, name: page.name),
         ],
         draftTitle: drafts.isEmpty ? '' : drafts.first.text,
+        draftTitles: [for (final draft in drafts) draft.text],
         draftUpdatedAt: drafts.isEmpty ? null : drafts.first.updatedAt,
         showSnippet: settings.showWidgetSnippet,
         warnFraction: AppConstants.dailyQuotaWarnThreshold,

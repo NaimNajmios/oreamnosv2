@@ -27,6 +27,8 @@ class HomeWidgetSnapshot {
     this.lastPostReactions,
     this.lastPostComments,
     this.lastPostShares,
+    this.lastPostImpressions,
+    this.lastPostUniqueViewers,
     this.lastPostAt,
     this.weekReactions = 0,
     this.weekComments = 0,
@@ -34,8 +36,11 @@ class HomeWidgetSnapshot {
     this.bestSlotLabel = '',
     this.bestSlotDetail = '',
     this.bestSlotConfident = false,
+    this.bestSlotNextAt,
+    this.bestSlotSamples = 0,
     this.storyFailedCount = 0,
     this.draftTitle = '',
+    this.draftTitlesJson = '[]',
     this.draftUpdatedAt,
     this.weekPostCount = 0,
     this.pagesJson = '[]',
@@ -79,6 +84,8 @@ class HomeWidgetSnapshot {
   final int? lastPostReactions;
   final int? lastPostComments;
   final int? lastPostShares;
+  final int? lastPostImpressions;
+  final int? lastPostUniqueViewers;
   final DateTime? lastPostAt;
 
   /// Totals across the published posts of the current week.
@@ -92,8 +99,18 @@ class HomeWidgetSnapshot {
   final String bestSlotDetail;
   final bool bestSlotConfident;
 
+  /// Next local occurrence of the suggested slot and the number of posts that
+  /// back it. The clock motif renders these instead of inventing a time.
+  final DateTime? bestSlotNextAt;
+  final int bestSlotSamples;
+
   final int storyFailedCount;
   final String draftTitle;
+
+  /// Up to two newest draft titles, encoded once so the drafts widget can
+  /// offer a continuation target without shipping the whole store.
+  final String draftTitlesJson;
+
   final DateTime? draftUpdatedAt;
   final int weekPostCount;
 
@@ -105,7 +122,9 @@ class HomeWidgetSnapshot {
       lastPostAt != null &&
       (lastPostReactions != null ||
           lastPostComments != null ||
-          lastPostShares != null);
+          lastPostShares != null ||
+          lastPostImpressions != null ||
+          lastPostUniqueViewers != null);
 
   /// Whitelisted payload. Update [HomeWidgetKeys.all] alongside this map.
   Map<String, String> toMap() => {
@@ -131,6 +150,8 @@ class HomeWidgetSnapshot {
     HomeWidgetKeys.lastPostReactions: _number(lastPostReactions),
     HomeWidgetKeys.lastPostComments: _number(lastPostComments),
     HomeWidgetKeys.lastPostShares: _number(lastPostShares),
+    HomeWidgetKeys.lastPostImpressions: _number(lastPostImpressions),
+    HomeWidgetKeys.lastPostUniqueViewers: _number(lastPostUniqueViewers),
     HomeWidgetKeys.lastPostAt: _epoch(lastPostAt),
     HomeWidgetKeys.weekReactions: '$weekReactions',
     HomeWidgetKeys.weekComments: '$weekComments',
@@ -138,8 +159,11 @@ class HomeWidgetSnapshot {
     HomeWidgetKeys.bestSlotLabel: bestSlotLabel,
     HomeWidgetKeys.bestSlotDetail: bestSlotDetail,
     HomeWidgetKeys.bestSlotConfident: bestSlotConfident ? '1' : '0',
+    HomeWidgetKeys.bestSlotNextAt: _epoch(bestSlotNextAt),
+    HomeWidgetKeys.bestSlotSamples: '$bestSlotSamples',
     HomeWidgetKeys.storyFailedCount: '$storyFailedCount',
     HomeWidgetKeys.draftTitle: draftTitle,
+    HomeWidgetKeys.draftTitlesJson: draftTitlesJson,
     HomeWidgetKeys.draftUpdatedAt: _epoch(draftUpdatedAt),
     HomeWidgetKeys.weekPostCount: '$weekPostCount',
     HomeWidgetKeys.pagesJson: pagesJson,
@@ -251,7 +275,7 @@ class HomeWidgetPalette {
 
 /// SharedPreferences keys written through `home_widget`.
 abstract final class HomeWidgetKeys {
-  static const String currentVersion = '3';
+  static const String currentVersion = '4';
 
   static const String version = 'widget_version';
   static const String updatedAt = 'updated_at';
@@ -275,6 +299,8 @@ abstract final class HomeWidgetKeys {
   static const String lastPostReactions = 'last_post_reactions';
   static const String lastPostComments = 'last_post_comments';
   static const String lastPostShares = 'last_post_shares';
+  static const String lastPostImpressions = 'last_post_impressions';
+  static const String lastPostUniqueViewers = 'last_post_unique_viewers';
   static const String lastPostAt = 'last_post_at';
   static const String weekReactions = 'week_reactions';
   static const String weekComments = 'week_comments';
@@ -282,8 +308,11 @@ abstract final class HomeWidgetKeys {
   static const String bestSlotLabel = 'best_slot_label';
   static const String bestSlotDetail = 'best_slot_detail';
   static const String bestSlotConfident = 'best_slot_confident';
+  static const String bestSlotNextAt = 'best_slot_next_at';
+  static const String bestSlotSamples = 'best_slot_samples';
   static const String storyFailedCount = 'story_failed_count';
   static const String draftTitle = 'draft_title';
+  static const String draftTitlesJson = 'draft_titles_json';
   static const String draftUpdatedAt = 'draft_updated_at';
   static const String weekPostCount = 'week_post_count';
   static const String pagesJson = 'pages_json';
@@ -314,6 +343,8 @@ abstract final class HomeWidgetKeys {
     lastPostReactions,
     lastPostComments,
     lastPostShares,
+    lastPostImpressions,
+    lastPostUniqueViewers,
     lastPostAt,
     weekReactions,
     weekComments,
@@ -321,8 +352,11 @@ abstract final class HomeWidgetKeys {
     bestSlotLabel,
     bestSlotDetail,
     bestSlotConfident,
+    bestSlotNextAt,
+    bestSlotSamples,
     storyFailedCount,
     draftTitle,
+    draftTitlesJson,
     draftUpdatedAt,
     weekPostCount,
     pagesJson,

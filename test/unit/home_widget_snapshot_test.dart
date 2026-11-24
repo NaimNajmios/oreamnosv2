@@ -26,6 +26,8 @@ FacebookPostRecord _record({
   int? reactions,
   int? comments,
   int? shares,
+  int? impressions,
+  int? uniqueViewers,
 }) {
   final at = timestamp ?? DateTime(2026, 11, 14, 12);
   return FacebookPostRecord(
@@ -44,6 +46,8 @@ FacebookPostRecord _record({
     reactions: reactions,
     comments: comments,
     shares: shares,
+    impressions: impressions,
+    uniqueViewers: uniqueViewers,
   );
 }
 
@@ -88,6 +92,7 @@ HomeWidgetSnapshot _build({
   DateTime? now,
   List<HomeWidgetPage> pages = const [],
   String draftTitle = '',
+  List<String> draftTitles = const [],
   DateTime? draftUpdatedAt,
   bool showSnippet = true,
 }) {
@@ -105,6 +110,7 @@ HomeWidgetSnapshot _build({
     fallbackProvider: fallbackProvider,
     pages: pages,
     draftTitle: draftTitle,
+    draftTitles: draftTitles,
     draftUpdatedAt: draftUpdatedAt,
     showSnippet: showSnippet,
   );
@@ -442,6 +448,8 @@ void main() {
             reactions: 128,
             comments: 24,
             shares: 9,
+            impressions: 12000,
+            uniqueViewers: 3200,
           ),
         ],
       );
@@ -450,8 +458,31 @@ void main() {
       expect(snapshot.lastPostReactions, 128);
       expect(snapshot.lastPostComments, 24);
       expect(snapshot.lastPostShares, 9);
+      expect(snapshot.lastPostImpressions, 12000);
+      expect(snapshot.lastPostUniqueViewers, 3200);
       expect(snapshot.lastPostAt, DateTime(2026, 11, 13, 9));
       expect(snapshot.hasLastPost, isTrue);
+    });
+
+    test('carries impressions when there are no engagement counts yet', () {
+      final snapshot = _build(
+        records: [
+          _record(
+            id: 'insights-only',
+            status: FacebookPostStatus.published,
+            timestamp: DateTime(2026, 11, 13, 9),
+            impressions: 5400,
+            uniqueViewers: 1800,
+          ),
+        ],
+      );
+
+      expect(snapshot.hasLastPost, isTrue);
+      expect(snapshot.lastPostReactions, isNull);
+      expect(snapshot.lastPostImpressions, 5400);
+      expect(snapshot.lastPostUniqueViewers, 1800);
+      expect(snapshot.toMap()[HomeWidgetKeys.lastPostImpressions], '5400');
+      expect(snapshot.toMap()[HomeWidgetKeys.lastPostUniqueViewers], '1800');
     });
 
     test('keeps partial metrics and hides the row with none', () {
@@ -538,6 +569,8 @@ void main() {
       expect(snapshot.bestSlotLabel, isEmpty);
       expect(snapshot.bestSlotDetail, isEmpty);
       expect(snapshot.bestSlotConfident, isFalse);
+      expect(snapshot.bestSlotNextAt, isNull);
+      expect(snapshot.bestSlotSamples, 0);
     });
 
     test('two same-slot posts produce a low-confidence estimate', () {
@@ -561,6 +594,18 @@ void main() {
       expect(snapshot.bestSlotLabel, isNotEmpty);
       expect(snapshot.bestSlotDetail, contains('posts'));
       expect(snapshot.bestSlotConfident, isFalse);
+      expect(snapshot.bestSlotSamples, 2);
+      expect(snapshot.bestSlotNextAt, isNotNull);
+      // Tuesday 20:00 has already passed on Saturday: the next occurrence is
+      // the following Tuesday, never a past time.
+      expect(
+        snapshot.bestSlotNextAt!.isAfter(DateTime(2026, 11, 14, 12)),
+        isTrue,
+      );
+      expect(
+        snapshot.toMap()[HomeWidgetKeys.bestSlotNextAt],
+        '${snapshot.bestSlotNextAt!.millisecondsSinceEpoch}',
+      );
     });
 
     test('a scheduled post suppresses the hint', () {
@@ -636,6 +681,28 @@ void main() {
       expect(
         _build(records: const []).toMap()[HomeWidgetKeys.draftUpdatedAt],
         isEmpty,
+      );
+    });
+
+    test('carries the two newest draft titles for the widget', () {
+      final snapshot = _build(
+        records: const [],
+        draftTitles: const [
+          '  Derby\n\npreview  ',
+          'Transfer shortlist',
+          'Third draft is dropped',
+        ],
+      );
+
+      final titles = jsonDecode(snapshot.draftTitlesJson) as List<dynamic>;
+      expect(titles, ['Derby preview', 'Transfer shortlist']);
+      expect(
+        snapshot.toMap()[HomeWidgetKeys.draftTitlesJson],
+        snapshot.draftTitlesJson,
+      );
+      expect(
+        snapshot.toMap()[HomeWidgetKeys.draftTitlesJson]!.length,
+        lessThanOrEqualTo(HomeWidgetSnapshotBuilder.maxPayloadChars),
       );
     });
 

@@ -30,6 +30,10 @@ class _EnhancedLoadingCardState extends State<EnhancedLoadingCard>
   late Animation<double> _progressAnimation;
   late Animation<double> _pulseAnimation;
 
+  /// Progress ceiling (0.9) — the sweep never reads as "complete" while the
+  /// pipeline is still running, so the card can't sit at a fake final percent.
+  static const double _progressMax = 0.9;
+
   @override
   void initState() {
     super.initState();
@@ -37,7 +41,7 @@ class _EnhancedLoadingCardState extends State<EnhancedLoadingCard>
       vsync: this,
       duration: const Duration(milliseconds: 3500),
     );
-    _progressAnimation = Tween<double>(begin: 0.0, end: 0.95).animate(
+    _progressAnimation = Tween<double>(begin: 0.0, end: _progressMax).animate(
       CurvedAnimation(parent: _progressController, curve: Curves.easeOutCubic),
     );
     _progressController.forward();
@@ -69,7 +73,7 @@ class _EnhancedLoadingCardState extends State<EnhancedLoadingCard>
     } else {
       if (progress < 0.3) return 'Initializing prompt...';
       if (progress < 0.7) return 'Synthesizing post with AI...';
-      return 'Almost ready...';
+      return 'Finalizing...';
     }
   }
 
@@ -90,6 +94,9 @@ class _EnhancedLoadingCardState extends State<EnhancedLoadingCard>
           final progressVal = _progressAnimation.value;
           final percent = (progressVal * 100).toInt();
           final pulseScale = reduceMotion ? 1.0 : _pulseAnimation.value;
+          final bool stage2Done =
+              progressVal >=
+              (widget.type == LoadingType.generating ? 0.85 : 0.8);
 
           return Column(
             mainAxisSize: MainAxisSize.min,
@@ -152,21 +159,23 @@ class _EnhancedLoadingCardState extends State<EnhancedLoadingCard>
                     isActive:
                         widget.type == LoadingType.extracting ||
                         progressVal >= 0.1,
-                    isDone: widget.type == LoadingType.generating,
+                    isDone:
+                        widget.type == LoadingType.generating ||
+                        progressVal >= 0.8,
                     color: theme.colorScheme.primary,
                   ),
                   const SizedBox(width: 8),
                   _StageDot(
-                    isActive:
-                        widget.type == LoadingType.generating &&
-                        progressVal >= 0.4,
-                    isDone: progressVal >= 0.85,
+                    isActive: progressVal >= 0.4 && !stage2Done,
+                    isDone: stage2Done,
                     color: theme.colorScheme.primary,
                   ),
                   const SizedBox(width: 8),
                   _StageDot(
                     isActive: progressVal >= 0.85,
-                    isDone: false,
+                    isDone:
+                        widget.type == LoadingType.extracting &&
+                        progressVal >= _progressMax,
                     color: AppColors.success,
                   ),
                 ],

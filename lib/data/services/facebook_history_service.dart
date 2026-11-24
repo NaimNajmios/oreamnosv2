@@ -297,7 +297,20 @@ class FacebookHistoryNotifier extends Notifier<List<FacebookPostRecord>> {
   /// Runs engagement, then insights, writes the results to the record, and
   /// returns a summary: how many calls succeeded and the first error code
   /// and message, if any. Success clears the stored short codes.
+  /// Defensive wrapper: a refresh must never throw into callers (the
+  /// refresher batch or the insights sheet).
   Future<FacebookPostRefreshSummary> refreshPost(String recordId) async {
+    try {
+      return await _refreshPostUnsafe(recordId);
+    } catch (_) {
+      return const FacebookPostRefreshSummary(
+        ok: 0,
+        firstErrorCode: 'unavailable',
+      );
+    }
+  }
+
+  Future<FacebookPostRefreshSummary> _refreshPostUnsafe(String recordId) async {
     final record = _findRecord(recordId);
     if (record == null || !record.isPublished) {
       return const FacebookPostRefreshSummary(ok: 0);

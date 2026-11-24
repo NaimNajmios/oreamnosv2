@@ -133,7 +133,6 @@ class ShareIntentService {
   /// (`?s=20&t=…`, `t.co`, clients re-encoding whitespace); tracking params
   /// must not make a re-share look like new content — and vice versa, they
   /// must not make the *new* share look stale.
-  @visibleForTesting
   static String normalizeDedupKey(String content) {
     var key = content.trim();
     final urlMatch = RegExp(

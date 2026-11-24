@@ -45,7 +45,7 @@ public abstract class BaseOreamnosWidget extends HomeWidgetProvider {
 
     // Payload keys. Kept in sync with HomeWidgetKeys on the Dart side.
     protected static final String KEY_VERSION = "widget_version";
-    static final String PAYLOAD_VERSION = "3";
+    static final String PAYLOAD_VERSION = "4";
     protected static final String KEY_UPDATED_AT = "updated_at";
     protected static final String KEY_NEXT_SNIPPET = "next_snippet";
     protected static final String KEY_NEXT_PAGE = "next_page";
@@ -54,6 +54,7 @@ public abstract class BaseOreamnosWidget extends HomeWidgetProvider {
     protected static final String KEY_SCHEDULED_COUNT = "scheduled_count";
     protected static final String KEY_DRAFT_COUNT = "draft_count";
     protected static final String KEY_DRAFT_TITLE = "draft_title";
+    protected static final String KEY_DRAFT_TITLES = "draft_titles_json";
     protected static final String KEY_DRAFT_UPDATED_AT = "draft_updated_at";
     protected static final String KEY_QUOTA_JSON = "quota_json";
     protected static final String KEY_ACTIVE_PROVIDER = "active_provider";
@@ -69,6 +70,8 @@ public abstract class BaseOreamnosWidget extends HomeWidgetProvider {
     protected static final String KEY_LAST_POST_REACTIONS = "last_post_reactions";
     protected static final String KEY_LAST_POST_COMMENTS = "last_post_comments";
     protected static final String KEY_LAST_POST_SHARES = "last_post_shares";
+    protected static final String KEY_LAST_POST_IMPRESSIONS = "last_post_impressions";
+    protected static final String KEY_LAST_POST_UNIQUE_VIEWERS = "last_post_unique_viewers";
     protected static final String KEY_LAST_POST_AT = "last_post_at";
     protected static final String KEY_WEEK_REACTIONS = "week_reactions";
     protected static final String KEY_WEEK_COMMENTS = "week_comments";
@@ -76,6 +79,8 @@ public abstract class BaseOreamnosWidget extends HomeWidgetProvider {
     protected static final String KEY_BEST_SLOT_LABEL = "best_slot_label";
     protected static final String KEY_BEST_SLOT_DETAIL = "best_slot_detail";
     protected static final String KEY_BEST_SLOT_CONFIDENT = "best_slot_confident";
+    protected static final String KEY_BEST_SLOT_NEXT_AT = "best_slot_next_at";
+    protected static final String KEY_BEST_SLOT_SAMPLES = "best_slot_samples";
     protected static final String KEY_STORY_FAILED = "story_failed_count";
     protected static final String KEY_WEEK_POST_COUNT = "week_post_count";
     protected static final String KEY_PAGES_JSON = "pages_json";

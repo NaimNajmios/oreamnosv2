@@ -81,6 +81,18 @@
                 android:format="in %s"
                 android:textColor="#B0B3B8"
                 android:textSize="10sp" />
+
+            <TextView
+                android:id="@+id/widget_countdown_label"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginStart="5dp"
+                android:maxLines="1"
+                android:text="in 2d 4h"
+                android:textColor="#0095F6"
+                android:textSize="14sp"
+                android:textStyle="bold"
+                android:visibility="gone" />
         </LinearLayout>
 
         <TextView

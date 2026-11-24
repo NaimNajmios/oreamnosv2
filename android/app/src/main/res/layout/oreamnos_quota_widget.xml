@@ -200,6 +200,17 @@
         </LinearLayout>
 
         <TextView
+            android:id="@+id/quota_c_meta"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:maxLines="1"
+            android:ellipsize="end"
+            android:visibility="gone"
+            android:text=""
+            android:textColor="#B0B3B8"
+            android:textSize="9sp" />
+
+        <TextView
             android:id="@+id/widget_updated"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"

@@ -60,9 +60,15 @@ public class OreamnosEngagementWidgetProvider extends BaseOreamnosWidget {
         Long reactions = optionalLong(data, KEY_LAST_POST_REACTIONS);
         Long comments = optionalLong(data, KEY_LAST_POST_COMMENTS);
         Long shares = optionalLong(data, KEY_LAST_POST_SHARES);
+        Long impressions = optionalLong(data, KEY_LAST_POST_IMPRESSIONS);
+        Long uniqueViewers = optionalLong(data, KEY_LAST_POST_UNIQUE_VIEWERS);
         boolean hasPost =
                 postedAt > 0
-                        && (reactions != null || comments != null || shares != null);
+                        && (reactions != null
+                                || comments != null
+                                || shares != null
+                                || impressions != null
+                                || uniqueViewers != null);
 
         views.setTextColor(R.id.eng_kicker, theme.primary);
         views.setTextColor(R.id.eng_meta, theme.muted);
@@ -90,6 +96,9 @@ public class OreamnosEngagementWidgetProvider extends BaseOreamnosWidget {
                 views.setViewVisibility(R.id.eng_s_value, View.GONE);
             }
             views.setViewVisibility(R.id.eng_caption, View.GONE);
+            views.setViewVisibility(R.id.eng_rate_row, View.GONE);
+            views.setViewVisibility(R.id.eng_rate_value, View.GONE);
+            views.setViewVisibility(R.id.eng_rate_label, View.GONE);
             String footer = bindFooter(views, data, System.currentTimeMillis(), false, theme.muted, "");
             bindClick(context, views, R.id.widget_root, URI_HISTORY, REQ_ROOT);
             views.setContentDescription(
@@ -110,6 +119,33 @@ public class OreamnosEngagementWidgetProvider extends BaseOreamnosWidget {
         setMetric(views, valueIds[1], comments, "comments", combined);
         setMetric(views, valueIds[2], shares, "shares", combined);
         showLabels(views, labelIds, !combined);
+
+        // This widget's motif is the rate: reactions per unique viewer, derived
+        // from cached metrics — no network call, no new permission. The one-row
+        // strip has no room for a hero, so it keeps its inline metrics.
+        boolean showRate =
+                reactions != null && uniqueViewers != null && uniqueViewers > 0;
+        boolean showHero = showRate || (impressions != null && impressions > 0);
+        boolean showRateRow = showHero && shape != Shape.ROW;
+        views.setViewVisibility(
+                R.id.eng_rate_row, showRateRow ? View.VISIBLE : View.GONE);
+        views.setViewVisibility(
+                R.id.eng_rate_value, showRateRow ? View.VISIBLE : View.GONE);
+        views.setViewVisibility(
+                R.id.eng_rate_label, showRateRow ? View.VISIBLE : View.GONE);
+        if (showRateRow) {
+            views.setTextColor(R.id.eng_rate_value, theme.primary);
+            views.setTextColor(R.id.eng_rate_label, theme.muted);
+            if (showRate) {
+                long rate = Math.round(reactions * 100.0 / uniqueViewers);
+                views.setTextViewText(R.id.eng_rate_value, rate + "%");
+                views.setTextViewText(R.id.eng_rate_label, "eng. rate");
+            } else {
+                views.setTextViewText(
+                        R.id.eng_rate_value, String.valueOf(impressions));
+                views.setTextViewText(R.id.eng_rate_label, "impressions");
+            }
+        }
 
         String caption = clean(data.getString(KEY_LAST_POST_SNIPPET, ""));
         boolean showCaption = shape == Shape.EXPANDED && !TextUtils.isEmpty(caption);

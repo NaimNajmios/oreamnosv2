@@ -42,6 +42,18 @@
             android:textStyle="bold" />
 
         <TextView
+            android:id="@+id/best_next"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:maxLines="1"
+            android:ellipsize="end"
+            android:visibility="gone"
+            android:text=""
+            android:textColor="#0095F6"
+            android:textSize="11sp"
+            android:textStyle="bold" />
+
+        <TextView
             android:id="@+id/best_detail"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"

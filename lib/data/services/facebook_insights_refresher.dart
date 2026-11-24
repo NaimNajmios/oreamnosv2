@@ -90,7 +90,8 @@ class FacebookInsightsRefresher extends Notifier<FacebookInsightsRefreshState> {
       record.insightsError == 'permission';
 
   /// Refreshes up to [limit] stale records, running 3 at a time.
-  /// Returns the number of records attempted.
+  /// Returns the number of records attempted. A throwing worker is caught
+  /// so one bad record cannot kill the batch or leave [running] stuck true.
   Future<int> refreshStale({int limit = 10}) async {
     if (_running) return 0;
     _running = true;
@@ -105,23 +106,34 @@ class FacebookInsightsRefresher extends Notifier<FacebookInsightsRefreshState> {
 
     Future<void> worker() async {
       while (index < queue.length && attempted < limit && !stopped) {
-        final record = queue[index];
-        index++;
-        attempted++;
-        final summary = await _history.refreshPost(record.id);
-        _lastErrorCode ??= summary.firstErrorCode;
-        if (summary.firstErrorCode == 'rateLimit' ||
-            summary.firstErrorCode == 'permission') {
+        try {
+          final record = queue[index];
+          index++;
+          attempted++;
+          final summary = await _history.refreshPost(record.id);
+          _lastErrorCode ??= summary.firstErrorCode;
+          if (summary.firstErrorCode == 'rateLimit' ||
+              summary.firstErrorCode == 'permission') {
+            stopped = true;
+            _lastError ??= summary.firstErrorMessage;
+          } else if (_lastError == null && summary.firstErrorCode != null) {
+            _lastError = summary.firstErrorMessage;
+          }
+        } catch (_) {
+          // Defensive: never let one record crash the batch or wedge
+          // _running; stop the batch since the cause is unexpected.
           stopped = true;
-          _lastError ??= summary.firstErrorMessage;
-        } else if (_lastError == null && summary.firstErrorCode != null) {
-          _lastError = summary.firstErrorMessage;
         }
       }
     }
 
-    await Future.wait([worker(), worker(), worker()]);
-    _running = false;
+    try {
+      await Future.wait([worker(), worker(), worker()]);
+    } catch (_) {
+      stopped = true;
+    } finally {
+      _running = false;
+    }
     state = state.copyWith(
       attempted: attempted,
       lastErrorCode: _lastErrorCode,

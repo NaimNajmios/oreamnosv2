@@ -40,6 +40,14 @@
             android:textSize="13sp"
             android:textStyle="bold" />
 
+        <!-- Declared for id parity; the square keeps its +N overflow instead. -->
+        <TextView
+            android:id="@+id/draft_title_2"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:visibility="gone"
+            android:text="" />
+
         <TextView
             android:id="@+id/draft_meta"
             android:layout_width="match_parent"

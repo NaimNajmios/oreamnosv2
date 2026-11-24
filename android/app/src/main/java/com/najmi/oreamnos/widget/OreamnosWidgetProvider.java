@@ -55,7 +55,8 @@ public class OreamnosWidgetProvider extends BaseOreamnosWidget {
         views.setTextColor(R.id.widget_page, theme.muted);
         views.setTextColor(R.id.widget_snippet, theme.onSurface);
         views.setTextColor(R.id.widget_when, theme.muted);
-        views.setTextColor(R.id.widget_countdown, theme.muted);
+        views.setTextColor(R.id.widget_countdown, theme.primary);
+        views.setTextColor(R.id.widget_countdown_label, theme.primary);
         views.setTextColor(R.id.widget_badge, COLOR_AMBER);
         views.setTextColor(R.id.widget_compose, theme.primary);
 
@@ -143,7 +144,8 @@ public class OreamnosWidgetProvider extends BaseOreamnosWidget {
         bindClick(context, views, R.id.widget_root, tapUri, REQ_ROOT);
         bindClick(context, views, R.id.widget_snippet, tapUri, REQ_HEADLINE);
 
-        // A live countdown only makes sense soon, never over stale data, and
+        // The countdown is this widget's motif: a live tick for an imminent
+        // post, a human "in 2d 4h" label further out. Never over stale data,
         // never in a one-row strip where it would crowd out the time.
         long delta = nextAt - now;
         boolean showCountdown =
@@ -152,12 +154,21 @@ public class OreamnosWidgetProvider extends BaseOreamnosWidget {
                         && !oneRow
                         && delta > 0
                         && delta < 24L * 60 * 60 * 1000;
+        boolean showCountdownLabel =
+                futureNext && !stale && !oneRow && delta >= 24L * 60 * 60 * 1000;
         views.setViewVisibility(
                 R.id.widget_countdown, showCountdown ? View.VISIBLE : View.GONE);
+        views.setViewVisibility(
+                R.id.widget_countdown_label,
+                showCountdownLabel ? View.VISIBLE : View.GONE);
         if (showCountdown && Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) {
             long base = SystemClock.elapsedRealtime() + delta;
             views.setChronometerCountDown(R.id.widget_countdown, true);
             views.setChronometer(R.id.widget_countdown, base, "in %s", true);
+        }
+        if (showCountdownLabel) {
+            views.setTextViewText(
+                    R.id.widget_countdown_label, "in " + durationLabel(delta));
         }
 
         // Story retry is the one publishing-health warning this widget owns.

@@ -8,6 +8,8 @@ import android.widget.RemoteViews;
 
 import com.najmi.oreamnos.R;
 
+import org.json.JSONArray;
+
 /**
  * "Drafts": what is half-written and one tap from being continued.
  *
@@ -87,6 +89,21 @@ public class OreamnosDraftsWidgetProvider extends BaseOreamnosWidget {
         views.setTextViewText(R.id.draft_meta, meta);
         views.setTextColor(R.id.draft_meta, theme.muted);
 
+        // A second title turns the count into an actual continuation choice.
+        // The payload caps this at two titles, so no more can leak onto a
+        // shared home screen than the user already opted into.
+        String secondTitle = secondTitle(data);
+        boolean showSecond =
+                shape == Shape.EXPANDED
+                        && count > 1
+                        && !TextUtils.isEmpty(secondTitle);
+        views.setViewVisibility(
+                R.id.draft_title_2, showSecond ? View.VISIBLE : View.GONE);
+        if (showSecond) {
+            views.setTextViewText(R.id.draft_title_2, secondTitle);
+            views.setTextColor(R.id.draft_title_2, theme.muted);
+        }
+
         boolean showCount = shape == Shape.EXPANDED;
         views.setViewVisibility(
                 R.id.draft_count, showCount ? View.VISIBLE : View.GONE);
@@ -123,5 +140,17 @@ public class OreamnosDraftsWidgetProvider extends BaseOreamnosWidget {
         }
         if (!footer.isEmpty()) description.append(". ").append(footer);
         views.setContentDescription(R.id.widget_root, description.toString());
+    }
+
+    private static String secondTitle(SharedPreferences data) {
+        String raw = data.getString(KEY_DRAFT_TITLES, "[]");
+        try {
+            JSONArray titles = new JSONArray(raw == null ? "[]" : raw);
+            if (titles.length() < 2) return "";
+            return clean(titles.optString(1, ""));
+        } catch (Exception ignored) {
+            // A corrupt payload must not blank the widget.
+            return "";
+        }
     }
 }

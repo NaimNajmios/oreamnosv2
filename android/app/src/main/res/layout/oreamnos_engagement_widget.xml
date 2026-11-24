@@ -44,6 +44,37 @@
                 android:textSize="9sp" />
         </LinearLayout>
 
+        <!-- Engagement rate: this widget's distinct motif. The provider sets
+             the value and visibility; the caption switch never affects it. -->
+        <LinearLayout
+            android:id="@+id/eng_rate_row"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="8dp"
+            android:orientation="horizontal"
+            android:gravity="center_vertical">
+
+            <TextView
+                android:id="@+id/eng_rate_value"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="4%"
+                android:textColor="#0095F6"
+                android:textSize="20sp"
+                android:textStyle="bold" />
+
+            <TextView
+                android:id="@+id/eng_rate_label"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginStart="8dp"
+                android:maxLines="1"
+                android:ellipsize="end"
+                android:text="eng. rate"
+                android:textColor="#B0B3B8"
+                android:textSize="9sp" />
+        </LinearLayout>
+
         <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="0dp"

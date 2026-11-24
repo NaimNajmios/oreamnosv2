@@ -86,6 +86,18 @@
                 android:format="in %s"
                 android:textColor="#B0B3B8"
                 android:textSize="11sp" />
+
+            <TextView
+                android:id="@+id/widget_countdown_label"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginStart="6dp"
+                android:maxLines="1"
+                android:text="in 2d 4h"
+                android:textColor="#0095F6"
+                android:textSize="18sp"
+                android:textStyle="bold"
+                android:visibility="gone" />
         </LinearLayout>
 
         <!-- Story retry warning. Amber by design; hidden unless the payload has
