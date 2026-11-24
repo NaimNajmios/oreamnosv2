@@ -1189,12 +1189,30 @@ class _TopPostRow extends StatelessWidget {
                   ),
                 ),
                 if (stats.isNotEmpty)
-                  Text(
-                    stats,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: theme.textTheme.labelSmall?.copyWith(
-                      color: theme.colorScheme.onSurfaceVariant,
+                  Padding(
+                    padding: const EdgeInsets.only(top: 1),
+                    child: Wrap(
+                      spacing: AppSpacing.xs,
+                      children: [
+                        for (final stat in stats)
+                          Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Icon(
+                                stat.$1,
+                                size: 13,
+                                color: theme.colorScheme.onSurfaceVariant,
+                              ),
+                              const SizedBox(width: 3),
+                              Text(
+                                stat.$2,
+                                style: theme.textTheme.labelSmall?.copyWith(
+                                  color: theme.colorScheme.onSurfaceVariant,
+                                ),
+                              ),
+                            ],
+                          ),
+                      ],
                     ),
                   ),
               ],
@@ -1762,24 +1780,28 @@ String _insightSummary(FacebookPostRecord record) {
     case FacebookInsightState.empty:
       return 'Facebook has no data yet. Can lag up to 24h.';
     case FacebookInsightState.ready:
-      return _statsLine(record);
+      return _statsLine(record).map((stat) => stat.$2).join(' · ');
   }
 }
 
-String _statsLine(FacebookPostRecord record) {
+List<(IconData, String)> _statsLine(FacebookPostRecord record) {
   String compact(int value) {
     if (value >= 1000000) return '${(value / 1000000).toStringAsFixed(1)}m';
     if (value >= 1000) return '${(value / 1000).toStringAsFixed(1)}k';
     return '$value';
   }
 
-  final parts = <String>[
-    if (record.uniqueViewers != null) '👁 ${compact(record.uniqueViewers!)}',
+  final parts = <(IconData, String)>[
+    if (record.uniqueViewers != null && record.uniqueViewers! > 0)
+      (Icons.visibility_outlined, compact(record.uniqueViewers!)),
     if (record.impressions != null && record.uniqueViewers == null)
-      '👁 ${compact(record.impressions!)} (cached)',
-    if (record.reactions != null) '👍 ${compact(record.reactions!)}',
-    if (record.comments != null) '💬 ${compact(record.comments!)}',
-    if (record.shares != null) '↗ ${compact(record.shares!)}',
+      (Icons.visibility_outlined, '${compact(record.impressions!)} (cached)'),
+    if (record.reactions != null)
+      (Icons.thumb_up_outlined, compact(record.reactions!)),
+    if (record.comments != null)
+      (Icons.chat_bubble_outline_rounded, compact(record.comments!)),
+    if (record.shares != null)
+      (Icons.ios_share_rounded, compact(record.shares!)),
   ];
-  return parts.join(' · ');
+  return parts;
 }

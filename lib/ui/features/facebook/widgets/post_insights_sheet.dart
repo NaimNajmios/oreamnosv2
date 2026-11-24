@@ -206,13 +206,14 @@ class _PostInsightsSheetState extends ConsumerState<PostInsightsSheet> {
 
   static List<_MetricRow> _rows(FacebookPostRecord record) {
     return [
-      if (record.uniqueViewers != null)
+      if (record.uniqueViewers != null && record.uniqueViewers! > 0)
         _MetricRow(
           icon: Icons.visibility_outlined,
           label: 'Unique viewers',
           value: record.uniqueViewers!,
         )
-      else if (record.impressions != null)
+      else if (record.impressions != null &&
+          (record.uniqueViewers == null || record.uniqueViewers == 0))
         _MetricRow(
           icon: Icons.visibility_outlined,
           label: 'Reach (earlier metric)',

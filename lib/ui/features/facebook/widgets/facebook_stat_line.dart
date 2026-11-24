@@ -46,7 +46,8 @@ List<FacebookStat> facebookStatsFor(FacebookPostRecord record) {
 
   final views = record.uniqueViewers ?? record.impressions;
   return [
-    if (views != null)
+    // A zero view count is still "no data worth showing" for these rows.
+    if (views != null && views > 0)
       FacebookStat(
         icon: Icons.visibility_outlined,
         label: 'Views',
