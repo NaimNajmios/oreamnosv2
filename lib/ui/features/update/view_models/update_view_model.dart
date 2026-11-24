@@ -165,6 +165,21 @@ class UpdateNotifier extends Notifier<UpdateState> {
     state = state.copyWith(status: UpdateStatus.idle, clearLatest: true);
   }
 
+  /// Downloads the latest release APK into the system Downloads folder
+  /// (path_provider `getDownloadsDirectory()`, the generic Android
+  /// `DIRECTORY_DOWNLOADS`), falling back to the cache when there is none,
+  /// and verifies its SHA-256. Returns the saved path.
+  Future<String> downloadLatestApk() async {
+    final release = await ref.read(updateServiceProvider).fetchLatestRelease();
+    if (release == null || !release.hasApk) {
+      throw const UpdateCheckException('No APK is available to download.');
+    }
+    final dir = await ref.read(updateApkDirectoryProvider)();
+    final targetPath = '${dir.path}/oreamnos-${release.tag}.apk';
+    await ref.read(updateServiceProvider).downloadUpdate(release, targetPath);
+    return targetPath;
+  }
+
   /// Downloads the newer APK from GitHub Releases into the app downloads
   /// directory (falling back to the cache when there is none) and
   /// verifies its SHA-256. On success [UpdateState.downloadedApkPath] points
