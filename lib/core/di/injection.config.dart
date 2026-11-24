@@ -88,6 +88,12 @@ extension GetItInjectableX on _i174.GetIt {
         secureStorage: gh<_i558.FlutterSecureStorage>(),
       ),
     );
+    gh.lazySingleton<_i1062.UsageService>(
+      () => _i1062.UsageService(
+        gh<_i460.SharedPreferences>(),
+        gh<_i267.DailyUsageService>(),
+      ),
+    );
     gh.lazySingleton<_i727.FacebookReminderService>(
       () => _i727.FacebookReminderService(
         gh<_i460.SharedPreferences>(),
@@ -166,13 +172,6 @@ extension GetItInjectableX on _i174.GetIt {
       () => _i9.FacebookPageService(
         gh<_i557.ApiClient>(),
         gh<_i493.FacebookPublisherService>(),
-      ),
-    );
-    gh.lazySingleton<_i1062.UsageService>(
-      () => _i1062.UsageService(
-        gh<_i460.SharedPreferences>(),
-        gh<_i267.DailyUsageService>(),
-        gh<int>(),
       ),
     );
     gh.lazySingleton<_i141.FacebookStorageService>(

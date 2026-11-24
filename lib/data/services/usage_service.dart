@@ -50,16 +50,18 @@ class UsageService {
   List<UsageLog> _logs = [];
   final List<void Function(List<UsageLog>)> _listeners = [];
 
-  UsageService(this._prefs, [this._dailyUsage, int? maxLogs])
-    : _maxLogs = _resolveMaxLogs(_prefs, maxLogs) {
+  UsageService(this._prefs, [this._dailyUsage])
+    : _maxLogs = _resolveMaxLogs(_prefs) {
     _loadLogs();
   }
 
   /// Current ring-buffer cap. Read live so pref changes surface via reload().
   int get maxLogs => _maxLogs;
 
-  static int _resolveMaxLogs(SharedPreferences prefs, int? override) {
-    final v = override ?? prefs.getInt(AppConstants.keyUsageLogMaxSize);
+  /// Ring size from the user-adjustable `usage_log_max_size` pref, clamped to
+  /// the valid range; falls back to [defaultMaxLogs] when unset or invalid.
+  static int _resolveMaxLogs(SharedPreferences prefs) {
+    final v = prefs.getInt(AppConstants.keyUsageLogMaxSize);
     if (v == null || v <= 0) return defaultMaxLogs;
     return v.clamp(minMaxLogs, maxMaxLogs);
   }
@@ -98,7 +100,7 @@ class UsageService {
     try {
       await _prefs.reload();
     } catch (_) {}
-    _maxLogs = _resolveMaxLogs(_prefs, null);
+    _maxLogs = _resolveMaxLogs(_prefs);
     _loadLogs();
   }
 
