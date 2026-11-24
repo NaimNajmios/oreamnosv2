@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:io';
 
 import 'package:flutter/material.dart';
@@ -8,6 +9,7 @@ import 'package:go_router/go_router.dart';
 import 'package:oreamnos/config/routes/app_router.dart';
 import 'package:oreamnos/config/theme/app_spacing.dart';
 import 'package:oreamnos/data/services/facebook_history_service.dart';
+import 'package:oreamnos/data/services/facebook_insights_refresher.dart';
 import 'package:oreamnos/domain/models/facebook_post_record.dart';
 import 'package:oreamnos/ui/core/utils/haptics.dart';
 import 'package:oreamnos/ui/core/widgets/empty_state.dart';
@@ -39,32 +41,22 @@ class _FacebookHistoryScreenState extends ConsumerState<FacebookHistoryScreen> {
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted) return;
       ref.read(facebookDraftProvider.notifier).reconcileScheduled();
+      unawaited(
+        ref.read(facebookInsightsRefresherProvider.notifier).refreshStale(),
+      );
     });
   }
 
-  /// Best-effort bounded refresh, capped so a long history never turns
-  /// pull-to-refresh into a burst of Graph calls.
+  /// Delegates to the background refresher and reports its first real
+  /// error in the snackbar.
   Future<void> _refreshInsights(List<FacebookPostRecord> records) async {
-    final notifier = ref.read(facebookHistoryProvider.notifier);
-    final targets = records.take(10).toList(growable: false);
-    var failed = 0;
-    for (var start = 0; start < targets.length; start += 4) {
-      final end = start + 4 < targets.length ? start + 4 : targets.length;
-      final chunk = targets.sublist(start, end);
-      final results = await Future.wait(
-        chunk.map((record) async {
-          final first = await notifier.refreshEngagement(record.id);
-          final second = await notifier.refreshInsights(record.id);
-          return first ?? second;
-        }),
-      );
-      if (!mounted) return;
-      failed += results.where((error) => error != null).length;
-    }
-    if (failed > 0 && mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text("Some insights couldn't refresh.")),
-      );
+    final refresher = ref.read(facebookInsightsRefresherProvider.notifier);
+    await refresher.refreshStale();
+    if (!mounted) return;
+    final error = refresher.lastError;
+    if (error != null) {
+      ScaffoldMessenger.of(context)
+          .showSnackBar(SnackBar(content: Text(error)));
     }
   }
 
@@ -228,6 +220,7 @@ class _RecordTile extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final theme = Theme.of(context);
+    final insightState = stateFor(record);
     return InkWell(
       onTap: record.isPublished ? () => _open(context) : null,
       onLongPress: () => _showActions(context, ref),
@@ -324,13 +317,20 @@ class _RecordTile extends ConsumerWidget {
                       ),
                     ),
                   ),
-                if (record.hasInsights)
+                if (insightState != FacebookInsightState.loading)
                   Padding(
                     padding: const EdgeInsets.only(top: 2),
-                    child: FacebookStatLine(
-                      stats: facebookStatsFor(record),
-                      onTap: () => PostInsightsSheet.show(context, record.id),
-                    ),
+                    child: insightState == FacebookInsightState.ready
+                        ? FacebookStatLine(
+                            stats: facebookStatsFor(record),
+                            onTap: () =>
+                                PostInsightsSheet.show(context, record.id),
+                          )
+                        : FacebookInsightStateLine(
+                            record: record,
+                            onTap: () =>
+                                PostInsightsSheet.show(context, record.id),
+                          ),
                   ),
               ],
             ),

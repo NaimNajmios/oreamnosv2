@@ -1,5 +1,17 @@
 # Changelog — Oreamnos
 
+## v27 — Facebook Insights Refresh (2026-11-24)
+
+- **Per-post insights now refresh reliably.** `FacebookInsightsService.fetch` requests one metric per call and returns partial results plus per-metric failures, so one rejected metric no longer hides the others. Errors are stored on the record as short codes (`insightsError`, `engagementError`, `lastRefreshAttemptAt`).
+- **Background refresher:** new `FacebookInsightsRefresher` refreshes stale published records on Publish-hub open, history open, app resume and right after a publish (≤3 at a time, stops on rate limit or permission).
+- **Per-record refresh:** `refreshPost` on `FacebookHistoryNotifier` runs engagement + insights per record with its own Page token (legacy fallback preserved).
+- **Visible error state:** Hub, Performance and History rows show `FacebookInsightState` (loading / ready / failed / empty) via `FacebookInsightStateLine` and `_insightSummary`, replacing "No insights yet".
+- **Diagnostics show Meta's real reason:** `FacebookDiagnostics.sanitizeGraphMessage` + `traceId` log sanitized `Meta: <message>` + `trace=` lines (tokens redacted, ≤200 chars).
+- **Page performance (3.1):** `since`/`until` replace `date_preset`; unavailable metrics now carry a reason (`FacebookPageInsights.unavailableReason`, incl. the 100-likes message).
+- **Monetization (3.3):** per-metric requests, opt-in "Show estimated earnings" toggle (default off), 24-hour not-available cache on 400/code 100, logged at WARN.
+- **Permissions (4):** Connect dialog copy lists `read_insights` + `pages_manage_engagement` and points to Graph API Explorer/own-app Facebook Login; granted scopes are captured per Page via `GET /me/permissions` (`facebook_granted_scopes_<pageId>`) or an insights probe for pasted Page tokens; `/facebook-diagnostics` shows a Publish/Engagement/Insights/Comments checklist; the Publish hub shows a reconnect banner when a refresh returns `permission`.
+- **Tests:** new coverage for per-metric partial success, token-per-record resolution, stale selection by age, the batch-stop contract, window math, monetization opt-in/negative cache, sanitized diagnostics with trace ids, and the access checklist.
+
 ## v26 — Automated Releases + In-App Update Check (2026-11-20)
 
 * **Release pipeline:** pushing a `vMAJOR.MINOR.PATCH[-prerelease]` tag now builds one universal, release-signed APK on GitHub Actions, refuses to publish anything debug-signed, attaches a `.sha256`, and publishes auto-generated notes. Hyphenated tags are pre-releases, so test builds never reach users. `scripts/release.sh` + `RELEASING.md` document the flow; the existing `upload-keystore.jks` stays the only signing key.

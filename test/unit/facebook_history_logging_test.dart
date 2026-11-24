@@ -15,7 +15,7 @@ class _FailingInsights extends FacebookInsightsService {
   _FailingInsights() : super(ApiClient());
 
   @override
-  Future<FacebookPostInsights> fetch({
+  Future<FacebookPostInsightsResult> fetch({
     required String postId,
     required String token,
   }) async {

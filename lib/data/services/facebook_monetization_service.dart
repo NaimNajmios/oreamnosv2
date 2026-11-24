@@ -8,6 +8,7 @@ import 'package:oreamnos/core/network/api_client.dart';
 import '../../config/constants.dart';
 import '../../domain/models/facebook_api_exception.dart';
 import '../../domain/models/facebook_monetization.dart';
+import 'preferences_service.dart';
 import 'facebook_diagnostics.dart';
 import 'facebook_metric_names.dart';
 import 'facebook_network_error.dart';
@@ -39,28 +40,75 @@ class FacebookMonetizationService {
     }
     final until = DateTime.now();
     final since = until.subtract(Duration(days: days));
+    final sinceSeconds = '${since.toUtc().millisecondsSinceEpoch ~/ 1000}';
+    final untilSeconds = '${until.toUtc().millisecondsSinceEpoch ~/ 1000}';
+
+    // One request per metric: a 400 rejects the whole call.
+    var totalEarnings = 0.0;
+    var totalApproximateEarnings = 0.0;
+    var found = false;
+    try {
+      for (final metric in [
+        FacebookMetricNames.contentMonetizationEarnings,
+        FacebookMetricNames.monetizationApproximateEarnings,
+      ]) {
+        final data = await _getMetric(
+          pageId,
+          token,
+          metric,
+          sinceSeconds,
+          untilSeconds,
+        );
+        final total = _total(data, metric);
+        if (total != null) {
+          found = true;
+          if (metric == FacebookMetricNames.contentMonetizationEarnings) {
+            totalEarnings += total;
+          } else {
+            totalApproximateEarnings += total;
+          }
+        }
+      }
+    } catch (e) {
+      if (e is FacebookApiException && e.code == 400) {
+        return _markNotAvailable(pageId);
+      }
+      rethrow;
+    }
+    return FacebookMonetizationSnapshot(
+      pageId: pageId,
+      totalEarnings: found ? totalEarnings : null,
+      totalApproximateEarnings: found ? totalApproximateEarnings : null,
+      fetchedAt: DateTime.now(),
+      currency: '',
+    );
+  }
+
+  Future<Map<String, dynamic>> _getMetric(
+    String pageId,
+    String token,
+    String metric,
+    String sinceSeconds,
+    String untilSeconds,
+  ) async {
     try {
       final response = await _client.get<dynamic>(
         '$_pathBase/${Uri.encodeComponent(pageId)}/insights',
         queryParameters: {
-          'metric': [
-            FacebookMetricNames.contentMonetizationEarnings,
-            FacebookMetricNames.monetizationApproximateEarnings,
-          ].join(','),
+          'metric': metric,
           'period': 'day',
-          'since': '${since.toUtc().millisecondsSinceEpoch ~/ 1000}',
-          'until': '${until.toUtc().millisecondsSinceEpoch ~/ 1000}',
+          'since': sinceSeconds,
+          'until': untilSeconds,
         },
         options: Options(
           headers: {'Authorization': 'Bearer $token'},
           receiveTimeout: AppConstants.facebookWriteTimeout,
         ),
       );
-      final data = facebookRequireObject(
+      return facebookRequireObject(
         response.data,
         action: 'monetization earnings',
       );
-      return _parse(data, pageId, DateTime.now());
     } on FacebookApiException {
       rethrow;
     } on DioException catch (e) {
@@ -70,22 +118,22 @@ class FacebookMonetizationService {
         isNetworkFailure: e.response == null,
         networkIssue: e.response == null ? facebookNetworkIssueFor(e) : null,
       );
+      if (mapped.kind == FacebookApiErrorKind.unknown &&
+          (e.response?.statusCode == 400 || mapped.code == 100)) {
+        throw FacebookApiException(
+          kind: FacebookApiErrorKind.insightsUnavailable,
+          message: FacebookDiagnostics.metaReason(mapped.graphMessage),
+          code: mapped.code,
+          subcode: mapped.subcode,
+          traceId: mapped.traceId,
+        );
+      }
       FacebookDiagnostics.failure(
         'Monetization earnings',
         mapped,
         statusCode: e.response?.statusCode,
+        pageId: pageId,
       );
-      if (mapped.kind == FacebookApiErrorKind.unknown &&
-          e.response?.statusCode == 400) {
-        throw FacebookApiException(
-          kind: FacebookApiErrorKind.insightsUnavailable,
-          message:
-              'Meta reports monetization insights are unavailable for this '
-              'Page. Confirm Content Monetization enrollment.',
-          code: mapped.code,
-          subcode: mapped.subcode,
-        );
-      }
       throw mapped;
     } catch (_) {
       throw const FacebookApiException(
@@ -95,40 +143,49 @@ class FacebookMonetizationService {
     }
   }
 
-  static FacebookMonetizationSnapshot _parse(
-    Map<String, dynamic> body,
-    String pageId,
-    DateTime fetchedAt,
-  ) {
-    double? total(String name) {
-      final rows = body['data'];
-      if (rows is! List) return null;
-      var found = false;
-      var sum = 0.0;
-      for (final row in rows) {
-        if (row is! Map || row['name']?.toString() != name) continue;
-        final values = row['values'];
-        if (values is! List) continue;
-        for (final entry in values) {
-          if (entry is! Map) continue;
-          final value = _asDouble(entry['value']);
-          if (value == null) continue;
-          found = true;
-          sum += value;
-        }
-      }
-      return found ? sum : null;
-    }
-
+  /// Caches "not available for this Page" for 24 hours and logs the
+  /// negative outcome at WARN rather than ERROR (plan expects the request
+  /// to be skipped again before that).
+  Future<FacebookMonetizationSnapshot> _markNotAvailable(String pageId) async {
+    final prefs = getIt<PreferencesService>();
+    await prefs.setFacebookMonetizationUnavailableUntil(
+      DateTime.now().add(const Duration(hours: 24)),
+    );
+    FacebookDiagnostics.warning(
+      'Monetization earnings unavailable for this Page',
+      const FacebookApiException(
+        kind: FacebookApiErrorKind.insightsUnavailable,
+        message: 'Not enrolled for Content Monetization.',
+      ),
+      pageId: pageId,
+    );
     return FacebookMonetizationSnapshot(
       pageId: pageId,
-      totalEarnings: total(FacebookMetricNames.contentMonetizationEarnings),
-      totalApproximateEarnings: total(
-        FacebookMetricNames.monetizationApproximateEarnings,
-      ),
-      fetchedAt: fetchedAt,
+      totalEarnings: null,
+      totalApproximateEarnings: null,
+      fetchedAt: DateTime.now(),
       currency: '',
     );
+  }
+
+  static double? _total(Map<String, dynamic> body, String name) {
+    final rows = body['data'];
+    if (rows is! List) return null;
+    var found = false;
+    var sum = 0.0;
+    for (final row in rows) {
+      if (row is! Map || row['name']?.toString() != name) continue;
+      final values = row['values'];
+      if (values is! List) continue;
+      for (final entry in values) {
+        if (entry is! Map) continue;
+        final value = _asDouble(entry['value']);
+        if (value == null) continue;
+        found = true;
+        sum += value;
+      }
+    }
+    return found ? sum : null;
   }
 
   static double? _asDouble(Object? value) {

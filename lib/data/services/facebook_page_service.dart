@@ -9,6 +9,7 @@ import 'package:oreamnos/core/network/api_client.dart';
 import '../../config/constants.dart';
 import '../../domain/models/facebook_api_exception.dart';
 import 'facebook_diagnostics.dart';
+import 'facebook_metric_names.dart';
 import 'facebook_network_error.dart';
 import 'facebook_response_guard.dart';
 import 'facebook_publisher_service.dart';
@@ -163,6 +164,50 @@ class FacebookPageService {
         message: 'Could not connect Pages. Try again.',
       );
     }
+  }
+
+  /// `GET /me/permissions` with a user token: the granted scope names
+  /// (only `status == 'granted'` rows are returned, never a token).
+  Future<List<String>> fetchGrantedScopes(String userToken) async {
+    final response = await _client.get<dynamic>(
+      '$_pathBase/me/permissions',
+      queryParameters: const {'fields': 'permission,status'},
+      options: Options(
+        headers: {'Authorization': 'Bearer ${userToken.trim()}'},
+        receiveTimeout: const Duration(seconds: 20),
+      ),
+    );
+    final data = _asMap(response.data);
+    final rows = data?['data'];
+    if (rows is! List) return const [];
+    final scopes = <String>[];
+    for (final row in rows) {
+      if (row is! Map) continue;
+      if (row['status']?.toString() != 'granted') continue;
+      final name = row['permission']?.toString();
+      if (name != null && name.isNotEmpty) scopes.add(name);
+    }
+    scopes.sort();
+    return List.unmodifiable(scopes);
+  }
+
+  /// Probe for a pasted Page token: succeeds when the token is accepted by
+  /// Graph for the `page_follows` insights metric (the Phase-0 call 2 shape).
+  /// Throws on any failure so callers can ignore it.
+  Future<void> probePageInsightsAccess(String pageId, String token) {
+    return _client
+        .get<dynamic>(
+          '$_pathBase/${Uri.encodeComponent(pageId.trim())}/insights',
+          queryParameters: {
+            'metric': FacebookMetricNames.pageFollows,
+            'period': 'day',
+          },
+          options: Options(
+            headers: {'Authorization': 'Bearer $token'},
+            receiveTimeout: const Duration(seconds: 20),
+          ),
+        )
+        .then<void>((_) {});
   }
 
   static String _pictureUrl(Map row) {

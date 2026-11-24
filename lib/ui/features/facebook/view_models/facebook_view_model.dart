@@ -17,6 +17,7 @@ import '../../../../data/services/facebook_image_cropper.dart';
 import '../../../../data/services/facebook_storage_service.dart';
 import '../../../../data/services/facebook_publisher_service.dart';
 import '../../../../data/services/facebook_history_service.dart';
+import '../../../../data/services/facebook_insights_refresher.dart';
 import '../../../../data/services/log_service.dart';
 import '../../../../data/services/preferences_service.dart';
 import '../../../../domain/models/facebook_api_exception.dart';
@@ -170,6 +171,10 @@ class FacebookNotifier extends Notifier<FacebookUiState> {
     if (trimmed.isEmpty) return 'Paste a Page access token first.';
     try {
       final page = await _pageService.verifyPageToken(trimmed);
+      // Best-effort probe that this Page token accepts insights reads.
+      try {
+        await _pageService.probePageInsightsAccess(page.id, trimmed);
+      } catch (_) {}
       await _preferencesService.setFacebookPageTokenFor(page.id, trimmed);
       await _preferencesService.upsertFacebookPage(page);
       await _activate(page);
@@ -203,6 +208,16 @@ class FacebookNotifier extends Notifier<FacebookUiState> {
       }
       await _preferencesService.setFacebookPages(merged);
       await _activate(accounts.first.page);
+      // Capture granted scopes while the user token is still in memory.
+      try {
+        final scopes = await _pageService.fetchGrantedScopes(trimmed);
+        for (final account in accounts) {
+          await _preferencesService.setFacebookGrantedScopes(
+            account.page.id,
+            scopes,
+          );
+        }
+      } catch (_) {}
       return null;
     } on FacebookApiException catch (e) {
       return e.message;
@@ -1270,6 +1285,9 @@ class FacebookDraftNotifier extends Notifier<FacebookComposeState> {
             isStoryOnly: !state.publishFeed,
           );
         }
+        unawaited(
+          ref.read(facebookInsightsRefresherProvider.notifier).refreshStale(),
+        );
       } catch (_) {}
     } on FacebookApiException catch (e) {
       FacebookDiagnostics.failure('Publish', e, pageId: pageId);

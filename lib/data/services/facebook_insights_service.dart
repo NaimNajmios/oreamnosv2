@@ -28,9 +28,12 @@ class FacebookInsightsService {
       '${AppConstants.facebookGraphBaseUrl}/'
       '${AppConstants.facebookGraphVersion}';
 
-  /// Returns whatever metrics Graph exposes. Metrics that are missing or
-  /// malformed stay `null` — never zero — so the UI can hide them.
-  Future<FacebookPostInsights> fetch({
+  /// The post insights fetched so far, one request per metric. A metric
+  /// Graph rejects is recorded in [FacebookPostInsightsResult.failures];
+  /// only a total failure throws, so one rejected metric no longer hides
+  /// the others. Metrics that are missing or malformed stay `null` —
+  /// never zero — so the UI can hide them.
+  Future<FacebookPostInsightsResult> fetch({
     required String postId,
     required String token,
   }) async {
@@ -40,16 +43,54 @@ class FacebookInsightsService {
         message: 'Insights are unavailable for this post.',
       );
     }
+    final fetchedAt = DateTime.now();
+    final failures = <FacebookApiException>[];
+    var insights = FacebookPostInsights(fetchedAt: fetchedAt);
+    for (final metric in [
+      FacebookMetricNames.postTotalMediaViewUnique,
+      FacebookMetricNames.postReactionsByTypeTotal,
+      FacebookMetricNames.postActivityByActionType,
+    ]) {
+      try {
+        insights = _merge(
+          insights,
+          await _fetchMetric(
+            postId: postId,
+            token: token,
+            metric: metric,
+            fetchedAt: fetchedAt,
+          ),
+        );
+      } on FacebookApiException catch (e) {
+        failures.add(e);
+        FacebookDiagnostics.failure('Insights refresh', e, statusCode: e.code);
+      }
+    }
+    if (failures.length == _metricNames.length) throw failures.first;
+    FacebookDiagnostics.event('Post insights refreshed');
+    return FacebookPostInsightsResult(
+      insights: insights,
+      failures: List.unmodifiable(failures),
+    );
+  }
+
+  static const List<String> _metricNames = [
+    FacebookMetricNames.postTotalMediaViewUnique,
+    FacebookMetricNames.postReactionsByTypeTotal,
+    FacebookMetricNames.postActivityByActionType,
+  ];
+
+  /// One Graph request for [metric]; only that metric is in the response.
+  Future<FacebookPostInsights> _fetchMetric({
+    required String postId,
+    required String token,
+    required String metric,
+    required DateTime fetchedAt,
+  }) async {
     try {
       final response = await _client.get<dynamic>(
         '$_pathBase/${Uri.encodeComponent(postId)}',
-        queryParameters: const {
-          'fields':
-              'insights.metric('
-              '${FacebookMetricNames.postTotalMediaViewUnique},'
-              '${FacebookMetricNames.postReactionsByTypeTotal},'
-              '${FacebookMetricNames.postActivityByActionType})',
-        },
+        queryParameters: {'fields': 'insights.metric($metric)'},
         options: Options(
           headers: {'Authorization': 'Bearer $token'},
           receiveTimeout: AppConstants.facebookWriteTimeout,
@@ -59,9 +100,7 @@ class FacebookInsightsService {
         response.data,
         action: 'post insights',
       );
-      final insights = _parse(data, DateTime.now());
-      FacebookDiagnostics.event('Post insights refreshed');
-      return insights;
+      return _parse(data, fetchedAt);
     } on FacebookApiException {
       rethrow;
     } on DioException catch (e) {
@@ -76,11 +115,10 @@ class FacebookInsightsService {
           e.response?.statusCode == 400) {
         final converted = FacebookApiException(
           kind: FacebookApiErrorKind.insightsUnavailable,
-          message:
-              'Meta reports these post insights are unavailable. The metric '
-              'names may have changed.',
+          message: FacebookDiagnostics.metaReason(mapped.graphMessage),
           code: mapped.code,
           subcode: mapped.subcode,
+          traceId: mapped.traceId,
         );
         FacebookDiagnostics.failure(
           'Insights refresh',
@@ -103,6 +141,25 @@ class FacebookInsightsService {
       FacebookDiagnostics.failure('Insights refresh', error);
       throw error;
     }
+  }
+
+  /// Merges a successfully fetched metric into the accumulated result.
+  static FacebookPostInsights _merge(
+    FacebookPostInsights base,
+    FacebookPostInsights next,
+  ) {
+    final reactionsByType = next.reactionsByType ?? base.reactionsByType;
+    return FacebookPostInsights(
+      uniqueViewers: next.uniqueViewers ?? base.uniqueViewers,
+      reactionsByType: reactionsByType,
+      reactions: reactionsByType?.values.fold<int>(
+        0,
+        (sum, count) => sum + count,
+      ),
+      activityByActionType:
+          next.activityByActionType ?? base.activityByActionType,
+      fetchedAt: base.fetchedAt,
+    );
   }
 
   /// Stable engagement summary fields. Kept separate from [fetch] so a

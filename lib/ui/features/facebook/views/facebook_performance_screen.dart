@@ -10,6 +10,7 @@ import 'package:oreamnos/ui/features/facebook/view_models/facebook_view_model.da
 import 'package:oreamnos/ui/features/facebook/widgets/facebook_connection_banner.dart';
 import 'package:oreamnos/ui/features/facebook/widgets/facebook_connection_dialog.dart';
 import 'package:oreamnos/ui/features/facebook/widgets/facebook_stat_line.dart';
+import 'package:oreamnos/ui/features/facebook/widgets/post_insights_sheet.dart';
 import 'package:oreamnos/ui/features/publish/view_models/facebook_performance_view_model.dart';
 
 /// Full performance view behind the Publish hub card.
@@ -147,8 +148,10 @@ class _FacebookPerformanceScreenState
               Padding(
                 padding: const EdgeInsets.only(bottom: AppSpacing.sm),
                 child: Text(
-                  'Some metrics are unavailable: '
-                  '${data.unavailableMetrics.map(_metricLabel).join(', ')}.',
+                  data.unavailableReason != null
+                      ? 'Media views unavailable: ${data.unavailableReason}'
+                      : 'Some metrics are unavailable: '
+                            '${data.unavailableMetrics.map(_metricLabel).join(', ')}.',
                   style: theme.textTheme.bodySmall?.copyWith(
                     color: theme.colorScheme.onSurfaceVariant,
                   ),
@@ -197,7 +200,12 @@ class _FacebookPerformanceScreenState
                     child: points.isEmpty
                         ? Center(
                             child: Text(
-                              state.error != null ? 'Insights unavailable.' : 'No Page insights yet. Data can lag up to 24h.',
+                              state.error != null
+                                  ? 'Insights unavailable.'
+                                  : data != null &&
+                                        data.unavailableReason != null
+                                  ? data.unavailableReason!
+                                  : 'No Page insights yet. Data can lag up to 24h.',
                               style: theme.textTheme.bodySmall?.copyWith(
                                 color: theme.colorScheme.onSurfaceVariant,
                               ),
@@ -491,7 +499,7 @@ class _PostRow extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final stats = facebookStatsFor(record);
+    final state = stateFor(record);
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: AppSpacing.sm),
       child: Row(
@@ -514,19 +522,20 @@ class _PostRow extends StatelessWidget {
                     fontWeight: FontWeight.w600,
                   ),
                 ),
-                if (stats.isEmpty)
-                  Text(
-                    'No insights yet',
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: theme.textTheme.labelSmall?.copyWith(
-                      color: theme.colorScheme.onSurfaceVariant,
-                    ),
+                if (state == FacebookInsightState.ready)
+                  Padding(
+                    padding: const EdgeInsets.only(top: 2),
+                    child: FacebookStatLine(stats: facebookStatsFor(record)),
                   )
                 else
                   Padding(
                     padding: const EdgeInsets.only(top: 2),
-                    child: FacebookStatLine(stats: stats),
+                    child: FacebookInsightStateLine(
+                      record: record,
+                      onTap: state == FacebookInsightState.failed
+                          ? () => PostInsightsSheet.show(context, record.id)
+                          : null,
+                    ),
                   ),
               ],
             ),

@@ -68,6 +68,7 @@ class FacebookPageInsights {
     this.rangeDays = 28,
     this.previousPoints = const [],
     this.previousUnavailableMetrics = const [],
+    this.unavailableReason,
   });
 
   final String pageId;
@@ -80,6 +81,10 @@ class FacebookPageInsights {
   /// Metrics Meta rejected for this Page/range. The rest of the snapshot is
   /// still valid, so the UI can show partial data instead of nothing.
   final List<String> unavailableMetrics;
+
+  /// Short human-readable reason for [unavailableMetrics] (e.g. the 100-like
+  /// minimum), when Graph explained why a metric is unavailable.
+  final String? unavailableReason;
 
   /// Range the snapshot covers (7, 28, or 90 days).
   final int rangeDays;
@@ -132,6 +137,7 @@ class FacebookPageInsights {
   FacebookPageInsights copyWith({
     List<PageInsightPoint>? previousPoints,
     List<String>? previousUnavailableMetrics,
+    String? unavailableReason,
   }) {
     return FacebookPageInsights(
       pageId: pageId,
@@ -145,6 +151,7 @@ class FacebookPageInsights {
       previousPoints: previousPoints ?? this.previousPoints,
       previousUnavailableMetrics:
           previousUnavailableMetrics ?? this.previousUnavailableMetrics,
+      unavailableReason: unavailableReason ?? this.unavailableReason,
     );
   }
 
@@ -156,6 +163,7 @@ class FacebookPageInsights {
     'hasFollows': hasFollows,
     'hasEngagements': hasEngagements,
     'unavailableMetrics': unavailableMetrics,
+    'unavailableReason': unavailableReason,
     'rangeDays': rangeDays,
     'previousPoints': previousPoints.map((p) => p.toJson()).toList(),
     'previousUnavailableMetrics': previousUnavailableMetrics,
@@ -186,6 +194,7 @@ class FacebookPageInsights {
               .toList(growable: false) ??
           const [],
       rangeDays: (json['rangeDays'] as num?)?.toInt() ?? 28,
+      unavailableReason: (json['unavailableReason'] as String?)?.trim(),
       previousPoints: rawPrevious is List
           ? rawPrevious
                 .whereType<Map>()

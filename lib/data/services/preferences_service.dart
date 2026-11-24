@@ -171,6 +171,34 @@ class PreferencesService {
     }
   }
 
+  /// Granted scope names for [pageId], captured during connect.
+  List<String> facebookGrantedScopesFor(String pageId) {
+    if (pageId.isEmpty) return const [];
+    final raw = _prefs.getString(
+      '${AppConstants.keyFacebookGrantedScopesPrefix}$pageId',
+    );
+    if (raw == null || raw.isEmpty) return const [];
+    try {
+      final decoded = jsonDecode(raw);
+      if (decoded is List) return decoded.whereType<String>().toList();
+    } catch (_) {}
+    return const [];
+  }
+
+  Future<void> setFacebookGrantedScopes(
+    String pageId,
+    List<String> scopes,
+  ) async {
+    if (pageId.isEmpty) return;
+    final names =
+        scopes.map((e) => e.trim()).where((e) => e.isNotEmpty).toSet().toList()
+          ..sort();
+    await _prefs.setString(
+      '${AppConstants.keyFacebookGrantedScopesPrefix}$pageId',
+      jsonEncode(names),
+    );
+  }
+
   Future<void> deleteFacebookPageToken(String pageId) async {
     if (pageId.isEmpty) return;
     try {
@@ -386,6 +414,29 @@ class PreferencesService {
 
   Future<void> setFacebookPerformanceDays(int days) =>
       _prefs.setInt(AppConstants.keyFacebookPerformanceDays, days);
+
+  /// Whether "Show estimated earnings" is enabled on the Publish tab
+  /// (default off: earnings estimates can be misleading without Content
+  /// Monetization enrollment).
+  bool get facebookMonetizationEnabled =>
+      _prefs.getBool(AppConstants.keyFacebookMonetizationEnabled) ?? false;
+
+  Future<void> setFacebookMonetizationEnabled(bool enabled) =>
+      _prefs.setBool(AppConstants.keyFacebookMonetizationEnabled, enabled);
+
+  /// When a monetization fetch found the Page is not enrolled (Meta 400 /
+  /// code 100): don't request again for 24 hours.
+  DateTime? get facebookMonetizationUnavailableUntil =>
+      _readMillis(AppConstants.keyFacebookMonetizationUnavailableUntil);
+
+  Future<void> setFacebookMonetizationUnavailableUntil(DateTime at) =>
+      _prefs.setInt(
+        AppConstants.keyFacebookMonetizationUnavailableUntil,
+        at.millisecondsSinceEpoch,
+      );
+
+  Future<void> clearFacebookMonetizationUnavailable() =>
+      _prefs.remove(AppConstants.keyFacebookMonetizationUnavailableUntil);
 
   /// Persisted Usage range filter. Only 0 (all time), 7, 30 and 90 are valid.
   int get usageRangeDays {

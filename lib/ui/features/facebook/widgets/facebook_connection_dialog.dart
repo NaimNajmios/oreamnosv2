@@ -215,15 +215,20 @@ class _FacebookConnectionDialogState
                           '${connection.hasMultiplePages ? ' (+${connection.pages.length - 1} more)' : ''}. '
                           'Paste a token to add or refresh Pages.'
                     : isUser
-                    ? 'Recommended. Create a user token in Meta Business Suite with '
-                          'pages_show_list, pages_read_engagement and '
-                          'pages_manage_posts, then paste it here. All your '
-                          'Pages are detected and each Page token is stored '
-                          'securely on this device. The user token itself is '
-                          'discarded immediately and never saved or logged.'
+                    ? 'Recommended. Create a user token in Graph API '
+                          '(Graph API Explorer, or your own app\'s Facebook '
+                          'Login) with pages_show_list, pages_read_engagement, '
+                          'pages_manage_posts and read_insights, then paste it '
+                          'here. Grant the Pages tasks during the permission '
+                          'screen. All your Pages are detected and each Page '
+                          'token is stored securely on this device. The user '
+                          'token itself is discarded immediately and never '
+                          'saved or logged. Comments moderation needs '
+                          'pages_manage_engagement.'
                     : 'Paste a Page access token. It is verified against '
                           'Facebook before saving and stays in secure storage '
-                          'on this device — never logged.',
+                          'on this device — never logged. Insights need '
+                          'read_insights.',
                 style: theme.textTheme.bodySmall?.copyWith(
                   color: theme.colorScheme.onSurfaceVariant,
                 ),

@@ -99,11 +99,25 @@ class FacebookPerformanceNotifier extends Notifier<FacebookPerformanceState> {
       loading: true,
       days: requestedDays,
     );
+    // Earnings are opt-in (default off) and skipped while a cached
+    // "not enrolled" negative result is fresh.
+    var fetchEarnings = _prefs.facebookMonetizationEnabled;
+    final unavailableUntil = _prefs.facebookMonetizationUnavailableUntil;
+    if (fetchEarnings &&
+        unavailableUntil != null &&
+        DateTime.now().isBefore(unavailableUntil)) {
+      fetchEarnings = false;
+    }
     FacebookMonetizationSnapshot? monetization;
-    final monetizationFuture = _monetization
-        .fetch(pageId: pageId, token: token, days: 28)
-        .then<FacebookMonetizationSnapshot?>((value) => value)
-        .catchError((_) => null);
+    Future<FacebookMonetizationSnapshot?> monetizationFuture;
+    if (fetchEarnings) {
+      monetizationFuture = _monetization
+          .fetch(pageId: pageId, token: token, days: 28)
+          .then<FacebookMonetizationSnapshot?>((value) => value)
+          .catchError((_) => null);
+    } else {
+      monetizationFuture = Future<FacebookMonetizationSnapshot?>.value(null);
+    }
     try {
       var data = await _service.fetch(
         pageId: pageId,

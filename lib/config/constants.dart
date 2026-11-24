@@ -186,6 +186,10 @@ abstract final class AppConstants {
   static const String keyFacebookWorkflows = 'facebook_workflows';
   static const String keyFacebookPageInsights = 'facebook_page_insights';
   static const String keyFacebookPerformanceDays = 'facebook_performance_days';
+  static const String keyFacebookMonetizationEnabled =
+      'facebook_monetization_enabled';
+  static const String keyFacebookMonetizationUnavailableUntil =
+      'facebook_monetization_unavailable_until_ms';
   static const String keyFacebookRemindersEnabled =
       'facebook_reminders_enabled';
   static const String keyFacebookReminderIds = 'facebook_reminder_ids';
@@ -195,6 +199,11 @@ abstract final class AppConstants {
   /// Per-Page token key. Only derived Page tokens ever use this shape.
   static String facebookPageTokenKey(String pageId) =>
       'facebook_page_token_$pageId';
+
+  /// Per-Page granted scope names (JSON string), captured via
+  /// `GET /me/permissions` during connect. Only names, never tokens.
+  static const String keyFacebookGrantedScopesPrefix =
+      'facebook_granted_scopes_';
 
   // === Update check ===
   static const String keyUpdateLastCheck = 'update_last_check_ms';

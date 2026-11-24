@@ -128,8 +128,9 @@ void main() {
             },
           ]),
         );
-        final insights = await _service(adapter)
-            .fetch(postId: '123_456', token: _token);
+        final insights = (await _service(
+          adapter,
+        ).fetch(postId: '123_456', token: _token)).insights;
 
         expect(insights.uniqueViewers, 1200);
         expect(insights.reactions, 84);
@@ -149,10 +150,9 @@ void main() {
         expect(request.headers['Authorization'], contains(_token));
         expect(request.uri.queryParameters.values, isNot(contains(_token)));
         final fields = request.uri.queryParameters['fields']!;
-        expect(fields, contains('post_total_media_view_unique'));
-        expect(fields, contains('post_reactions_by_type_total'));
+        // One request per metric (the last is activity); retired names must
+        // never be requested.
         expect(fields, contains('post_activity_by_action_type'));
-        // Retired names must never be requested.
         expect(fields, isNot(contains('post_impressions')));
         expect(fields, isNot(contains('post_clicks')));
       },
@@ -170,8 +170,9 @@ void main() {
           },
         ]),
       );
-      final insights = await _service(adapter)
-          .fetch(postId: 'p', token: _token);
+      final insights = (await _service(
+        adapter,
+      ).fetch(postId: 'p', token: _token)).insights;
       expect(insights.uniqueViewers, 5);
       expect(insights.reactions, isNull);
       expect(insights.comments, isNull);
@@ -181,8 +182,9 @@ void main() {
     });
 
     test('no insights block yields nulls and hasAny false', () async {
-      final insights = await _service(_GraphAdapter(200, {'id': 'p'}))
-          .fetch(postId: 'p', token: _token);
+      final insights = (await _service(
+        _GraphAdapter(200, {'id': 'p'}),
+      ).fetch(postId: 'p', token: _token)).insights;
       expect(insights.hasAny, isFalse);
       expect(insights.uniqueViewers, isNull);
       expect(insights.reactions, isNull);
@@ -190,7 +192,7 @@ void main() {
     });
 
     test('malformed metric values cannot crash the parser', () async {
-      final insights = await _service(
+      final insights = (await _service(
         _GraphAdapter(
           200,
           _insights([
@@ -209,7 +211,7 @@ void main() {
             {'name': 'post_activity_by_action_type', 'values': 'nope'},
           ]),
         ),
-      ).fetch(postId: 'p', token: _token);
+      ).fetch(postId: 'p', token: _token)).insights;
       expect(insights.uniqueViewers, isNull);
       expect(insights.reactions, isNull);
       expect(insights.activityByActionType, isNull);
@@ -261,7 +263,9 @@ void main() {
         fail('should throw');
       } on FacebookApiException catch (e) {
         expect(e.kind, FacebookApiErrorKind.insightsUnavailable);
-        expect(e.message, contains('metric names may have changed'));
+        // Meta's real message is surfaced via the sanitized `Meta:` prefix.
+        expect(e.message, contains('Meta:'));
+        expect(e.message, contains('Unknown metric'));
       }
     });
 
@@ -384,5 +388,74 @@ void main() {
       expect(entry.level, 'DEBUG');
       expect(entry.message, 'Post insights refreshed');
     });
+
+    test(
+      'partial success: one metric failing is recorded, others kept',
+      () async {
+        // The first request (media views) succeeds, then each later metric
+        // call is rejected: the merge keeps the first and records failures.
+        final adapter = _FlakyAdapter(
+          successBody: _insights([
+            {
+              'name': 'post_total_media_view_unique',
+              'values': [
+                {'value': 321},
+              ],
+            },
+          ]),
+          failAfter: 1,
+        );
+        final result = await _service(adapter)
+            .fetch(postId: 'p', token: _token);
+        expect(result.insights.uniqueViewers, 321);
+        expect(result.failures, hasLength(2));
+        expect(
+          result.failures.first.kind,
+          FacebookApiErrorKind.insightsUnavailable,
+        );
+      },
+    );
+
+    test('total failure throws', () async {
+      final adapter = _FlakyAdapter(successBody: _insights([]));
+      expect(
+        () => _service(adapter).fetch(postId: 'p', token: _token),
+        throwsA(isA<FacebookApiException>()),
+      );
+    });
   });
+}
+
+/// Adapter that answers [successBody] for the first [failAfter] requests and
+/// a 400 afterwards (used to exercise per-metric partial success).
+class _FlakyAdapter extends _GraphAdapter {
+  _FlakyAdapter({this.successBody, this.failAfter = 0})
+    : super(200, successBody);
+
+  final Map<String, dynamic>? successBody;
+  final int failAfter;
+  int calls = 0;
+
+  @override
+  Future<ResponseBody> fetch(
+    RequestOptions options,
+    Stream<List<int>>? requestStream,
+    Future<void>? cancelFuture,
+  ) async {
+    calls++;
+    if (calls > failAfter) {
+      return ResponseBody.fromBytes(
+        utf8.encode(
+          jsonEncode({
+            'error': {'code': 400, 'message': 'Unknown metric'},
+          }),
+        ),
+        400,
+        headers: {
+          Headers.contentTypeHeader: [Headers.jsonContentType],
+        },
+      );
+    }
+    return super.fetch(options, requestStream, cancelFuture);
+  }
 }

@@ -162,6 +162,8 @@ void main() {
     });
 
     test('earnings are stored alongside the performance window', () async {
+      // Earnings are opt-in (default off).
+      await prefs.setFacebookMonetizationEnabled(true);
       final container = build();
 
       await container.read(facebookPerformanceProvider.notifier).refresh();
@@ -169,6 +171,15 @@ void main() {
       final state = container.read(facebookPerformanceProvider);
       expect(state.monetization?.totalEarnings, 4.2);
       expect(state.data?.pageId, 'page_1');
+    });
+
+    test('earnings are not requested while the opt-in is off', () async {
+      final container = build();
+      await container.read(facebookPerformanceProvider.notifier).refresh();
+
+      final state = container.read(facebookPerformanceProvider);
+      expect(state.monetization, isNull);
+      expect(state.error, isNull);
     });
 
     test('a selected range persists and is reused', () async {

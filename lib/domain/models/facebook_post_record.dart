@@ -44,6 +44,9 @@ class FacebookPostRecord {
     this.shares,
     this.activityByActionType,
     this.engagementFetchedAt,
+    this.insightsError,
+    this.engagementError,
+    this.lastRefreshAttemptAt,
     this.editedAt,
     this.mediaMetadata = const [],
     this.storyPostId = '',
@@ -103,6 +106,19 @@ class FacebookPostRecord {
 
   /// Last time engagement summary fields were refreshed.
   final DateTime? engagementFetchedAt;
+
+  /// Short code of why the latest post-insights refresh failed
+  /// (`permission`, `expiredToken`, `network`, `rateLimit`, `unavailable`,
+  /// `empty`); cleared on success. See [FacebookInsightState].
+  final String? insightsError;
+
+  /// Short code of why the latest engagement refresh failed; cleared on
+  /// success.
+  final String? engagementError;
+
+  /// Last time a refresh was attempted against Graph for this record.
+  /// `null` means it never was (used by `FacebookInsightState.loading`).
+  final DateTime? lastRefreshAttemptAt;
 
   /// When the caption was last edited from the app.
   final DateTime? editedAt;
@@ -202,6 +218,9 @@ class FacebookPostRecord {
     Object? shares = _sentinel,
     Object? activityByActionType = _sentinel,
     Object? engagementFetchedAt = _sentinel,
+    Object? insightsError = _sentinel,
+    Object? engagementError = _sentinel,
+    Object? lastRefreshAttemptAt = _sentinel,
     Object? editedAt = _sentinel,
     List<Map<String, dynamic>>? mediaMetadata,
     String? storyPostId,
@@ -262,6 +281,15 @@ class FacebookPostRecord {
       engagementFetchedAt: engagementFetchedAt == _sentinel
           ? this.engagementFetchedAt
           : engagementFetchedAt as DateTime?,
+      insightsError: insightsError == _sentinel
+          ? this.insightsError
+          : insightsError as String?,
+      engagementError: engagementError == _sentinel
+          ? this.engagementError
+          : engagementError as String?,
+      lastRefreshAttemptAt: lastRefreshAttemptAt == _sentinel
+          ? this.lastRefreshAttemptAt
+          : lastRefreshAttemptAt as DateTime?,
       editedAt: editedAt == _sentinel ? this.editedAt : editedAt as DateTime?,
       mediaMetadata: mediaMetadata ?? this.mediaMetadata,
       storyPostId: storyPostId ?? this.storyPostId,
@@ -304,6 +332,9 @@ class FacebookPostRecord {
     'shares': shares,
     'activityByActionType': activityByActionType,
     'engagementFetchedAt': engagementFetchedAt?.toUtc().toIso8601String(),
+    'insightsError': insightsError,
+    'engagementError': engagementError,
+    'lastRefreshAttemptAt': lastRefreshAttemptAt?.toUtc().toIso8601String(),
     'editedAt': editedAt?.toUtc().toIso8601String(),
     'mediaMetadata': mediaMetadata,
     'storyPostId': storyPostId,
@@ -358,6 +389,11 @@ class FacebookPostRecord {
       activityByActionType: _reactionsFromJson(json['activityByActionType']),
       engagementFetchedAt: DateTime.tryParse(
         json['engagementFetchedAt'] as String? ?? '',
+      )?.toLocal(),
+      insightsError: json['insightsError'] as String?,
+      engagementError: json['engagementError'] as String?,
+      lastRefreshAttemptAt: DateTime.tryParse(
+        json['lastRefreshAttemptAt'] as String? ?? '',
       )?.toLocal(),
       editedAt: DateTime.tryParse(json['editedAt'] as String? ?? '')?.toLocal(),
       mediaMetadata: _mediaFromJson(json['mediaMetadata']),

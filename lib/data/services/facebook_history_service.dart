@@ -61,13 +61,24 @@ class FacebookHistoryNotifier extends Notifier<List<FacebookPostRecord>> {
 
   Future<void> removeByPostId(String postId) => _service.removeByPostId(postId);
 
+  /// Resolves the token that works for [record]: the record's own Page
+  /// token, falling back to the legacy single-token key for records
+  /// without one.
+  Future<String?> _tokenFor(FacebookPostRecord record) async {
+    final prefs = getIt<PreferencesService>();
+    if (record.pageId.isNotEmpty) {
+      final token = await prefs.getFacebookPageTokenFor(record.pageId);
+      if (token != null && token.isNotEmpty) return token;
+    }
+    return prefs.getFacebookPageToken();
+  }
+
   /// Deletes a published post on Graph, then removes the local record and
   /// thumbnails. Returns a user-facing error, or null on success.
   Future<String?> deletePublishedPost(String recordId) async {
     final record = _findRecord(recordId);
     if (record == null || !record.isPublished) return null;
-    final token =
-        await getIt<PreferencesService>().getFacebookPageToken() ?? '';
+    final token = (await _tokenFor(record)) ?? '';
     if (token.isEmpty) return 'Connect your Page first.';
     try {
       await getIt<FacebookPublisherService>().deletePost(
@@ -91,8 +102,7 @@ class FacebookHistoryNotifier extends Notifier<List<FacebookPostRecord>> {
     final trimmed = message.trim();
     if (trimmed.isEmpty) return 'The caption cannot be empty.';
     if (trimmed == record.reusableCaption.trim()) return null;
-    final token =
-        await getIt<PreferencesService>().getFacebookPageToken() ?? '';
+    final token = (await _tokenFor(record)) ?? '';
     if (token.isEmpty) return 'Connect your Page first.';
     try {
       await getIt<FacebookPublisherService>().updatePostMessage(
@@ -118,8 +128,7 @@ class FacebookHistoryNotifier extends Notifier<List<FacebookPostRecord>> {
         !File(record.storyImagePath).existsSync()) {
       return 'The Story image is no longer available.';
     }
-    final token =
-        await getIt<PreferencesService>().getFacebookPageToken() ?? '';
+    final token = (await _tokenFor(record)) ?? '';
     if (token.isEmpty) return 'Connect your Page first.';
     final pageId = record.pageId;
     if (pageId.isEmpty) return 'This record has no Page id.';
@@ -208,21 +217,20 @@ class FacebookHistoryNotifier extends Notifier<List<FacebookPostRecord>> {
       }
     }
     if (record == null || !record.isPublished) return null;
-    final token =
-        await getIt<PreferencesService>().getFacebookPageToken() ?? '';
+    final token = (await _tokenFor(record)) ?? '';
     if (token.isEmpty) return 'Connect your Page first.';
     final stopwatch = Stopwatch()..start();
     try {
-      final insights = await getIt<FacebookInsightsService>().fetch(
+      final result = await getIt<FacebookInsightsService>().fetch(
         postId: record.postId,
         token: token,
       );
-      await _service.setInsights(recordId, insights);
+      await _service.setInsights(recordId, result.insights);
       _log(
         'Insights refreshed in ${stopwatch.elapsedMilliseconds}ms',
         level: 'INFO',
       );
-      return insights.hasAny
+      return result.insights.hasAny
           ? null
           : 'Facebook has no insights for this post yet.';
     } on FacebookApiException catch (e) {
@@ -254,8 +262,7 @@ class FacebookHistoryNotifier extends Notifier<List<FacebookPostRecord>> {
       }
     }
     if (record == null || !record.isPublished) return null;
-    final token =
-        await getIt<PreferencesService>().getFacebookPageToken() ?? '';
+    final token = (await _tokenFor(record)) ?? '';
     if (token.isEmpty) return 'Connect your Page first.';
     final stopwatch = Stopwatch()..start();
     try {
@@ -287,6 +294,99 @@ class FacebookHistoryNotifier extends Notifier<List<FacebookPostRecord>> {
     }
   }
 
+  /// Runs engagement, then insights, writes the results to the record, and
+  /// returns a summary: how many calls succeeded and the first error code
+  /// and message, if any. Success clears the stored short codes.
+  Future<FacebookPostRefreshSummary> refreshPost(String recordId) async {
+    final record = _findRecord(recordId);
+    if (record == null || !record.isPublished) {
+      return const FacebookPostRefreshSummary(ok: 0);
+    }
+    final token = await _tokenFor(record);
+    if (token == null || token.isEmpty) {
+      await _service.setRefreshState(recordId, insightsError: 'permission');
+      return const FacebookPostRefreshSummary(
+        ok: 0,
+        firstErrorCode: 'permission',
+        firstErrorMessage: 'Connect your Page first.',
+      );
+    }
+    await _service.setRefreshState(
+      recordId,
+      lastRefreshAttemptAt: DateTime.now(),
+    );
+
+    var ok = 0;
+    String? firstCode;
+    String? firstMessage;
+
+    // Engagement first: reaction/comment/share badges never depend on insights.
+    try {
+      final engagement = await getIt<FacebookInsightsService>().fetchEngagement(
+        postId: record.postId,
+        token: token,
+      );
+      await _service.setInsights(recordId, engagement, engagementOnly: true);
+      ok++;
+      await _service.setRefreshState(recordId, engagementError: null);
+    } on FacebookApiException catch (e) {
+      await _service.setRefreshState(
+        recordId,
+        engagementError: _shortErrorCode(e),
+      );
+      firstCode ??= _shortErrorCode(e);
+      firstMessage ??= e.message;
+      if (e.needsReconnect) FacebookExpirySignal.report();
+    } catch (_) {
+      await _service.setRefreshState(recordId, engagementError: 'network');
+      firstCode ??= 'network';
+      firstMessage ??= 'Could not load engagement. Try again later.';
+    }
+
+    // Then insights.
+    try {
+      final result = await getIt<FacebookInsightsService>().fetch(
+        postId: record.postId,
+        token: token,
+      );
+      await _service.setInsights(recordId, result.insights);
+      ok++;
+      await _service.setRefreshState(
+        recordId,
+        insightsError: result.insights.hasAny ? null : 'empty',
+      );
+    } on FacebookApiException catch (e) {
+      await _service.setRefreshState(
+        recordId,
+        insightsError: _shortErrorCode(e),
+      );
+      firstCode ??= _shortErrorCode(e);
+      firstMessage ??= e.message;
+      if (e.needsReconnect) FacebookExpirySignal.report();
+    } catch (_) {
+      await _service.setRefreshState(recordId, insightsError: 'network');
+      firstCode ??= 'network';
+      firstMessage ??= 'Could not load insights. Try again later.';
+    }
+
+    return FacebookPostRefreshSummary(
+      ok: ok,
+      firstErrorCode: firstCode,
+      firstErrorMessage: firstMessage,
+    );
+  }
+
+  static String _shortErrorCode(FacebookApiException e) {
+    return switch (e.kind) {
+      FacebookApiErrorKind.expiredToken ||
+      FacebookApiErrorKind.pageTokenRequired => 'permission',
+      FacebookApiErrorKind.permission => 'permission',
+      FacebookApiErrorKind.rateLimit => 'rateLimit',
+      FacebookApiErrorKind.network => 'network',
+      _ => 'unavailable',
+    };
+  }
+
   void _log(String message, {required String level}) {
     if (!getIt.isRegistered<LogService>()) return;
     final service = getIt<LogService>();
@@ -296,6 +396,22 @@ class FacebookHistoryNotifier extends Notifier<List<FacebookPostRecord>> {
       service.info(message, tag: 'Facebook');
     }
   }
+}
+
+/// Summary of one [FacebookHistoryNotifier.refreshPost] run.
+class FacebookPostRefreshSummary {
+  const FacebookPostRefreshSummary({
+    required this.ok,
+    this.firstErrorCode,
+    this.firstErrorMessage,
+  });
+
+  /// How many of the two Graph calls succeeded (0, 1 or 2).
+  final int ok;
+  final String? firstErrorCode;
+  final String? firstErrorMessage;
+
+  bool get isOk => ok > 0;
 }
 
 /// Persisted publish history (newest first, capped at 50 — the same ring
@@ -511,6 +627,26 @@ class FacebookHistoryService {
       updated = updated.copyWith(insightsFetchedAt: insights.fetchedAt);
     }
     _records = List.of(_records)..[index] = updated;
+    await _persist();
+    _notify();
+  }
+
+  /// Stores the short refresh error codes and the last-attempt timestamp for
+  /// one record. Passing `null` clears the corresponding error code.
+  Future<void> setRefreshState(
+    String id, {
+    String? insightsError,
+    String? engagementError,
+    DateTime? lastRefreshAttemptAt,
+  }) async {
+    final index = _records.indexWhere((r) => r.id == id);
+    if (index < 0) return;
+    _records = List.of(_records)
+      ..[index] = _records[index].copyWith(
+        insightsError: insightsError,
+        engagementError: engagementError,
+        lastRefreshAttemptAt: lastRefreshAttemptAt,
+      );
     await _persist();
     _notify();
   }

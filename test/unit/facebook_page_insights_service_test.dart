@@ -118,32 +118,55 @@ void main() {
         expect(request.uri.toString(), contains('/v23.0/page-1/insights'));
         expect(request.headers['Authorization'], contains(_token));
         expect(request.uri.queryParameters.values, isNot(contains(_token)));
-        expect(request.uri.queryParameters['date_preset'], 'last_7d');
         expect(request.uri.queryParameters['period'], 'day');
+        // date_preset is replaced by an explicit window.
+        expect(request.uri.queryParameters.containsKey('date_preset'), isFalse);
+        final params = request.uri.queryParameters;
+        final since = int.parse(params['since']!);
+        final until = int.parse(params['until']!);
+        expect(until - since, const Duration(days: 7).inSeconds);
+        expect(
+          until,
+          greaterThan(
+            DateTime.now()
+                    .subtract(const Duration(days: 1))
+                    .millisecondsSinceEpoch ~/
+                1000,
+          ),
+        );
       },
     );
 
-    test('uses last_28d for the default range', () async {
-      final adapter = _GraphAdapter(200, _ok([]));
+    test(
+      'fetch uses an explicit since/until window for the default range',
+      () async {
+        final adapter = _GraphAdapter(200, _ok([]));
 
-      await _service(adapter).fetch(pageId: 'page-1', token: _token);
+        await _service(adapter).fetch(pageId: 'page-1', token: _token);
 
-      expect(
-        adapter.lastRequest!.uri.queryParameters['date_preset'],
-        'last_28d',
-      );
-    });
+        final params = adapter.lastRequest!.uri.queryParameters;
+        expect(params.containsKey('date_preset'), isFalse);
+        final since = int.parse(params['since']!);
+        final until = int.parse(params['until']!);
+        expect(until - since, const Duration(days: 28).inSeconds);
+      },
+    );
 
-    test('uses last_90d for the 90 day range', () async {
-      final adapter = _GraphAdapter(200, _ok([]));
+    test(
+      'fetch uses an explicit since/until window for the 90 day range',
+      () async {
+        final adapter = _GraphAdapter(200, _ok([]));
 
-      await _service(adapter).fetch(pageId: 'page-1', token: _token, days: 90);
+        await _service(adapter)
+            .fetch(pageId: 'page-1', token: _token, days: 90);
 
-      expect(
-        adapter.lastRequest!.uri.queryParameters['date_preset'],
-        'last_90d',
-      );
-    });
+        final params = adapter.lastRequest!.uri.queryParameters;
+        expect(params.containsKey('date_preset'), isFalse);
+        final since = int.parse(params['since']!);
+        final until = int.parse(params['until']!);
+        expect(until - since, const Duration(days: 90).inSeconds);
+      },
+    );
 
     test('fetchPrevious asks for an explicit since/until window', () async {
       final adapter = _GraphAdapter(200, _ok([]));

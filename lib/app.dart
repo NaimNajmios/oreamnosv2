@@ -25,6 +25,7 @@ import 'ui/features/update/view_models/update_state.dart';
 import 'ui/features/update/view_models/update_view_model.dart';
 import 'ui/features/update/widgets/update_dialog.dart';
 import 'data/services/facebook_history_service.dart';
+import 'data/services/facebook_insights_refresher.dart';
 import 'data/services/facebook_reminder_service.dart';
 import 'data/services/daily_usage_service.dart';
 import 'data/services/home_widget_service.dart';
@@ -78,6 +79,11 @@ class _OreamnosAppState extends ConsumerState<OreamnosApp> {
           if (ref.read(facebookViewModelProvider).isConnected) {
             unawaited(
               ref.read(facebookDraftProvider.notifier).reconcileIfStale(),
+            );
+            unawaited(
+              ref
+                  .read(facebookInsightsRefresherProvider.notifier)
+                  .refreshStale(),
             );
           }
         } catch (_) {}

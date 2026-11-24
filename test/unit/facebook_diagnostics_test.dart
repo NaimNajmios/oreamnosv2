@@ -87,6 +87,37 @@ void main() {
       );
     });
 
+    test('sanitizeGraphMessage redacts tokens and caps at 200 chars', () {
+      const raw =
+          'Error EAAtestToken123 at access_token=EAAtest456 and Bearer EAAbeef '
+          'see https://graph.facebook.com/v23.0/123/insights?metric=x';
+      final text = FacebookDiagnostics.sanitizeGraphMessage(raw);
+      expect(text, isNot(contains('EAAtestToken123')));
+      expect(text, isNot(contains('EAAtest456')));
+      expect(text, isNot(contains('Bearer EAA')));
+      expect(text, isNot(contains('access_token=EAAtest')));
+      expect(text.length, lessThanOrEqualTo(200));
+
+      final long = List<int>.generate(500, (_) => 120).join();
+      expect(
+        FacebookDiagnostics.sanitizeGraphMessage(long).length,
+        FacebookDiagnostics.maxSanitizedLength,
+      );
+    });
+
+    test('failure details include the sanitized meta message and trace id', () {
+      const error = FacebookApiException(
+        kind: FacebookApiErrorKind.insightsUnavailable,
+        message: 'x',
+        graphMessage: 'Unknown metric EAAtestToken123',
+        traceId: 'tid123',
+      );
+      final details = FacebookDiagnostics.describe(error, statusCode: 400);
+      expect(details, contains('meta="Unknown metric EAA<redacted>"'));
+      expect(details, contains('trace=tid123'));
+      expect(details, isNot(contains('EAAtestToken123')));
+    });
+
     test('events log at debug level without payloads', () async {
       FacebookDiagnostics.event('Published post', pageId: '123');
       await Future<void>.delayed(const Duration(milliseconds: 10));

@@ -1,3 +1,17 @@
+import 'facebook_api_exception.dart';
+
+/// Outcome of a post-insights fetch: the partial metrics plus the
+/// per-metric failures, so one rejected metric no longer hides the others.
+class FacebookPostInsightsResult {
+  const FacebookPostInsightsResult({
+    required this.insights,
+    this.failures = const [],
+  });
+
+  final FacebookPostInsights insights;
+  final List<FacebookApiException> failures;
+}
+
 /// Metrics Facebook returns for a published post.
 ///
 /// Every field is nullable: Graph omits a metric when the Page lacks the

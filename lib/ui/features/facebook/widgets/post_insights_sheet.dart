@@ -31,15 +31,15 @@ class _PostInsightsSheetState extends ConsumerState<PostInsightsSheet> {
 
   Future<void> _refresh() async {
     setState(() => _refreshing = true);
-    final error = await ref
+    final summary = await ref
         .read(facebookHistoryProvider.notifier)
-        .refreshInsights(widget.recordId);
+        .refreshPost(widget.recordId);
     if (!mounted) return;
     setState(() => _refreshing = false);
     Haptics.lightImpact();
-    if (error != null) {
+    if (summary.firstErrorMessage != null) {
       ScaffoldMessenger.of(context)
-          .showSnackBar(SnackBar(content: Text(error)));
+          .showSnackBar(SnackBar(content: Text(summary.firstErrorMessage!)));
     }
   }
 

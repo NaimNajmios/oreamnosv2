@@ -5,6 +5,9 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:oreamnos/config/theme/app_spacing.dart';
 import 'package:oreamnos/core/di/injection.dart';
 import 'package:oreamnos/data/services/facebook_diagnostics.dart';
+import 'package:oreamnos/data/services/facebook_comments_service.dart';
+import 'package:oreamnos/data/services/facebook_page_insights_service.dart';
+import 'package:oreamnos/data/services/facebook_page_service.dart';
 import 'package:oreamnos/data/services/log_service.dart';
 import 'package:oreamnos/data/services/preferences_service.dart';
 import 'package:oreamnos/data/services/facebook_history_service.dart';
@@ -30,11 +33,100 @@ class _FacebookDiagnosticsScreenState
     extends ConsumerState<FacebookDiagnosticsScreen> {
   DateTime? _lastReconcile;
   bool _busy = false;
+  Map<String, bool>? _accessResults;
+  bool _accessBusy = false;
 
   @override
   void initState() {
     super.initState();
     _lastReconcile = getIt<PreferencesService>().lastFacebookReconcile;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _runAccessCheck();
+    });
+  }
+
+  /// Probes Publish, Engagement, Insights and Comments for the active
+  /// Page and stores ✓/✗ per surface.
+  Future<void> _runAccessCheck() async {
+    final connection = ref.read(facebookViewModelProvider);
+    if (_accessBusy || connection.activePageId.isEmpty) return;
+    setState(() => _accessBusy = true);
+    final pageId = connection.activePageId;
+    final token =
+        (await getIt<PreferencesService>().getFacebookPageTokenFor(pageId)) ??
+        '';
+    final results = <String, bool>{};
+    if (token.isNotEmpty) {
+      try {
+        await getIt<FacebookPageService>().verifyPageToken(token);
+        results['publish'] = true;
+      } catch (_) {
+        results['publish'] = false;
+      }
+      try {
+        final insights = await getIt<FacebookPageInsightsService>().fetch(
+          pageId: pageId,
+          token: token,
+        );
+        results['insights'] = insights.hasMediaViews;
+        results['engagement'] = insights.hasEngagements;
+      } catch (_) {
+        results['insights'] = false;
+        results['engagement'] = false;
+      }
+      try {
+        await getIt<FacebookCommentsService>().list(
+          postId: pageId,
+          token: token,
+          limit: 1,
+        );
+        results['comments'] = true;
+      } catch (_) {
+        results['comments'] = false;
+      }
+    }
+    if (!mounted) return;
+    setState(() {
+      _accessResults = results;
+      _accessBusy = false;
+    });
+  }
+
+  Widget _accessSection(BuildContext context) {
+    final theme = Theme.of(context);
+    final labels = const [
+      ('Publish', 'publish'),
+      ('Engagement', 'engagement'),
+      ('Insights', 'insights'),
+      ('Comments', 'comments'),
+    ];
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        Text(
+          'Access check',
+          style: theme.textTheme.titleSmall?.copyWith(
+            fontWeight: FontWeight.w800,
+          ),
+        ),
+        const SizedBox(height: AppSpacing.sm),
+        AppCard(
+          child: Column(
+            children: [
+              for (var i = 0; i < labels.length; i++) ...[
+                if (i != 0) const Divider(height: AppSpacing.base),
+                _AccessRow(
+                  label: labels[i].$1,
+                  ok: _accessResults?[labels[i].$2],
+                  busy: _accessBusy,
+                  onRun: _runAccessCheck,
+                ),
+              ],
+            ],
+          ),
+        ),
+      ],
+    );
   }
 
   Future<void> _runHealthCheck() async {
@@ -161,6 +253,8 @@ class _FacebookDiagnosticsScreenState
             ],
           ),
           const SizedBox(height: AppSpacing.base),
+          _accessSection(context),
+          const SizedBox(height: AppSpacing.base),
           Wrap(
             spacing: AppSpacing.sm,
             runSpacing: AppSpacing.sm,
@@ -280,6 +374,65 @@ class _Row extends StatelessWidget {
           ),
         ),
       ],
+    );
+  }
+}
+
+/// One row of the access check: label, ✓/✗, and a Reconnect button on ✗.
+class _AccessRow extends StatelessWidget {
+  const _AccessRow({
+    required this.label,
+    required this.ok,
+    required this.busy,
+    required this.onRun,
+  });
+
+  final String label;
+  final bool? ok;
+  final bool busy;
+  final VoidCallback onRun;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final state = ok == null ? null : (ok! ? '✓' : '✗');
+    return Padding(
+      padding: const EdgeInsets.symmetric(
+        horizontal: AppSpacing.md,
+        vertical: AppSpacing.sm,
+      ),
+      child: Column(
+        children: [
+          Row(
+            children: [
+              Expanded(
+                child: Text(
+                  label,
+                  style: theme.textTheme.bodySmall?.copyWith(
+                    color: theme.colorScheme.onSurfaceVariant,
+                  ),
+                ),
+              ),
+              const SizedBox(width: AppSpacing.sm),
+              Text(
+                state ?? '·',
+                style: theme.textTheme.bodySmall?.copyWith(
+                  color: state == '✓'
+                      ? theme.colorScheme.primary
+                      : theme.colorScheme.error,
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
+              const SizedBox(width: AppSpacing.sm),
+              if (ok == false)
+                TextButton(
+                  onPressed: busy ? null : onRun,
+                  child: const Text('Reconnect'),
+                ),
+            ],
+          ),
+        ],
+      ),
     );
   }
 }

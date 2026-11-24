@@ -121,7 +121,7 @@ dart format --output=none --set-exit-if-changed .
 # Run static analysis (0 issues)
 flutter analyze
 
-# Run complete test suite (155 tests) with coverage
+# Run complete test suite (836 tests) with coverage
 flutter test --coverage
 
 # Run build runner for codegen (Freezed & json_serializable & injectable)
@@ -132,7 +132,7 @@ dart run build_runner build --delete-conflicting-outputs
 
 ## Testing & Quality Assurance
 
-- **Unit & Widget Tests**: `155 tests` across 29 files — `UsageService(50)/LogService(200 ring,500ms persist)/Curators + 429 error paths/JsonCleaner/ResponseCleanup/Interceptors(400→friendly Auth/429→RateLimit)/Prompt detectors + length/refine + Gemini schema strip/CardData(17)/CardCanvasDispatcher 17/StudioDeck/VM shuffle + lists + bools/Edit mode/Readability/Scraper/ErrorState overflow` + `test/widget_test.dart` 4-tab nav; `test/generate_view_model_test.dart` Notifier via `contentRepositoryProvider`.
-- **CI**: `.github/workflows/ci.yaml:20` pinned `3.47.1` → `pub get` → `dart format --output=none --set-exit-if-changed .` (0) → `flutter analyze` (0) → `flutter test --coverage` (155) → `dart run build_runner build` (freezed/json/injectable) on push/PR.
+- **Unit & Widget Tests**: `836 tests` across 30 files — `UsageService(50)/LogService(200 ring,500ms persist)/Curators + 429 error paths/JsonCleaner/ResponseCleanup/Interceptors(400→friendly Auth/429→RateLimit)/Prompt detectors + length/refine + Gemini schema strip/CardData(17)/CardCanvasDispatcher 17/StudioDeck/VM shuffle + lists + bools/Edit mode/Readability/Scraper/ErrorState overflow` + `test/widget_test.dart` 4-tab nav; `test/generate_view_model_test.dart` Notifier via `contentRepositoryProvider`.
+- **CI**: `.github/workflows/ci.yaml:20` pinned `3.47.1` → `pub get` → `dart format --output=none --set-exit-if-changed .` (0) → `flutter analyze` (0) → `flutter test --coverage` (836) → `dart run build_runner build` (freezed/json/injectable) on push/PR.
 
 See `docs/architecture.md`, `docs/design-system-threads.md`, `docs/migration-threads-convergence.md`, `docs/parity-matrix.md`, `docs/baseline-phaseD.md`, and `CHANGELOG.md` for details.

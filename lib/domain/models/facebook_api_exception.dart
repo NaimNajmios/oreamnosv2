@@ -60,6 +60,7 @@ class FacebookApiException implements Exception {
     this.subcode,
     this.networkIssue,
     this.graphMessage,
+    this.traceId,
   });
 
   final FacebookApiErrorKind kind;
@@ -79,6 +80,9 @@ class FacebookApiException implements Exception {
   /// Raw Graph `error.message`, retained for diagnostics and precise UI copy.
   /// Never contains the access token.
   final String? graphMessage;
+
+  /// Meta `error.fbtrace_id` when present, for support diagnostics.
+  final String? traceId;
 
   /// True when the fix is reconnecting the Page (token expired/invalidated or
   /// the wrong token type was stored).
@@ -132,6 +136,9 @@ class FacebookApiException implements Exception {
       code: code,
       subcode: subcode,
       graphMessage: rawMessage,
+      traceId: (error['fbtrace_id']?.toString() ?? '').trim().isEmpty
+          ? null
+          : error['fbtrace_id']?.toString(),
     );
   }
 

@@ -40,11 +40,7 @@ class FacebookPageInsightsService {
         message: 'Connect your Page to load performance.',
       );
     }
-    final preset = days <= 7
-        ? 'last_7d'
-        : days <= 28
-        ? 'last_28d'
-        : 'last_90d';
+    final window = _window(days);
     const metrics = [
       FacebookMetricNames.pageMediaView,
       FacebookMetricNames.pageFollows,
@@ -55,7 +51,13 @@ class FacebookPageInsightsService {
     // them concurrently so one slow metric cannot block the other two.
     final results = await Future.wait(
       metrics.map(
-        (metric) => _fetchMetric(metric, pageId, token, preset: preset),
+        (metric) => _fetchMetric(
+          metric,
+          pageId,
+          token,
+          since: window.since,
+          until: window.until,
+        ),
       ),
     );
 
@@ -79,6 +81,10 @@ class FacebookPageInsightsService {
       pageId,
       DateTime.now(),
       unavailableMetrics: unavailable,
+      unavailableReason: firstFailure == null
+          ? null
+          : fewLikesReason(firstFailure.graphMessage) ??
+                _unavailableReason(firstFailure),
       rangeDays: days,
     );
   }
@@ -97,22 +103,19 @@ class FacebookPageInsightsService {
         message: 'Connect your Page to load performance.',
       );
     }
-    final now = DateTime.now().toUtc();
-    final until = now.subtract(Duration(days: days));
-    final since = until.subtract(Duration(days: days));
-    const metrics = [
-      FacebookMetricNames.pageMediaView,
-      FacebookMetricNames.pageFollows,
-      FacebookMetricNames.pagePostEngagements,
-    ];
+    // The window ends [days] before now: same [days] length, one period back.
+    final window = _window(
+      days,
+      from: DateTime.now().toUtc().subtract(Duration(days: days)),
+    );
     final results = await Future.wait(
       metrics.map(
         (metric) => _fetchMetric(
           metric,
           pageId,
           token,
-          since: since.millisecondsSinceEpoch ~/ 1000,
-          until: until.millisecondsSinceEpoch ~/ 1000,
+          since: window.since,
+          until: window.until,
         ),
       ),
     );
@@ -134,11 +137,44 @@ class FacebookPageInsightsService {
     );
   }
 
+  /// One period window as Unix seconds: [days] long, ending at [from]
+  /// (default now).
+  static ({int since, int until}) _window(int days, {DateTime? from}) {
+    final until = from ?? DateTime.now().toUtc();
+    return (
+      since:
+          until.subtract(Duration(days: days)).millisecondsSinceEpoch ~/ 1000,
+      until: until.millisecondsSinceEpoch ~/ 1000,
+    );
+  }
+
+  /// Metric names requested by [fetch]/[fetchPrevious].
+  static const List<String> metrics = [
+    FacebookMetricNames.pageMediaView,
+    FacebookMetricNames.pageFollows,
+    FacebookMetricNames.pagePostEngagements,
+  ];
+
+  static String? _unavailableReason(FacebookApiException e) {
+    final text = e.message.trim();
+    return text.isEmpty ? null : text;
+  }
+
+  /// Detects Meta's "100 likes" minimum message; returns the reason text or
+  /// null. Used so the UI can explain instead of just listing metric names.
+  static String? fewLikesReason(String? graphMessage) {
+    final text = (graphMessage ?? '').trim().toLowerCase();
+    if (text.isEmpty) return null;
+    if (text.contains('100 likes') || text.contains('100 or more likes')) {
+      return 'Page Insights requires at least 100 Page likes.';
+    }
+    return null;
+  }
+
   Future<_MetricResult> _fetchMetric(
     String metric,
     String pageId,
     String token, {
-    String? preset,
     int? since,
     int? until,
   }) async {
@@ -148,7 +184,6 @@ class FacebookPageInsightsService {
         queryParameters: {
           'metric': metric,
           'period': 'day',
-          'date_preset': ?preset,
           if (since != null) 'since': '$since',
           if (until != null) 'until': '$until',
         },
@@ -261,6 +296,7 @@ class FacebookPageInsightsService {
     DateTime fetchedAt, {
     List<String> unavailableMetrics = const [],
     int rangeDays = 28,
+    String? unavailableReason,
   }) {
     final rows = body['data'];
     if (rows is! List) {
@@ -270,6 +306,7 @@ class FacebookPageInsightsService {
         fetchedAt: fetchedAt,
         unavailableMetrics: unavailableMetrics,
         rangeDays: rangeDays,
+        unavailableReason: unavailableReason,
       );
     }
     final byDay = <String, PageInsightPoint>{};
@@ -316,6 +353,7 @@ class FacebookPageInsightsService {
       hasEngagements: hasEngagements,
       unavailableMetrics: unavailableMetrics,
       rangeDays: rangeDays,
+      unavailableReason: unavailableReason,
     );
   }
 

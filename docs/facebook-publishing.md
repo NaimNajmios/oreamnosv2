@@ -49,6 +49,12 @@ workflow.
   drafts, logs or analytics.
 - Never put any token in a URL query, a log, analytics, prefs, draft JSON or
   history.
+- **Diagnostics log only the sanitized Meta `error.message` and `fbtrace_id`**
+  (via `FacebookDiagnostics.sanitizeGraphMessage`, ≤200 chars): tokens,
+  URLs and captions are redacted before logging.
+- **Granted scopes** captured via `GET /me/permissions` during connect are
+  stored per Page as `facebook_granted_scopes_<pageId>` — scope names only,
+  in prefs; they drive the connection-diagnostics checklist.
 - Drafts, history and Page entries store local paths/identity only.
 - `disconnectFacebook()` wipes every per-Page token, Page entries, history and
   all drafts. `disconnectFacebookPage(pageId)` removes one Page token and
@@ -105,9 +111,10 @@ Scheduled rows keep Reschedule/Cancel; failed rows keep local-only removal.
 
 ## Insights (v11, expanded v13, migrated v24)
 
-`GET /{post-id}?fields=insights.metric(post_total_media_view_unique,post_reactions_by_type_total,post_activity_by_action_type)`
-with the token in `Authorization: Bearer`. `FacebookInsightsService` parses the
-nested `insights.data[]` defensively:
+Per-post metrics are fetched with one request per metric —
+`GET /{post-id}?fields=insights.metric(<name>)` — so a rejected metric can no
+longer hide the others. The token is in `Authorization: Bearer`; `FacebookInsightsService`
+parses the nested `insights.data[]` defensively:
 
 - `post_total_media_view_unique` → `uniqueViewers`
 - `post_reactions_by_type_total` → per-type map + summed `reactions`
@@ -122,23 +129,34 @@ Engagement is fetched separately:
 `GET /{post-id}?fields=reactions.summary(true),comments.summary(true),shares`
 → `reactions`, `comments`, `shares`. A retired insight metric can therefore
 never take the engagement badges down. Missing or malformed values stay `null`.
-`FacebookPostRecord` caches all fields. Pull-to-refresh runs engagement then
-insights for the newest 10 records; insight refreshes merge non-null values and
-never wipe cached data.
+`FacebookPostRecord` caches all fields.
+
+Records cache short refresh error codes (`insightsError`, `engagementError`,
+`lastRefreshAttemptAt`); `FacebookInsightsRefresher.refreshStale` runs on hub
+open, history open, app resume and right after a publish, tries up to 3 stale
+records at a time, and stops the batch on `rateLimit` or `permission`.
+`refreshPost(recordId)` runs engagement then insights and merges per record;
+on the Post insights sheet, refresh runs the full `refreshPost` flow and shows
+the first real error text.
 
 ## Page performance + earnings (v24)
 
 `FacebookPageInsightsService` calls `GET /{page-id}/insights` with
-`metric=page_media_view,page_follows,page_post_engagements&period=day`, a
-28-day range, and the token in `Authorization: Bearer`. Results merge per day,
-tolerate a missing metric, and cache in `facebook_page_insights_<pageId>` (30 min
-TTL, no tokens). Requires `read_insights` + `pages_read_engagement` and the
-ANALYZE Page task; a 403 explains that.
+`metric=<name>&period=day&since=<unix>&until=<unix>` — one request per metric
+over an explicit Unix-seconds window — and the token in `Authorization: Bearer`.
+Results merge per day, tolerate a missing metric, and cache in
+`facebook_page_insights_<pageId>` (30 min TTL, no tokens). Requires
+`read_insights` + `pages_read_engagement` and the ANALYZE Page task; a 403
+explains that.
 
 `FacebookMonetizationService` requests
-`content_monetization_earnings,monetization_approximate_earnings`. Earnings are
-shown as **estimated**, in Page currency, with restatement and payout caveats.
-A zero never means “no earnings” — it can also mean not enrolled.
+`content_monetization_earnings` and `monetization_approximate_earnings`
+separately, with the same window shape. A 400/code 100 ("not enrolled") caches
+a 24-hour "not available" result (logged at WARN) and the Publish tab toggle
+"Show estimated earnings" is off by default; while the negative result is fresh,
+no monetization requests are made. Earnings shown are always **estimated**, in
+Page currency, with restatement and payout caveats. A zero never means "no
+earnings" — it can also mean not enrolled.
 
 The hub card and `/facebook-performance` screen present media views, follows,
 engagements, a daily chart (7/28-day filter) and recent posts. `refresh()`

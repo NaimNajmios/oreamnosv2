@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -6,6 +8,8 @@ import 'package:oreamnos/config/routes/app_router.dart';
 import 'package:oreamnos/config/theme/app_spacing.dart';
 import 'package:oreamnos/core/di/injection.dart';
 import 'package:oreamnos/data/services/facebook_draft_store.dart';
+import 'package:oreamnos/data/services/facebook_insights_refresher.dart';
+import 'package:oreamnos/data/services/preferences_service.dart';
 import 'package:oreamnos/data/services/facebook_export_service.dart';
 import 'package:oreamnos/data/services/facebook_workflow_store.dart';
 import 'package:oreamnos/data/services/facebook_history_service.dart';
@@ -21,6 +25,7 @@ import 'package:oreamnos/ui/features/facebook/view_models/facebook_state.dart';
 import 'package:oreamnos/ui/features/facebook/utils/facebook_external_links.dart';
 import 'package:oreamnos/ui/features/facebook/view_models/facebook_view_model.dart';
 import 'package:oreamnos/ui/features/facebook/widgets/compose/facebook_compose_widgets.dart';
+import 'package:oreamnos/ui/features/facebook/widgets/facebook_stat_line.dart';
 import 'package:oreamnos/ui/features/facebook/widgets/facebook_connection_banner.dart';
 import 'package:oreamnos/ui/features/facebook/widgets/facebook_connection_dialog.dart';
 import 'package:oreamnos/ui/features/facebook/widgets/facebook_storage_tile.dart';
@@ -39,6 +44,8 @@ class PublishHubScreen extends ConsumerStatefulWidget {
 }
 
 class _PublishHubScreenState extends ConsumerState<PublishHubScreen> {
+  bool _insightsBannerDismissed = false;
+
   @override
   void initState() {
     super.initState();
@@ -53,6 +60,9 @@ class _PublishHubScreenState extends ConsumerState<PublishHubScreen> {
       ref
           .read(facebookViewModelProvider.notifier)
           .checkConnectionHealth(force: force);
+      unawaited(
+        ref.read(facebookInsightsRefresherProvider.notifier).refreshStale(),
+      );
       await ref
           .read(facebookDraftProvider.notifier)
           .reconcileScheduled(force: force);
@@ -283,6 +293,7 @@ class _PublishHubScreenState extends ConsumerState<PublishHubScreen> {
     final activeDraft = ref.watch(facebookDraftProvider);
     final handoff = ref.watch(publishHandoffProvider);
     final performance = ref.watch(facebookPerformanceProvider);
+    final refresher = ref.watch(facebookInsightsRefresherProvider);
     final topPosts = ref.watch(facebookTopPostsProvider);
     final bestSlots = ref.watch(bestTimeToPostProvider);
     final bestReason = ref.watch(bestTimeToPostReasonProvider);
@@ -363,6 +374,52 @@ class _PublishHubScreenState extends ConsumerState<PublishHubScreen> {
               ),
               const SizedBox(height: AppSpacing.base),
             ],
+            if (!_insightsBannerDismissed &&
+                refresher.lastErrorCode == 'permission') ...[
+              AppCard(
+                child: Row(
+                  children: [
+                    Icon(
+                      Icons.lock_rounded,
+                      size: 18,
+                      color: theme.colorScheme.primary,
+                    ),
+                    const SizedBox(width: AppSpacing.sm),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            'Insights need read_insights.',
+                            style: theme.textTheme.labelLarge?.copyWith(
+                              fontWeight: FontWeight.w700,
+                            ),
+                          ),
+                          const SizedBox(height: 2),
+                          Text(
+                            'Reconnect your Page to refresh insights.',
+                            style: theme.textTheme.bodySmall?.copyWith(
+                              color: theme.colorScheme.onSurfaceVariant,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    TextButton(
+                      onPressed: () => FacebookConnectionDialog.show(context),
+                      child: const Text('Reconnect'),
+                    ),
+                    TextButton(
+                      onPressed: () {
+                        setState(() => _insightsBannerDismissed = true);
+                      },
+                      child: const Text('Dismiss'),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: AppSpacing.base),
+            ],
             if (handoff != null) ...[
               _ReadyToPublishCard(
                 handoff: handoff,
@@ -388,6 +445,8 @@ class _PublishHubScreenState extends ConsumerState<PublishHubScreen> {
                 onCreate: _newPost,
                 onConnect: () => FacebookConnectionDialog.show(context),
               ),
+            const SizedBox(height: AppSpacing.base),
+            _MonetizationCard(),
             const SizedBox(height: AppSpacing.base),
             _PerformanceCard(
               state: performance,
@@ -849,6 +908,70 @@ class _ReadyToPublishCard extends StatelessWidget {
   }
 }
 
+/// "Show estimated earnings" toggle — default off, opt-in.
+final facebookMonetizationEnabledProvider = Provider<bool>((ref) {
+  return getIt<PreferencesService>().facebookMonetizationEnabled;
+});
+
+class _MonetizationCard extends ConsumerStatefulWidget {
+  const _MonetizationCard();
+
+  @override
+  ConsumerState<_MonetizationCard> createState() => _MonetizationCardState();
+}
+
+class _MonetizationCardState extends ConsumerState<_MonetizationCard> {
+  Future<void> _toggle(bool value) async {
+    await getIt<PreferencesService>().setFacebookMonetizationEnabled(value);
+    if (mounted) {
+      ref.invalidate(facebookMonetizationEnabledProvider);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final enabled = ref.watch(facebookMonetizationEnabledProvider);
+    return AppCard(
+      child: Padding(
+        padding: const EdgeInsets.symmetric(
+          horizontal: AppSpacing.md,
+          vertical: AppSpacing.sm,
+        ),
+        child: Row(
+          children: [
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'Show estimated earnings',
+                    style: theme.textTheme.titleSmall?.copyWith(
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+                  const SizedBox(height: 2),
+                  Text(
+                    enabled
+                        ? 'Estimated income for the Page, refreshed with '
+                              'Performance.'
+                        : 'Off by default. Turning this on also requests '
+                              'earnings data from Facebook.',
+                    style: theme.textTheme.labelSmall?.copyWith(
+                      color: theme.colorScheme.onSurfaceVariant,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            Switch(value: enabled, onChanged: (_) => _toggle(!enabled)),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
 class _PerformanceCard extends StatelessWidget {
   const _PerformanceCard({
     required this.state,
@@ -966,7 +1089,10 @@ class _PerformanceCard extends StatelessWidget {
             ] else if (data.unavailableMetrics.isNotEmpty) ...[
               const SizedBox(height: AppSpacing.sm),
               Text(
-                'Some metrics are unavailable.',
+                data.unavailableReason != null
+                    ? 'Media views unavailable: ${data.unavailableReason}'
+                    : 'Some metrics are unavailable: '
+                          '${data.unavailableMetrics.join(', ')}.',
                 style: theme.textTheme.labelSmall?.copyWith(
                   color: theme.colorScheme.onSurfaceVariant,
                 ),
@@ -1437,7 +1563,7 @@ class _RecentPostRow extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final stats = _statsLine(record);
+    final stats = _insightSummary(record);
     return InkWell(
       onTap: onTap,
       borderRadius: AppSpacing.borderRadiusMd,
@@ -1622,6 +1748,22 @@ String _relativeTime(DateTime at) {
   if (diff.inMinutes < 60) return '${diff.inMinutes}m ago';
   if (diff.inHours < 24) return '${diff.inHours}h ago';
   return '${diff.inDays}d ago';
+}
+
+/// One-line insight summary for a post row: the stat line when ready,
+/// otherwise the state (loading / failed / empty) text.
+String _insightSummary(FacebookPostRecord record) {
+  switch (stateFor(record)) {
+    case FacebookInsightState.loading:
+      return 'Loading…';
+    case FacebookInsightState.failed:
+      return 'Couldn’t load · '
+          '${record.insightsError ?? record.engagementError ?? 'unavailable'}';
+    case FacebookInsightState.empty:
+      return 'Facebook has no data yet. Can lag up to 24h.';
+    case FacebookInsightState.ready:
+      return _statsLine(record);
+  }
 }
 
 String _statsLine(FacebookPostRecord record) {

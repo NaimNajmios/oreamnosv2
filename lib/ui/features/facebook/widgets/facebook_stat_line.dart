@@ -3,6 +3,32 @@ import 'package:flutter/material.dart';
 import 'package:oreamnos/config/theme/app_spacing.dart';
 import 'package:oreamnos/domain/models/facebook_post_record.dart';
 
+/// Display state for a published post's insights.
+enum FacebookInsightState {
+  /// No refresh has run yet: show a small spinner while the refresher works.
+  loading,
+
+  /// At least one metric is on the record.
+  ready,
+
+  /// A refresh failed; `insightsError`/`engagementError` holds the short code.
+  failed,
+
+  /// A refresh succeeded but Facebook returned no metrics for this post.
+  empty,
+}
+
+/// Derives the display state of a record's insights from the record fields.
+FacebookInsightState stateFor(FacebookPostRecord record) {
+  if (record.hasInsights) return FacebookInsightState.ready;
+  if (record.insightsError != null || record.engagementError != null) {
+    return FacebookInsightState.failed;
+  }
+  return record.lastRefreshAttemptAt == null
+      ? FacebookInsightState.loading
+      : FacebookInsightState.empty;
+}
+
 /// Shared metric rows for history, performance, and the Publish hub.
 ///
 /// Views prefer the current unique-viewer metric and fall back to legacy
@@ -68,6 +94,59 @@ class FacebookStat {
 
   /// Already formatted display value, e.g. "1.2k".
   final String value;
+}
+
+/// State line shown under a post row when there are no stats to display:
+/// a spinner while loading, a short reason when the refresh failed, or the
+/// empty message once a refresh succeeded. In the failed state the line is
+/// tappable via [onTap].
+class FacebookInsightStateLine extends StatelessWidget {
+  const FacebookInsightStateLine({super.key, required this.record, this.onTap});
+
+  final FacebookPostRecord record;
+  final VoidCallback? onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final state = stateFor(record);
+    Widget line;
+    switch (state) {
+      case FacebookInsightState.loading:
+        line = const SizedBox(
+          width: 14,
+          height: 14,
+          child: CircularProgressIndicator(strokeWidth: 2),
+        );
+      case FacebookInsightState.ready:
+        line = FacebookStatLine(stats: facebookStatsFor(record));
+      case FacebookInsightState.failed:
+        final reason =
+            record.insightsError ?? record.engagementError ?? 'unavailable';
+        line = InkWell(
+          onTap: onTap,
+          borderRadius: AppSpacing.borderRadiusSm,
+          child: Text(
+            'Couldn’t load · $reason',
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: theme.textTheme.labelSmall?.copyWith(
+              color: theme.colorScheme.error,
+            ),
+          ),
+        );
+      case FacebookInsightState.empty:
+        line = Text(
+          'Facebook has no data yet. Can lag up to 24h.',
+          maxLines: 1,
+          overflow: TextOverflow.ellipsis,
+          style: theme.textTheme.labelSmall?.copyWith(
+            color: theme.colorScheme.onSurfaceVariant,
+          ),
+        );
+    }
+    return line;
+  }
 }
 
 /// Inline stats row that reads as icons instead of emoji glyphs.
