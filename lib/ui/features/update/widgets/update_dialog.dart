@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_markdown/flutter_markdown.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -110,6 +112,15 @@ class _UpdateDialog extends ConsumerWidget {
                     ),
                   ),
                 ),
+              if (state.installError != null && !state.installInProgress) ...[
+                const SizedBox(height: AppSpacing.sm),
+                Text(
+                  state.installError!,
+                  style: theme.textTheme.bodySmall?.copyWith(
+                    color: theme.colorScheme.error,
+                  ),
+                ),
+              ],
               if (downloading) ...[
                 const SizedBox(height: AppSpacing.md),
                 LinearProgressIndicator(
@@ -125,11 +136,25 @@ class _UpdateDialog extends ConsumerWidget {
               ] else if (state.downloadedApkPath != null) ...[
                 Padding(
                   padding: const EdgeInsets.only(top: AppSpacing.sm),
-                  child: Text(
-                    'Saved to ${state.downloadedApkPath!}',
-                    style: theme.textTheme.bodySmall?.copyWith(
-                      color: theme.colorScheme.onSurfaceVariant,
-                    ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'Saved to ${state.publicDownloadPath ?? state.downloadedApkPath!}',
+                        style: theme.textTheme.bodySmall?.copyWith(
+                          color: theme.colorScheme.onSurfaceVariant,
+                        ),
+                      ),
+                      if (state.publishError != null) ...[
+                        const SizedBox(height: AppSpacing.xs),
+                        Text(
+                          state.publishError!,
+                          style: theme.textTheme.bodySmall?.copyWith(
+                            color: theme.colorScheme.error,
+                          ),
+                        ),
+                      ],
+                    ],
                   ),
                 ),
               ],
@@ -159,18 +184,26 @@ class _UpdateDialog extends ConsumerWidget {
               : () async {
                   final notifier = ref.read(updateViewModelProvider.notifier);
                   if (state.downloadedApkPath != null) {
-                    final installed = await notifier.installUpdate();
-                    if (context.mounted) {
-                      if (installed) {
-                        Navigator.of(context).pop();
-                      } else {
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          const SnackBar(
-                            content: Text("Couldn't install the update."),
-                          ),
-                        );
-                      }
+                    final result = await notifier.installUpdate();
+                    if (!context.mounted) return;
+                    if (result.ok) {
+                      Navigator.of(context).pop();
+                      return;
                     }
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(
+                        content: Text(
+                          result.message ?? "Couldn't install the update.",
+                        ),
+                        action: result.needsPermission
+                            ? SnackBarAction(
+                                label: 'Settings',
+                                onPressed: () =>
+                                    unawaited(notifier.openInstallSettings()),
+                              )
+                            : null,
+                      ),
+                    );
                   } else {
                     await notifier.startDownload(release: release);
                   }

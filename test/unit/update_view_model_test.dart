@@ -65,6 +65,11 @@ void main() {
   late PreferencesService preferences;
   late _FakeUpdateService service;
   late DateTime now;
+  late UpdateInstallResult installResult;
+  late Object? publishError;
+  final List<String> publishedPaths = <String>[];
+  final List<String> installPaths = <String>[];
+  bool settingsOpened = false;
 
   setUp(() async {
     SharedPreferences.setMockInitialValues({});
@@ -75,6 +80,11 @@ void main() {
     );
     service = _FakeUpdateService();
     now = DateTime(2026, 11, 20, 12);
+    installResult = UpdateInstallResult.success;
+    publishError = null;
+    publishedPaths.clear();
+    installPaths.clear();
+    settingsOpened = false;
   });
 
   ProviderContainer containerWith({String version = '1.0.0'}) {
@@ -94,7 +104,19 @@ void main() {
         updateApkDirectoryProvider.overrideWithValue(
           () async => Directory.systemTemp,
         ),
-        updateInstallerProvider.overrideWithValue((apkPath) async => true),
+        updateInstallerProvider.overrideWithValue((apkPath) async {
+          installPaths.add(apkPath);
+          return installResult;
+        }),
+        updateDownloadsPublisherProvider.overrideWithValue((apkPath) async {
+          publishedPaths.add(apkPath);
+          if (publishError != null) throw publishError!;
+          return 'Download/${apkPath.split('/').last}';
+        }),
+        updateInstallSettingsProvider.overrideWithValue(() async {
+          settingsOpened = true;
+          return true;
+        }),
       ],
     );
     addTearDown(container.dispose);
@@ -167,14 +189,88 @@ void main() {
       expect(service.downloads, 1);
       expect(service.downloadTargets.single, contains('oreamnos-v1.1.0.apk'));
 
+      // The public Downloads copy is published from the verified app-private
+      // file, and the dialog shows that public location.
+      expect(publishedPaths.single, state.downloadedApkPath);
+      expect(state.publicDownloadPath, 'Download/oreamnos-v1.1.0.apk');
+      expect(state.publishError, isNull);
+
       final installed = await notifier.installUpdate();
-      expect(installed, isTrue);
+      expect(installed.ok, isTrue);
+
+      // Install must use the app-private FileProvider-served path.
+      expect(installPaths.single, state.downloadedApkPath);
 
       final after = container.read(updateViewModelProvider);
       expect(after.installInProgress, isFalse);
       expect(after.downloadedApkPath, isNull);
     },
   );
+
+  test(
+    'a failed Downloads copy still allows install and shows the reason',
+    () async {
+      final container = containerWith();
+      final notifier = await readyNotifier(container);
+      publishError = const UpdateCheckException('Storage is full.');
+
+      await notifier.startDownload(release: _release('v1.1.0'));
+
+      final state = container.read(updateViewModelProvider);
+      expect(state.downloadError, isNull);
+      expect(state.downloadedApkPath, isNotNull);
+      expect(state.publicDownloadPath, isNull);
+      expect(state.publishError, contains('Storage is full'));
+      expect((await notifier.installUpdate()).ok, isTrue);
+    },
+  );
+
+  test(
+    'an unknown-sources failure is surfaced and settings can be opened',
+    () async {
+      final container = containerWith();
+      final notifier = await readyNotifier(container);
+      await notifier.startDownload(release: _release('v1.1.0'));
+      installResult = const UpdateInstallResult(
+        ok: false,
+        code: 'INSTALL_PERMISSION_REQUIRED',
+        message:
+            'Allow Oreamnos to install unknown apps, then tap Install again.',
+      );
+
+      final result = await notifier.installUpdate();
+
+      expect(result.ok, isFalse);
+      expect(result.needsPermission, isTrue);
+      final state = container.read(updateViewModelProvider);
+      expect(state.installError, contains('unknown apps'));
+      expect(state.installPermissionRequired, isTrue);
+      expect(state.installInProgress, isFalse);
+
+      await notifier.openInstallSettings();
+      expect(settingsOpened, isTrue);
+    },
+  );
+
+  test('a generic install failure keeps its specific message', () async {
+    final container = containerWith();
+    final notifier = await readyNotifier(container);
+    await notifier.startDownload(release: _release('v1.1.0'));
+    installResult = const UpdateInstallResult(
+      ok: false,
+      code: 'INSTALL_NO_HANDLER',
+      message: 'No app on this device can install the update.',
+    );
+
+    final result = await notifier.installUpdate();
+
+    expect(result.ok, isFalse);
+    expect(result.needsPermission, isFalse);
+    expect(
+      container.read(updateViewModelProvider).installError,
+      'No app on this device can install the update.',
+    );
+  });
 
   test(
     'a failed download surfaces an error and keeps no install path',

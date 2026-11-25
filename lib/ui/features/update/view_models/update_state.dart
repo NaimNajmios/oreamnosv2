@@ -28,7 +28,11 @@ class UpdateState {
     this.downloadInProgress = false,
     this.downloadProgress = 0,
     this.downloadedApkPath,
+    this.publicDownloadPath,
+    this.publishError,
     this.installInProgress = false,
+    this.installError,
+    this.installPermissionRequired = false,
     this.downloadError,
   });
 
@@ -51,12 +55,26 @@ class UpdateState {
   /// 0..1 fraction of the APK downloaded so far.
   final double downloadProgress;
 
-  /// Absolute path of the downloaded + verified APK; the dialog swaps the
-  /// Update action for an Install action once this is set.
+  /// Absolute path of the verified, app-private APK used by FileProvider for
+  /// the install. The dialog swaps the Update action for Install once set.
   final String? downloadedApkPath;
+
+  /// User-visible location of the copy in the public Downloads folder, e.g.
+  /// `Download/oreamnos-v1.2.0.apk`.
+  final String? publicDownloadPath;
+
+  /// Set when the public Downloads copy could not be written. The install can
+  /// still proceed from the verified app-private file.
+  final String? publishError;
 
   /// True while the verified APK is being handed to the OS installer.
   final bool installInProgress;
+
+  /// Specific native failure reason shown in the dialog after an Install tap.
+  final String? installError;
+
+  /// True when the failure was a missing "Install unknown apps" grant.
+  final bool installPermissionRequired;
 
   /// Set when a download failed; cleared when a new download starts.
   final String? downloadError;
@@ -85,7 +103,14 @@ class UpdateState {
     double? downloadProgress,
     String? downloadedApkPath,
     bool clearDownloadedApkPath = false,
+    String? publicDownloadPath,
+    bool clearPublicDownloadPath = false,
+    String? publishError,
+    bool clearPublishError = false,
     bool? installInProgress,
+    String? installError,
+    bool clearInstallError = false,
+    bool? installPermissionRequired,
     String? downloadError,
     bool clearDownloadError = false,
   }) {
@@ -100,7 +125,18 @@ class UpdateState {
       downloadedApkPath: clearDownloadedApkPath
           ? null
           : (downloadedApkPath ?? this.downloadedApkPath),
+      publicDownloadPath: clearPublicDownloadPath
+          ? null
+          : (publicDownloadPath ?? this.publicDownloadPath),
+      publishError: clearPublishError
+          ? null
+          : (publishError ?? this.publishError),
       installInProgress: installInProgress ?? this.installInProgress,
+      installError: clearInstallError
+          ? null
+          : (installError ?? this.installError),
+      installPermissionRequired:
+          installPermissionRequired ?? this.installPermissionRequired,
       downloadError: clearDownloadError
           ? null
           : (downloadError ?? this.downloadError),
