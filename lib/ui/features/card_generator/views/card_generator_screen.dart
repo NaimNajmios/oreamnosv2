@@ -252,10 +252,7 @@ class _CardGeneratorScreenState extends ConsumerState<CardGeneratorScreen> {
       return const Center(
         child: Padding(
           padding: EdgeInsets.all(AppSpacing.xxl),
-          child: EnhancedLoadingCard(
-            type: LoadingType.extracting,
-            customMessage: 'Polishing card…',
-          ),
+          child: EnhancedLoadingCard(stage: LoadingStage.polishing),
         ),
       );
     }
@@ -396,8 +393,8 @@ class _CardGeneratorScreenState extends ConsumerState<CardGeneratorScreen> {
                           child: Padding(
                             padding: EdgeInsets.all(AppSpacing.xl),
                             child: EnhancedLoadingCard(
-                              type: LoadingType.extracting,
-                              customMessage: 'AI Reprocessing…',
+                              stage: LoadingStage.polishing,
+                              notice: 'Updating your card…',
                             ),
                           ),
                         ),

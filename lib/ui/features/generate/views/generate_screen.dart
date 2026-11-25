@@ -1028,17 +1028,23 @@ class _GenerateScreenState extends ConsumerState<GenerateScreen> {
     bool isGenerating,
   ) {
     if (isGenerating && !hasPost) {
-      final isScraping =
-          viewModel.generatingStep == GeneratingStep.scraping ||
-          viewModel.status == GenerateState.researching;
+      // Drive the copy from the real pipeline stage. Research mode is AI
+      // enrichment, not article extraction — lumping it in with scraping was
+      // why the card sometimes claimed to be "fetching a URL" mid-research.
+      final stage = viewModel.status == GenerateState.researching
+          ? LoadingStage.researching
+          : viewModel.generatingStep == GeneratingStep.scraping
+          ? LoadingStage.readingLink
+          : LoadingStage.writing;
       return Column(
         key: const ValueKey('generating'),
         children: [
           EnhancedLoadingCard(
-            type: isScraping ? LoadingType.extracting : LoadingType.generating,
+            stage: stage,
             // Inline hint for intermediate share retries / silent provider
             // fallbacks (e.g. "Gemini rate-limited — retrying with Groq…").
-            customMessage: viewModel.fallbackNotice,
+            // It becomes the title and replaces the stage subtitle.
+            notice: viewModel.fallbackNotice,
           ),
           const SizedBox(height: AppSpacing.md),
           // Safety valve: cancels the in-flight attempt (token + watchdog) so

@@ -11,24 +11,73 @@ void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
 
   group('Delight & Interaction Widgets', () {
-    testWidgets(
-      'EnhancedLoadingCard renders extracting and generating stages',
-      (tester) async {
+    testWidgets('EnhancedLoadingCard shows plain-language stage copy', (
+      tester,
+    ) async {
+      final cases = <LoadingStage, (String, String)>{
+        LoadingStage.readingLink: (
+          'Reading your link…',
+          'Fetching the page and pulling out the article text.',
+        ),
+        LoadingStage.researching: (
+          'Researching with AI…',
+          'Gathering extra context to make the post sharper.',
+        ),
+        LoadingStage.writing: (
+          'Writing your post…',
+          'Turning the source into a ready-to-publish caption.',
+        ),
+        LoadingStage.polishing: (
+          'Polishing your card…',
+          'Tidying up the layout and text.',
+        ),
+      };
+
+      for (final entry in cases.entries) {
         await tester.pumpWidget(
-          const MaterialApp(
-            home: Scaffold(
-              body: EnhancedLoadingCard(type: LoadingType.extracting),
-            ),
+          MaterialApp(
+            home: Scaffold(body: EnhancedLoadingCard(stage: entry.key)),
           ),
         );
 
         expect(find.byType(EnhancedLoadingCard), findsOneWidget);
         expect(find.byType(KickoffLoadingIndicator), findsOneWidget);
+        expect(find.text(entry.value.$1), findsOneWidget);
+        expect(find.text(entry.value.$2), findsOneWidget);
+        // The internal design-system codename must never reach the UI, and
+        // there is no longer a fabricated progress percentage.
+        expect(find.textContaining('Serene Editorial'), findsNothing);
+        expect(find.textContaining('%'), findsNothing);
+      }
+    });
 
-        await tester.pump(const Duration(milliseconds: 500));
-        expect(find.textContaining('Extracting'), findsWidgets);
-      },
-    );
+    testWidgets('EnhancedLoadingCard notice replaces title and subtitle', (
+      tester,
+    ) async {
+      await tester.pumpWidget(
+        const MaterialApp(
+          home: Scaffold(
+            body: EnhancedLoadingCard(
+              stage: LoadingStage.writing,
+              notice: 'Gemini rate-limited — retrying with Groq…',
+            ),
+          ),
+        ),
+      );
+
+      expect(
+        find.text('Gemini rate-limited — retrying with Groq…'),
+        findsOneWidget,
+      );
+      expect(
+        find.text('Turning the source into a ready-to-publish caption.'),
+        findsNothing,
+      );
+      expect(
+        find.text('Still working — this can take a moment.'),
+        findsOneWidget,
+      );
+    });
 
     testWidgets('InputClearButton requires 2-step confirmation', (
       tester,
