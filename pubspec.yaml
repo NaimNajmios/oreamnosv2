@@ -2,7 +2,7 @@ name: oreamnos
 description: "AI Assisted Social Media Curator — Transform football news into Malaysian Malay social media posts"
 publish_to: 'none'
 
-version: 1.6.6+14
+version: 1.6.7+15
 
 environment:
   sdk: ^3.13.1
