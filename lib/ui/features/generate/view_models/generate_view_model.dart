@@ -70,6 +70,12 @@ class GenerateViewModel extends Notifier<GenerateUiState>
   bool _isBackgrounded = false;
   int _generationSessionId = 0;
 
+  /// Logical key of the share currently driving generation. A duplicate
+  /// delivery of the same content while it is still generating must not
+  /// start a second session: overlapping attempts cancel each other's tokens
+  /// and leave the UI stranded on the loading card.
+  String? _activeShareInput;
+
   /// Extra attempts for share-initiated generations on transient failures
   /// (flaky FxTwitter, network gap right after app resume). Non-share
   /// generations keep single-shot semantics.
@@ -902,7 +908,9 @@ class GenerateViewModel extends Notifier<GenerateUiState>
               return;
             }
           }
-          // Chain exhausted → last-resort dialog state.
+          // Chain exhausted → last-resort dialog state. A superseded
+          // attempt must not disarm the newer session's watchdog.
+          if (sessionId != _generationSessionId) return;
           final waitMessage = failure is RateLimitFailure
               ? failure.waitTimeMessage
               : null;
@@ -1035,8 +1043,10 @@ class GenerateViewModel extends Notifier<GenerateUiState>
         );
       }
     } catch (e, st) {
-      _disarmGenerationWatchdog();
+      // Never disarm a newer session's watchdog: this attempt's cancellation
+      // is what strands the current pipeline without a safety net.
       if (sessionId != _generationSessionId) return;
+      _disarmGenerationWatchdog();
       // Only for non-API failures (Twitter, scrape, timeout before repo call)
       stopwatch.stop();
       final requestId = const Uuid().v4();
@@ -1322,8 +1332,10 @@ class GenerateViewModel extends Notifier<GenerateUiState>
         );
       }
     } catch (e, st) {
-      _disarmGenerationWatchdog();
+      // See generatePost: a stale attempt must leave the current watchdog
+      // armed so a hung refinement always reaches a terminal state.
       if (sessionId != _generationSessionId) return;
+      _disarmGenerationWatchdog();
       stopwatch.stop();
       final requestId = const Uuid().v4();
       _usageService.logUsage(
@@ -1370,6 +1382,7 @@ class GenerateViewModel extends Notifier<GenerateUiState>
             return;
           }
         }
+        if (sessionId != _generationSessionId) return;
         _disarmGenerationWatchdog();
         state = state.copyWith(
           errorMessage:
@@ -1440,10 +1453,25 @@ class GenerateViewModel extends Notifier<GenerateUiState>
   }
 
   Future<void> handleExternalSharedInput(String rawInput) async {
-    _generationSessionId++;
     final parsed = SharedContentParser.parse(rawInput);
     final effectiveText = parsed.displayInput;
 
+    // Android can deliver the same share more than once (stream bounce after
+    // the service's dedup window). Starting a second session here would bump
+    // the session id, cancel the first attempt's token and leave the UI on
+    // the loading card — exactly the "already generated but still loading"
+    // report. The first attempt owns this content until it settles.
+    if (_activeShareInput == effectiveText &&
+        (state.status == GenerateState.generating ||
+            state.status == GenerateState.researching)) {
+      getIt<LogService>().info(
+        'Ignoring duplicate share while its generation is in flight',
+      );
+      return;
+    }
+    _activeShareInput = effectiveText;
+
+    _generationSessionId++;
     state = state.copyWith(
       status: GenerateState.idle,
       generatingStep: GeneratingStep.idle,

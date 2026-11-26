@@ -4,10 +4,13 @@ import 'package:receive_sharing_intent/receive_sharing_intent.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 void main() {
+  TestWidgetsFlutterBinding.ensureInitialized();
+
   group('ShareIntentService', () {
     late ShareIntentService service;
 
     setUp(() {
+      SharedPreferences.setMockInitialValues({});
       service = ShareIntentService();
       service.resetDeduplicationForTesting();
       service.onSharedTextReceived = null;
@@ -261,25 +264,72 @@ void main() {
       expect(received, [handled, fresh]);
     });
 
-    test(
-      'transient (stream) deliveries never update the initial fingerprint',
-      () async {
-        SharedPreferences.setMockInitialValues({});
-        final received = <String>[];
-        service.onSharedTextReceived = (text) => received.add(text);
+    test('stream deliveries update the fingerprint so a late initial '
+        'bounce of the same share is not judged stale', () async {
+      SharedPreferences.setMockInitialValues({});
+      final received = <String>[];
+      service.onSharedTextReceived = (text) => received.add(text);
 
-        await service.loadInitialFingerprintForTesting();
-        service.handleSharedMedia([
-          SharedMediaFile(
-            path: 'https://x.com/sports/status/777777',
-            type: SharedMediaType.text,
-          ),
-          // default isInitial: false — live-stream path
-        ]);
+      await service.loadInitialFingerprintForTesting();
+      service.handleSharedMedia([
+        SharedMediaFile(
+          path: 'https://x.com/sports/status/777777',
+          type: SharedMediaType.text,
+        ),
+        // default isInitial: false — live-stream path
+      ]);
 
-        expect(received, hasLength(1));
-        expect(service.initialFingerprintForTesting, isNull);
-      },
-    );
+      expect(received, hasLength(1));
+      expect(
+        service.initialFingerprintForTesting,
+        ShareIntentService.normalizeDedupKey(
+          'https://x.com/sports/status/777777',
+        ),
+      );
+    });
+
+    test('finds the text/URL item when a preview image comes first', () {
+      final received = <String>[];
+      service.onSharedTextReceived = (text) => received.add(text);
+
+      service.handleSharedMedia([
+        SharedMediaFile(path: '/tmp/preview.jpg', type: SharedMediaType.image),
+        SharedMediaFile(
+          path: 'https://example.com/article',
+          type: SharedMediaType.url,
+        ),
+      ]);
+
+      expect(received, ['https://example.com/article']);
+    });
+
+    test('a fresh re-share of the same URL outside the replay window is '
+        'handled', () async {
+      SharedPreferences.setMockInitialValues({});
+      final received = <String>[];
+      service.onSharedTextReceived = (text) => received.add(text);
+
+      const link = 'https://x.com/sports/status/5554443332';
+      await service.loadInitialFingerprintForTesting();
+      service.handleSharedMedia([
+        SharedMediaFile(path: link, type: SharedMediaType.text),
+      ], isInitial: true);
+      expect(received, [link]);
+
+      // Simulate a later process: in-memory dedup state is gone, the
+      // fingerprint survives in prefs with an old timestamp.
+      service.resetDeduplicationForTesting();
+      await service.loadInitialFingerprintForTesting();
+      await Future<void>.delayed(const Duration(milliseconds: 50));
+      // Force the persisted timestamp to be outside the guard window by
+      // expiring the in-memory marker (production loads an old timestamp
+      // from prefs; here we model the same state).
+      service.expireReplayGuardForTesting();
+
+      service.handleSharedMedia([
+        SharedMediaFile(path: link, type: SharedMediaType.text),
+      ], isInitial: true);
+      expect(received, [link, link]);
+    });
   });
 }

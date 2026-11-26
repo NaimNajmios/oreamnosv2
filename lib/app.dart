@@ -233,11 +233,12 @@ class _OreamnosAppState extends ConsumerState<OreamnosApp> {
       }
       _inFlightShareContent = dedupKey;
       // Late stream bounces (beyond the service's 1500ms dedup window) must
-      // not re-trigger generation of the same share. But the guard must not
-      // pin "in flight" for the whole multi-minute retry/fallback chain
-      // either, or a deliberate re-share minutes later gets dropped — so
-      // the pin expires after 8s (the bounce window) as a hard cap.
-      Timer(const Duration(seconds: 8), () {
+      // not re-trigger generation of the same share. Keep the pin short:
+      // a longer window makes a deliberate re-share of the *same* link look
+      // like a bounce and silently drops it (the "app opened but nothing
+      // was pasted" report). Beyond this window the VM's own in-flight
+      // content guard still prevents two overlapping generations.
+      Timer(const Duration(seconds: 3), () {
         if (_inFlightShareContent == dedupKey) _inFlightShareContent = null;
       });
 

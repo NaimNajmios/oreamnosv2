@@ -17,14 +17,27 @@ class ShareIntentService {
   /// *stale replay* (Android cached process replays the previous session's
   /// `initialMedia`) apart from a *fresh share* (≠ fingerprint → handled).
   static const String _fingerprintPrefKey = 'share_initial_fingerprint';
+  static const String _fingerprintAtPrefKey = 'share_initial_fingerprint_at';
+
+  /// A cached-process replay lands immediately after relaunch. A deliberate
+  /// re-share of the *same* URL hours later is a fresh share and must not be
+  /// mistaken for one, so the fingerprint guard is time-bounded.
+  static const Duration _replayGuardWindow = Duration(seconds: 5);
 
   StreamSubscription? _intentDataStreamSubscription;
   DateTime? _lastHandledTime;
   String? _lastHandledContent;
 
   /// Dedup key of the last handled share. Loaded from prefs before the
-  /// initial delivery is judged; persisted after each initial share.
+  /// initial delivery is judged; persisted after *every* handled share so
+  /// the stream and initial paths share one fingerprint.
   String? _initialFingerprint;
+  DateTime? _initialFingerprintAt;
+
+  /// Keys delivered on the live stream in this process. A later initial
+  /// delivery of the same key is a fresh share (or a bounce), never a
+  /// cached-process replay of the previous session.
+  final Set<String> _seenStreamKeys = <String>{};
 
   /// Android keeps a cached process after swipe-away; the native plugin's
   /// `initialMedia`/`latestMedia` survive it. This guards each process from
@@ -107,6 +120,9 @@ class ShareIntentService {
   Future<String?> _loadFingerprint() async {
     try {
       final prefs = await SharedPreferences.getInstance();
+      _initialFingerprintAt ??= _readTimestamp(
+        prefs.getString(_fingerprintAtPrefKey),
+      );
       return prefs.getString(_fingerprintPrefKey);
     } catch (e, st) {
       _log('fingerprint load failed', e, st);
@@ -114,14 +130,21 @@ class ShareIntentService {
     }
   }
 
-  void _persistFingerprint(String dedupKey) {
+  DateTime? _readTimestamp(String? raw) {
+    if (raw == null) return null;
+    return DateTime.tryParse(raw);
+  }
+
+  void _persistFingerprint(String dedupKey, DateTime at) {
     try {
       SharedPreferences.getInstance()
-          .then((prefs) => prefs.setString(_fingerprintPrefKey, dedupKey))
+          .then((prefs) async {
+            await prefs.setString(_fingerprintPrefKey, dedupKey);
+            await prefs.setString(_fingerprintAtPrefKey, at.toIso8601String());
+          })
           .catchError((Object e, StackTrace st) {
             _log('fingerprint save failed', e, st);
-            // Future<bool> catchError contract: must return a default value.
-            return false;
+            // Future<void> catchError contract: must return a default value.
           });
     } catch (e, st) {
       _log('fingerprint save failed', e, st);
@@ -160,6 +183,8 @@ class ShareIntentService {
     _lastHandledContent = null;
     _initialMediaConsumed = false;
     _initialFingerprint = null;
+    _initialFingerprintAt = null;
+    _seenStreamKeys.clear();
   }
 
   /// Clears only the short-window dedup markers, keeping the initial-share
@@ -170,6 +195,13 @@ class ShareIntentService {
   void expireTransientDedupForTesting() {
     _lastHandledTime = null;
     _lastHandledContent = null;
+  }
+
+  /// Models a fingerprint persisted long ago (outside [_replayGuardWindow])
+  /// for tests that replay a fresh share of the same content.
+  @visibleForTesting
+  void expireReplayGuardForTesting() {
+    _initialFingerprintAt = DateTime.now().subtract(_replayGuardWindow * 2);
   }
 
   @visibleForTesting
@@ -194,46 +226,71 @@ class ShareIntentService {
       return;
     }
 
-    final file = files.first;
-
-    if (file.type == SharedMediaType.text || file.type == SharedMediaType.url) {
-      final content = file.path.trim();
-      if (content.isEmpty) return;
-
-      final dedupKey = normalizeDedupKey(content);
-
-      // Debounce duplicate events within 1500ms (common on Android resume/stream rebroadcasts)
-      final now = DateTime.now();
-      if (_lastHandledContent == dedupKey &&
-          _lastHandledTime != null &&
-          now.difference(_lastHandledTime!) <
-              const Duration(milliseconds: 1500)) {
-        _log('ignoring duplicate share intent event: $dedupKey');
-        return;
+    // Some apps attach a preview image (ACTION_SEND_MULTIPLE) ahead of the
+    // shared text/URL. Inspecting only `files.first` silently dropped those
+    // shares — the app opened but nothing was pasted or generated.
+    SharedMediaFile? textFile;
+    for (final candidate in files) {
+      if (candidate.type == SharedMediaType.text ||
+          candidate.type == SharedMediaType.url) {
+        textFile = candidate;
+        break;
       }
+    }
+    if (textFile == null) {
+      _log('no text/url item among ${files.length} shared media');
+      return;
+    }
 
-      // Stale-replay guard (initial path only): Android's cached process
-      // replays the previous session's share on relaunch. A delivery whose
-      // logical key matches the last handled share is a replay, not a fresh
-      // share — drop it instead of re-generating the same content.
-      if (isInitial && _initialFingerprint == dedupKey) {
-        _log('suppressing stale initial replay: $dedupKey');
-        return;
-      }
+    final content = textFile.path.trim();
+    if (content.isEmpty) return;
 
-      _lastHandledTime = now;
-      _lastHandledContent = dedupKey;
-      if (isInitial) {
-        _initialFingerprint = dedupKey;
-        _persistFingerprint(dedupKey);
-      }
+    final dedupKey = normalizeDedupKey(content);
+    final now = DateTime.now();
 
-      final callback = onSharedTextReceived;
-      if (callback != null) {
-        callback(content);
-      } else {
-        _log('share received before callback was attached: $dedupKey');
-      }
+    // Debounce duplicate events within 1500ms (common on Android resume/stream rebroadcasts)
+    if (_lastHandledContent == dedupKey &&
+        _lastHandledTime != null &&
+        now.difference(_lastHandledTime!) <
+            const Duration(milliseconds: 1500)) {
+      _log('ignoring duplicate share intent event: $dedupKey');
+      return;
+    }
+
+    // A live stream delivery proves this key is being shared *now*, so a
+    // later initial delivery cannot be a cached-process replay of the
+    // previous session.
+    if (!isInitial) _seenStreamKeys.add(dedupKey);
+
+    // Stale-replay guard (initial path only): Android's cached process can
+    // replay the previous session's share on relaunch. The guard is bounded
+    // in time so re-sharing the same URL later still works.
+    final replayAge = _initialFingerprintAt == null
+        ? null
+        : now.difference(_initialFingerprintAt!);
+    if (isInitial &&
+        _initialFingerprint == dedupKey &&
+        !_seenStreamKeys.contains(dedupKey) &&
+        replayAge != null &&
+        replayAge >= Duration.zero &&
+        replayAge < _replayGuardWindow) {
+      _log('suppressing stale initial replay: $dedupKey');
+      return;
+    }
+
+    _lastHandledTime = now;
+    _lastHandledContent = dedupKey;
+    // Keep both paths on one fingerprint: a stream delivery followed by a
+    // late initial delivery of the same content must not be judged stale.
+    _initialFingerprint = dedupKey;
+    _initialFingerprintAt = now;
+    _persistFingerprint(dedupKey, now);
+
+    final callback = onSharedTextReceived;
+    if (callback != null) {
+      callback(content);
+    } else {
+      _log('share received before callback was attached: $dedupKey');
     }
   }
 
