@@ -39,7 +39,7 @@ class TopStatsCanvas extends StatelessWidget {
                 Text(
                   'TOP STATS',
                   style: CardTypography.kicker(
-                    color: Colors.amberAccent,
+                    color: config.theme.warning,
                     fontSize: 11,
                   ),
                 ),
@@ -83,7 +83,7 @@ class TopStatsCanvas extends StatelessWidget {
                           fontSize:
                               (density == ContentDensity.compact ? 42 : 56) *
                               fontMultiplier,
-                          color: Colors.amberAccent,
+                          color: config.theme.warning,
                           shadows: const [
                             Shadow(
                               color: Color(0x99000000),
@@ -145,19 +145,7 @@ class TopStatsCanvas extends StatelessWidget {
 
             // Footer
             Row(
-              children: [
-                Text(
-                  config.brandName?.isNotEmpty == true
-                      ? config.brandName!
-                      : (config.brandHandle?.isNotEmpty == true
-                            ? config.brandHandle!
-                            : 'Stats Center'),
-                  style: CardTypography.meta(
-                    color: Colors.white.withValues(alpha: 0.6),
-                    fontSize: 10,
-                  ),
-                ),
-              ],
+              children: [BrandFooter(config: config, fallback: 'Stats Center')],
             ),
           ],
         ),

@@ -16,7 +16,7 @@
 -dontwarn com.it_nomads.fluttersecurestorage.**
 # image / gallery / share plugins use reflection on platform channels
 -keep class androidx.exifinterface.** { *; }
-# google_fonts runtime fetching — keep okhttp/dio paths out of obfuscation issues
+# dio / okhttp — keep networking paths out of obfuscation issues
 -dontwarn okhttp3.**
 -dontwarn okio.**
 -dontwarn retrofit2.**

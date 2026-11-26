@@ -2,12 +2,12 @@ import 'dart:io';
 
 import 'package:auto_size_text/auto_size_text.dart';
 import 'package:flutter/material.dart';
-import 'package:google_fonts/google_fonts.dart';
+import 'package:oreamnos/config/theme/card_fonts.dart';
 import 'package:oreamnos/domain/models/card_data.dart';
 import 'package:oreamnos/domain/models/card_template.dart';
 import 'package:oreamnos/ui/features/card_generator/view_models/card_generator_view_model.dart';
 
-/// Sparse companion canvas — headline + hook + optional microStat badge
+/// Sparse companion canvas â€” headline + hook + optional microStat badge
 /// over an optional real image with dark scrim. No source/hashtags.
 /// Headlines auto-shrink to avoid `...` at 60 chars.
 class CardCanvas extends StatelessWidget {
@@ -36,11 +36,11 @@ class CardCanvas extends StatelessWidget {
     );
     switch (font) {
       case AppFont.classicSerif:
-        return GoogleFonts.lora(textStyle: scaled);
+        return CardFonts.lora(textStyle: scaled);
       case AppFont.typewriter:
-        return GoogleFonts.spaceMono(textStyle: scaled);
+        return CardFonts.spaceMono(textStyle: scaled);
       case AppFont.defaultFont:
-        return GoogleFonts.inter(textStyle: scaled);
+        return CardFonts.inter(textStyle: scaled);
     }
   }
 
@@ -258,7 +258,7 @@ class CardCanvas extends StatelessWidget {
                       const SizedBox(height: 12),
                       AutoSizeText(
                         cardData.headline.toUpperCase(),
-                        style: GoogleFonts.jetBrainsMono(
+                        style: CardFonts.jetBrainsMono(
                           fontSize: 11 * headlineScale,
                           fontWeight: FontWeight.w700,
                           color: Colors.white.withValues(alpha: 0.85),
@@ -272,7 +272,7 @@ class CardCanvas extends StatelessWidget {
                         const SizedBox(height: 8),
                         Text(
                           cardData.microStat!,
-                          style: GoogleFonts.jetBrainsMono(
+                          style: CardFonts.jetBrainsMono(
                             fontSize: 11 * headlineScale,
                             color: Colors.white.withValues(alpha: 0.65),
                           ),
@@ -476,7 +476,7 @@ class CardCanvas extends StatelessWidget {
       children: [
         Text(
           'Oreamnos',
-          style: GoogleFonts.jetBrainsMono(
+          style: CardFonts.jetBrainsMono(
             fontSize: 11,
             fontWeight: FontWeight.w600,
             color: Colors.white.withValues(alpha: 0.72),

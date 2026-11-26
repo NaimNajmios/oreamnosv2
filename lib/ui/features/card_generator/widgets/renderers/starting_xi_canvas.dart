@@ -1,7 +1,8 @@
 import 'package:flutter/material.dart';
-import 'package:google_fonts/google_fonts.dart';
+import 'package:oreamnos/config/theme/card_fonts.dart';
 
 import '../../../../../domain/models/card_config.dart';
+import '../primitives/brand_footer.dart';
 import '../../../../../domain/models/card_data.dart';
 import '../../../../../data/services/gradient_builder.dart';
 
@@ -53,7 +54,7 @@ class StartingXICanvas extends StatelessWidget {
                       ),
                       child: Text(
                         'STARTING XI',
-                        style: GoogleFonts.jetBrainsMono(
+                        style: CardFonts.jetBrainsMono(
                           color: Colors.white,
                           fontSize: 10,
                           fontWeight: FontWeight.w700,
@@ -74,7 +75,7 @@ class StartingXICanvas extends StatelessWidget {
                         ),
                         child: Text(
                           data.formation,
-                          style: GoogleFonts.jetBrainsMono(
+                          style: CardFonts.jetBrainsMono(
                             color: Colors.white,
                             fontSize: 11,
                             fontWeight: FontWeight.w800,
@@ -138,7 +139,7 @@ class StartingXICanvas extends StatelessWidget {
                                     alignment: Alignment.center,
                                     child: Text(
                                       p.number,
-                                      style: GoogleFonts.jetBrainsMono(
+                                      style: CardFonts.jetBrainsMono(
                                         color: Colors.white,
                                         fontSize: 10,
                                         fontWeight: FontWeight.w700,
@@ -179,22 +180,12 @@ class StartingXICanvas extends StatelessWidget {
                 const SizedBox(height: 8),
                 Row(
                   children: [
-                    Text(
-                      config.brandName?.isNotEmpty == true
-                          ? config.brandName!
-                          : (config.brandHandle?.isNotEmpty == true
-                                ? config.brandHandle!
-                                : 'Lineup'),
-                      style: GoogleFonts.jetBrainsMono(
-                        color: Colors.white.withValues(alpha: 0.6),
-                        fontSize: 10,
-                      ),
-                    ),
+                    BrandFooter(config: config, fallback: 'Lineup'),
                     const Spacer(),
                     if (data.subs.isNotEmpty)
                       Text(
                         '${data.subs.length} Subs',
-                        style: GoogleFonts.jetBrainsMono(
+                        style: CardFonts.jetBrainsMono(
                           color: Colors.white.withValues(alpha: 0.6),
                           fontSize: 10,
                         ),

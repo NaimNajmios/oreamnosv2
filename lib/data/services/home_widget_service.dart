@@ -15,7 +15,7 @@ import 'log_service.dart';
 /// go_router location. Widgets never act in the background, so secure-storage
 /// tokens and the generation stack stay out of reach of a home-screen surface.
 ///
-/// One payload feeds five purpose-built widgets. Each has its own receiver, so
+/// One payload feeds seven purpose-built widgets. Each has its own receiver, so
 /// a push has to update every provider — a placed widget is bound to exactly
 /// one component and would otherwise keep rendering whatever it last saw.
 @lazySingleton
@@ -36,6 +36,10 @@ class HomeWidgetService {
       'com.najmi.oreamnos.widget.OreamnosDraftsWidgetProvider';
   static const String bestTimeProvider =
       'com.najmi.oreamnos.widget.OreamnosBestTimeWidgetProvider';
+  static const String lastPostProvider =
+      'com.najmi.oreamnos.widget.OreamnosLastPostWidgetProvider';
+  static const String pageReachProvider =
+      'com.najmi.oreamnos.widget.OreamnosPageReachWidgetProvider';
 
   /// Order matters only for the Settings picker.
   static const List<String> providers = [
@@ -44,6 +48,8 @@ class HomeWidgetService {
     engagementProvider,
     draftsProvider,
     bestTimeProvider,
+    lastPostProvider,
+    pageReachProvider,
   ];
 
   bool _warned = false;

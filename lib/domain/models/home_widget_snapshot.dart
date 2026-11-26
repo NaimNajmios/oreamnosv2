@@ -45,6 +45,14 @@ class HomeWidgetSnapshot {
     this.weekPostCount = 0,
     this.pagesJson = '[]',
     this.quotaResetAt,
+    this.lastPublishedAt,
+    this.pageViews,
+    this.pageEngagements,
+    this.pageFollows,
+    this.pageViewsDelta,
+    this.pageEngagementsDelta,
+    this.pageRangeDays = 28,
+    this.pageInsightsAt,
   });
 
   /// When this snapshot was built. The widget shows it when data goes stale.
@@ -118,6 +126,28 @@ class HomeWidgetSnapshot {
   /// JSON string keeps every payload value a `String`.
   final String pagesJson;
 
+  /// Effective instant of the newest published post: its scheduled time when
+  /// it went live through a schedule, otherwise its creation time. Unlike
+  /// [lastPostAt] this does not require cached engagement metrics.
+  final DateTime? lastPublishedAt;
+
+  /// Cached Page insight totals for the active Page. Null means the metric is
+  /// unavailable, never zero — Meta omits metrics per Page and per range.
+  final int? pageViews;
+  final int? pageEngagements;
+  final int? pageFollows;
+
+  /// Signed, compact period-over-period changes. Null when the previous
+  /// window could not be loaded.
+  final String? pageViewsDelta;
+  final String? pageEngagementsDelta;
+
+  /// Window behind the Page totals: the app's Performance setting, 7/28/90.
+  final int pageRangeDays;
+
+  /// When the cached Page insights were fetched. Empty means no cache.
+  final DateTime? pageInsightsAt;
+
   bool get hasLastPost =>
       lastPostAt != null &&
       (lastPostReactions != null ||
@@ -167,6 +197,14 @@ class HomeWidgetSnapshot {
     HomeWidgetKeys.draftUpdatedAt: _epoch(draftUpdatedAt),
     HomeWidgetKeys.weekPostCount: '$weekPostCount',
     HomeWidgetKeys.pagesJson: pagesJson,
+    HomeWidgetKeys.lastPublishedAt: _epoch(lastPublishedAt),
+    HomeWidgetKeys.pageViews: _number(pageViews),
+    HomeWidgetKeys.pageEngagements: _number(pageEngagements),
+    HomeWidgetKeys.pageFollows: _number(pageFollows),
+    HomeWidgetKeys.pageViewsDelta: pageViewsDelta ?? '',
+    HomeWidgetKeys.pageEngagementsDelta: pageEngagementsDelta ?? '',
+    HomeWidgetKeys.pageRangeDays: '$pageRangeDays',
+    HomeWidgetKeys.pageInsightsAt: _epoch(pageInsightsAt),
   };
 
   static String _epoch(DateTime? value) =>
@@ -275,7 +313,7 @@ class HomeWidgetPalette {
 
 /// SharedPreferences keys written through `home_widget`.
 abstract final class HomeWidgetKeys {
-  static const String currentVersion = '4';
+  static const String currentVersion = '5';
 
   static const String version = 'widget_version';
   static const String updatedAt = 'updated_at';
@@ -316,6 +354,19 @@ abstract final class HomeWidgetKeys {
   static const String draftUpdatedAt = 'draft_updated_at';
   static const String weekPostCount = 'week_post_count';
   static const String pagesJson = 'pages_json';
+
+  /// Newest published post, regardless of whether it has cached engagement.
+  static const String lastPublishedAt = 'last_published_at';
+
+  /// Cached Page-level insights for the active Page, reduced in Dart so the
+  /// native widget never fetches or interprets Graph data itself.
+  static const String pageViews = 'page_views';
+  static const String pageEngagements = 'page_engagements';
+  static const String pageFollows = 'page_follows';
+  static const String pageViewsDelta = 'page_views_delta';
+  static const String pageEngagementsDelta = 'page_engagements_delta';
+  static const String pageRangeDays = 'page_range_days';
+  static const String pageInsightsAt = 'page_insights_at';
 
   /// Guard rail against accidentally pushing a token or permalink to a
   /// home-screen surface: the snapshot test asserts the payload only ever
@@ -360,5 +411,13 @@ abstract final class HomeWidgetKeys {
     draftUpdatedAt,
     weekPostCount,
     pagesJson,
+    lastPublishedAt,
+    pageViews,
+    pageEngagements,
+    pageFollows,
+    pageViewsDelta,
+    pageEngagementsDelta,
+    pageRangeDays,
+    pageInsightsAt,
   };
 }

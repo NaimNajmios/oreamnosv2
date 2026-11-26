@@ -18,7 +18,7 @@ radiusXs 4 · radiusSm 8 · radiusMd 12 · radiusLg 16 · radiusXl 24 · radiusP
 * Surfaces: `lightBg FFFFFFFF` / `lightSurface F5F5F5` / `darkBg 000000` / `darkSurface 1A1A1A`; borders `lightBorder E5E5E5` / `darkBorder 2E2E2E`.
 * Per-provider tints `AppColors.tintForProvider:58` / `softForProvider:67` (`gemini accent/soft, groq emerald, openRouter amber, cerebras violet, fallback teal`).
 
-**Typography** `lib/config/theme/app_typography.dart:1` — system sans (Roboto/SF Pro via `ThemeData.useMaterial3`), `GoogleFonts.inter/lora/spaceMono` only for card canvas `lib/ui/features/card_generator/widgets/card_canvas.dart:38`, `mono()` helper `146` for `11` usage.
+**Typography** `lib/config/theme/app_typography.dart:1` — system sans (Roboto/SF Pro via `ThemeData.useMaterial3`). Card renderers use only locally bundled families via `lib/config/theme/card_fonts.dart` — `BigShouldersDisplay` (variable display/hero face), `Inter` (variable text), `Lora` (variable serif) and `SpaceMono` (labels/typewriter); `lib/ui/features/card_generator/widgets/card_canvas.dart:38` maps the Studio Deck font choice to those families. No `google_fonts` dependency or runtime font fetching remains.
 
 **Palette vs Code:** `freezed` helpers `StatItem/ComparisonStat/LineupPlayer/TableRow/InjuryItem/ContractPlayer/NomineeItem` `lib/domain/models/card_data.dart:8-101`.
 

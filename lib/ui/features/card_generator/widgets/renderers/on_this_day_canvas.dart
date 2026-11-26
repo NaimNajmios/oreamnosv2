@@ -1,7 +1,8 @@
 import 'package:flutter/material.dart';
-import 'package:google_fonts/google_fonts.dart';
+import 'package:oreamnos/config/theme/card_fonts.dart';
 
 import '../../../../../domain/models/card_config.dart';
+import '../primitives/brand_footer.dart';
 import '../../../../../domain/models/card_data.dart';
 import '../../../../../data/services/gradient_builder.dart';
 
@@ -47,22 +48,22 @@ class OnThisDayCanvas extends StatelessWidget {
                         vertical: 4,
                       ),
                       decoration: BoxDecoration(
-                        color: Colors.amberAccent.withValues(alpha: 0.25),
+                        color: config.theme.warning.withValues(alpha: 0.25),
                         borderRadius: BorderRadius.circular(16),
                       ),
                       child: Row(
                         mainAxisSize: MainAxisSize.min,
                         children: [
-                          const Icon(
+                          Icon(
                             Icons.history_edu_rounded,
-                            color: Colors.amberAccent,
+                            color: config.theme.warning,
                             size: 13,
                           ),
                           const SizedBox(width: 4),
                           Text(
                             'ON THIS DAY',
-                            style: GoogleFonts.jetBrainsMono(
-                              color: Colors.amberAccent,
+                            style: CardFonts.jetBrainsMono(
+                              color: config.theme.warning,
                               fontSize: 10,
                               fontWeight: FontWeight.w800,
                               letterSpacing: 1,
@@ -84,7 +85,7 @@ class OnThisDayCanvas extends StatelessWidget {
                         ),
                         child: Text(
                           '${data.yearsAgo} YEARS AGO',
-                          style: GoogleFonts.jetBrainsMono(
+                          style: CardFonts.jetBrainsMono(
                             color: Colors.white,
                             fontSize: 10,
                             fontWeight: FontWeight.w700,
@@ -97,8 +98,8 @@ class OnThisDayCanvas extends StatelessWidget {
                 if (data.dateLabel != 'N/A') ...[
                   Text(
                     data.dateLabel.toUpperCase(),
-                    style: GoogleFonts.jetBrainsMono(
-                      color: Colors.amberAccent,
+                    style: CardFonts.jetBrainsMono(
+                      color: config.theme.warning,
                       fontSize: 12,
                       fontWeight: FontWeight.w800,
                       letterSpacing: 1.5,
@@ -139,17 +140,7 @@ class OnThisDayCanvas extends StatelessWidget {
                   ),
                 ],
                 const SizedBox(height: 16),
-                Text(
-                  config.brandName?.isNotEmpty == true
-                      ? config.brandName!
-                      : (config.brandHandle?.isNotEmpty == true
-                            ? config.brandHandle!
-                            : 'On This Day'),
-                  style: GoogleFonts.jetBrainsMono(
-                    color: Colors.white.withValues(alpha: 0.6),
-                    fontSize: 10,
-                  ),
-                ),
+                BrandFooter(config: config, fallback: 'On This Day'),
               ],
             ),
           ),

@@ -15,6 +15,7 @@ import 'data/models/ai_provider.dart';
 import 'domain/models/app_theme_mode.dart';
 import 'domain/models/card_brief.dart';
 import 'domain/models/curated_post.dart';
+import 'domain/models/facebook_page_insights.dart';
 import 'domain/models/home_widget_snapshot.dart';
 import 'domain/services/home_widget_snapshot_builder.dart';
 
@@ -28,11 +29,14 @@ import 'data/services/facebook_history_service.dart';
 import 'data/services/facebook_insights_refresher.dart';
 import 'data/services/facebook_reminder_service.dart';
 import 'data/services/daily_usage_service.dart';
+import 'data/services/facebook_page_insights_store.dart';
 import 'data/services/home_widget_service.dart';
+import 'data/services/preferences_service.dart';
 import 'data/services/share_intent_service.dart';
 import 'data/services/notification_service.dart';
 import 'data/services/usage_service.dart';
 import 'ui/features/publish/view_models/facebook_drafts_view_model.dart';
+import 'ui/features/publish/view_models/facebook_performance_view_model.dart';
 
 /// Root application widget.
 class OreamnosApp extends ConsumerStatefulWidget {
@@ -131,6 +135,15 @@ class _OreamnosAppState extends ConsumerState<OreamnosApp> {
           previous?.selectedModel != next.selectedModel ||
           previous?.selectedProvider != next.selectedProvider ||
           previous?.showWidgetSnippet != next.showWidgetSnippet) {
+        _scheduleHomeWidgetSync();
+      }
+    });
+
+    // Page reach follows the Performance range and its cached snapshot. The
+    // provider's build() only reads the store, so listening never fetches.
+    ref.listenManual(facebookPerformanceProvider, (previous, next) {
+      if (previous?.days != next.days ||
+          previous?.data?.fetchedAt != next.data?.fetchedAt) {
         _scheduleHomeWidgetSync();
       }
     });
@@ -344,6 +357,23 @@ class _OreamnosAppState extends ConsumerState<OreamnosApp> {
         daily = getIt<DailyUsageService>();
       }
 
+      // Page insights are read straight from the cache. A widget write must
+      // never trigger a Graph call, so this listens to the store, not to
+      // `ensureLoaded()`/`refresh()` on the Performance notifier.
+      FacebookPageInsights? pageInsights;
+      var pageRangeDays = 28;
+      if (getIt.isRegistered<PreferencesService>() &&
+          getIt.isRegistered<FacebookPageInsightsStore>()) {
+        pageRangeDays = getIt<PreferencesService>().facebookPerformanceDays;
+        final pageId = connection.activePageId;
+        if (pageId.isNotEmpty) {
+          pageInsights = getIt<FacebookPageInsightsStore>().load(
+            pageId,
+            days: pageRangeDays,
+          );
+        }
+      }
+
       // One entry per provider so the quota widget can show any two side by
       // side, including a provider that recorded nothing today. Only Gemini
       // carries a budget; the rest are counts.
@@ -400,6 +430,8 @@ class _OreamnosAppState extends ConsumerState<OreamnosApp> {
         draftUpdatedAt: drafts.isEmpty ? null : drafts.first.updatedAt,
         showSnippet: settings.showWidgetSnippet,
         warnFraction: AppConstants.dailyQuotaWarnThreshold,
+        pageInsights: pageInsights,
+        pageRangeDays: pageRangeDays,
       );
       await _homeWidget.push(snapshot);
     } catch (_) {

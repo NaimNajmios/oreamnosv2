@@ -49,10 +49,10 @@ class DetailedScoreboardCanvas extends StatelessWidget {
 
     final homeColor = config.colorPair.isNotEmpty
         ? config.colorPair.first
-        : Colors.blueAccent;
+        : config.theme.accent;
     final awayColor = config.colorPair.length > 1
         ? config.colorPair.last
-        : Colors.redAccent;
+        : config.theme.alert;
     final homePct = _parseHomePct(data.possession);
 
     return BroadcastBackground(
@@ -81,7 +81,7 @@ class DetailedScoreboardCanvas extends StatelessWidget {
                   child: Text(
                     data.matchStatus.toUpperCase(),
                     style: CardTypography.kicker(
-                      color: Colors.greenAccent,
+                      color: config.theme.success,
                       fontSize: 11,
                     ),
                   ),
@@ -145,7 +145,7 @@ class DetailedScoreboardCanvas extends StatelessWidget {
                   child: Padding(
                     padding: const EdgeInsets.symmetric(horizontal: 4),
                     child: AutoSizeText(
-                      '${data.homeScore} – ${data.awayScore}',
+                      '${data.homeScore} ÃƒÂ¢Ã¢â€šÂ¬Ã¢â‚¬Å“ ${data.awayScore}',
                       textAlign: TextAlign.center,
                       maxLines: 1,
                       minFontSize: 24,
@@ -289,7 +289,10 @@ class DetailedScoreboardCanvas extends StatelessWidget {
                   ],
                   if (hasShots && data.corners != 'N/A') ...[
                     const SizedBox(width: 8),
-                    const Text('•', style: TextStyle(color: Colors.white38)),
+                    const Text(
+                      'ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â¢',
+                      style: TextStyle(color: Colors.white38),
+                    ),
                     const SizedBox(width: 8),
                     Text(
                       'CORNERS: ${data.corners}',
@@ -307,17 +310,7 @@ class DetailedScoreboardCanvas extends StatelessWidget {
             // Footer
             Row(
               children: [
-                Text(
-                  config.brandName?.isNotEmpty == true
-                      ? config.brandName!
-                      : (config.brandHandle?.isNotEmpty == true
-                            ? config.brandHandle!
-                            : 'Scoreboard'),
-                  style: CardTypography.meta(
-                    color: Colors.white.withValues(alpha: 0.6),
-                    fontSize: 10,
-                  ),
-                ),
+                BrandFooter(config: config, fallback: 'Scoreboard'),
                 const Spacer(),
                 CardSlot(
                   value: data.attendance,

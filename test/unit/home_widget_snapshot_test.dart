@@ -2,6 +2,7 @@ import 'dart:convert';
 
 import 'package:flutter_test/flutter_test.dart';
 
+import 'package:oreamnos/domain/models/facebook_page_insights.dart';
 import 'package:oreamnos/domain/models/facebook_post_record.dart';
 import 'package:oreamnos/domain/models/home_widget_snapshot.dart';
 import 'package:oreamnos/domain/services/home_widget_snapshot_builder.dart';
@@ -95,6 +96,8 @@ HomeWidgetSnapshot _build({
   List<String> draftTitles = const [],
   DateTime? draftUpdatedAt,
   bool showSnippet = true,
+  FacebookPageInsights? pageInsights,
+  int pageRangeDays = 28,
 }) {
   final reference = now ?? DateTime(2026, 11, 14, 12);
   return const HomeWidgetSnapshotBuilder().build(
@@ -113,6 +116,8 @@ HomeWidgetSnapshot _build({
     draftTitles: draftTitles,
     draftUpdatedAt: draftUpdatedAt,
     showSnippet: showSnippet,
+    pageInsights: pageInsights,
+    pageRangeDays: pageRangeDays,
   );
 }
 
@@ -779,6 +784,166 @@ void main() {
         showSnippet: false,
       );
       expect(snapshot.pagesJson, isNot(contains('Private caption')));
+    });
+  });
+
+  group('last published post', () {
+    test('newest published post wins even when an older one has metrics', () {
+      final newest = DateTime(2026, 11, 14, 15);
+      final snapshot = _build(
+        records: [
+          _record(
+            id: 'older-engaged',
+            timestamp: DateTime(2026, 11, 13, 9),
+            status: FacebookPostStatus.published,
+            reactions: 99,
+          ),
+          _record(
+            id: 'newest-fresh',
+            timestamp: newest,
+            status: FacebookPostStatus.published,
+          ),
+        ],
+      );
+      // The engagement widget still tracks the older post with metrics.
+      expect(snapshot.lastPostAt, DateTime(2026, 11, 13, 9));
+      expect(snapshot.lastPublishedAt, newest);
+      expect(
+        snapshot.toMap()[HomeWidgetKeys.lastPublishedAt],
+        '${newest.millisecondsSinceEpoch}',
+      );
+    });
+
+    test('a scheduled post uses its go-live time, not its creation time', () {
+      final snapshot = _build(
+        records: [
+          _record(
+            id: 'scheduled-then-live',
+            timestamp: DateTime(2026, 11, 14, 8),
+            scheduledAt: DateTime(2026, 11, 14, 14, 30),
+            status: FacebookPostStatus.published,
+          ),
+        ],
+      );
+      expect(snapshot.lastPublishedAt, DateTime(2026, 11, 14, 14, 30));
+    });
+
+    test('scheduled and failed records are not posts that went live', () {
+      final snapshot = _build(
+        records: [
+          _record(
+            id: 'pending',
+            scheduledAt: DateTime(2026, 11, 15, 9),
+            status: FacebookPostStatus.scheduled,
+          ),
+          _record(
+            id: 'broken',
+            timestamp: DateTime(2026, 11, 14, 16),
+            status: FacebookPostStatus.failed,
+          ),
+        ],
+      );
+      expect(snapshot.lastPublishedAt, isNull);
+      expect(snapshot.toMap()[HomeWidgetKeys.lastPublishedAt], '');
+    });
+
+    test('an empty history has no last post', () {
+      expect(_build(records: const []).lastPublishedAt, isNull);
+    });
+  });
+
+  group('page reach', () {
+    FacebookPageInsights insights({
+      List<PageInsightPoint>? points,
+      List<PageInsightPoint>? previous,
+      DateTime? fetchedAt,
+    }) => FacebookPageInsights(
+      pageId: 'page-1',
+      points:
+          points ??
+          [
+            PageInsightPoint(
+              day: DateTime(2026, 11, 10),
+              mediaViews: 1200,
+              engagements: 300,
+              follows: 5400,
+            ),
+          ],
+      previousPoints:
+          previous ??
+          [
+            PageInsightPoint(
+              day: DateTime(2026, 11, 3),
+              mediaViews: 1000,
+              engagements: 400,
+              follows: 5300,
+            ),
+          ],
+      fetchedAt: fetchedAt ?? DateTime(2026, 11, 14, 11),
+      rangeDays: 7,
+      hasMediaViews: true,
+      hasFollows: true,
+      hasEngagements: true,
+    );
+
+    test('totals, deltas and range follow the cached snapshot', () {
+      final fetchedAt = DateTime(2026, 11, 14, 11);
+      final snapshot = _build(
+        records: const [],
+        pageInsights: insights(fetchedAt: fetchedAt),
+        pageRangeDays: 7,
+      );
+      expect(snapshot.pageViews, 1200);
+      expect(snapshot.pageEngagements, 300);
+      // Follows is a running total, not a sum.
+      expect(snapshot.pageFollows, 5400);
+      expect(snapshot.pageViewsDelta, '+200');
+      expect(snapshot.pageEngagementsDelta, '-100');
+      expect(snapshot.pageRangeDays, 7);
+      expect(snapshot.pageInsightsAt, fetchedAt);
+
+      final map = snapshot.toMap();
+      expect(map[HomeWidgetKeys.pageViews], '1200');
+      expect(map[HomeWidgetKeys.pageViewsDelta], '+200');
+      expect(map[HomeWidgetKeys.pageRangeDays], '7');
+      expect(
+        map[HomeWidgetKeys.pageInsightsAt],
+        '${fetchedAt.millisecondsSinceEpoch}',
+      );
+    });
+
+    test('missing previous window omits deltas instead of inventing zero', () {
+      final snapshot = _build(
+        records: const [],
+        pageInsights: insights(previous: const []),
+      );
+      expect(snapshot.pageViewsDelta, isNull);
+      expect(snapshot.pageEngagementsDelta, isNull);
+      expect(snapshot.toMap()[HomeWidgetKeys.pageViewsDelta], '');
+    });
+
+    test('unavailable metrics stay empty and never serialize as zero', () {
+      final snapshot = _build(
+        records: const [],
+        pageInsights: insights(
+          points: [
+            PageInsightPoint(day: DateTime(2026, 11, 10), follows: 5400),
+          ],
+        ),
+      );
+      expect(snapshot.pageViews, isNull);
+      expect(snapshot.pageEngagements, isNull);
+      expect(snapshot.pageFollows, 5400);
+      final map = snapshot.toMap();
+      expect(map[HomeWidgetKeys.pageViews], '');
+      expect(map[HomeWidgetKeys.pageEngagements], '');
+    });
+
+    test('no cache means no Page metrics', () {
+      final snapshot = _build(records: const []);
+      expect(snapshot.pageViews, isNull);
+      expect(snapshot.pageInsightsAt, isNull);
+      expect(snapshot.toMap()[HomeWidgetKeys.pageRangeDays], '28');
     });
   });
 }

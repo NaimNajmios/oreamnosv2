@@ -1,5 +1,6 @@
 import 'dart:convert';
 
+import 'package:oreamnos/domain/models/facebook_page_insights.dart';
 import 'package:oreamnos/domain/models/facebook_post_record.dart';
 import 'package:oreamnos/domain/models/home_widget_snapshot.dart';
 import 'package:oreamnos/domain/services/best_time_to_post.dart';
@@ -41,6 +42,8 @@ class HomeWidgetSnapshotBuilder {
     DateTime? draftUpdatedAt,
     bool showSnippet = false,
     double warnFraction = 0.8,
+    FacebookPageInsights? pageInsights,
+    int pageRangeDays = 28,
   }) {
     final scheduled =
         records
@@ -56,6 +59,8 @@ class HomeWidgetSnapshotBuilder {
         : const [];
     final week = _weekEngagement(records, now);
     final quotaJson = _quotaJson(quotas, warnFraction);
+    final lastPublished = _lastPublishedPost(records);
+    final pageMetrics = _pageMetrics(pageInsights);
 
     return HomeWidgetSnapshot(
       updatedAt: now,
@@ -104,7 +109,76 @@ class HomeWidgetSnapshotBuilder {
       draftUpdatedAt: draftUpdatedAt,
       weekPostCount: _publishedThisWeek(records, now),
       pagesJson: _pagesJson(pages, scheduled, showSnippet),
+      lastPublishedAt: lastPublished == null
+          ? null
+          : _effectivePostTime(lastPublished),
+      pageViews: pageMetrics.views,
+      pageEngagements: pageMetrics.engagements,
+      pageFollows: pageMetrics.follows,
+      pageViewsDelta: pageMetrics.viewsDelta,
+      pageEngagementsDelta: pageMetrics.engagementsDelta,
+      pageRangeDays: pageRangeDays,
+      pageInsightsAt: pageInsights?.fetchedAt,
     );
+  }
+
+  /// A scheduled post's `timestamp` is the moment the record was created, not
+  /// when it went live (`recordPublish` stamps `DateTime.now()` at scheduling
+  /// time). Use the scheduled instant whenever one exists so "time since my
+  /// last post" is not inflated by the scheduling lead time.
+  static DateTime _effectivePostTime(FacebookPostRecord record) =>
+      record.scheduledAt ?? record.timestamp;
+
+  /// The most recent post that actually went live, whether or not its
+  /// engagement has ever been fetched. A freshly published post is precisely
+  /// the one the engagement widget cannot see yet.
+  static FacebookPostRecord? _lastPublishedPost(
+    List<FacebookPostRecord> records,
+  ) {
+    FacebookPostRecord? newest;
+    DateTime? newestAt;
+    for (final record in records) {
+      if (!record.isPublished) continue;
+      final at = _effectivePostTime(record);
+      if (newestAt == null || at.isAfter(newestAt)) {
+        newest = record;
+        newestAt = at;
+      }
+    }
+    return newest;
+  }
+
+  /// Reduces the cached Page snapshot to widget-sized values. Deltas need both
+  /// windows; a missing previous period is omitted rather than shown as zero.
+  static _PageMetrics _pageMetrics(FacebookPageInsights? insights) {
+    if (insights == null) return const _PageMetrics();
+    final current = insights.currentTotals;
+    final previous = insights.previousTotals;
+    return _PageMetrics(
+      views: current.mediaViews,
+      engagements: current.engagements,
+      follows: current.follows,
+      viewsDelta: _signedCompact(current.mediaViews, previous.mediaViews),
+      engagementsDelta: _signedCompact(
+        current.engagements,
+        previous.engagements,
+      ),
+    );
+  }
+
+  static String? _signedCompact(int? current, int? previous) {
+    if (current == null || previous == null) return null;
+    final diff = current - previous;
+    if (diff == 0) return 'same';
+    return diff > 0 ? '+${_compact(diff)}' : '-${_compact(-diff)}';
+  }
+
+  /// Mirrors the Publish hub's compact formatting so the widget and the app
+  /// read the same way. Kept local to avoid a domain → UI import.
+  static String _compact(int value) {
+    if (value >= 1000000) return '${(value / 1000000).toStringAsFixed(1)}m';
+    if (value >= 1000) return '${(value / 1000).toStringAsFixed(1)}k';
+    return '$value';
   }
 
   /// Encoded for the quota widget. Entries are dropped from the end until the
@@ -236,6 +310,22 @@ class HomeWidgetSnapshotBuilder {
     if (collapsed.length <= max) return collapsed;
     return '${collapsed.substring(0, max - 1).trimRight()}…';
   }
+}
+
+class _PageMetrics {
+  const _PageMetrics({
+    this.views,
+    this.engagements,
+    this.follows,
+    this.viewsDelta,
+    this.engagementsDelta,
+  });
+
+  final int? views;
+  final int? engagements;
+  final int? follows;
+  final String? viewsDelta;
+  final String? engagementsDelta;
 }
 
 class _WeekEngagement {

@@ -15,6 +15,12 @@
     <string name="widget_best_time_label">Oreamnos best time</string>
     <string name="widget_best_time_description">When your audience is usually listening</string>
 
+    <string name="widget_last_post_label">Oreamnos last post</string>
+    <string name="widget_last_post_description">How long it has been since your newest published post</string>
+
+    <string name="widget_page_reach_label">Oreamnos page reach</string>
+    <string name="widget_page_reach_description">Page views and engagements for your Performance range</string>
+
     <string name="widget_config_title">Widget settings</string>
     <string name="widget_config_page">Page</string>
     <string name="widget_config_active_page">Active page</string>

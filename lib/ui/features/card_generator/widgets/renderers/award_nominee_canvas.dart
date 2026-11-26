@@ -1,7 +1,8 @@
 import 'package:flutter/material.dart';
-import 'package:google_fonts/google_fonts.dart';
+import 'package:oreamnos/config/theme/card_fonts.dart';
 
 import '../../../../../domain/models/card_config.dart';
+import '../primitives/brand_footer.dart';
 import '../../../../../domain/models/card_data.dart';
 import '../../../../../data/services/gradient_builder.dart';
 
@@ -52,22 +53,22 @@ class AwardNomineeCanvas extends StatelessWidget {
                         vertical: 4,
                       ),
                       decoration: BoxDecoration(
-                        color: Colors.amberAccent.withValues(alpha: 0.25),
+                        color: config.theme.warning.withValues(alpha: 0.25),
                         borderRadius: BorderRadius.circular(16),
                       ),
                       child: Row(
                         mainAxisSize: MainAxisSize.min,
                         children: [
-                          const Icon(
+                          Icon(
                             Icons.emoji_events_rounded,
-                            color: Colors.amberAccent,
+                            color: config.theme.warning,
                             size: 13,
                           ),
                           const SizedBox(width: 4),
                           Text(
                             'AWARD NOMINEES',
-                            style: GoogleFonts.jetBrainsMono(
-                              color: Colors.amberAccent,
+                            style: CardFonts.jetBrainsMono(
+                              color: config.theme.warning,
                               fontSize: 10,
                               fontWeight: FontWeight.w800,
                               letterSpacing: 1,
@@ -80,7 +81,7 @@ class AwardNomineeCanvas extends StatelessWidget {
                     if (data.category != 'N/A')
                       Text(
                         data.category,
-                        style: GoogleFonts.jetBrainsMono(
+                        style: CardFonts.jetBrainsMono(
                           color: Colors.white70,
                           fontSize: 10,
                         ),
@@ -146,14 +147,14 @@ class AwardNomineeCanvas extends StatelessWidget {
                                                       vertical: 1,
                                                     ),
                                                 decoration: BoxDecoration(
-                                                  color: Colors.amberAccent,
+                                                  color: config.theme.warning,
                                                   borderRadius:
                                                       BorderRadius.circular(4),
                                                 ),
                                                 child: Text(
                                                   'FAV',
                                                   style:
-                                                      GoogleFonts.jetBrainsMono(
+                                                      CardFonts.jetBrainsMono(
                                                         color: Colors.black,
                                                         fontSize: 9,
                                                         fontWeight:
@@ -165,7 +166,7 @@ class AwardNomineeCanvas extends StatelessWidget {
                                           ],
                                         ),
                                         Text(
-                                          '${nom.club} • ${nom.achievement}',
+                                          '${nom.club} ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â¢ ${nom.achievement}',
                                           style: config.font(
                                             color: Colors.white70,
                                             fontSize: 11,
@@ -179,8 +180,8 @@ class AwardNomineeCanvas extends StatelessWidget {
                                   if (nom.odds != 'N/A')
                                     Text(
                                       nom.odds,
-                                      style: GoogleFonts.jetBrainsMono(
-                                        color: Colors.amberAccent,
+                                      style: CardFonts.jetBrainsMono(
+                                        color: config.theme.warning,
                                         fontSize: 11,
                                         fontWeight: FontWeight.w800,
                                       ),
@@ -204,17 +205,7 @@ class AwardNomineeCanvas extends StatelessWidget {
                   ),
                 ),
                 const SizedBox(height: 8),
-                Text(
-                  config.brandName?.isNotEmpty == true
-                      ? config.brandName!
-                      : (config.brandHandle?.isNotEmpty == true
-                            ? config.brandHandle!
-                            : 'Awards'),
-                  style: GoogleFonts.jetBrainsMono(
-                    color: Colors.white.withValues(alpha: 0.6),
-                    fontSize: 10,
-                  ),
-                ),
+                BrandFooter(config: config, fallback: 'Awards'),
               ],
             ),
           ),

@@ -1,7 +1,8 @@
 import 'package:flutter/material.dart';
-import 'package:google_fonts/google_fonts.dart';
+import 'package:oreamnos/config/theme/card_fonts.dart';
 
 import '../../../../../domain/models/card_config.dart';
+import '../primitives/brand_footer.dart';
 import '../../../../../domain/models/card_data.dart';
 import '../../../../../data/services/gradient_builder.dart';
 import '../editable_canvas_text.dart';
@@ -63,7 +64,7 @@ class SocialPostCanvas extends StatelessWidget {
                               child: Text(
                                 data.name.isNotEmpty && data.name != 'N/A'
                                     ? data.name[0].toUpperCase()
-                                    : '⚽',
+                                    : 'ÃƒÂ¢Ã…Â¡Ã‚Â½',
                                 style: config.font(
                                   color: Colors.white,
                                   fontSize: 16,
@@ -99,9 +100,9 @@ class SocialPostCanvas extends StatelessWidget {
                                       ),
                                       if (data.verified) ...[
                                         const SizedBox(width: 4),
-                                        const Icon(
+                                        Icon(
                                           Icons.verified_rounded,
-                                          color: Colors.blueAccent,
+                                          color: config.theme.accent,
                                           size: 14,
                                         ),
                                       ],
@@ -138,7 +139,7 @@ class SocialPostCanvas extends StatelessWidget {
                                 ),
                                 child: Text(
                                   data.mediaType.toUpperCase(),
-                                  style: GoogleFonts.jetBrainsMono(
+                                  style: CardFonts.jetBrainsMono(
                                     color: Colors.white70,
                                     fontSize: 9,
                                     fontWeight: FontWeight.w700,
@@ -148,7 +149,7 @@ class SocialPostCanvas extends StatelessWidget {
                           ],
                         ),
                         const SizedBox(height: 12),
-                        // Post Content — auto-scales, clipped if still too tall
+                        // Post Content ÃƒÂ¢Ã¢â€šÂ¬Ã¢â‚¬Â auto-scales, clipped if still too tall
                         ClipRect(
                           child: EditableCanvasText(
                             data.content,
@@ -189,7 +190,7 @@ class SocialPostCanvas extends StatelessWidget {
                               data.metrics,
                               fieldKey: 'subtext',
                               autoSize: false,
-                              style: GoogleFonts.jetBrainsMono(
+                              style: CardFonts.jetBrainsMono(
                                 color: Colors.white70,
                                 fontSize: 10,
                               ),
@@ -197,17 +198,7 @@ class SocialPostCanvas extends StatelessWidget {
                           ),
                           const SizedBox(height: 8),
                         ],
-                        Text(
-                          config.brandName?.isNotEmpty == true
-                              ? config.brandName!
-                              : (config.brandHandle?.isNotEmpty == true
-                                    ? config.brandHandle!
-                                    : 'Social Feed'),
-                          style: GoogleFonts.jetBrainsMono(
-                            color: Colors.white.withValues(alpha: 0.6),
-                            fontSize: 10,
-                          ),
-                        ),
+                        BrandFooter(config: config, fallback: 'Social Feed'),
                       ],
                     ),
                   ),

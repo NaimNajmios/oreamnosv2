@@ -1,7 +1,8 @@
 import 'package:flutter/material.dart';
-import 'package:google_fonts/google_fonts.dart';
+import 'package:oreamnos/config/theme/card_fonts.dart';
 
 import '../../../../../domain/models/card_config.dart';
+import '../primitives/brand_footer.dart';
 import '../../../../../domain/models/card_data.dart';
 import '../../../../../data/services/gradient_builder.dart';
 import '../editable_canvas_text.dart';
@@ -57,7 +58,7 @@ class PlayerSpotlightCanvas extends StatelessWidget {
                       ),
                       child: Text(
                         'PLAYER SPOTLIGHT',
-                        style: GoogleFonts.jetBrainsMono(
+                        style: CardFonts.jetBrainsMono(
                           color: Colors.white,
                           fontSize: 10,
                           fontWeight: FontWeight.w700,
@@ -73,12 +74,12 @@ class PlayerSpotlightCanvas extends StatelessWidget {
                           vertical: 3,
                         ),
                         decoration: BoxDecoration(
-                          color: Colors.amberAccent,
+                          color: config.theme.warning,
                           borderRadius: BorderRadius.circular(8),
                         ),
                         child: Text(
-                          '⭐ ${data.rating.toStringAsFixed(1)}',
-                          style: GoogleFonts.jetBrainsMono(
+                          'ÃƒÂ¢Ã‚Â­Ã‚Â ${data.rating.toStringAsFixed(1)}',
+                          style: CardFonts.jetBrainsMono(
                             color: Colors.black,
                             fontSize: 11,
                             fontWeight: FontWeight.w900,
@@ -112,17 +113,20 @@ class PlayerSpotlightCanvas extends StatelessWidget {
                 Row(
                   children: [
                     if (data.club != 'N/A') ...[
-                      Text(
-                        data.club,
-                        style: config.font(
-                          color: Colors.white70,
-                          fontSize: 13,
-                          fontWeight: FontWeight.w600,
+                      Flexible(
+                        child: Text(
+                          data.club,
+                          overflow: TextOverflow.ellipsis,
+                          style: config.font(
+                            color: Colors.white70,
+                            fontSize: 13,
+                            fontWeight: FontWeight.w600,
+                          ),
                         ),
                       ),
                       if (data.position != 'N/A')
                         Text(
-                          ' • ',
+                          ' ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â¢ ',
                           style: config.font(
                             color: Colors.white54,
                             fontSize: 13,
@@ -130,9 +134,15 @@ class PlayerSpotlightCanvas extends StatelessWidget {
                         ),
                     ],
                     if (data.position != 'N/A')
-                      Text(
-                        data.position,
-                        style: config.font(color: Colors.white70, fontSize: 13),
+                      Flexible(
+                        child: Text(
+                          data.position,
+                          overflow: TextOverflow.ellipsis,
+                          style: config.font(
+                            color: Colors.white70,
+                            fontSize: 13,
+                          ),
+                        ),
                       ),
                   ],
                 ),
@@ -178,17 +188,7 @@ class PlayerSpotlightCanvas extends StatelessWidget {
                   ),
                 ],
                 const SizedBox(height: 16),
-                Text(
-                  config.brandName?.isNotEmpty == true
-                      ? config.brandName!
-                      : (config.brandHandle?.isNotEmpty == true
-                            ? config.brandHandle!
-                            : 'Spotlight'),
-                  style: GoogleFonts.jetBrainsMono(
-                    color: Colors.white.withValues(alpha: 0.6),
-                    fontSize: 10,
-                  ),
-                ),
+                BrandFooter(config: config, fallback: 'Spotlight'),
               ],
             ),
           ),
@@ -209,15 +209,15 @@ class PlayerSpotlightCanvas extends StatelessWidget {
         children: [
           Text(
             value,
-            style: GoogleFonts.jetBrainsMono(
-              color: Colors.amberAccent,
+            style: CardFonts.jetBrainsMono(
+              color: config.theme.warning,
               fontSize: 16,
               fontWeight: FontWeight.w900,
             ),
           ),
           Text(
             label,
-            style: GoogleFonts.jetBrainsMono(
+            style: CardFonts.jetBrainsMono(
               color: Colors.white54,
               fontSize: 8,
               fontWeight: FontWeight.w700,

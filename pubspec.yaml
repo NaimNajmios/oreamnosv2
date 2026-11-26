@@ -27,8 +27,7 @@ dependencies:
   flutter_secure_storage: ^9.2.4
   shared_preferences: ^2.5.3
 
-  # Typography
-  google_fonts: ^6.2.1
+  # Typography (all card families are bundled locally — no runtime fetching)
   auto_size_text: ^3.0.0
 
   # JSON Serialization
@@ -89,6 +88,29 @@ flutter:
     - assets/illustrations/empty_kickoff.svg
 
   fonts:
+    - family: BigShouldersDisplay
+      fonts:
+        - asset: assets/fonts/BigShouldersDisplay-Variable.ttf
+    - family: Inter
+      fonts:
+        - asset: assets/fonts/Inter-Variable.ttf
+        - asset: assets/fonts/Inter-Italic-Variable.ttf
+          style: italic
+    - family: Lora
+      fonts:
+        - asset: assets/fonts/Lora-Variable.ttf
+        - asset: assets/fonts/Lora-Italic-Variable.ttf
+          style: italic
+    - family: SpaceMono
+      fonts:
+        - asset: assets/fonts/SpaceMono-Regular.ttf
+        - asset: assets/fonts/SpaceMono-Bold.ttf
+          weight: 700
+        - asset: assets/fonts/SpaceMono-Italic.ttf
+          style: italic
+        - asset: assets/fonts/SpaceMono-BoldItalic.ttf
+          weight: 700
+          style: italic
     - family: BarlowCondensed
       fonts:
         - asset: assets/fonts/BarlowCondensed-Bold.ttf

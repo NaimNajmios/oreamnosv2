@@ -1,7 +1,8 @@
 import 'package:flutter/material.dart';
-import 'package:google_fonts/google_fonts.dart';
+import 'package:oreamnos/config/theme/card_fonts.dart';
 
 import '../../../../../domain/models/card_config.dart';
+import '../primitives/brand_footer.dart';
 import '../../../../../domain/models/card_data.dart';
 import '../../../../../data/services/gradient_builder.dart';
 
@@ -52,11 +53,11 @@ class BreakingNewsCanvas extends StatelessWidget {
                     vertical: 6,
                   ),
                   decoration: BoxDecoration(
-                    color: Colors.redAccent,
+                    color: config.theme.alert,
                     borderRadius: BorderRadius.circular(8),
                     boxShadow: [
                       BoxShadow(
-                        color: Colors.redAccent.withValues(alpha: 0.4),
+                        color: config.theme.alert.withValues(alpha: 0.4),
                         blurRadius: 10,
                         offset: const Offset(0, 2),
                       ),
@@ -75,7 +76,7 @@ class BreakingNewsCanvas extends StatelessWidget {
                         data.label.isNotEmpty
                             ? data.label.toUpperCase()
                             : 'BREAKING NEWS',
-                        style: GoogleFonts.jetBrainsMono(
+                        style: CardFonts.jetBrainsMono(
                           color: Colors.white,
                           fontSize: 11,
                           fontWeight: FontWeight.w900,
@@ -124,22 +125,12 @@ class BreakingNewsCanvas extends StatelessWidget {
                 const SizedBox(height: 16),
                 Row(
                   children: [
-                    Text(
-                      config.brandName?.isNotEmpty == true
-                          ? config.brandName!
-                          : (config.brandHandle?.isNotEmpty == true
-                                ? config.brandHandle!
-                                : 'News Alert'),
-                      style: GoogleFonts.jetBrainsMono(
-                        color: Colors.white.withValues(alpha: 0.6),
-                        fontSize: 10,
-                      ),
-                    ),
+                    BrandFooter(config: config, fallback: 'News Alert'),
                     const Spacer(),
                     if (data.relatedTeams != 'N/A')
                       Text(
                         data.relatedTeams,
-                        style: GoogleFonts.jetBrainsMono(
+                        style: CardFonts.jetBrainsMono(
                           color: Colors.white.withValues(alpha: 0.6),
                           fontSize: 10,
                         ),

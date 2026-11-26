@@ -1,5 +1,7 @@
-import 'package:flutter/material.dart';
-import 'package:google_fonts/google_fonts.dart';
+import 'package:flutter/material.dart' hide CardTheme;
+import 'package:oreamnos/config/theme/card_fonts.dart';
+import 'package:oreamnos/config/theme/card_scale.dart';
+import 'package:oreamnos/config/theme/card_theme.dart';
 
 import 'card_template.dart';
 
@@ -105,15 +107,13 @@ class CardConfig {
     this.showBrandFooter = true,
   });
 
-  /// Dynamic aspect ratio scale factor for Magic Resize
-  double get aspectRatioScale {
-    return switch (exportSize) {
-      ExportSize.story => 1.05,
-      ExportSize.portrait || ExportSize.photo34 => 1.0,
-      ExportSize.wide => 0.88,
-      ExportSize.square => 1.0,
-    };
-  }
+  /// Dynamic aspect ratio scale factor for Magic Resize.
+  /// The math lives in [CardScale] so every renderer shares one scale.
+  double get aspectRatioScale => CardScale.ratioScale(exportSize);
+
+  /// Semantic colour tokens derived from the selected team colours.
+  CardTheme get theme =>
+      CardTheme.from(colorPair: colorPair, accentOverride: accentColor);
 
   TextStyle font({
     required double fontSize,
@@ -129,7 +129,7 @@ class CardConfig {
     final scaledSize = applyMultiplier
         ? fontSize * fontSizeMultiplier * aspectRatioScale
         : fontSize;
-    return GoogleFonts.getFont(
+    return CardFonts.getFont(
       family,
       fontSize: scaledSize,
       fontWeight: fontWeight,

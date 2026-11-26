@@ -1,7 +1,8 @@
 import 'package:flutter/material.dart';
-import 'package:google_fonts/google_fonts.dart';
+import 'package:oreamnos/config/theme/card_fonts.dart';
 
 import '../../../../../domain/models/card_config.dart';
+import '../primitives/brand_footer.dart';
 import '../../../../../domain/models/card_data.dart';
 import '../../../../../data/services/gradient_builder.dart';
 
@@ -52,7 +53,7 @@ class RivalryCanvas extends StatelessWidget {
                   ),
                   child: Text(
                     'HEAD-TO-HEAD RIVALRY',
-                    style: GoogleFonts.jetBrainsMono(
+                    style: CardFonts.jetBrainsMono(
                       color: Colors.white,
                       fontSize: 10,
                       fontWeight: FontWeight.w700,
@@ -87,8 +88,8 @@ class RivalryCanvas extends StatelessWidget {
                       padding: const EdgeInsets.symmetric(horizontal: 10),
                       child: Text(
                         'VS',
-                        style: GoogleFonts.jetBrainsMono(
-                          color: Colors.amberAccent,
+                        style: CardFonts.jetBrainsMono(
+                          color: config.theme.warning,
                           fontSize: 16,
                           fontWeight: FontWeight.w900,
                         ),
@@ -119,7 +120,7 @@ class RivalryCanvas extends StatelessWidget {
                   const SizedBox(height: 8),
                   Text(
                     'Record: ${data.headToHead}',
-                    style: GoogleFonts.jetBrainsMono(
+                    style: CardFonts.jetBrainsMono(
                       color: Colors.white70,
                       fontSize: 11,
                     ),
@@ -154,7 +155,7 @@ class RivalryCanvas extends StatelessWidget {
                                 children: [
                                   Text(
                                     s1.value,
-                                    style: GoogleFonts.jetBrainsMono(
+                                    style: CardFonts.jetBrainsMono(
                                       color: Colors.white,
                                       fontSize: 13,
                                       fontWeight: FontWeight.w800,
@@ -170,7 +171,7 @@ class RivalryCanvas extends StatelessWidget {
                                   ),
                                   Text(
                                     s2Val,
-                                    style: GoogleFonts.jetBrainsMono(
+                                    style: CardFonts.jetBrainsMono(
                                       color: Colors.white,
                                       fontSize: 13,
                                       fontWeight: FontWeight.w800,
@@ -195,17 +196,7 @@ class RivalryCanvas extends StatelessWidget {
                   ),
                 ),
                 const SizedBox(height: 8),
-                Text(
-                  config.brandName?.isNotEmpty == true
-                      ? config.brandName!
-                      : (config.brandHandle?.isNotEmpty == true
-                            ? config.brandHandle!
-                            : 'Head to Head'),
-                  style: GoogleFonts.jetBrainsMono(
-                    color: Colors.white.withValues(alpha: 0.6),
-                    fontSize: 10,
-                  ),
-                ),
+                BrandFooter(config: config, fallback: 'Head to Head'),
               ],
             ),
           ),

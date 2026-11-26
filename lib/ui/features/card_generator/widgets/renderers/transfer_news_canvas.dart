@@ -47,7 +47,7 @@ class TransferNewsCanvas extends StatelessWidget {
                       ? actionClean.toUpperCase()
                       : 'TRANSFER NEWS',
                   style: CardTypography.kicker(
-                    color: Colors.greenAccent,
+                    color: config.theme.success,
                     fontSize: 11,
                   ),
                 ),
@@ -127,10 +127,10 @@ class TransferNewsCanvas extends StatelessWidget {
                   padding: const EdgeInsets.symmetric(horizontal: 10),
                   child: SubjectGlow(
                     size: 36,
-                    color: Colors.greenAccent.withValues(alpha: 0.35),
-                    child: const Icon(
+                    color: config.theme.success.withValues(alpha: 0.35),
+                    child: Icon(
                       Icons.arrow_forward_rounded,
-                      color: Colors.greenAccent,
+                      color: config.theme.success,
                       size: 20,
                     ),
                   ),
@@ -175,7 +175,7 @@ class TransferNewsCanvas extends StatelessWidget {
                       data.fee,
                       style: CardTypography.hero.copyWith(
                         fontSize: 28 * fontMultiplier,
-                        color: Colors.amberAccent,
+                        color: config.theme.warning,
                         shadows: const [
                           Shadow(
                             color: Color(0x99000000),
@@ -203,7 +203,7 @@ class TransferNewsCanvas extends StatelessWidget {
               const FadeHairline(opacity: 0.3),
               const SizedBox(height: 10),
               EditableCanvasText(
-                '“${data.quote}”',
+                'ÃƒÂ¢Ã¢â€šÂ¬Ã…â€œ${data.quote}ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â',
                 fieldKey: 'quote',
                 style: CardTypography.body(
                   color: Colors.white.withValues(alpha: 0.85),
@@ -220,17 +220,7 @@ class TransferNewsCanvas extends StatelessWidget {
             // Footer
             Row(
               children: [
-                Text(
-                  config.brandName?.isNotEmpty == true
-                      ? config.brandName!
-                      : (config.brandHandle?.isNotEmpty == true
-                            ? config.brandHandle!
-                            : 'Transfer Center'),
-                  style: CardTypography.meta(
-                    color: Colors.white.withValues(alpha: 0.6),
-                    fontSize: 10,
-                  ),
-                ),
+                BrandFooter(config: config, fallback: 'Transfer Center'),
                 const Spacer(),
                 CardSlot(
                   value: data.transferType,

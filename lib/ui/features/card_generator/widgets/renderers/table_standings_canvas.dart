@@ -1,7 +1,8 @@
 import 'package:flutter/material.dart';
-import 'package:google_fonts/google_fonts.dart';
+import 'package:oreamnos/config/theme/card_fonts.dart';
 
 import '../../../../../domain/models/card_config.dart';
+import '../primitives/brand_footer.dart';
 import '../../../../../domain/models/card_data.dart';
 import '../../../../../data/services/gradient_builder.dart';
 
@@ -57,7 +58,7 @@ class TableStandingsCanvas extends StatelessWidget {
                       ),
                       child: Text(
                         'STANDINGS',
-                        style: GoogleFonts.jetBrainsMono(
+                        style: CardFonts.jetBrainsMono(
                           color: Colors.white,
                           fontSize: 10,
                           fontWeight: FontWeight.w700,
@@ -69,7 +70,7 @@ class TableStandingsCanvas extends StatelessWidget {
                     if (data.matchday != 'N/A')
                       Text(
                         data.matchday,
-                        style: GoogleFonts.jetBrainsMono(
+                        style: CardFonts.jetBrainsMono(
                           color: Colors.white70,
                           fontSize: 10,
                         ),
@@ -111,7 +112,7 @@ class TableStandingsCanvas extends StatelessWidget {
                                 width: 22,
                                 child: Text(
                                   '#',
-                                  style: GoogleFonts.jetBrainsMono(
+                                  style: CardFonts.jetBrainsMono(
                                     color: Colors.white54,
                                     fontSize: 10,
                                     fontWeight: FontWeight.w700,
@@ -121,7 +122,7 @@ class TableStandingsCanvas extends StatelessWidget {
                               Expanded(
                                 child: Text(
                                   'TEAM',
-                                  style: GoogleFonts.jetBrainsMono(
+                                  style: CardFonts.jetBrainsMono(
                                     color: Colors.white54,
                                     fontSize: 10,
                                     fontWeight: FontWeight.w700,
@@ -132,7 +133,7 @@ class TableStandingsCanvas extends StatelessWidget {
                                 width: 24,
                                 child: Text(
                                   'PL',
-                                  style: GoogleFonts.jetBrainsMono(
+                                  style: CardFonts.jetBrainsMono(
                                     color: Colors.white54,
                                     fontSize: 10,
                                     fontWeight: FontWeight.w700,
@@ -144,7 +145,7 @@ class TableStandingsCanvas extends StatelessWidget {
                                 width: 24,
                                 child: Text(
                                   'GD',
-                                  style: GoogleFonts.jetBrainsMono(
+                                  style: CardFonts.jetBrainsMono(
                                     color: Colors.white54,
                                     fontSize: 10,
                                     fontWeight: FontWeight.w700,
@@ -156,7 +157,7 @@ class TableStandingsCanvas extends StatelessWidget {
                                 width: 30,
                                 child: Text(
                                   'PTS',
-                                  style: GoogleFonts.jetBrainsMono(
+                                  style: CardFonts.jetBrainsMono(
                                     color: Colors.white,
                                     fontSize: 10,
                                     fontWeight: FontWeight.w900,
@@ -204,9 +205,9 @@ class TableStandingsCanvas extends StatelessWidget {
                                             width: 22,
                                             child: Text(
                                               '${r.position}',
-                                              style: GoogleFonts.jetBrainsMono(
+                                              style: CardFonts.jetBrainsMono(
                                                 color: r.position <= 4
-                                                    ? Colors.amberAccent
+                                                    ? config.theme.warning
                                                     : Colors.white70,
                                                 fontSize: 11,
                                                 fontWeight: FontWeight.w700,
@@ -231,7 +232,7 @@ class TableStandingsCanvas extends StatelessWidget {
                                             width: 24,
                                             child: Text(
                                               '${r.played}',
-                                              style: GoogleFonts.jetBrainsMono(
+                                              style: CardFonts.jetBrainsMono(
                                                 color: Colors.white70,
                                                 fontSize: 11,
                                               ),
@@ -242,7 +243,7 @@ class TableStandingsCanvas extends StatelessWidget {
                                             width: 24,
                                             child: Text(
                                               '${r.won - r.lost}',
-                                              style: GoogleFonts.jetBrainsMono(
+                                              style: CardFonts.jetBrainsMono(
                                                 color: Colors.white70,
                                                 fontSize: 11,
                                               ),
@@ -253,7 +254,7 @@ class TableStandingsCanvas extends StatelessWidget {
                                             width: 30,
                                             child: Text(
                                               '${r.points}',
-                                              style: GoogleFonts.jetBrainsMono(
+                                              style: CardFonts.jetBrainsMono(
                                                 color: Colors.white,
                                                 fontSize: 12,
                                                 fontWeight: FontWeight.w900,
@@ -284,17 +285,7 @@ class TableStandingsCanvas extends StatelessWidget {
                   ),
                 ),
                 const SizedBox(height: 8),
-                Text(
-                  config.brandName?.isNotEmpty == true
-                      ? config.brandName!
-                      : (config.brandHandle?.isNotEmpty == true
-                            ? config.brandHandle!
-                            : 'League Table'),
-                  style: GoogleFonts.jetBrainsMono(
-                    color: Colors.white.withValues(alpha: 0.6),
-                    fontSize: 10,
-                  ),
-                ),
+                BrandFooter(config: config, fallback: 'League Table'),
               ],
             ),
           ),

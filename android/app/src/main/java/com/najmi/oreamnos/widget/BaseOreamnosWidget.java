@@ -45,7 +45,7 @@ public abstract class BaseOreamnosWidget extends HomeWidgetProvider {
 
     // Payload keys. Kept in sync with HomeWidgetKeys on the Dart side.
     protected static final String KEY_VERSION = "widget_version";
-    static final String PAYLOAD_VERSION = "4";
+    static final String PAYLOAD_VERSION = "5";
     protected static final String KEY_UPDATED_AT = "updated_at";
     protected static final String KEY_NEXT_SNIPPET = "next_snippet";
     protected static final String KEY_NEXT_PAGE = "next_page";
@@ -84,6 +84,15 @@ public abstract class BaseOreamnosWidget extends HomeWidgetProvider {
     protected static final String KEY_STORY_FAILED = "story_failed_count";
     protected static final String KEY_WEEK_POST_COUNT = "week_post_count";
     protected static final String KEY_PAGES_JSON = "pages_json";
+    protected static final String KEY_LAST_PUBLISHED_AT = "last_published_at";
+    protected static final String KEY_PAGE_VIEWS = "page_views";
+    protected static final String KEY_PAGE_ENGAGEMENTS = "page_engagements";
+    protected static final String KEY_PAGE_FOLLOWS = "page_follows";
+    protected static final String KEY_PAGE_VIEWS_DELTA = "page_views_delta";
+    protected static final String KEY_PAGE_ENGAGEMENTS_DELTA =
+            "page_engagements_delta";
+    protected static final String KEY_PAGE_RANGE_DAYS = "page_range_days";
+    protected static final String KEY_PAGE_INSIGHTS_AT = "page_insights_at";
 
     protected static final String PREFERENCES = "HomeWidgetPreferences";
 

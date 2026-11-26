@@ -1,7 +1,8 @@
 import 'package:flutter/material.dart';
-import 'package:google_fonts/google_fonts.dart';
+import 'package:oreamnos/config/theme/card_fonts.dart';
 
 import '../../../../../domain/models/card_config.dart';
+import '../primitives/brand_footer.dart';
 import '../../../../../domain/models/card_data.dart';
 import '../../../../../data/services/gradient_builder.dart';
 
@@ -52,22 +53,22 @@ class ContractExpiryCanvas extends StatelessWidget {
                         vertical: 4,
                       ),
                       decoration: BoxDecoration(
-                        color: Colors.amberAccent.withValues(alpha: 0.25),
+                        color: config.theme.warning.withValues(alpha: 0.25),
                         borderRadius: BorderRadius.circular(16),
                       ),
                       child: Row(
                         mainAxisSize: MainAxisSize.min,
                         children: [
-                          const Icon(
+                          Icon(
                             Icons.timer_outlined,
-                            color: Colors.amberAccent,
+                            color: config.theme.warning,
                             size: 12,
                           ),
                           const SizedBox(width: 4),
                           Text(
                             'CONTRACT WATCH',
-                            style: GoogleFonts.jetBrainsMono(
-                              color: Colors.amberAccent,
+                            style: CardFonts.jetBrainsMono(
+                              color: config.theme.warning,
                               fontSize: 10,
                               fontWeight: FontWeight.w800,
                               letterSpacing: 1,
@@ -80,7 +81,7 @@ class ContractExpiryCanvas extends StatelessWidget {
                     if (data.seasonYear != 'N/A')
                       Text(
                         data.seasonYear,
-                        style: GoogleFonts.jetBrainsMono(
+                        style: CardFonts.jetBrainsMono(
                           color: Colors.white70,
                           fontSize: 10,
                         ),
@@ -136,7 +137,7 @@ class ContractExpiryCanvas extends StatelessWidget {
                                           overflow: TextOverflow.ellipsis,
                                         ),
                                         Text(
-                                          '${p.position} • Val: ${p.marketValue != 'N/A' ? p.marketValue : 'TBD'}',
+                                          '${p.position} ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â¢ Val: ${p.marketValue != 'N/A' ? p.marketValue : 'TBD'}',
                                           style: config.font(
                                             color: Colors.white70,
                                             fontSize: 11,
@@ -160,7 +161,7 @@ class ContractExpiryCanvas extends StatelessWidget {
                                     ),
                                     child: Text(
                                       'Exp: ${p.expiresIn}',
-                                      style: GoogleFonts.jetBrainsMono(
+                                      style: CardFonts.jetBrainsMono(
                                         color: Colors.white,
                                         fontSize: 10,
                                         fontWeight: FontWeight.w800,
@@ -186,17 +187,7 @@ class ContractExpiryCanvas extends StatelessWidget {
                   ),
                 ),
                 const SizedBox(height: 8),
-                Text(
-                  config.brandName?.isNotEmpty == true
-                      ? config.brandName!
-                      : (config.brandHandle?.isNotEmpty == true
-                            ? config.brandHandle!
-                            : 'Contract Tracker'),
-                  style: GoogleFonts.jetBrainsMono(
-                    color: Colors.white.withValues(alpha: 0.6),
-                    fontSize: 10,
-                  ),
-                ),
+                BrandFooter(config: config, fallback: 'Contract Tracker'),
               ],
             ),
           ),

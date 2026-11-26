@@ -1,7 +1,8 @@
 import 'package:flutter/material.dart';
-import 'package:google_fonts/google_fonts.dart';
+import 'package:oreamnos/config/theme/card_fonts.dart';
 
 import '../../../../../domain/models/card_config.dart';
+import '../primitives/brand_footer.dart';
 import '../../../../../domain/models/card_data.dart';
 import '../../../../../data/services/gradient_builder.dart';
 
@@ -55,7 +56,7 @@ class MatchStatsComparisonCanvas extends StatelessWidget {
                   ),
                   child: Text(
                     'MATCH COMPARISON',
-                    style: GoogleFonts.jetBrainsMono(
+                    style: CardFonts.jetBrainsMono(
                       color: Colors.white,
                       fontSize: 10,
                       fontWeight: FontWeight.w700,
@@ -84,7 +85,7 @@ class MatchStatsComparisonCanvas extends StatelessWidget {
                       padding: const EdgeInsets.symmetric(horizontal: 8),
                       child: Text(
                         'VS',
-                        style: GoogleFonts.jetBrainsMono(
+                        style: CardFonts.jetBrainsMono(
                           color: Colors.white54,
                           fontSize: 12,
                           fontWeight: FontWeight.w700,
@@ -157,7 +158,7 @@ class MatchStatsComparisonCanvas extends StatelessWidget {
                                     children: [
                                       Text(
                                         s.homeValue,
-                                        style: GoogleFonts.jetBrainsMono(
+                                        style: CardFonts.jetBrainsMono(
                                           color: Colors.white,
                                           fontSize: 12,
                                           fontWeight: FontWeight.w800,
@@ -173,7 +174,7 @@ class MatchStatsComparisonCanvas extends StatelessWidget {
                                       ),
                                       Text(
                                         s.awayValue,
-                                        style: GoogleFonts.jetBrainsMono(
+                                        style: CardFonts.jetBrainsMono(
                                           color: Colors.white,
                                           fontSize: 12,
                                           fontWeight: FontWeight.w800,
@@ -190,7 +191,7 @@ class MatchStatsComparisonCanvas extends StatelessWidget {
                                           flex: (homeRatio * 100).toInt(),
                                           child: Container(
                                             height: 6,
-                                            color: Colors.blueAccent,
+                                            color: config.theme.accent,
                                           ),
                                         ),
                                         const SizedBox(width: 2),
@@ -199,7 +200,7 @@ class MatchStatsComparisonCanvas extends StatelessWidget {
                                               .toInt(),
                                           child: Container(
                                             height: 6,
-                                            color: Colors.redAccent,
+                                            color: config.theme.alert,
                                           ),
                                         ),
                                       ],
@@ -224,17 +225,7 @@ class MatchStatsComparisonCanvas extends StatelessWidget {
                   ),
                 ),
                 const SizedBox(height: 8),
-                Text(
-                  config.brandName?.isNotEmpty == true
-                      ? config.brandName!
-                      : (config.brandHandle?.isNotEmpty == true
-                            ? config.brandHandle!
-                            : 'Match Stats'),
-                  style: GoogleFonts.jetBrainsMono(
-                    color: Colors.white.withValues(alpha: 0.6),
-                    fontSize: 10,
-                  ),
-                ),
+                BrandFooter(config: config, fallback: 'Match Stats'),
               ],
             ),
           ),

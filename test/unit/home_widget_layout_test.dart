@@ -51,6 +51,7 @@ class _WidgetSpec {
     required this.layouts,
     required this.info,
     this.configurable = false,
+    this.tappable = true,
   });
 
   final String name;
@@ -66,6 +67,9 @@ class _WidgetSpec {
 
   /// Only Next up and AI quota have something to configure.
   final bool configurable;
+
+  /// The Last post widget is a pure readout: no PendingIntent is attached.
+  final bool tappable;
 }
 
 const _widgetRoot = 'android/app/src/main/res/layout';
@@ -126,6 +130,27 @@ const _widgets = <_WidgetSpec>[
       '$_widgetRoot/oreamnos_best_time_widget_row.xml',
     ],
     info: '$_xmlRoot/oreamnos_best_time_widget_info.xml',
+  ),
+  _WidgetSpec(
+    name: 'Last post',
+    provider: '$_providerRoot/OreamnosLastPostWidgetProvider.java',
+    layouts: [
+      '$_widgetRoot/oreamnos_last_post_widget.xml',
+      '$_widgetRoot/oreamnos_last_post_widget_square.xml',
+      '$_widgetRoot/oreamnos_last_post_widget_row.xml',
+    ],
+    info: '$_xmlRoot/oreamnos_last_post_widget_info.xml',
+    tappable: false,
+  ),
+  _WidgetSpec(
+    name: 'Page reach',
+    provider: '$_providerRoot/OreamnosPageReachWidgetProvider.java',
+    layouts: [
+      '$_widgetRoot/oreamnos_page_reach_widget.xml',
+      '$_widgetRoot/oreamnos_page_reach_widget_square.xml',
+      '$_widgetRoot/oreamnos_page_reach_widget_row.xml',
+    ],
+    info: '$_xmlRoot/oreamnos_page_reach_widget_info.xml',
   ),
 ];
 
@@ -266,12 +291,19 @@ void main() {
       expect(codes.toSet().length, codes.length);
     });
 
-    test('every provider routes taps through the shared click helper', () {
-      for (final widget in _widgets) {
+    test('tappable providers route taps through the shared click helper', () {
+      for (final widget in _widgets.where((w) => w.tappable)) {
         expect(
           _read(widget.provider),
           contains('bindClick('),
           reason: '${widget.name} has no tap target',
+        );
+      }
+      for (final widget in _widgets.where((w) => !w.tappable)) {
+        expect(
+          _read(widget.provider),
+          isNot(contains('bindClick(')),
+          reason: '${widget.name} must stay a read-only readout',
         );
       }
     });

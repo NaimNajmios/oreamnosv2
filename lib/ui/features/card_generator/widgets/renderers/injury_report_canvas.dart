@@ -1,7 +1,8 @@
 import 'package:flutter/material.dart';
-import 'package:google_fonts/google_fonts.dart';
+import 'package:oreamnos/config/theme/card_fonts.dart';
 
 import '../../../../../domain/models/card_config.dart';
+import '../primitives/brand_footer.dart';
 import '../../../../../domain/models/card_data.dart';
 import '../../../../../data/services/gradient_builder.dart';
 
@@ -52,22 +53,22 @@ class InjuryReportCanvas extends StatelessWidget {
                         vertical: 4,
                       ),
                       decoration: BoxDecoration(
-                        color: Colors.redAccent.withValues(alpha: 0.25),
+                        color: config.theme.alert.withValues(alpha: 0.25),
                         borderRadius: BorderRadius.circular(16),
                       ),
                       child: Row(
                         mainAxisSize: MainAxisSize.min,
                         children: [
-                          const Icon(
+                          Icon(
                             Icons.medical_services_rounded,
-                            color: Colors.redAccent,
+                            color: config.theme.alert,
                             size: 12,
                           ),
                           const SizedBox(width: 4),
                           Text(
                             'INJURY UPDATE',
-                            style: GoogleFonts.jetBrainsMono(
-                              color: Colors.redAccent,
+                            style: CardFonts.jetBrainsMono(
+                              color: config.theme.alert,
                               fontSize: 10,
                               fontWeight: FontWeight.w800,
                               letterSpacing: 1,
@@ -80,7 +81,7 @@ class InjuryReportCanvas extends StatelessWidget {
                     if (data.nextMatch != 'N/A')
                       Text(
                         'Next: ${data.nextMatch}',
-                        style: GoogleFonts.jetBrainsMono(
+                        style: CardFonts.jetBrainsMono(
                           color: Colors.white70,
                           fontSize: 10,
                         ),
@@ -158,10 +159,10 @@ class InjuryReportCanvas extends StatelessWidget {
                                                 'out',
                                               ) ||
                                               item.isLongTerm
-                                          ? Colors.redAccent.withValues(
+                                          ? config.theme.alert.withValues(
                                               alpha: 0.2,
                                             )
-                                          : Colors.amberAccent.withValues(
+                                          : config.theme.warning.withValues(
                                               alpha: 0.2,
                                             ),
                                       borderRadius: BorderRadius.circular(8),
@@ -170,14 +171,14 @@ class InjuryReportCanvas extends StatelessWidget {
                                       item.recoveryPercentage != 'N/A'
                                           ? item.recoveryPercentage
                                           : item.status,
-                                      style: GoogleFonts.jetBrainsMono(
+                                      style: CardFonts.jetBrainsMono(
                                         color:
                                             item.status.toLowerCase().contains(
                                                   'out',
                                                 ) ||
                                                 item.isLongTerm
-                                            ? Colors.redAccent
-                                            : Colors.amberAccent,
+                                            ? config.theme.alert
+                                            : config.theme.warning,
                                         fontSize: 10,
                                         fontWeight: FontWeight.w800,
                                       ),
@@ -202,17 +203,7 @@ class InjuryReportCanvas extends StatelessWidget {
                   ),
                 ),
                 const SizedBox(height: 8),
-                Text(
-                  config.brandName?.isNotEmpty == true
-                      ? config.brandName!
-                      : (config.brandHandle?.isNotEmpty == true
-                            ? config.brandHandle!
-                            : 'Injury Watch'),
-                  style: GoogleFonts.jetBrainsMono(
-                    color: Colors.white.withValues(alpha: 0.6),
-                    fontSize: 10,
-                  ),
-                ),
+                BrandFooter(config: config, fallback: 'Injury Watch'),
               ],
             ),
           ),

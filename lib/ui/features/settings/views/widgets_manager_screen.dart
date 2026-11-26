@@ -79,6 +79,18 @@ class _WidgetsManagerScreenState extends ConsumerState<WidgetsManagerScreen> {
       purpose: 'When your audience is usually listening',
       icon: Icons.insights_rounded,
     ),
+    _WidgetSpec(
+      provider: HomeWidgetService.lastPostProvider,
+      title: 'Last post',
+      purpose: 'How long it has been since your newest published post',
+      icon: Icons.access_time_rounded,
+    ),
+    _WidgetSpec(
+      provider: HomeWidgetService.pageReachProvider,
+      title: 'Page reach',
+      purpose: 'Page views and engagements for your Performance range',
+      icon: Icons.bar_chart_rounded,
+    ),
   ];
 
   @override
@@ -129,7 +141,7 @@ class _WidgetsManagerScreenState extends ConsumerState<WidgetsManagerScreen> {
                   ? [
                       const SettingsTile(
                         leadingIcon: Icons.widgets_outlined,
-                        title: 'Five widgets',
+                        title: 'Seven widgets',
                         subtitle:
                             'Long-press your home screen → Widgets → Oreamnos',
                       ),

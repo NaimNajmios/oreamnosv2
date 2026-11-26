@@ -43,7 +43,7 @@ class HeadlineQuoteCanvas extends StatelessWidget {
             left: 16,
             child: IgnorePointer(
               child: Text(
-                '“',
+                'ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€¦Ã¢â‚¬Å“',
                 style: TextStyle(
                   fontFamily: 'BarlowCondensed',
                   fontWeight: FontWeight.w900,
@@ -67,7 +67,7 @@ class HeadlineQuoteCanvas extends StatelessWidget {
                   child: Text(
                     data.category.toUpperCase(),
                     style: CardTypography.kicker(
-                      color: Colors.amberAccent,
+                      color: config.theme.warning,
                       fontSize: 11,
                     ),
                   ),
@@ -77,7 +77,7 @@ class HeadlineQuoteCanvas extends StatelessWidget {
 
                 // Main Quote in Headline Scale with Broadcast Glow
                 EditableCanvasText(
-                  '“$quoteText”',
+                  'ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€¦Ã¢â‚¬Å“$quoteTextÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€šÃ‚Â',
                   fieldKey: cleanSubtext.isNotEmpty ? 'subtext' : 'headline',
                   enableGlow: true,
                   style: config
@@ -115,8 +115,8 @@ class HeadlineQuoteCanvas extends StatelessWidget {
                       Container(
                         width: 6,
                         height: 6,
-                        decoration: const BoxDecoration(
-                          color: Colors.amberAccent,
+                        decoration: BoxDecoration(
+                          color: config.theme.warning,
                           shape: BoxShape.circle,
                         ),
                       ),
@@ -164,17 +164,7 @@ class HeadlineQuoteCanvas extends StatelessWidget {
                 // Footer
                 Row(
                   children: [
-                    Text(
-                      config.brandName?.isNotEmpty == true
-                          ? config.brandName!
-                          : (config.brandHandle?.isNotEmpty == true
-                                ? config.brandHandle!
-                                : 'Quote of the Day'),
-                      style: CardTypography.meta(
-                        color: Colors.white.withValues(alpha: 0.6),
-                        fontSize: 10,
-                      ),
-                    ),
+                    BrandFooter(config: config, fallback: 'Quote of the Day'),
                     const Spacer(),
                     if (data.relatedTeams.isNotEmpty &&
                         data.relatedTeams != 'N/A')
