@@ -76,6 +76,7 @@ class CardConfig {
   final String? brandName;
   final String? brandHandle;
   final bool showBrandFooter;
+  final KitMode kitMode;
 
   const CardConfig({
     this.template = CardTemplate.detailedScoreboard,
@@ -106,6 +107,7 @@ class CardConfig {
     this.brandName,
     this.brandHandle,
     this.showBrandFooter = true,
+    this.kitMode = KitMode.home,
   });
 
   /// Dynamic aspect ratio scale factor for Magic Resize.
@@ -113,8 +115,11 @@ class CardConfig {
   double get aspectRatioScale => CardScale.ratioScale(exportSize);
 
   /// Semantic colour tokens derived from the selected team colours.
-  CardTheme get theme =>
-      CardTheme.from(colorPair: colorPair, accentOverride: accentColor);
+  CardTheme get theme => CardTheme.from(
+    colorPair: colorPair,
+    kitMode: kitMode,
+    accentOverride: accentColor,
+  );
 
   TextStyle font({
     required double fontSize,
@@ -185,6 +190,7 @@ class CardConfig {
     String? brandName,
     String? brandHandle,
     bool? showBrandFooter,
+    KitMode? kitMode,
   }) {
     return CardConfig(
       template: template ?? this.template,
@@ -216,6 +222,7 @@ class CardConfig {
       brandName: brandName ?? this.brandName,
       brandHandle: brandHandle ?? this.brandHandle,
       showBrandFooter: showBrandFooter ?? this.showBrandFooter,
+      kitMode: kitMode ?? this.kitMode,
     );
   }
 

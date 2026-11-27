@@ -16,6 +16,7 @@ import 'package:shared_preferences/shared_preferences.dart' as _i460;
 
 import '../../data/repositories/tavily_search_repository.dart' as _i389;
 import '../../data/services/card_data_extractor.dart' as _i633;
+import '../../data/services/club_profile_store.dart' as _i735;
 import '../../data/services/daily_usage_service.dart' as _i267;
 import '../../data/services/export_service.dart' as _i496;
 import '../../data/services/facebook_comments_service.dart' as _i500;
@@ -108,6 +109,9 @@ extension GetItInjectableX on _i174.GetIt {
     );
     gh.lazySingleton<_i754.IVisionExtractor>(
       () => _i560.MLKitVisionExtractor(),
+    );
+    gh.lazySingleton<_i735.ClubProfileStore>(
+      () => _i735.ClubProfileStore(gh<_i460.SharedPreferences>()),
     );
     gh.lazySingleton<_i267.DailyUsageService>(
       () => _i267.DailyUsageService(gh<_i460.SharedPreferences>()),

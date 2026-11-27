@@ -4,6 +4,7 @@ import 'dart:math';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:image_picker/image_picker.dart';
+import 'package:oreamnos/config/theme/card_theme.dart';
 import 'package:oreamnos/core/di/injection.dart';
 import 'package:oreamnos/core/repositories/card_repository.dart';
 import 'package:oreamnos/domain/models/card_config.dart';
@@ -386,6 +387,11 @@ class CardGeneratorViewModel extends Notifier<CardGeneratorState> {
 
   void setShowSafeZone(bool show) {
     state = state.copyWith(showSafeZone: show);
+  }
+
+  void setKitMode(KitMode mode) {
+    _saveSnapshot();
+    state = state.copyWith(kitMode: mode);
   }
 
   void saveDragSnapshot() => _saveSnapshot();

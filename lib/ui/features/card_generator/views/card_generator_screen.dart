@@ -361,6 +361,7 @@ class _CardGeneratorScreenState extends ConsumerState<CardGeneratorScreen> {
                         brandName: state.brandName,
                         brandHandle: state.brandHandle,
                         showBrandFooter: state.showBrandFooter,
+                        kitMode: state.kitMode,
                         isWatermarkEnabled: state.showWatermark,
                         watermarkPath: state.watermarkText,
                         imagePosition: state.imagePosition,

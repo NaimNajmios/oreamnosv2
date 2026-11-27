@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:oreamnos/config/theme/app_spacing.dart';
+import 'package:oreamnos/config/theme/card_theme.dart';
 import 'package:oreamnos/ui/core/utils/haptics.dart';
 import 'package:oreamnos/ui/core/widgets/app_switch.dart';
 
@@ -111,6 +112,22 @@ class _BrandingPanelState extends ConsumerState<BrandingPanel> {
             AppSwitch(
               value: state.showBrandFooter,
               onChanged: notifier.setShowBrandFooter,
+            ),
+          ],
+        ),
+        const SizedBox(height: AppSpacing.md),
+        Row(
+          children: [
+            Text('Kit Colours', style: theme.textTheme.titleSmall),
+            const SizedBox(width: 12),
+            DropdownButton<KitMode>(
+              value: state.kitMode,
+              onChanged: (v) {
+                if (v != null) notifier.setKitMode(v);
+              },
+              items: KitMode.values
+                  .map((e) => DropdownMenuItem(value: e, child: Text(e.name)))
+                  .toList(),
             ),
           ],
         ),

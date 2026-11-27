@@ -3,6 +3,7 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:freezed_annotation/freezed_annotation.dart';
 
+import 'package:oreamnos/config/theme/card_theme.dart';
 import 'package:oreamnos/domain/models/card_brief.dart';
 import 'package:oreamnos/domain/models/card_data.dart';
 import 'package:oreamnos/domain/models/card_template.dart';
@@ -53,6 +54,7 @@ abstract class CardGeneratorState with _$CardGeneratorState {
     String? brandName,
     String? brandHandle,
     @Default(true) bool showBrandFooter,
+    @Default(KitMode.home) KitMode kitMode,
 
     @Default(1.0) double imageOpacity,
     @Default(0.0) double backgroundBlurRadius,
