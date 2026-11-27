@@ -2,8 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:oreamnos/config/theme/card_fonts.dart';
 
 import '../../../../../domain/models/card_config.dart';
-import '../primitives/broadcast_background.dart';
-import '../primitives/brand_footer.dart';
+import '../primitives/primitives.dart';
 import '../../../../../domain/models/card_data.dart';
 
 class MatchStatsComparisonCanvas extends StatelessWidget {
@@ -104,77 +103,12 @@ class MatchStatsComparisonCanvas extends StatelessWidget {
                         separatorBuilder: (_, _) => const SizedBox(height: 10),
                         itemBuilder: (context, index) {
                           final s = stats[index];
-                          final homeVal =
-                              double.tryParse(
-                                s.homeValue.replaceAll(RegExp(r'[^0-9.]'), ''),
-                              ) ??
-                              50.0;
-                          final awayVal =
-                              double.tryParse(
-                                s.awayValue.replaceAll(RegExp(r'[^0-9.]'), ''),
-                              ) ??
-                              50.0;
-                          final total = homeVal + awayVal > 0
-                              ? homeVal + awayVal
-                              : 100.0;
-                          final homeRatio = (homeVal / total).clamp(0.1, 0.9);
-
-                          return Column(
-                            children: [
-                              Row(
-                                mainAxisAlignment:
-                                    MainAxisAlignment.spaceBetween,
-                                children: [
-                                  Text(
-                                    s.homeValue,
-                                    style: CardFonts.jetBrainsMono(
-                                      color: Colors.white,
-                                      fontSize: 12,
-                                      fontWeight: FontWeight.w800,
-                                    ),
-                                  ),
-                                  Text(
-                                    s.label,
-                                    style: config.font(
-                                      color: Colors.white70,
-                                      fontSize: 11,
-                                      fontWeight: FontWeight.w600,
-                                    ),
-                                  ),
-                                  Text(
-                                    s.awayValue,
-                                    style: CardFonts.jetBrainsMono(
-                                      color: Colors.white,
-                                      fontSize: 12,
-                                      fontWeight: FontWeight.w800,
-                                    ),
-                                  ),
-                                ],
-                              ),
-                              const SizedBox(height: 4),
-                              ClipRRect(
-                                borderRadius: BorderRadius.circular(4),
-                                child: Row(
-                                  children: [
-                                    Expanded(
-                                      flex: (homeRatio * 100).toInt(),
-                                      child: Container(
-                                        height: 6,
-                                        color: config.theme.accent,
-                                      ),
-                                    ),
-                                    const SizedBox(width: 2),
-                                    Expanded(
-                                      flex: ((1.0 - homeRatio) * 100).toInt(),
-                                      child: Container(
-                                        height: 6,
-                                        color: config.theme.alert,
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                              ),
-                            ],
+                          return StatBar(
+                            label: s.label,
+                            homeValue: s.homeValue,
+                            awayValue: s.awayValue,
+                            homeColor: config.theme.accent,
+                            awayColor: config.theme.alert,
                           );
                         },
                       )

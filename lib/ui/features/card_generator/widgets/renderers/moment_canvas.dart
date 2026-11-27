@@ -168,6 +168,30 @@ class MomentCanvas extends StatelessWidget {
                 minFontSize: 12,
               ),
             ],
+            if (config.template == CardTemplate.seasonReview) ...[
+              const SizedBox(height: 8),
+              Row(
+                children: [
+                  StatTile(
+                    label: 'Goals',
+                    value: _clean(data.score).isEmpty
+                        ? '0'
+                        : _clean(data.score),
+                    accent: config.theme.accent,
+                  ),
+                  const SizedBox(width: 8),
+                  StatTile(
+                    label: 'Apps',
+                    value: _clean(data.appearances).isEmpty
+                        ? '0'
+                        : _clean(data.appearances),
+                    accent: config.theme.warning,
+                  ),
+                ],
+              ),
+              const SizedBox(height: 6),
+              FormPills(form: _clean(data.subtext)),
+            ],
             if (_extraDetail.isNotEmpty) ...[
               const SizedBox(height: 6),
               Text(
