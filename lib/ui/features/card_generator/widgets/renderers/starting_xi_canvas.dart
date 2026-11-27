@@ -4,6 +4,7 @@ import 'package:oreamnos/config/theme/card_fonts.dart';
 import '../../../../../domain/models/card_config.dart';
 import '../primitives/broadcast_background.dart';
 import '../primitives/brand_footer.dart';
+import '../primitives/glass_tile.dart';
 import '../../../../../domain/models/card_data.dart';
 
 class StartingXICanvas extends StatelessWidget {
@@ -46,15 +47,12 @@ class StartingXICanvas extends StatelessWidget {
                 ),
                 const Spacer(),
                 if (data.formation != 'N/A')
-                  Container(
+                  GlassTile(
                     padding: const EdgeInsets.symmetric(
                       horizontal: 10,
                       vertical: 4,
                     ),
-                    decoration: BoxDecoration(
-                      color: Colors.white.withValues(alpha: 0.22),
-                      borderRadius: BorderRadius.circular(16),
-                    ),
+                    borderRadius: const BorderRadius.all(Radius.circular(16)),
                     child: Text(
                       data.formation,
                       style: CardFonts.jetBrainsMono(
@@ -160,7 +158,11 @@ class StartingXICanvas extends StatelessWidget {
             const SizedBox(height: 8),
             Row(
               children: [
-                BrandFooter(config: config, fallback: 'Lineup'),
+                BrandFooter(
+                  config: config,
+                  fallback: 'Lineup',
+                  showCrest: true,
+                ),
                 const Spacer(),
                 if (data.subs.isNotEmpty)
                   Text(

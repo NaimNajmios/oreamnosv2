@@ -14,6 +14,13 @@ void main() {
     CardTemplate.fullTime: '2-1',
     CardTemplate.nextUp: 'JDT  vs  SELANGOR',
     CardTemplate.substitution: "63'",
+    CardTemplate.kitReveal: 'HOME',
+    CardTemplate.signing: 'Salah',
+    CardTemplate.birthday: '32 YEARS',
+    CardTemplate.milestone: '100',
+    CardTemplate.playerOfTheMatch: 'Salah',
+    CardTemplate.profileQA: 'GOAL',
+    CardTemplate.seasonReview: 'GOAL',
   };
 
   for (final entry in cases.entries) {
@@ -26,6 +33,9 @@ void main() {
         playerName: 'Salah',
         homeTeam: 'JDT',
         awayTeam: 'SELANGOR',
+        kit: 'HOME',
+        years: '32',
+        appearances: '100',
         suggestedTemplate: entry.key,
       ) as Moment;
 

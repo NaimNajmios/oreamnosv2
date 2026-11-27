@@ -654,7 +654,14 @@ class CardDataExtractor {
       case CardTemplate.goal ||
           CardTemplate.fullTime ||
           CardTemplate.nextUp ||
-          CardTemplate.substitution:
+          CardTemplate.substitution ||
+          CardTemplate.kitReveal ||
+          CardTemplate.signing ||
+          CardTemplate.birthday ||
+          CardTemplate.milestone ||
+          CardTemplate.playerOfTheMatch ||
+          CardTemplate.profileQA ||
+          CardTemplate.seasonReview:
         return CardData.moment(
           headline: _s(json, 'headline'),
           subtext: _s(json, 'subtext'),
@@ -668,6 +675,12 @@ class CardDataExtractor {
           kickoff: _s(json, 'kickoff'),
           playersOut: _s(json, 'playersOut'),
           playersIn: _s(json, 'playersIn'),
+          kit: _s(json, 'kit'),
+          appearances: _s(json, 'appearances'),
+          years: _s(json, 'years'),
+          nominees: _s(json, 'nominees'),
+          questions: _s(json, 'questions'),
+          result: _s(json, 'result'),
           suggestedTemplate: effective,
         );
       case CardTemplate.freeform:

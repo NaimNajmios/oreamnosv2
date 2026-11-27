@@ -334,6 +334,12 @@ sealed class CardData with _$CardData {
     @Default('') String kickoff,
     @Default('') String playersOut,
     @Default('') String playersIn,
+    @Default('') String kit,
+    @Default('') String appearances,
+    @Default('') String years,
+    @Default('') String nominees,
+    @Default('') String questions,
+    @Default('') String result,
     CardTemplate? suggestedTemplate,
   }) = Moment;
 
@@ -660,7 +666,14 @@ extension CardDataCopy on CardData {
       CardTemplate.goal ||
       CardTemplate.fullTime ||
       CardTemplate.nextUp ||
-      CardTemplate.substitution =>
+      CardTemplate.substitution ||
+      CardTemplate.kitReveal ||
+      CardTemplate.signing ||
+      CardTemplate.birthday ||
+      CardTemplate.milestone ||
+      CardTemplate.playerOfTheMatch ||
+      CardTemplate.profileQA ||
+      CardTemplate.seasonReview =>
         this is Moment && suggestedTemplate == target
             ? this
             : CardData.moment(

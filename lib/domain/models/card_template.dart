@@ -78,6 +78,34 @@ enum CardTemplate {
     Color(0xFF0B0B0F),
     Color(0xFF0A3A42),
   ]),
+  kitReveal('Kit Reveal', 'New kit or signing reveal', [
+    Color(0xFF0B0B0F),
+    Color(0xFF3B1B6B),
+  ]),
+  signing('Signing', 'Player signing announcement', [
+    Color(0xFF0B0B0F),
+    Color(0xFF0E4F45),
+  ]),
+  birthday('Birthday', 'Player birthday', [
+    Color(0xFF0B0B0F),
+    Color(0xFF6B5208),
+  ]),
+  milestone('Milestone', 'Appearance or anniversary milestone', [
+    Color(0xFF0B0B0F),
+    Color(0xFF3E2A22),
+  ]),
+  playerOfTheMatch('Player of the Match', 'Three nominees and result', [
+    Color(0xFF0B0B0F),
+    Color(0xFF1B2A6B),
+  ]),
+  profileQA('Player Q&A', 'Five quick questions', [
+    Color(0xFF0B0B0F),
+    Color(0xFF0A3A42),
+  ]),
+  seasonReview('Season Review', 'Season highlights carousel cover', [
+    Color(0xFF0B0B0F),
+    Color(0xFF123A6B),
+  ]),
   freeform('Freeform', 'Draggable text elements', [
     Color(0xFF0B0B0F),
     Color(0xFF1F2B30),
@@ -110,6 +138,13 @@ enum CardTemplate {
     fullTime,
     nextUp,
     substitution,
+    kitReveal,
+    signing,
+    birthday,
+    milestone,
+    playerOfTheMatch,
+    profileQA,
+    seasonReview,
     freeform,
   ];
 
@@ -158,6 +193,20 @@ enum CardTemplate {
         return 'next_up';
       case substitution:
         return 'substitution';
+      case kitReveal:
+        return 'kit_reveal';
+      case signing:
+        return 'signing';
+      case birthday:
+        return 'birthday';
+      case milestone:
+        return 'milestone';
+      case playerOfTheMatch:
+        return 'player_of_the_match';
+      case profileQA:
+        return 'profile_qa';
+      case seasonReview:
+        return 'season_review';
       case freeform:
         return 'freeform';
     }
@@ -213,6 +262,20 @@ enum CardTemplate {
         return nextUp;
       case 'substitution':
         return substitution;
+      case 'kitReveal':
+        return kitReveal;
+      case 'signing':
+        return signing;
+      case 'birthday':
+        return birthday;
+      case 'milestone':
+        return milestone;
+      case 'playerOfTheMatch':
+        return playerOfTheMatch;
+      case 'profileQA':
+        return profileQA;
+      case 'seasonReview':
+        return seasonReview;
       default:
         return socialPost;
     }

@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:oreamnos/config/theme/card_fonts.dart';
+import 'package:oreamnos/config/theme/card_type.dart';
 
 import '../../../../../domain/models/card_config.dart';
 import '../primitives/broadcast_background.dart';
@@ -33,14 +34,7 @@ class BreakingNewsCanvas extends StatelessWidget {
               padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
               decoration: BoxDecoration(
                 color: config.theme.alert,
-                borderRadius: BorderRadius.circular(8),
-                boxShadow: [
-                  BoxShadow(
-                    color: config.theme.alert.withValues(alpha: 0.4),
-                    blurRadius: 10,
-                    offset: const Offset(0, 2),
-                  ),
-                ],
+                borderRadius: BorderRadius.zero,
               ),
               child: Row(
                 mainAxisSize: MainAxisSize.min,
@@ -69,20 +63,12 @@ class BreakingNewsCanvas extends StatelessWidget {
             EditableCanvasText(
               data.headline,
               fieldKey: 'headline',
-              style: config.font(
+              style: CardType.display.copyWith(
                 color: Colors.white,
-                fontSize: 26 * fontMultiplier,
+                fontSize: 40 * fontMultiplier,
                 fontWeight: FontWeight.w900,
-                height: 1.1,
+                height: 1.05,
                 letterSpacing: -0.5,
-                shadows: config.textShadowRadius > 0
-                    ? [
-                        Shadow(
-                          color: config.textShadowColor,
-                          blurRadius: config.textShadowRadius,
-                        ),
-                      ]
-                    : null,
               ),
               maxLines: 4,
               minFontSize: 12,

@@ -27,7 +27,14 @@ class CardFieldRegistry {
       CardTemplate.goal ||
       CardTemplate.fullTime ||
       CardTemplate.nextUp ||
-      CardTemplate.substitution => _moment,
+      CardTemplate.substitution ||
+      CardTemplate.kitReveal ||
+      CardTemplate.signing ||
+      CardTemplate.birthday ||
+      CardTemplate.milestone ||
+      CardTemplate.playerOfTheMatch ||
+      CardTemplate.profileQA ||
+      CardTemplate.seasonReview => _moment,
       CardTemplate.freeform => _freeform,
     };
   }
@@ -1300,6 +1307,54 @@ class CardFieldRegistry {
       maxChars: 40,
       group: 'optional',
       aliases: ['on', 'subOn'],
+    ),
+    CardFieldDescriptor(
+      key: 'kit',
+      label: 'Kit',
+      type: CardFieldType.text,
+      maxChars: 30,
+      group: 'optional',
+      aliases: ['strip', 'jersey'],
+    ),
+    CardFieldDescriptor(
+      key: 'appearances',
+      label: 'Appearances',
+      type: CardFieldType.text,
+      maxChars: 12,
+      group: 'optional',
+      aliases: ['apps'],
+    ),
+    CardFieldDescriptor(
+      key: 'years',
+      label: 'Years',
+      type: CardFieldType.text,
+      maxChars: 12,
+      group: 'optional',
+      aliases: ['anniversary'],
+    ),
+    CardFieldDescriptor(
+      key: 'nominees',
+      label: 'Nominees',
+      type: CardFieldType.text,
+      maxChars: 90,
+      group: 'optional',
+      aliases: ['shortlist'],
+    ),
+    CardFieldDescriptor(
+      key: 'questions',
+      label: 'Questions',
+      type: CardFieldType.text,
+      maxChars: 120,
+      group: 'optional',
+      aliases: ['qa'],
+    ),
+    CardFieldDescriptor(
+      key: 'result',
+      label: 'Result',
+      type: CardFieldType.text,
+      maxChars: 40,
+      group: 'optional',
+      aliases: ['winner'],
     ),
   ];
 }

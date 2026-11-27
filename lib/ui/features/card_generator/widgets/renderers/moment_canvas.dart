@@ -26,6 +26,13 @@ class MomentCanvas extends StatelessWidget {
     CardTemplate.fullTime => 'FULL TIME',
     CardTemplate.nextUp => 'NEXT UP',
     CardTemplate.substitution => 'SUBSTITUTION',
+    CardTemplate.kitReveal => 'KIT REVEAL',
+    CardTemplate.signing => 'SIGNING',
+    CardTemplate.birthday => 'HAPPY BIRTHDAY',
+    CardTemplate.milestone => 'MILESTONE',
+    CardTemplate.playerOfTheMatch => 'PLAYER OF THE MATCH',
+    CardTemplate.profileQA => 'PLAYER Q&A',
+    CardTemplate.seasonReview => 'SEASON REVIEW',
     _ => 'MOMENT',
   };
 
@@ -45,8 +52,45 @@ class MomentCanvas extends StatelessWidget {
             : '$home  vs  $away';
       case CardTemplate.substitution:
         return _clean(data.minute).isEmpty ? 'SUB' : _clean(data.minute);
+      case CardTemplate.kitReveal:
+        return _clean(data.kit).isEmpty
+            ? _clean(data.headline)
+            : _clean(data.kit).toUpperCase();
+      case CardTemplate.signing:
+      case CardTemplate.playerOfTheMatch:
+        return _clean(data.playerName).isEmpty
+            ? _clean(data.headline)
+            : _clean(data.playerName);
+      case CardTemplate.birthday:
+        return _clean(data.years).isEmpty
+            ? _clean(data.headline)
+            : '${_clean(data.years)} YEARS';
+      case CardTemplate.milestone:
+        return _clean(data.appearances).isEmpty
+            ? _clean(data.headline)
+            : _clean(data.appearances);
       default:
         return _clean(data.headline);
+    }
+  }
+
+  String get _extraDetail {
+    switch (config.template) {
+      case CardTemplate.kitReveal:
+      case CardTemplate.signing:
+        return _clean(data.awayTeam);
+      case CardTemplate.birthday:
+        return _clean(data.appearances);
+      case CardTemplate.milestone:
+        return _clean(data.years);
+      case CardTemplate.playerOfTheMatch:
+        return _clean(data.nominees);
+      case CardTemplate.profileQA:
+        return _clean(data.questions);
+      case CardTemplate.seasonReview:
+        return _clean(data.score);
+      default:
+        return '';
     }
   }
 
@@ -67,11 +111,14 @@ class MomentCanvas extends StatelessWidget {
           children: [
             Row(
               children: [
-                Text(
-                  _kicker,
-                  style: CardTypography.kicker(
-                    color: config.theme.warning,
-                    fontSize: 12,
+                Flexible(
+                  child: Text(
+                    _kicker,
+                    overflow: TextOverflow.ellipsis,
+                    style: CardTypography.kicker(
+                      color: config.theme.warning,
+                      fontSize: 12,
+                    ),
                   ),
                 ),
                 const Spacer(),
@@ -119,6 +166,15 @@ class MomentCanvas extends StatelessWidget {
                 style: CardTypography.body(color: Colors.white70),
                 maxLines: 3,
                 minFontSize: 12,
+              ),
+            ],
+            if (_extraDetail.isNotEmpty) ...[
+              const SizedBox(height: 6),
+              Text(
+                _extraDetail,
+                style: CardTypography.meta(color: config.theme.warning),
+                maxLines: 2,
+                overflow: TextOverflow.ellipsis,
               ),
             ],
             if (config.template == CardTemplate.substitution) ...[

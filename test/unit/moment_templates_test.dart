@@ -10,6 +10,13 @@ void main() {
     CardTemplate.fullTime,
     CardTemplate.nextUp,
     CardTemplate.substitution,
+    CardTemplate.kitReveal,
+    CardTemplate.signing,
+    CardTemplate.birthday,
+    CardTemplate.milestone,
+    CardTemplate.playerOfTheMatch,
+    CardTemplate.profileQA,
+    CardTemplate.seasonReview,
   ];
 
   group('moment templates', () {
