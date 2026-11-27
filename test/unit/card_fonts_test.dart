@@ -21,10 +21,10 @@ void main() {
       expect(CardFonts.resolveFamily('unknown-family'), CardFonts.text);
     });
 
-    test('jetBrainsMono labels use the bundled monospaced family', () {
+    test('former jetBrainsMono labels use the bundled text family', () {
       final style = CardFonts.jetBrainsMono(fontSize: 11);
-      expect(style.fontFamily, CardFonts.mono);
-      expect(style.fontVariations, isNull);
+      expect(style.fontFamily, CardFonts.text);
+      expect(style.fontVariations, contains(FontVariation('opsz', 14.0)));
     });
 
     test('variable families carry an explicit wght axis', () {

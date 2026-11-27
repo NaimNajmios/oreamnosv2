@@ -8,6 +8,7 @@ import 'package:oreamnos/config/theme/card_theme.dart';
 import 'package:oreamnos/core/di/injection.dart';
 import 'package:oreamnos/core/repositories/card_repository.dart';
 import 'package:oreamnos/domain/models/card_config.dart';
+import 'package:oreamnos/domain/models/card_export_format.dart';
 import 'package:oreamnos/core/repositories/content_repository.dart';
 import 'package:oreamnos/data/models/ai_provider.dart';
 import 'package:oreamnos/data/services/color_extractor.dart';
@@ -782,6 +783,22 @@ class CardGeneratorViewModel extends Notifier<CardGeneratorState> {
     );
   }
 
+  Future<List<int>> _captureForExport(
+    GlobalKey boundaryKey,
+    CardExportFormat format,
+  ) {
+    if (format == CardExportFormat.jpeg) {
+      return _exportService.captureJpeg(
+        boundaryKey,
+        size: _exportSizeForRatio(state.selectedRatio),
+      );
+    }
+    return _exportService.capturePng(
+      boundaryKey,
+      pixelRatio: _pixelRatioForRatio(state.selectedRatio),
+    );
+  }
+
   ExportSize _exportSizeForRatio(CardRatio ratio) {
     return switch (ratio) {
       CardRatio.square => ExportSize.square,
@@ -795,13 +812,16 @@ class CardGeneratorViewModel extends Notifier<CardGeneratorState> {
   double _pixelRatioForRatio(CardRatio ratio) =>
       ExportService.pixelRatio(_exportSizeForRatio(ratio));
 
-  Future<bool> saveToGallery(GlobalKey boundaryKey) async {
+  Future<bool> saveToGallery(
+    GlobalKey boundaryKey, {
+    CardExportFormat format = CardExportFormat.png,
+  }) async {
     try {
-      final bytes = await _exportService.capturePng(
-        boundaryKey,
-        pixelRatio: _pixelRatioForRatio(state.selectedRatio),
+      final bytes = await _captureForExport(boundaryKey, format);
+      return await _exportService.saveToGallery(
+        bytes,
+        filename: 'oreamnos_card.${format.extension}',
       );
-      return await _exportService.saveToGallery(bytes);
     } catch (e) {
       return false;
     }
@@ -809,14 +829,15 @@ class CardGeneratorViewModel extends Notifier<CardGeneratorState> {
 
   /// Shares the card image. Returns true on success, false on failure
   /// (previously silent via debugPrint only).
-  Future<bool> shareCard(GlobalKey boundaryKey) async {
+  Future<bool> shareCard(
+    GlobalKey boundaryKey, {
+    CardExportFormat format = CardExportFormat.png,
+  }) async {
     try {
-      final bytes = await _exportService.capturePng(
-        boundaryKey,
-        pixelRatio: _pixelRatioForRatio(state.selectedRatio),
-      );
+      final bytes = await _captureForExport(boundaryKey, format);
       await _exportService.shareImage(
         bytes,
+        filename: 'oreamnos_card.${format.extension}',
         text: state.cardData?.headline ?? '',
       );
       return true;

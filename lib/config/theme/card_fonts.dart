@@ -207,7 +207,7 @@ abstract final class CardFonts {
     double? letterSpacing,
     List<Shadow>? shadows,
   }) {
-    return spaceMono(
+    return inter(
       textStyle: textStyle,
       fontSize: fontSize,
       fontWeight: fontWeight,

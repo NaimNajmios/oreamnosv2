@@ -32,7 +32,9 @@ import '../widgets/card_background_renderer.dart';
 import 'package:oreamnos/data/services/motion_capture_service.dart';
 import 'package:oreamnos/data/services/motion_export_service.dart';
 import 'package:oreamnos/domain/models/card_config.dart';
+import 'package:oreamnos/domain/models/card_export_format.dart';
 
+import '../widgets/primitives/contrast_badge.dart';
 import '../widgets/primitives/motion_frame.dart';
 import '../widgets/primitives/safe_zone_guide.dart';
 
@@ -194,9 +196,9 @@ class _CardGeneratorScreenState extends ConsumerState<CardGeneratorScreen> {
     }
   }
 
-  Future<void> _handleSaveToGallery() async {
+  Future<void> _handleSaveToGallery(CardExportFormat format) async {
     final vm = ref.read(cardGeneratorViewModelProvider.notifier);
-    final success = await vm.saveToGallery(_boundaryKey);
+    final success = await vm.saveToGallery(_boundaryKey, format: format);
     if (!mounted) return;
     if (success) {
       AppSnackBar.showSuccess(context, 'Card saved to gallery');
@@ -205,10 +207,10 @@ class _CardGeneratorScreenState extends ConsumerState<CardGeneratorScreen> {
     }
   }
 
-  Future<void> _handleShare() async {
+  Future<void> _handleShare(CardExportFormat format) async {
     final vm = ref.read(cardGeneratorViewModelProvider.notifier);
     AppSnackBar.show(context, 'Preparing share…', icon: Icons.share_rounded);
-    final success = await vm.shareCard(_boundaryKey);
+    final success = await vm.shareCard(_boundaryKey, format: format);
     if (!mounted) return;
     if (success) {
       AppSnackBar.showSuccess(context, 'Share sheet opened');
@@ -393,11 +395,20 @@ class _CardGeneratorScreenState extends ConsumerState<CardGeneratorScreen> {
             child: CardStage(
               boundaryKey: _boundaryKey,
               aspectRatio: state.selectedRatio.ratio,
-              overlay: state.showSafeZone
-                  ? SafeZoneGuide(
+              overlay: Stack(
+                fit: StackFit.expand,
+                children: [
+                  if (state.showSafeZone)
+                    SafeZoneGuide(
                       size: ExportSize.fromRatioName(state.selectedRatio.name),
-                    )
-                  : null,
+                    ),
+                  const Positioned(
+                    top: 8,
+                    right: 8,
+                    child: IgnorePointer(child: _ContrastOverlay()),
+                  ),
+                ],
+              ),
               child: Stack(
                 fit: StackFit.expand,
                 children: [
@@ -724,6 +735,24 @@ class _WatermarkOverlayState extends State<_WatermarkOverlay> {
           ],
         );
       },
+    );
+  }
+}
+
+class _ContrastOverlay extends ConsumerWidget {
+  const _ContrastOverlay();
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final state = ref.watch(cardGeneratorViewModelProvider);
+    final accent =
+        state.accentColor ??
+        (state.extractedPalette?.isNotEmpty == true
+            ? state.extractedPalette!.first
+            : const Color(0xFFFFB020));
+    return ContrastBadge(
+      foreground: accent,
+      background: const Color(0xFF0B0B0F),
     );
   }
 }

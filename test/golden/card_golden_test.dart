@@ -1,26 +1,32 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:oreamnos/domain/models/card_template.dart';
 
 import '../helpers/card_golden_painter.dart';
 import '../helpers/golden_helpers.dart';
 
 void main() {
-  const cases = [
-    ('goal_45', 'Goal', 'GOAL', 380.0, 475.0),
-    ('quote_45', 'Quote', 'NEVER GIVE UP', 380.0, 475.0),
-    ('top_stats_story', 'Top Stats', '2 - 1', 380.0, 675.0),
-  ];
+  const ratios = [('45', 380.0, 475.0), ('story', 380.0, 675.0)];
 
-  for (final (name, template, hero, width, height) in cases) {
-    testWidgets('card layout golden $name', (tester) async {
-      await tester.runAsync(() async {
-        final image = await renderPainter(
-          CardGoldenPainter(kicker: template, hero: hero, template: template),
-          Size(width, height),
-        );
-        await expectGolden(image, 'test/goldens/card_$name.png');
-        image.dispose();
+  for (final template in CardTemplate.all) {
+    for (final (ratio, width, height) in ratios) {
+      testWidgets('card golden ${template.name}_$ratio', (tester) async {
+        await tester.runAsync(() async {
+          final image = await renderPainter(
+            CardGoldenPainter(
+              kicker: template.displayName,
+              hero: template.name.toUpperCase(),
+              template: template.name,
+            ),
+            Size(width, height),
+          );
+          await expectGolden(
+            image,
+            'test/goldens/card_${template.name}_$ratio.png',
+          );
+          image.dispose();
+        });
       });
-    });
+    }
   }
 }

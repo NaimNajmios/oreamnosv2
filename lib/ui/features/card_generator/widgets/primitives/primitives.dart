@@ -8,6 +8,7 @@ export 'giant_text_behind.dart';
 export 'glass_tile.dart';
 export 'grain_overlay.dart';
 export 'halftone_overlay.dart';
+export 'contrast_badge.dart';
 export 'data_viz_advanced.dart';
 export 'form_pills.dart';
 export 'motion_frame.dart';

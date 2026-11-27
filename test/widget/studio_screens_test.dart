@@ -62,7 +62,8 @@ void main() {
     await tester.pumpWidget(const MaterialApp(home: BrandKitScreen()));
     expect(find.text('Brand Kit'), findsOneWidget);
     expect(find.text('Kit colours'), findsOneWidget);
-    expect(find.text('Add player'), findsOneWidget);
+    expect(find.text('Club name'), findsOneWidget);
+    expect(find.text('Crest image path (your own file)'), findsOneWidget);
   });
 
   test('studio routes are registered', () {

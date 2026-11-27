@@ -1,24 +1,25 @@
 import 'package:flutter/material.dart';
 import 'package:oreamnos/config/theme/app_spacing.dart';
+import 'package:oreamnos/domain/models/card_export_format.dart';
 import 'package:oreamnos/ui/core/widgets/app_button.dart';
 import 'package:oreamnos/ui/core/widgets/app_outlined_button.dart';
 import 'package:oreamnos/ui/core/widgets/kickoff_mark.dart';
 
 /// Modal sheet for exporting generated graphic cards.
-class ExportBottomSheet extends StatelessWidget {
+class ExportBottomSheet extends StatefulWidget {
   const ExportBottomSheet({
     super.key,
     required this.onSaveToGallery,
     required this.onShare,
   });
 
-  final Future<void> Function() onSaveToGallery;
-  final Future<void> Function() onShare;
+  final Future<void> Function(CardExportFormat) onSaveToGallery;
+  final Future<void> Function(CardExportFormat) onShare;
 
   static Future<void> show(
     BuildContext context, {
-    required Future<void> Function() onSaveToGallery,
-    required Future<void> Function() onShare,
+    required Future<void> Function(CardExportFormat) onSaveToGallery,
+    required Future<void> Function(CardExportFormat) onShare,
   }) {
     return showModalBottomSheet(
       context: context,
@@ -32,6 +33,13 @@ class ExportBottomSheet extends StatelessWidget {
           ExportBottomSheet(onSaveToGallery: onSaveToGallery, onShare: onShare),
     );
   }
+
+  @override
+  State<ExportBottomSheet> createState() => _ExportBottomSheetState();
+}
+
+class _ExportBottomSheetState extends State<ExportBottomSheet> {
+  CardExportFormat _format = CardExportFormat.png;
 
   @override
   Widget build(BuildContext context) {
@@ -74,18 +82,30 @@ class ExportBottomSheet extends StatelessWidget {
           ),
           const SizedBox(height: AppSpacing.xs),
           Text(
-            'Save high-resolution 4:5 image to gallery or share directly to social media.',
+            'Save a high-resolution card to the gallery or share it directly.',
             style: theme.textTheme.bodySmall?.copyWith(
               color: theme.colorScheme.onSurface.withValues(alpha: 0.6),
             ),
           ),
-          const SizedBox(height: AppSpacing.xl),
+          const SizedBox(height: AppSpacing.lg),
+          SegmentedButton<CardExportFormat>(
+            segments: CardExportFormat.values
+                .map(
+                  (format) =>
+                      ButtonSegment(value: format, label: Text(format.label)),
+                )
+                .toList(),
+            selected: {_format},
+            onSelectionChanged: (value) =>
+                setState(() => _format = value.first),
+          ),
+          const SizedBox(height: AppSpacing.lg),
           AppButton(
             label: 'Save to Gallery',
             icon: Icons.download_rounded,
             onPressed: () async {
               Navigator.of(context).pop();
-              await onSaveToGallery();
+              await widget.onSaveToGallery(_format);
             },
           ),
           const SizedBox(height: AppSpacing.md),
@@ -94,7 +114,7 @@ class ExportBottomSheet extends StatelessWidget {
             icon: Icons.share_rounded,
             onPressed: () async {
               Navigator.of(context).pop();
-              await onShare();
+              await widget.onShare(_format);
             },
           ),
           const SizedBox(height: AppSpacing.md),

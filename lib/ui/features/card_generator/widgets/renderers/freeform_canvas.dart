@@ -2,7 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:oreamnos/domain/models/card_config.dart';
 import 'package:oreamnos/domain/models/card_data.dart';
-import 'package:oreamnos/data/services/gradient_builder.dart';
+
+import '../primitives/broadcast_background.dart';
+
 import 'package:oreamnos/ui/features/card_generator/view_models/card_generator_view_model.dart';
 
 import '../draggable_canvas_element.dart';
@@ -17,32 +19,14 @@ class FreeformCanvas extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final state = ref.watch(cardGeneratorViewModelProvider);
     final notifier = ref.read(cardGeneratorViewModelProvider.notifier);
-    final colors = config.colorPair;
-
     final headline = data.headline;
     final subtext = data.subtext;
     final microStat = data.microStat ?? '';
 
-    return Container(
-      decoration: BoxDecoration(
-        gradient: config.backgroundImagePath != null
-            ? null
-            : GradientBuilder.vertical(colors),
-      ),
+    return BroadcastBackground(
+      config: config,
       child: Stack(
         children: [
-          if (config.showScrim)
-            Positioned.fill(
-              child: Container(
-                decoration: BoxDecoration(
-                  gradient: GradientBuilder.scrimFor(
-                    config.scrimType,
-                    config.overlayOpacity,
-                  ),
-                ),
-              ),
-            ),
-
           if (headline.isNotEmpty)
             DraggableCanvasElement(
               offset: state.headlineOffset,
