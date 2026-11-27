@@ -4,6 +4,7 @@ export 'card_typography.dart';
 export 'crest_badge.dart';
 export 'content_fit_resolver.dart';
 export 'fade_hairline.dart';
+export 'giant_text_behind.dart';
 export 'grain_overlay.dart';
 export 'subject_glow.dart';
 export 'vignette.dart';

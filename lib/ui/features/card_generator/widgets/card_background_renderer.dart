@@ -4,8 +4,10 @@ import 'package:flutter/material.dart' hide CardTheme;
 import 'package:oreamnos/config/theme/card_filters.dart';
 import 'package:oreamnos/config/theme/card_theme.dart';
 import 'package:oreamnos/domain/models/card_config.dart';
+import 'package:oreamnos/domain/services/giant_text_source.dart';
 
 import '../view_models/card_generator_state.dart';
+import 'primitives/giant_text_behind.dart';
 import 'primitives/grain_overlay.dart';
 
 /// Renders the card background including preset gradients, custom images,
@@ -118,9 +120,12 @@ class CardBackgroundRenderer extends StatelessWidget {
           ),
         );
       case ImagePosition.cutout:
-        return Center(
+        final cutout = Center(
           child: Padding(padding: const EdgeInsets.all(16), child: img),
         );
+        final giantText = GiantTextSource.forCardData(state.cardData);
+        if (giantText == null) return cutout;
+        return GiantTextBehind(text: giantText, child: cutout);
       case ImagePosition.magazineBold:
         return Padding(
           padding: const EdgeInsets.all(12),
