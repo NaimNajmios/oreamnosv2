@@ -29,6 +29,7 @@ import '../widgets/card_background_renderer.dart';
 
 import 'package:oreamnos/domain/models/card_config.dart';
 
+import '../widgets/animated_card_preview.dart';
 import '../widgets/primitives/safe_zone_guide.dart';
 
 import '../widgets/picsart_tool_dock.dart';
@@ -107,6 +108,45 @@ class _CardGeneratorScreenState extends ConsumerState<CardGeneratorScreen> {
           .initialize(_activeBrief, apiKey);
       setState(() {});
     });
+  }
+
+  void _showMotionPreview(BuildContext context) {
+    final state = ref.read(cardGeneratorViewModelProvider);
+    final data = state.cardData;
+    if (data == null) return;
+    showDialog(
+      context: context,
+      builder: (context) => Dialog(
+        child: Padding(
+          padding: const EdgeInsets.all(AppSpacing.base),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text(
+                'Motion preview',
+                style: Theme.of(context).textTheme.titleMedium,
+              ),
+              const SizedBox(height: AppSpacing.md),
+              SizedBox(
+                width: 240,
+                height: 300,
+                child: AnimatedCardPreview(
+                  child: CardCanvasDispatcher(
+                    cardData: data,
+                    config: CardConfig(template: state.selectedTemplate),
+                  ),
+                ),
+              ),
+              const SizedBox(height: AppSpacing.md),
+              TextButton(
+                onPressed: () => Navigator.of(context).pop(),
+                child: const Text('Close'),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
   }
 
   Future<void> _handleSaveToGallery() async {
@@ -208,6 +248,11 @@ class _CardGeneratorScreenState extends ConsumerState<CardGeneratorScreen> {
             ),
             actions: [
               if (hasData) ...[
+                IconButton(
+                  tooltip: 'Motion preview',
+                  icon: const Icon(Icons.animation_outlined, size: 20),
+                  onPressed: () => _showMotionPreview(context),
+                ),
                 IconButton(
                   tooltip: 'Carousel Studio',
                   icon: const Icon(Icons.view_carousel_outlined, size: 20),
