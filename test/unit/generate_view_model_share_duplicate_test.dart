@@ -14,8 +14,51 @@ import 'package:oreamnos/data/services/log_service.dart';
 import 'package:oreamnos/data/services/preferences_service.dart';
 import 'package:oreamnos/data/services/usage_service.dart';
 import 'package:oreamnos/domain/models/curated_post.dart';
+import 'package:oreamnos/domain/models/tavily_search.dart';
+import 'package:oreamnos/domain/repositories/search_repository.dart';
+import 'package:oreamnos/domain/services/enrich_context_usecase.dart';
+import 'package:oreamnos/data/services/web_scraper_service.dart';
+import 'package:oreamnos/core/network/api_client.dart';
 import 'package:oreamnos/ui/features/generate/view_models/generate_view_model.dart';
 import 'package:oreamnos/ui/features/settings/view_models/settings_view_model.dart';
+
+class _SlowSearchRepository implements ISearchRepository {
+  final Completer<TavilySearchResponse> gate =
+      Completer<TavilySearchResponse>();
+  int searchCalls = 0;
+
+  @override
+  Future<bool> isConfigured() async => true;
+
+  @override
+  Future<TavilySearchResponse> searchContext({
+    required String query,
+    int maxResults = 3,
+    bool includeAnswer = true,
+  }) {
+    searchCalls++;
+    return gate.future;
+  }
+
+  @override
+  Future<String> extractFromUrl(String url) async => '';
+}
+
+/// Keeps URL-driven share tests off the network: the published
+/// [WebScraperService.extractArticleFromUrl] static delegates to the
+/// registered instance, so overriding it is enough.
+class _FakeWebScraperService extends WebScraperService {
+  @override
+  Future<ExtractedArticle> extractArticleFromUrlInternal(String url) async {
+    return ExtractedArticle(
+      text: 'Fake article body for $url',
+      url: url,
+      domain: 'example.com',
+      pageTitle: 'Fake article',
+      siteName: 'Example',
+    );
+  }
+}
 
 class _GatedRepository implements IContentRepository {
   final Completer<Result<CuratedPost>> _gate = Completer<Result<CuratedPost>>();
@@ -128,6 +171,9 @@ void main() {
       getIt.registerLazySingleton<PreferencesService>(() => prefService);
       getIt.registerLazySingleton<UsageService>(() => UsageService(prefs));
       getIt.registerLazySingleton<LogService>(() => LogService(prefs));
+      getIt.registerLazySingleton<WebScraperService>(
+        () => _FakeWebScraperService(),
+      );
 
       repo = _GatedRepository();
       container = ProviderContainer(
@@ -169,8 +215,7 @@ void main() {
       );
     });
 
-    test('the same content can be generated again after the first attempt '
-        'settles', () async {
+    test('the same content can be generated again after a new entry', () async {
       final vm = container.read(generateViewModelProvider.notifier);
       // Plain text keeps the pipeline on the repository mock (a tweet URL
       // would detour into FxTwitter extraction).
@@ -185,11 +230,97 @@ void main() {
         GenerateState.success,
       );
 
+      // A replay of the same share is ignored while the finished post is on
+      // screen; an explicit "New Entry" is what releases that ownership.
+      vm.reset();
       final second = vm.handleExternalSharedInput(link);
       await Future<void>.delayed(const Duration(milliseconds: 50));
       expect(repo.callCount, 2);
       repo.complete();
       await second;
+    });
+
+    test('a replay after success does not wipe the generated post', () async {
+      final vm = container.read(generateViewModelProvider.notifier);
+      const link = 'plain text news';
+
+      final first = vm.handleExternalSharedInput(link);
+      await Future<void>.delayed(const Duration(milliseconds: 50));
+      repo.complete();
+      await first;
+      final settled = container.read(generateViewModelProvider);
+      expect(settled.status, GenerateState.success);
+      expect(settled.curatedPost, isNotNull);
+
+      // Same logical share in a different byte form (case + whitespace):
+      // the VM dedups on the normalized share key, not the display text.
+      await vm.handleExternalSharedInput('  Plain   TEXT   news  ');
+      expect(repo.callCount, 1);
+      final after = container.read(generateViewModelProvider);
+      expect(after.status, GenerateState.success);
+      expect(after.curatedPost, same(settled.curatedPost));
+    });
+
+    test('a duplicate share with different query params while generating is ignored', () async {
+      final vm = container.read(generateViewModelProvider.notifier);
+      const firstUrl = 'https://example.com/news/1?utm_source=x';
+      const secondUrl = 'https://example.com/news/1?ref=share';
+
+      final first = vm.handleExternalSharedInput(firstUrl);
+      await Future<void>.delayed(const Duration(milliseconds: 50));
+
+      await vm.handleExternalSharedInput(secondUrl);
+      expect(repo.callCount, 1);
+      expect(
+        container.read(generateViewModelProvider).status,
+        GenerateState.generating,
+      );
+
+      repo.complete();
+      await first;
+      expect(
+        container.read(generateViewModelProvider).status,
+        GenerateState.success,
+      );
+    });
+
+    test('superseded research-mode session cannot overwrite a newer completed session back to generating', () async {
+      final slowSearch = _SlowSearchRepository();
+      getIt.registerFactory<EnrichContextUseCase>(
+        () => EnrichContextUseCase(slowSearch, WebScraperService(ApiClient())),
+      );
+
+      final vm = container.read(generateViewModelProvider.notifier);
+      vm.toggleResearchMode();
+
+      // Session 1 pauses inside research enrichment.
+      final first = vm.handleExternalSharedInput('first plain text');
+      await Future<void>.delayed(const Duration(milliseconds: 50));
+      expect(slowSearch.searchCalls, 1);
+
+      // Session 2 supersedes Session 1 (with research disabled) and finishes.
+      vm.toggleResearchMode();
+      final second = vm.handleExternalSharedInput('second plain text');
+      await Future<void>.delayed(const Duration(milliseconds: 50));
+      repo.complete();
+      await second;
+      expect(
+        container.read(generateViewModelProvider).status,
+        GenerateState.success,
+      );
+      expect(container.read(generateViewModelProvider).curatedPost, isNotNull);
+
+      // Now Session 1's research await finally resolves; it must bail out
+      // instead of overwriting Session 2's completed state back to generating.
+      slowSearch.gate.complete(
+        const TavilySearchResponse(query: 'q', answer: 'a', results: []),
+      );
+      await first;
+
+      final finalState = container.read(generateViewModelProvider);
+      expect(finalState.status, GenerateState.success);
+      expect(finalState.curatedPost, isNotNull);
+      expect(repo.callCount, 1);
     });
   });
 }

@@ -331,5 +331,29 @@ void main() {
       ], isInitial: true);
       expect(received, [link, link]);
     });
+
+    test('suppresses late initial delivery when the same key was already handled on stream', () async {
+      SharedPreferences.setMockInitialValues({});
+      final received = <String>[];
+      service.onSharedTextReceived = (text) => received.add(text);
+
+      const link = 'https://x.com/sports/status/888999000';
+      await service.loadInitialFingerprintForTesting();
+
+      // Stream delivers the share first.
+      service.handleSharedMedia([
+        SharedMediaFile(path: link, type: SharedMediaType.text),
+      ]);
+      expect(received, [link]);
+
+      // Even beyond the 1500ms transient window, getInitialMedia resolving
+      // late in the same process must not re-fire the same share.
+      service.expireTransientDedupForTesting();
+      service.handleSharedMedia([
+        SharedMediaFile(path: link, type: SharedMediaType.text),
+      ], isInitial: true);
+
+      expect(received, [link]);
+    });
   });
 }

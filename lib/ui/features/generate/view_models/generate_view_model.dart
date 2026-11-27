@@ -15,6 +15,7 @@ import 'package:oreamnos/data/services/daily_usage_service.dart';
 import 'package:oreamnos/data/services/log_service.dart';
 import 'package:oreamnos/data/services/notification_service.dart';
 import 'package:oreamnos/data/services/rate_limit_guard.dart';
+import 'package:oreamnos/data/services/share_intent_service.dart';
 import 'package:oreamnos/data/services/token_usage_side_channel.dart';
 import 'package:oreamnos/data/services/usage_service.dart';
 import 'package:oreamnos/data/services/web_scraper_service.dart';
@@ -524,6 +525,9 @@ class GenerateViewModel extends Notifier<GenerateUiState>
   }) async {
     final sessionId = ++_generationSessionId;
     final attemptToken = _newAttemptToken(sessionId);
+    // A user-initiated generation takes ownership of the UI: a later replay
+    // of the previous share must not be mistaken for a fresh share of it.
+    if (!isFromShare) _activeShareInput = null;
     final v = validateForGenerate(input);
     if (!v.isValid) {
       if (sessionId != _generationSessionId) return;
@@ -560,55 +564,59 @@ class GenerateViewModel extends Notifier<GenerateUiState>
       fallbackNotice: null,
     );
 
-    // Inline progress notice for intermediate attempts (not shown to the
-    // modal dialog — just the loading card subtitle).
-    //
-    // `forceProvider` is the volatile fallback target chosen by the previous
-    // attempt's failure handler — it must keep passing through so the chain
-    // hop doesn't silently get lost between recursion boundaries.
+    // Every state that shows the loading card needs a live watchdog. Arm it
+    // before the cooldown pre-flight (which awaits secure storage) instead of
+    // after it: a throw or hang there used to leave `generating` with no
+    // safety net, i.e. a loading card that never reaches a terminal state.
+    _armGenerationWatchdog();
+    final stopwatch = Stopwatch()..start();
+    // Volatile fallback target — keep it outside the try so the catch can
+    // still log the failed attempt with the provider that actually served it.
     var provider =
         forceProvider ?? ref.read(settingsViewModelProvider).selectedProvider;
-    String? notice;
-    if (fallbackDepth > 0) {
-      notice = 'Retrying with ${provider.displayName}…';
-    } else if (shareAttempt > 0) {
-      notice = 'Retrying (attempt ${shareAttempt + 1})…';
-    } else if (_isCoolingDown(provider)) {
-      // Cooldown-aware start: the selected provider is rate-limited —
-      // hop to a healthy fallback instead of a doomed request. When
-      // nothing is healthy, surface the wait instead of firing.
-      final switched = await _switchToNextHealthyProvider(provider);
-      if (switched != null && sessionId == _generationSessionId) {
-        provider = switched;
-        notice = 'Retrying with ${switched.displayName}…';
-      } else if (sessionId == _generationSessionId) {
-        final waitMessage = _waitMessageFor(provider);
-        state = state.copyWith(
-          errorMessage:
-              'Rate limit exceeded for ${provider.displayName}. '
-              'Try another provider.'
-              '${waitMessage != null ? ' $waitMessage' : ''}',
-          suggestedFallbackProvider: _getNextProvider(provider),
-          rateLimitWaitMessage: waitMessage,
-          status: GenerateState.rateLimited,
-          generatingStep: GeneratingStep.idle,
-          fallbackNotice: null,
-        );
-        return;
-      }
-    }
-    if (notice != null && sessionId == _generationSessionId) {
-      state = state.copyWith(
-        status: GenerateState.generating,
-        fallbackNotice: notice,
-      );
-    }
-
-    _armGenerationWatchdog();
-
-    final stopwatch = Stopwatch()..start();
 
     try {
+      // Inline progress notice for intermediate attempts (not shown to the
+      // modal dialog — just the loading card subtitle).
+      String? notice;
+      if (fallbackDepth > 0) {
+        notice = 'Retrying with ${provider.displayName}…';
+      } else if (shareAttempt > 0) {
+        notice = 'Retrying (attempt ${shareAttempt + 1})…';
+      } else if (_isCoolingDown(provider)) {
+        // Cooldown-aware start: the selected provider is rate-limited —
+        // hop to a healthy fallback instead of a doomed request. When
+        // nothing is healthy, surface the wait instead of firing.
+        final switched = await _switchToNextHealthyProvider(provider);
+        if (sessionId != _generationSessionId) return;
+        if (switched != null) {
+          provider = switched;
+          notice = 'Retrying with ${switched.displayName}…';
+        } else {
+          final waitMessage = _waitMessageFor(provider);
+          _disarmGenerationWatchdog();
+          state = state.copyWith(
+            errorMessage:
+                'Rate limit exceeded for ${provider.displayName}. '
+                'Try another provider.'
+                '${waitMessage != null ? ' $waitMessage' : ''}',
+            suggestedFallbackProvider: _getNextProvider(provider),
+            rateLimitWaitMessage: waitMessage,
+            status: GenerateState.rateLimited,
+            generatingStep: GeneratingStep.idle,
+            fallbackNotice: null,
+          );
+          return;
+        }
+      }
+      if (sessionId != _generationSessionId) return;
+      if (notice != null) {
+        state = state.copyWith(
+          status: GenerateState.generating,
+          fallbackNotice: notice,
+        );
+      }
+
       final parsed = SharedContentParser.parse(trimmedInput);
       dynamic contentToCurate = trimmedInput;
       String? sourceUrl;
@@ -633,9 +641,11 @@ class GenerateViewModel extends Notifier<GenerateUiState>
         TweetContent? tweet = await TwitterExtractor.extractViaFxTwitter(
           targetTwitterUrl,
         );
+        if (sessionId != _generationSessionId) return;
 
         if (tweet == null || !tweet.isValid) {
           tweet = await TwitterExtractor.extractViaVxTwitter(targetTwitterUrl);
+          if (sessionId != _generationSessionId) return;
         }
 
         if (tweet != null && tweet.isValid) {
@@ -650,6 +660,7 @@ class GenerateViewModel extends Notifier<GenerateUiState>
             cardUrl: tweet.cardUrl,
             expandedUrls: tweet.expandedUrls,
           );
+          if (sessionId != _generationSessionId) return;
 
           var promptBody = TwitterExtractor.formatForAiPrompt(
             tweet,
@@ -668,19 +679,24 @@ class GenerateViewModel extends Notifier<GenerateUiState>
           } else {
             try {
               final searchRepo = getIt<ISearchRepository>();
-              if (await searchRepo.isConfigured()) {
+              final configured = await searchRepo.isConfigured();
+              if (sessionId != _generationSessionId) return;
+              if (configured) {
                 contentToCurate = await searchRepo.extractFromUrl(
                   targetTwitterUrl,
                 );
+                if (sessionId != _generationSessionId) return;
               } else {
                 throw TwitterExtractionException(sourceUrl);
               }
             } catch (e) {
+              if (sessionId != _generationSessionId) return;
               throw TwitterExtractionException(sourceUrl);
             }
           }
         }
 
+        if (sessionId != _generationSessionId) return;
         state = state.copyWith(generatingStep: GeneratingStep.prompting);
       } else if (parsed.primaryUrl != null ||
           WebScraperService.isUrl(trimmedInput)) {
@@ -690,6 +706,7 @@ class GenerateViewModel extends Notifier<GenerateUiState>
           final article = await WebScraperService.extractArticleFromUrl(
             targetUrl,
           ).timeout(const Duration(seconds: 10));
+          if (sessionId != _generationSessionId) return;
           contentToCurate = article;
           sourceUrl = article.url;
           siteName = article.siteName;
@@ -714,6 +731,7 @@ class GenerateViewModel extends Notifier<GenerateUiState>
             );
           }
         } on TimeoutException {
+          if (sessionId != _generationSessionId) return;
           if (parsed.accompanyingText.isNotEmpty) {
             contentToCurate = parsed.accompanyingText;
             sourceUrl = targetUrl;
@@ -723,11 +741,13 @@ class GenerateViewModel extends Notifier<GenerateUiState>
             );
           }
         }
+        if (sessionId != _generationSessionId) return;
         state = state.copyWith(generatingStep: GeneratingStep.prompting);
       }
 
       // 2. AI Research Mode Enrichment (if enabled)
       if (state.isResearchModeEnabled) {
+        if (sessionId != _generationSessionId) return;
         state = state.copyWith(status: GenerateState.researching);
 
         final enrichUsecase = getIt<EnrichContextUseCase>();
@@ -740,6 +760,7 @@ class GenerateViewModel extends Notifier<GenerateUiState>
           textForEnrichment,
           intent,
         );
+        if (sessionId != _generationSessionId) return;
 
         if (contentToCurate is ExtractedArticle) {
           contentToCurate = contentToCurate.copyWith(
@@ -762,6 +783,7 @@ class GenerateViewModel extends Notifier<GenerateUiState>
           generatingStep: GeneratingStep.prompting,
         );
       } else {
+        if (sessionId != _generationSessionId) return;
         state = state.copyWith(searchSources: []);
       }
 
@@ -771,6 +793,7 @@ class GenerateViewModel extends Notifier<GenerateUiState>
       final apiKey = await ref
           .read(settingsViewModelProvider.notifier)
           .getApiKeyForProvider(provider);
+      if (sessionId != _generationSessionId) return;
       if (apiKey == null || apiKey.isEmpty) {
         throw Exception('API key not configured for ${provider.displayName}.');
       }
@@ -1182,42 +1205,55 @@ class GenerateViewModel extends Notifier<GenerateUiState>
     // Volatile fallback target — see _switchToNextHealthyProvider.
     var provider =
         forceProvider ?? ref.read(settingsViewModelProvider).selectedProvider;
-
-    // Pre-flight quota gate — same as generatePost: never burn a request on
-    // a provider the guard still has cooling down.
-    if (_isCoolingDown(provider)) {
-      final switched = await _switchToNextHealthyProvider(provider);
-      if (switched != null && sessionId == _generationSessionId) {
-        provider = switched;
-        state = state.copyWith(
-          status: GenerateState.generating,
-          generatingStep: GeneratingStep.prompting,
-          fallbackNotice: 'Retrying with ${switched.displayName}…',
-        );
-      } else if (sessionId == _generationSessionId) {
-        final waitMessage = _waitMessageFor(provider);
-        state = state.copyWith(
-          status: GenerateState.rateLimited,
-          generatingStep: GeneratingStep.idle,
-          fallbackNotice: null,
-          errorMessage:
-              'Rate limit exceeded for ${provider.displayName}. '
-              'Try another provider.'
-              '${waitMessage != null ? ' $waitMessage' : ''}',
-          suggestedFallbackProvider: _getNextProvider(provider),
-          rateLimitWaitMessage: waitMessage,
-        );
-        return;
-      }
-    }
-
-    final settings = ref.read(settingsViewModelProvider);
-    final modelId = _resolveModelId(provider, settings);
+    // Declared up front so the catch can still log a pre-flight failure.
+    var modelId = _resolveModelId(
+      provider,
+      ref.read(settingsViewModelProvider),
+    );
 
     try {
+      // Pre-flight quota gate — same as generatePost: never burn a request on
+      // a provider the guard still has cooling down. Kept inside the try so a
+      // throw here lands on a terminal error state instead of stranding the
+      // loading card.
+      if (_isCoolingDown(provider)) {
+        final switched = await _switchToNextHealthyProvider(provider);
+        if (sessionId != _generationSessionId) return;
+        if (switched != null) {
+          provider = switched;
+          modelId = _resolveModelId(
+            provider,
+            ref.read(settingsViewModelProvider),
+          );
+          state = state.copyWith(
+            status: GenerateState.generating,
+            generatingStep: GeneratingStep.prompting,
+            fallbackNotice: 'Retrying with ${switched.displayName}…',
+          );
+        } else {
+          final waitMessage = _waitMessageFor(provider);
+          _disarmGenerationWatchdog();
+          state = state.copyWith(
+            status: GenerateState.rateLimited,
+            generatingStep: GeneratingStep.idle,
+            fallbackNotice: null,
+            errorMessage:
+                'Rate limit exceeded for ${provider.displayName}. '
+                'Try another provider.'
+                '${waitMessage != null ? ' $waitMessage' : ''}',
+            suggestedFallbackProvider: _getNextProvider(provider),
+            rateLimitWaitMessage: waitMessage,
+          );
+          return;
+        }
+      }
+
+      final settings = ref.read(settingsViewModelProvider);
+      modelId = _resolveModelId(provider, settings);
       final apiKey = await ref
           .read(settingsViewModelProvider.notifier)
           .getApiKeyForProvider(provider);
+      if (sessionId != _generationSessionId) return;
       if (apiKey == null || apiKey.isEmpty) {
         throw Exception('API key not configured for ${provider.displayName}.');
       }
@@ -1455,21 +1491,33 @@ class GenerateViewModel extends Notifier<GenerateUiState>
   Future<void> handleExternalSharedInput(String rawInput) async {
     final parsed = SharedContentParser.parse(rawInput);
     final effectiveText = parsed.displayInput;
+    final shareKey = ShareIntentService.normalizeDedupKey(rawInput);
 
     // Android can deliver the same share more than once (stream bounce after
-    // the service's dedup window). Starting a second session here would bump
-    // the session id, cancel the first attempt's token and leave the UI on
-    // the loading card — exactly the "already generated but still loading"
-    // report. The first attempt owns this content until it settles.
-    if (_activeShareInput == effectiveText &&
-        (state.status == GenerateState.generating ||
-            state.status == GenerateState.researching)) {
-      getIt<LogService>().info(
-        'Ignoring duplicate share while its generation is in flight',
-      );
-      return;
+    // the service's dedup window or with differing tracking parameters).
+    // Starting a second session here would bump the session id, cancel the
+    // first attempt's token and leave the UI on the loading card.
+    if (_activeShareInput == shareKey) {
+      final status = state.status;
+      if (status == GenerateState.generating ||
+          status == GenerateState.researching) {
+        getIt<LogService>().info(
+          'Ignoring duplicate share while its generation is in flight',
+        );
+        return;
+      }
+      // A replay arriving after the post was generated must not throw that
+      // finished post away: the usage row already records the real result,
+      // and re-generating would only show a fresh loading card with the same
+      // content. Explicit "Regenerate" / a new entry remain available.
+      if (status == GenerateState.success && state.curatedPost != null) {
+        getIt<LogService>().info(
+          'Ignoring replay of a share whose post is already generated',
+        );
+        return;
+      }
     }
-    _activeShareInput = effectiveText;
+    _activeShareInput = shareKey;
 
     _generationSessionId++;
     state = state.copyWith(
@@ -1488,7 +1536,20 @@ class GenerateViewModel extends Notifier<GenerateUiState>
       fallbackNotice: null,
     );
 
-    await generatePost(effectiveText, isFromShare: true);
+    try {
+      await generatePost(effectiveText, isFromShare: true);
+    } finally {
+      final status = state.status;
+      // Keep the key on success: it is what lets a late replay be recognised
+      // as a replay instead of wiping the finished post. Every other settled
+      // state releases it so a deliberate re-share can start cleanly.
+      if (_activeShareInput == shareKey &&
+          status != GenerateState.generating &&
+          status != GenerateState.researching &&
+          status != GenerateState.success) {
+        _activeShareInput = null;
+      }
+    }
   }
 
   /// User-initiated stop: cancels the in-flight attempt (and the watchdog) and
@@ -1496,6 +1557,7 @@ class GenerateViewModel extends Notifier<GenerateUiState>
   /// The session bump makes any in-flight pipeline continuation stale, so its
   /// late success/error writes no longer touch the (now idle) state.
   void cancelGeneration() {
+    _activeShareInput = null;
     _disarmGenerationWatchdog();
     final token = _attemptCancelToken;
     if (token != null && !token.isCancelled) {
@@ -1517,6 +1579,7 @@ class GenerateViewModel extends Notifier<GenerateUiState>
   }
 
   void reset() {
+    _activeShareInput = null;
     _generationSessionId++;
     _disarmGenerationWatchdog();
     final stale = _attemptCancelToken;

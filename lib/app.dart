@@ -245,18 +245,14 @@ class _OreamnosAppState extends ConsumerState<OreamnosApp> {
         return;
       }
       _inFlightShareContent = dedupKey;
-      // Late stream bounces (beyond the service's 1500ms dedup window) must
-      // not re-trigger generation of the same share. Keep the pin short:
-      // a longer window makes a deliberate re-share of the *same* link look
-      // like a bounce and silently drops it (the "app opened but nothing
-      // was pasted" report). Beyond this window the VM's own in-flight
-      // content guard still prevents two overlapping generations.
-      Timer(const Duration(seconds: 3), () {
-        if (_inFlightShareContent == dedupKey) _inFlightShareContent = null;
-      });
 
       // Defer to the first frame so the router/shell exists before the
       // share-driven navigation and generation kick off (cold-start race).
+      // `_inFlightShareContent` stays pinned until `handleExternalSharedInput`
+      // finishes (finally block below) rather than expiring on a short timer,
+      // because real generations often take longer than a few seconds and a
+      // late stream/initial replay arriving mid-flight or right after must
+      // not restart generation.
       WidgetsBinding.instance.addPostFrameCallback((_) async {
         try {
           if (!mounted) return;

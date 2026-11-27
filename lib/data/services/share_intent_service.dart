@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:flutter/foundation.dart';
+import 'package:flutter/services.dart';
 import 'package:receive_sharing_intent/receive_sharing_intent.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -12,6 +13,10 @@ class ShareIntentService {
   factory ShareIntentService() => _instance;
   ShareIntentService._internal();
 
+  static const MethodChannel _shareIntentChannel = MethodChannel(
+    'oreamnos_share_intent',
+  );
+
   /// SharedPreferences key storing the dedup key of the last handled
   /// initial share. Persists across processes so a cold start can tell a
   /// *stale replay* (Android cached process replays the previous session's
@@ -19,10 +24,10 @@ class ShareIntentService {
   static const String _fingerprintPrefKey = 'share_initial_fingerprint';
   static const String _fingerprintAtPrefKey = 'share_initial_fingerprint_at';
 
-  /// A cached-process replay lands immediately after relaunch. A deliberate
-  /// re-share of the *same* URL hours later is a fresh share and must not be
+  /// A cached-process replay lands shortly after relaunch. A deliberate
+  /// re-share of the *same* URL later is a fresh share and must not be
   /// mistaken for one, so the fingerprint guard is time-bounded.
-  static const Duration _replayGuardWindow = Duration(seconds: 5);
+  static const Duration _replayGuardWindow = Duration(seconds: 30);
 
   StreamSubscription? _intentDataStreamSubscription;
   DateTime? _lastHandledTime;
@@ -68,6 +73,21 @@ class ShareIntentService {
     }
   }
 
+  Future<void> _resetNativePlugin() async {
+    try {
+      await ReceiveSharingIntent.instance.reset();
+    } catch (e, st) {
+      _log('plugin reset failed', e, st);
+    }
+    try {
+      await _shareIntentChannel.invokeMethod<void>('clearIntent');
+    } on MissingPluginException {
+      // Expected in unit/widget tests or non-Android platforms.
+    } catch (e, st) {
+      _log('native intent clear failed', e, st);
+    }
+  }
+
   void initialize() {
     // NOTE: never call `reset()` BEFORE `getInitialMedia()` — the plugin's
     // reset clears the stored initial intent, so purging first would kill
@@ -82,11 +102,7 @@ class ShareIntentService {
           (List<SharedMediaFile> value) {
             handleSharedMedia(value);
             // Clear the stream intent cache so warm resumptions don't replay stale data
-            try {
-              ReceiveSharingIntent.instance.reset();
-            } catch (e, st) {
-              _log('stream reset failed', e, st);
-            }
+            unawaited(_resetNativePlugin());
           },
           onError: (err, st) {
             _log('getMediaStream error', err, st);
@@ -104,12 +120,8 @@ class ShareIntentService {
             // dropped here, a fresh share (≠ fingerprint) is handled.
             _initialFingerprint ??= await _loadFingerprint();
             handleSharedMedia(value, isInitial: true);
-            // Tell the library that we are done processing the initial intent
-            try {
-              ReceiveSharingIntent.instance.reset();
-            } catch (e, st) {
-              _log('initial reset failed', e, st);
-            }
+            // Tell the library and MainActivity that we are done processing the initial intent
+            await _resetNativePlugin();
           })
           .catchError((err, st) {
             _log('getInitialMedia error', err, st);
@@ -257,9 +269,13 @@ class ShareIntentService {
       return;
     }
 
-    // A live stream delivery proves this key is being shared *now*, so a
-    // later initial delivery cannot be a cached-process replay of the
-    // previous session.
+    // If the live stream already delivered this key in the current process,
+    // a later `getInitialMedia()` resolution for the same key is a startup
+    // duplicate (e.g., delayed by SharedPreferences load), not a new share.
+    if (isInitial && _seenStreamKeys.contains(dedupKey)) {
+      _log('suppressing initial delivery already handled on stream: $dedupKey');
+      return;
+    }
     if (!isInitial) _seenStreamKeys.add(dedupKey);
 
     // Stale-replay guard (initial path only): Android's cached process can
@@ -270,7 +286,6 @@ class ShareIntentService {
         : now.difference(_initialFingerprintAt!);
     if (isInitial &&
         _initialFingerprint == dedupKey &&
-        !_seenStreamKeys.contains(dedupKey) &&
         replayAge != null &&
         replayAge >= Duration.zero &&
         replayAge < _replayGuardWindow) {

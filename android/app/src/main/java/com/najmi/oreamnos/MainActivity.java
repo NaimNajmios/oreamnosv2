@@ -27,6 +27,7 @@ import java.util.Map;
 
 public class MainActivity extends FlutterActivity {
     private static final String UPDATE_INSTALL_CHANNEL = "oreamnos_update_installer";
+    private static final String SHARE_INTENT_CHANNEL = "oreamnos_share_intent";
     private static final String APK_MIME_TYPE = "application/vnd.android.package-archive";
     private static final String APK_DIR = Environment.DIRECTORY_DOWNLOADS;
     private static final int REQUEST_WRITE_STORAGE = 1001;
@@ -46,6 +47,42 @@ public class MainActivity extends FlutterActivity {
             UPDATE_INSTALL_CHANNEL
         );
         updateInstallerChannel.setMethodCallHandler(new UpdateInstallMethodCallHandler());
+        new MethodChannel(flutterEngine.getDartExecutor(), SHARE_INTENT_CHANNEL)
+            .setMethodCallHandler((call, result) -> {
+                if ("clearIntent".equals(call.method)) {
+                    clearShareIntentFromActivity();
+                    result.success(null);
+                } else {
+                    result.notImplemented();
+                }
+            });
+    }
+
+    @Override
+    public void onNewIntent(Intent intent) {
+        super.onNewIntent(intent);
+        if (intent != null && (Intent.ACTION_SEND.equals(intent.getAction())
+                || Intent.ACTION_SEND_MULTIPLE.equals(intent.getAction()))) {
+            // ReceiveSharingIntentPlugin already dispatched this intent inside
+            // super.onNewIntent; clear any stale share payload from getIntent()
+            // so future activity re-attachments cannot replay it.
+            clearShareIntentFromActivity();
+        }
+    }
+
+    private void clearShareIntentFromActivity() {
+        Intent current = getIntent();
+        if (current == null) return;
+        String action = current.getAction();
+        if (Intent.ACTION_SEND.equals(action)
+                || Intent.ACTION_SEND_MULTIPLE.equals(action)) {
+            current.removeExtra(Intent.EXTRA_TEXT);
+            current.removeExtra(Intent.EXTRA_STREAM);
+            current.removeExtra(Intent.EXTRA_MIME_TYPES);
+            current.setAction(Intent.ACTION_MAIN);
+            current.setType(null);
+            setIntent(current);
+        }
     }
 
     @Override

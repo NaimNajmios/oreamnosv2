@@ -1,5 +1,12 @@
 # Changelog — Oreamnos
 
+## v1.7.1 — Share intent replay fix (2026-11-28)
+
+- **No more "generated in Usage but still loading in Generate":** late/replayed deliveries of an already-handled share no longer wipe the finished post. `ShareIntentService` now dedups on both the initial and stream paths (30s fingerprint window, stream-seen keys suppress a late initial delivery); `app.dart` keeps its in-flight share pin until `handleExternalSharedInput` finishes; `MainActivity` clears `EXTRA_TEXT`/`EXTRA_STREAM` from the activity intent (`onNewIntent` + `oreamnos_share_intent/clearIntent`) so `receive_sharing_intent` cannot replay an old share on activity re-attach.
+- **Duplicate-share ownership:** `GenerateViewModel` compares normalized share keys (tracking params / casing / whitespace stripped) and ignores a replay both while a generation is in flight and while the generated post is still displayed. `reset()`/`cancelGeneration()`/a user-initiated generation release that ownership, so a deliberate re-share still works.
+- **Watchdog safety:** the generation/refinement watchdog is armed before the cooldown pre-flight and that pre-flight now runs inside the guarded `try`, so no `generating` state can be left without a terminal fallback. Stale sessions bail out at every await in the extraction/research pipeline.
+- **Tests:** replay-after-success, differing tracking params, and a superseded research session cannot overwrite a completed post; URL share tests use a fake scraper instead of live HTTP. `dart format` 0, `flutter analyze` 0, 1022 tests green.
+
 ## v27 — Facebook Insights Refresh (2026-11-24)
 
 - **Per-post insights now refresh reliably.** `FacebookInsightsService.fetch` requests one metric per call and returns partial results plus per-metric failures, so one rejected metric no longer hides the others. Errors are stored on the record as short codes (`insightsError`, `engagementError`, `lastRefreshAttemptAt`).
