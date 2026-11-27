@@ -89,6 +89,9 @@ flutter:
     - assets/textures/grain.png
     - assets/textures/halftone.png
 
+  shaders:
+    - shaders/grain.frag
+
   fonts:
     - family: BigShouldersDisplay
       fonts:

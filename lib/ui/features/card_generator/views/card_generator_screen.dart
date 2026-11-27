@@ -5,7 +5,9 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import 'package:go_router/go_router.dart';
 import 'package:path_provider/path_provider.dart';
+import 'package:share_plus/share_plus.dart';
 import 'package:oreamnos/config/routes/app_router.dart';
+import 'package:oreamnos/core/di/injection.dart';
 import 'package:oreamnos/config/theme/app_spacing.dart';
 import 'package:oreamnos/domain/models/card_brief.dart';
 import 'package:oreamnos/domain/services/auto_scrim.dart';
@@ -27,9 +29,11 @@ import '../widgets/card_stage.dart';
 import '../widgets/renderers/card_canvas_dispatcher.dart';
 import '../widgets/card_background_renderer.dart';
 
+import 'package:oreamnos/data/services/motion_capture_service.dart';
+import 'package:oreamnos/data/services/motion_export_service.dart';
 import 'package:oreamnos/domain/models/card_config.dart';
 
-import '../widgets/animated_card_preview.dart';
+import '../widgets/primitives/motion_frame.dart';
 import '../widgets/primitives/safe_zone_guide.dart';
 
 import '../widgets/picsart_tool_dock.dart';
@@ -114,6 +118,11 @@ class _CardGeneratorScreenState extends ConsumerState<CardGeneratorScreen> {
     final state = ref.read(cardGeneratorViewModelProvider);
     final data = state.cardData;
     if (data == null) return;
+
+    const frameCount = 8;
+    final keys = List.generate(frameCount, (_) => GlobalKey());
+    final config = CardConfig(template: state.selectedTemplate);
+
     showDialog(
       context: context,
       builder: (context) => Dialog(
@@ -130,23 +139,59 @@ class _CardGeneratorScreenState extends ConsumerState<CardGeneratorScreen> {
               SizedBox(
                 width: 240,
                 height: 300,
-                child: AnimatedCardPreview(
-                  child: CardCanvasDispatcher(
-                    cardData: data,
-                    config: CardConfig(template: state.selectedTemplate),
-                  ),
+                child: Stack(
+                  children: [
+                    for (var i = 0; i < frameCount; i++)
+                      RepaintBoundary(
+                        key: keys[i],
+                        child: MotionFrame(
+                          progress: i / (frameCount - 1),
+                          child: CardCanvasDispatcher(
+                            cardData: data,
+                            config: config,
+                          ),
+                        ),
+                      ),
+                  ],
                 ),
               ),
               const SizedBox(height: AppSpacing.md),
-              TextButton(
-                onPressed: () => Navigator.of(context).pop(),
-                child: const Text('Close'),
+              Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  FilledButton.icon(
+                    icon: const Icon(Icons.gif_box_outlined),
+                    label: const Text('Export GIF'),
+                    onPressed: () => _exportMotion(context, keys),
+                  ),
+                  const SizedBox(width: 8),
+                  TextButton(
+                    onPressed: () => Navigator.of(context).pop(),
+                    child: const Text('Close'),
+                  ),
+                ],
               ),
             ],
           ),
         ),
       ),
     );
+  }
+
+  Future<void> _exportMotion(BuildContext context, List<GlobalKey> keys) async {
+    try {
+      final frames = await getIt<MotionCaptureService>().captureFrames(
+        keys,
+        pixelRatio: 1.5,
+      );
+      final gif = getIt<MotionExportService>().encodeGif(frames);
+      final file = File('${Directory.systemTemp.path}/oreamnos_motion.gif');
+      await file.writeAsBytes(gif);
+      await SharePlus.instance.share(ShareParams(files: [XFile(file.path)]));
+    } catch (e) {
+      if (!context.mounted) return;
+      AppSnackBar.showError(context, 'Motion export failed: $e');
+    }
   }
 
   Future<void> _handleSaveToGallery() async {

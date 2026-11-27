@@ -9,7 +9,7 @@ import 'package:oreamnos/domain/services/giant_text_source.dart';
 
 import '../view_models/card_generator_state.dart';
 import 'primitives/giant_text_behind.dart';
-import 'primitives/grain_overlay.dart';
+import 'primitives/shader_grain_overlay.dart';
 import 'primitives/halftone_overlay.dart';
 
 /// Renders the card background including preset gradients, custom images,
@@ -34,7 +34,7 @@ class CardBackgroundRenderer extends StatelessWidget {
     } else {
       return const SizedBox.shrink();
     }
-    Widget layered = GrainOverlay(child: background);
+    Widget layered = ShaderGrainOverlay(child: background);
     if (state.selectedTemplate == CardTemplate.onThisDay ||
         state.selectedTemplate == CardTemplate.socialPost) {
       layered = HalftoneOverlay(child: layered);

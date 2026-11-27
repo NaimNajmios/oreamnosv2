@@ -37,6 +37,7 @@ import '../../data/services/free_tier_guard.dart' as _i200;
 import '../../data/services/home_widget_service.dart' as _i137;
 import '../../data/services/log_service.dart' as _i713;
 import '../../data/services/ml_kit_vision_extractor.dart' as _i560;
+import '../../data/services/motion_capture_service.dart' as _i858;
 import '../../data/services/motion_export_service.dart' as _i380;
 import '../../data/services/preferences_service.dart' as _i867;
 import '../../data/services/provider_api_service.dart' as _i581;
@@ -78,6 +79,9 @@ extension GetItInjectableX on _i174.GetIt {
     );
     gh.lazySingleton<_i282.FacebookStoryComposer>(
       () => _i282.FacebookStoryComposer(),
+    );
+    gh.lazySingleton<_i858.MotionCaptureService>(
+      () => _i858.MotionCaptureService(),
     );
     gh.lazySingleton<_i380.MotionExportService>(
       () => _i380.MotionExportService(),
