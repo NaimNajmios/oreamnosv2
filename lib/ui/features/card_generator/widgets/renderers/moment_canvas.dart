@@ -33,6 +33,7 @@ class MomentCanvas extends StatelessWidget {
     CardTemplate.playerOfTheMatch => 'PLAYER OF THE MATCH',
     CardTemplate.profileQA => 'PLAYER Q&A',
     CardTemplate.seasonReview => 'SEASON REVIEW',
+    CardTemplate.statsDashboard => 'DATA VIZ',
     _ => 'MOMENT',
   };
 
@@ -166,6 +167,26 @@ class MomentCanvas extends StatelessWidget {
                 style: CardTypography.body(color: Colors.white70),
                 maxLines: 3,
                 minFontSize: 12,
+              ),
+            ],
+            if (config.template == CardTemplate.statsDashboard) ...[
+              const SizedBox(height: 8),
+              if (DataVizInput.integers(data.positions).length >= 2)
+                BumpChart(positions: data.positions, height: 56),
+              Row(
+                children: [
+                  RadarChart(metrics: data.metrics, size: 84),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Column(
+                      children: [
+                        XgTimeline(points: data.xg, height: 48),
+                        const SizedBox(height: 4),
+                        ShotMap(shots: data.shots, height: 64),
+                      ],
+                    ),
+                  ),
+                ],
               ),
             ],
             if (config.template == CardTemplate.seasonReview) ...[

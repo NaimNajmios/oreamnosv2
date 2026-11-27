@@ -204,6 +204,7 @@ const _$CardTemplateEnumMap = {
   CardTemplate.playerOfTheMatch: 'playerOfTheMatch',
   CardTemplate.profileQA: 'profileQA',
   CardTemplate.seasonReview: 'seasonReview',
+  CardTemplate.statsDashboard: 'statsDashboard',
   CardTemplate.freeform: 'freeform',
 };
 
@@ -770,6 +771,10 @@ Moment _$MomentFromJson(Map<String, dynamic> json) => Moment(
   nominees: json['nominees'] as String? ?? '',
   questions: json['questions'] as String? ?? '',
   result: json['result'] as String? ?? '',
+  metrics: json['metrics'] as String? ?? '',
+  positions: json['positions'] as String? ?? '',
+  xg: json['xg'] as String? ?? '',
+  shots: json['shots'] as String? ?? '',
   suggestedTemplate: $enumDecodeNullable(
     _$CardTemplateEnumMap,
     json['suggestedTemplate'],
@@ -796,6 +801,10 @@ Map<String, dynamic> _$MomentToJson(Moment instance) => <String, dynamic>{
   'nominees': instance.nominees,
   'questions': instance.questions,
   'result': instance.result,
+  'metrics': instance.metrics,
+  'positions': instance.positions,
+  'xg': instance.xg,
+  'shots': instance.shots,
   'suggestedTemplate': _$CardTemplateEnumMap[instance.suggestedTemplate],
   'runtimeType': instance.$type,
 };

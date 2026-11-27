@@ -384,6 +384,10 @@ class CardGeneratorViewModel extends Notifier<CardGeneratorState> {
     _prefsService.setShowBrandFooter(show);
   }
 
+  void setShowSafeZone(bool show) {
+    state = state.copyWith(showSafeZone: show);
+  }
+
   void saveDragSnapshot() => _saveSnapshot();
 
   /// Surprise-Me: randomizes the visual design (Android `shuffleDesign`
@@ -772,15 +776,18 @@ class CardGeneratorViewModel extends Notifier<CardGeneratorState> {
     );
   }
 
-  double _pixelRatioForRatio(CardRatio ratio) {
+  ExportSize _exportSizeForRatio(CardRatio ratio) {
     return switch (ratio) {
-      CardRatio.square => 3.0,
-      CardRatio.portrait45 => 2.8,
-      CardRatio.story => 2.5,
-      CardRatio.wide => 2.8,
-      CardRatio.photo34 => 2.8,
+      CardRatio.square => ExportSize.square,
+      CardRatio.portrait45 => ExportSize.portrait,
+      CardRatio.story => ExportSize.story,
+      CardRatio.wide => ExportSize.wide,
+      CardRatio.photo34 => ExportSize.photo34,
     };
   }
+
+  double _pixelRatioForRatio(CardRatio ratio) =>
+      ExportService.pixelRatio(_exportSizeForRatio(ratio));
 
   Future<bool> saveToGallery(GlobalKey boundaryKey) async {
     try {

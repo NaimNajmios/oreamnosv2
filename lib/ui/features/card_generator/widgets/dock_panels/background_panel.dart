@@ -250,6 +250,14 @@ class _BackgroundPanelState extends ConsumerState<BackgroundPanel> {
               ),
             ],
           ),
+          const SizedBox(height: 8),
+          SwitchListTile(
+            dense: true,
+            title: const Text('Safe-zone guide'),
+            subtitle: const Text('Editor only — not exported'),
+            value: state.showSafeZone,
+            onChanged: (v) => notifier.setShowSafeZone(v),
+          ),
         ],
       ],
     );

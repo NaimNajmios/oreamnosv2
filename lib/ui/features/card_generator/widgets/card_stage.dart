@@ -7,11 +7,15 @@ class CardStage extends StatelessWidget {
   final double aspectRatio;
   final Widget child;
 
+  /// Optional editor-only layer drawn outside the export boundary.
+  final Widget? overlay;
+
   const CardStage({
     super.key,
     required this.boundaryKey,
     required this.aspectRatio,
     required this.child,
+    this.overlay,
   });
 
   @override
@@ -31,16 +35,22 @@ class CardStage extends StatelessWidget {
           clipBehavior: Clip.antiAlias,
           child: AspectRatio(
             aspectRatio: aspectRatio,
-            child: reduceMotion
-                ? RepaintBoundary(key: boundaryKey, child: child)
-                : AnimatedSwitcher(
-                    duration: AppMotion.cardMove,
-                    switchInCurve: AppMotion.curveCardMove,
-                    child: RepaintBoundary(
-                      key: ValueKey('${boundaryKey.hashCode}-$aspectRatio'),
-                      child: child,
-                    ),
-                  ),
+            child: Stack(
+              fit: StackFit.expand,
+              children: [
+                reduceMotion
+                    ? RepaintBoundary(key: boundaryKey, child: child)
+                    : AnimatedSwitcher(
+                        duration: AppMotion.cardMove,
+                        switchInCurve: AppMotion.curveCardMove,
+                        child: RepaintBoundary(
+                          key: ValueKey('${boundaryKey.hashCode}-$aspectRatio'),
+                          child: child,
+                        ),
+                      ),
+                ?overlay,
+              ],
+            ),
           ),
         ),
       ),

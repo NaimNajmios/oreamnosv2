@@ -17,6 +17,7 @@ void main() {
     CardTemplate.playerOfTheMatch,
     CardTemplate.profileQA,
     CardTemplate.seasonReview,
+    CardTemplate.statsDashboard,
   ];
 
   group('moment templates', () {

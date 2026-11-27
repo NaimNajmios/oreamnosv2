@@ -106,6 +106,10 @@ enum CardTemplate {
     Color(0xFF0B0B0F),
     Color(0xFF123A6B),
   ]),
+  statsDashboard('Stats Dashboard', 'Advanced data-viz module card', [
+    Color(0xFF0B0B0F),
+    Color(0xFF0E3D5C),
+  ]),
   freeform('Freeform', 'Draggable text elements', [
     Color(0xFF0B0B0F),
     Color(0xFF1F2B30),
@@ -145,6 +149,7 @@ enum CardTemplate {
     playerOfTheMatch,
     profileQA,
     seasonReview,
+    statsDashboard,
     freeform,
   ];
 
@@ -207,6 +212,8 @@ enum CardTemplate {
         return 'profile_qa';
       case seasonReview:
         return 'season_review';
+      case statsDashboard:
+        return 'stats_dashboard';
       case freeform:
         return 'freeform';
     }
@@ -276,6 +283,8 @@ enum CardTemplate {
         return profileQA;
       case 'seasonReview':
         return seasonReview;
+      case 'statsDashboard':
+        return statsDashboard;
       default:
         return socialPost;
     }

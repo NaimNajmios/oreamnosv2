@@ -36,6 +36,7 @@ abstract class CardGeneratorState with _$CardGeneratorState {
 
     File? backgroundImage,
     @Default(0.55) double scrimOpacity,
+    @Default(false) bool showSafeZone,
     @Default(false) bool useVignette,
     @Default(false) bool useAutoPalette,
     List<Color>? extractedPalette,

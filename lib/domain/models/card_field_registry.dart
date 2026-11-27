@@ -34,7 +34,8 @@ class CardFieldRegistry {
       CardTemplate.milestone ||
       CardTemplate.playerOfTheMatch ||
       CardTemplate.profileQA ||
-      CardTemplate.seasonReview => _moment,
+      CardTemplate.seasonReview ||
+      CardTemplate.statsDashboard => _moment,
       CardTemplate.freeform => _freeform,
     };
   }
@@ -1355,6 +1356,38 @@ class CardFieldRegistry {
       maxChars: 40,
       group: 'optional',
       aliases: ['winner'],
+    ),
+    CardFieldDescriptor(
+      key: 'metrics',
+      label: 'Radar Metrics (0-1)',
+      type: CardFieldType.text,
+      maxChars: 90,
+      group: 'optional',
+      aiHint: 'comma separated, e.g. 0.8,0.6,0.9',
+    ),
+    CardFieldDescriptor(
+      key: 'positions',
+      label: 'Positions by Matchweek',
+      type: CardFieldType.text,
+      maxChars: 90,
+      group: 'optional',
+      aiHint: 'comma separated league positions',
+    ),
+    CardFieldDescriptor(
+      key: 'xg',
+      label: 'xG Timeline',
+      type: CardFieldType.text,
+      maxChars: 120,
+      group: 'optional',
+      aiHint: 'minute:xg pairs, e.g. 12:0.3,45:0.7',
+    ),
+    CardFieldDescriptor(
+      key: 'shots',
+      label: 'Shot Map',
+      type: CardFieldType.text,
+      maxChars: 120,
+      group: 'optional',
+      aiHint: 'x,y,xg,goal tuples separated by semicolons',
     ),
   ];
 }

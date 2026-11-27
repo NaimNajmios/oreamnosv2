@@ -661,7 +661,8 @@ class CardDataExtractor {
           CardTemplate.milestone ||
           CardTemplate.playerOfTheMatch ||
           CardTemplate.profileQA ||
-          CardTemplate.seasonReview:
+          CardTemplate.seasonReview ||
+          CardTemplate.statsDashboard:
         return CardData.moment(
           headline: _s(json, 'headline'),
           subtext: _s(json, 'subtext'),
@@ -681,6 +682,10 @@ class CardDataExtractor {
           nominees: _s(json, 'nominees'),
           questions: _s(json, 'questions'),
           result: _s(json, 'result'),
+          metrics: _s(json, 'metrics'),
+          positions: _s(json, 'positions'),
+          xg: _s(json, 'xg'),
+          shots: _s(json, 'shots'),
           suggestedTemplate: effective,
         );
       case CardTemplate.freeform:

@@ -29,6 +29,8 @@ import '../widgets/card_background_renderer.dart';
 
 import 'package:oreamnos/domain/models/card_config.dart';
 
+import '../widgets/primitives/safe_zone_guide.dart';
+
 import '../widgets/picsart_tool_dock.dart';
 import '../widgets/export_bottom_sheet.dart';
 import '../widgets/studio_deck_sheet.dart';
@@ -296,6 +298,11 @@ class _CardGeneratorScreenState extends ConsumerState<CardGeneratorScreen> {
             child: CardStage(
               boundaryKey: _boundaryKey,
               aspectRatio: state.selectedRatio.ratio,
+              overlay: state.showSafeZone
+                  ? SafeZoneGuide(
+                      size: ExportSize.fromRatioName(state.selectedRatio.name),
+                    )
+                  : null,
               child: Stack(
                 fit: StackFit.expand,
                 children: [

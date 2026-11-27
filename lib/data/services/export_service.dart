@@ -1,11 +1,15 @@
 import 'package:injectable/injectable.dart';
 
 import 'dart:io';
+import 'dart:typed_data';
 import 'dart:ui' as ui;
 
 import 'package:flutter/rendering.dart';
 import 'package:flutter/widgets.dart';
 import 'package:gal/gal.dart';
+import 'package:image/image.dart' as img;
+import 'package:oreamnos/config/theme/card_scale.dart';
+import 'package:oreamnos/domain/models/card_config.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:share_plus/share_plus.dart';
 
@@ -34,6 +38,26 @@ class ExportService {
     }
 
     return byteData.buffer.asUint8List();
+  }
+
+  /// Pixel ratio that makes the captured canvas exactly [size]'s pixel
+  /// width, since the editor stage renders at [CardScale.designWidth].
+  static double pixelRatio(ExportSize size) =>
+      size.width / CardScale.designWidth;
+
+  /// Captures the same boundary as [capturePng] but encodes JPEG at [quality].
+  Future<List<int>> captureJpeg(
+    GlobalKey boundaryKey, {
+    required ExportSize size,
+    int quality = 88,
+  }) async {
+    final png = await capturePng(boundaryKey, pixelRatio: pixelRatio(size));
+    final decoded = img.decodeImage(Uint8List.fromList(png));
+    if (decoded == null) {
+      throw Exception('Failed to decode captured PNG for JPEG export.');
+    }
+    final encoded = img.encodeJpg(decoded, quality: quality.clamp(1, 100));
+    return encoded;
   }
 
   /// Saves the captured PNG bytes to the device's gallery (Oreamnos album).

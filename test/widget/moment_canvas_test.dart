@@ -21,6 +21,7 @@ void main() {
     CardTemplate.playerOfTheMatch: 'Salah',
     CardTemplate.profileQA: 'GOAL',
     CardTemplate.seasonReview: 'GOAL',
+    CardTemplate.statsDashboard: 'GOAL',
   };
 
   for (final entry in cases.entries) {
@@ -36,6 +37,10 @@ void main() {
         kit: 'HOME',
         years: '32',
         appearances: '100',
+        metrics: '0.8,0.6,0.9,0.4',
+        positions: '3,5,2,4',
+        xg: '12:0.3,45:0.7',
+        shots: '0.2,0.8,0.4,goal;0.7,0.3,0.1,miss',
         suggestedTemplate: entry.key,
       ) as Moment;
 
