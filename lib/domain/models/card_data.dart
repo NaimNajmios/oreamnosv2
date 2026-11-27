@@ -319,6 +319,24 @@ sealed class CardData with _$CardData {
     CardTemplate? suggestedTemplate,
   }) = AwardNominee;
 
+  // Shared data shape for the moment family (goal, full time, next up,
+  // substitution). One union member keeps the extraction slice manageable.
+  const factory CardData.moment({
+    @Default('N/A') String headline,
+    @Default('') String subtext,
+    @Default('') String minute,
+    @Default('') String score,
+    @Default('') String playerName,
+    @Default('') String homeTeam,
+    @Default('') String awayTeam,
+    @Default('') String venue,
+    @Default('') String competition,
+    @Default('') String kickoff,
+    @Default('') String playersOut,
+    @Default('') String playersIn,
+    CardTemplate? suggestedTemplate,
+  }) = Moment;
+
   // Sparse lightweight fallback — used when LLM returns old generic schema
   const factory CardData.sparse({
     @Default('Generated Card') String headline,
@@ -378,6 +396,7 @@ sealed class CardData with _$CardData {
         teamName == 'N/A' ? 'Expiring Contracts' : teamName,
       AwardNominee(:final awardName) =>
         awardName == 'N/A' ? 'Award Nominees' : awardName,
+      Moment(:final headline) => headline,
       SparseCard(:final headline) => headline,
     };
   }
@@ -408,6 +427,7 @@ sealed class CardData with _$CardData {
       ContractExpiry(:final seasonYear) =>
         seasonYear == 'N/A' ? '' : seasonYear,
       AwardNominee(:final category) => category == 'N/A' ? '' : category,
+      Moment(:final subtext) => subtext,
       SparseCard(:final subtext) => subtext,
     };
   }
@@ -436,6 +456,7 @@ sealed class CardData with _$CardData {
       ContractExpiry(:final wage) => wage == 'N/A' ? null : wage,
       AwardNominee(:final currentFavorite) =>
         currentFavorite == 'N/A' ? null : currentFavorite,
+      Moment(:final minute) => minute.isEmpty ? null : minute,
       SparseCard(:final microStat) => microStat,
     };
   }
@@ -466,6 +487,7 @@ sealed class CardData with _$CardData {
       InjuryReport() => CardTemplate.injuryReport,
       ContractExpiry() => CardTemplate.contractExpiry,
       AwardNominee() => CardTemplate.awardNominee,
+      Moment() => CardTemplate.goal,
       SparseCard() => CardTemplate.socialPost,
     };
   }
@@ -634,6 +656,18 @@ extension CardDataCopy on CardData {
             : CardData.awardNominee(
                 awardName: h,
                 category: s.isEmpty ? 'N/A' : s,
+              ),
+      CardTemplate.goal ||
+      CardTemplate.fullTime ||
+      CardTemplate.nextUp ||
+      CardTemplate.substitution =>
+        this is Moment && suggestedTemplate == target
+            ? this
+            : CardData.moment(
+                headline: h,
+                subtext: s,
+                minute: m == 'N/A' ? '' : m,
+                suggestedTemplate: target,
               ),
       CardTemplate.freeform =>
         this is SparseCard && suggestedTemplate == CardTemplate.freeform

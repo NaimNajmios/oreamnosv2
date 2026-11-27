@@ -65,6 +65,19 @@ enum CardTemplate {
     Color(0xFF0B0B0F),
     Color(0xFF6B5208),
   ]),
+  goal('Goal', 'Scorer, minute and scoreline', [
+    Color(0xFF0B0B0F),
+    Color(0xFF1B5E20),
+  ]),
+  fullTime('Full Time', 'Final score and scorers', [
+    Color(0xFF0B0B0F),
+    Color(0xFF123A6B),
+  ]),
+  nextUp('Next Up', 'Upcoming fixture', [Color(0xFF0B0B0F), Color(0xFF281B6B)]),
+  substitution('Substitution', 'Player on/off and minute', [
+    Color(0xFF0B0B0F),
+    Color(0xFF0A3A42),
+  ]),
   freeform('Freeform', 'Draggable text elements', [
     Color(0xFF0B0B0F),
     Color(0xFF1F2B30),
@@ -93,6 +106,10 @@ enum CardTemplate {
     injuryReport,
     contractExpiry,
     awardNominee,
+    goal,
+    fullTime,
+    nextUp,
+    substitution,
     freeform,
   ];
 
@@ -133,6 +150,14 @@ enum CardTemplate {
         return 'contract_expiry';
       case awardNominee:
         return 'award_nominee';
+      case goal:
+        return 'goal';
+      case fullTime:
+        return 'full_time';
+      case nextUp:
+        return 'next_up';
+      case substitution:
+        return 'substitution';
       case freeform:
         return 'freeform';
     }
@@ -180,6 +205,14 @@ enum CardTemplate {
         return contractExpiry;
       case 'awardNominee':
         return awardNominee;
+      case 'goal':
+        return goal;
+      case 'fullTime':
+        return fullTime;
+      case 'nextUp':
+        return nextUp;
+      case 'substitution':
+        return substitution;
       default:
         return socialPost;
     }

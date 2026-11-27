@@ -651,6 +651,25 @@ class CardDataExtractor {
           host: _s(json, 'host'),
           suggestedTemplate: effective,
         );
+      case CardTemplate.goal ||
+          CardTemplate.fullTime ||
+          CardTemplate.nextUp ||
+          CardTemplate.substitution:
+        return CardData.moment(
+          headline: _s(json, 'headline'),
+          subtext: _s(json, 'subtext'),
+          minute: _s(json, 'minute'),
+          score: _s(json, 'score'),
+          playerName: _s(json, 'playerName'),
+          homeTeam: _s(json, 'homeTeam'),
+          awayTeam: _s(json, 'awayTeam'),
+          venue: _s(json, 'venue'),
+          competition: _s(json, 'competition'),
+          kickoff: _s(json, 'kickoff'),
+          playersOut: _s(json, 'playersOut'),
+          playersIn: _s(json, 'playersIn'),
+          suggestedTemplate: effective,
+        );
       case CardTemplate.freeform:
         return CardData.sparse(
           headline: _s(json, 'headline'),

@@ -193,6 +193,10 @@ const _$CardTemplateEnumMap = {
   CardTemplate.injuryReport: 'injuryReport',
   CardTemplate.contractExpiry: 'contractExpiry',
   CardTemplate.awardNominee: 'awardNominee',
+  CardTemplate.goal: 'goal',
+  CardTemplate.fullTime: 'fullTime',
+  CardTemplate.nextUp: 'nextUp',
+  CardTemplate.substitution: 'substitution',
   CardTemplate.freeform: 'freeform',
 };
 
@@ -739,6 +743,43 @@ Map<String, dynamic> _$AwardNomineeToJson(AwardNominee instance) =>
       'suggestedTemplate': _$CardTemplateEnumMap[instance.suggestedTemplate],
       'runtimeType': instance.$type,
     };
+
+Moment _$MomentFromJson(Map<String, dynamic> json) => Moment(
+  headline: json['headline'] as String? ?? 'N/A',
+  subtext: json['subtext'] as String? ?? '',
+  minute: json['minute'] as String? ?? '',
+  score: json['score'] as String? ?? '',
+  playerName: json['playerName'] as String? ?? '',
+  homeTeam: json['homeTeam'] as String? ?? '',
+  awayTeam: json['awayTeam'] as String? ?? '',
+  venue: json['venue'] as String? ?? '',
+  competition: json['competition'] as String? ?? '',
+  kickoff: json['kickoff'] as String? ?? '',
+  playersOut: json['playersOut'] as String? ?? '',
+  playersIn: json['playersIn'] as String? ?? '',
+  suggestedTemplate: $enumDecodeNullable(
+    _$CardTemplateEnumMap,
+    json['suggestedTemplate'],
+  ),
+  $type: json['runtimeType'] as String?,
+);
+
+Map<String, dynamic> _$MomentToJson(Moment instance) => <String, dynamic>{
+  'headline': instance.headline,
+  'subtext': instance.subtext,
+  'minute': instance.minute,
+  'score': instance.score,
+  'playerName': instance.playerName,
+  'homeTeam': instance.homeTeam,
+  'awayTeam': instance.awayTeam,
+  'venue': instance.venue,
+  'competition': instance.competition,
+  'kickoff': instance.kickoff,
+  'playersOut': instance.playersOut,
+  'playersIn': instance.playersIn,
+  'suggestedTemplate': _$CardTemplateEnumMap[instance.suggestedTemplate],
+  'runtimeType': instance.$type,
+};
 
 SparseCard _$SparseCardFromJson(Map<String, dynamic> json) => SparseCard(
   headline: json['headline'] as String? ?? 'Generated Card',

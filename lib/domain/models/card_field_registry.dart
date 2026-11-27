@@ -24,6 +24,10 @@ class CardFieldRegistry {
       CardTemplate.injuryReport => _injuryReport,
       CardTemplate.contractExpiry => _contractExpiry,
       CardTemplate.awardNominee => _awardNominee,
+      CardTemplate.goal ||
+      CardTemplate.fullTime ||
+      CardTemplate.nextUp ||
+      CardTemplate.substitution => _moment,
       CardTemplate.freeform => _freeform,
     };
   }
@@ -1199,6 +1203,103 @@ class CardFieldRegistry {
       type: CardFieldType.text,
       maxChars: 24,
       group: 'secondary',
+    ),
+  ];
+
+  // Shared moment-family fields (goal / full time / next up / substitution).
+  static const _moment = [
+    CardFieldDescriptor(
+      key: 'headline',
+      label: 'Headline',
+      type: CardFieldType.text,
+      maxChars: 60,
+      required: true,
+      aiHint: 'short fact, e.g. GOAL or FULL TIME',
+    ),
+    CardFieldDescriptor(
+      key: 'subtext',
+      label: 'Detail',
+      type: CardFieldType.text,
+      maxChars: 90,
+      group: 'secondary',
+    ),
+    CardFieldDescriptor(
+      key: 'minute',
+      label: 'Minute',
+      type: CardFieldType.text,
+      maxChars: 12,
+      group: 'secondary',
+      aliases: ['time', 'matchMinute'],
+    ),
+    CardFieldDescriptor(
+      key: 'score',
+      label: 'Scoreline',
+      type: CardFieldType.text,
+      maxChars: 20,
+      group: 'secondary',
+      aliases: ['scoreline', 'result'],
+    ),
+    CardFieldDescriptor(
+      key: 'playerName',
+      label: 'Player',
+      type: CardFieldType.text,
+      maxChars: 30,
+      aliases: ['scorer', 'playerOn'],
+    ),
+    CardFieldDescriptor(
+      key: 'homeTeam',
+      label: 'Home Team',
+      type: CardFieldType.text,
+      maxChars: 24,
+      group: 'optional',
+      aliases: ['home'],
+    ),
+    CardFieldDescriptor(
+      key: 'awayTeam',
+      label: 'Away Team',
+      type: CardFieldType.text,
+      maxChars: 24,
+      group: 'optional',
+      aliases: ['away'],
+    ),
+    CardFieldDescriptor(
+      key: 'venue',
+      label: 'Venue',
+      type: CardFieldType.text,
+      maxChars: 40,
+      group: 'optional',
+      aliases: ['stadium'],
+    ),
+    CardFieldDescriptor(
+      key: 'competition',
+      label: 'Competition',
+      type: CardFieldType.text,
+      maxChars: 40,
+      group: 'optional',
+    ),
+    CardFieldDescriptor(
+      key: 'kickoff',
+      label: 'Kick-off',
+      type: CardFieldType.text,
+      maxChars: 24,
+      group: 'optional',
+      aliases: ['matchTime'],
+    ),
+    CardFieldDescriptor(
+      key: 'playersOut',
+      label: 'Player Off',
+      type: CardFieldType.text,
+      maxChars: 40,
+      group: 'optional',
+      aliases: ['off', 'subOff'],
+    ),
+    CardFieldDescriptor(
+      key: 'playersIn',
+      label: 'Player On',
+      type: CardFieldType.text,
+      maxChars: 40,
+      group: 'optional',
+      aliases: ['on', 'subOn'],
     ),
   ];
 }

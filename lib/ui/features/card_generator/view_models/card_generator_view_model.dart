@@ -463,6 +463,7 @@ class CardGeneratorViewModel extends Notifier<CardGeneratorState> {
           injuryReport: (x) => x.copyWith(teamName: v.isEmpty ? 'N/A' : v),
           contractExpiry: (x) => x.copyWith(teamName: v.isEmpty ? 'N/A' : v),
           awardNominee: (x) => x.copyWith(awardName: v.isEmpty ? 'N/A' : v),
+          moment: (x) => x.copyWith(headline: v.isEmpty ? 'N/A' : v),
           sparse: (x) => x.copyWith(headline: v.isEmpty ? 'Generated Card' : v),
         ),
       );
@@ -630,6 +631,7 @@ class CardGeneratorViewModel extends Notifier<CardGeneratorState> {
           injuryReport: (x) => x.copyWith(nextMatch: v.isEmpty ? 'N/A' : v),
           contractExpiry: (x) => x.copyWith(seasonYear: v.isEmpty ? 'N/A' : v),
           awardNominee: (x) => x.copyWith(category: v.isEmpty ? 'N/A' : v),
+          moment: (x) => x.copyWith(subtext: v),
           sparse: (x) => x.copyWith(subtext: v),
         ),
       );
@@ -671,6 +673,7 @@ class CardGeneratorViewModel extends Notifier<CardGeneratorState> {
               x.copyWith(recoveryPercentage: isClear ? 'N/A' : v),
           contractExpiry: (x) => x.copyWith(wage: isClear ? 'N/A' : v),
           awardNominee: (x) => x.copyWith(currentFavorite: isClear ? 'N/A' : v),
+          moment: (x) => x.copyWith(minute: isClear ? '' : v),
           sparse: (x) => x.copyWith(microStat: isClear ? null : v),
         ),
       );
