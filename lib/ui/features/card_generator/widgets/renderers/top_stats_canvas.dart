@@ -96,35 +96,41 @@ class TopStatsCanvas extends StatelessWidget {
                       const SizedBox(width: 14),
                       // Label & Context
                       Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            Text(
-                              s.label.toUpperCase(),
-                              style: CardTypography.kicker(
-                                color: Colors.white,
-                                fontSize: 12,
+                        child: GlassTile(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 8,
+                            vertical: 4,
+                          ),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Text(
+                                s.label.toUpperCase(),
+                                style: CardTypography.kicker(
+                                  color: Colors.white,
+                                  fontSize: 12,
+                                ),
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
                               ),
-                              maxLines: 1,
-                              overflow: TextOverflow.ellipsis,
-                            ),
-                            CardSlot(
-                              value: s.context,
-                              child: Padding(
-                                padding: const EdgeInsets.only(top: 2),
-                                child: Text(
-                                  s.context,
-                                  style: CardTypography.meta(
-                                    color: Colors.white60,
-                                    fontSize: 10,
+                              CardSlot(
+                                value: s.context,
+                                child: Padding(
+                                  padding: const EdgeInsets.only(top: 2),
+                                  child: Text(
+                                    s.context,
+                                    style: CardTypography.meta(
+                                      color: Colors.white60,
+                                      fontSize: 10,
+                                    ),
+                                    maxLines: 1,
+                                    overflow: TextOverflow.ellipsis,
                                   ),
-                                  maxLines: 1,
-                                  overflow: TextOverflow.ellipsis,
                                 ),
                               ),
-                            ),
-                          ],
+                            ],
+                          ),
                         ),
                       ),
                     ],

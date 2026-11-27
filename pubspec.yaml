@@ -87,6 +87,7 @@ flutter:
     - icon/icon_kickoff_transparent.svg
     - assets/illustrations/empty_kickoff.svg
     - assets/textures/grain.png
+    - assets/textures/halftone.png
 
   fonts:
     - family: BigShouldersDisplay

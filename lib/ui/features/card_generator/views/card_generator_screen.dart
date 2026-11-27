@@ -8,6 +8,7 @@ import 'package:path_provider/path_provider.dart';
 import 'package:oreamnos/config/routes/app_router.dart';
 import 'package:oreamnos/config/theme/app_spacing.dart';
 import 'package:oreamnos/domain/models/card_brief.dart';
+import 'package:oreamnos/domain/services/auto_scrim.dart';
 import 'package:oreamnos/ui/core/utils/haptics.dart';
 import 'package:oreamnos/ui/core/widgets/app_snackbar.dart';
 import 'package:oreamnos/ui/core/widgets/kickoff_mark.dart';
@@ -309,7 +310,10 @@ class _CardGeneratorScreenState extends ConsumerState<CardGeneratorScreen> {
                         backgroundType: state.backgroundType,
                         presetBackground: state.presetBackground,
                         fontSizeMultiplier: state.headlineScale,
-                        overlayOpacity: state.scrimOpacity,
+                        overlayOpacity: AutoScrim.adjust(
+                          state.scrimOpacity,
+                          state.extractedPalette,
+                        ),
                         showScrim: true,
                         scrimType: state.backgroundImage != null
                             ? ScrimType.dark

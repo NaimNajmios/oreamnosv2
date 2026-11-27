@@ -4,11 +4,13 @@ import 'package:flutter/material.dart' hide CardTheme;
 import 'package:oreamnos/config/theme/card_filters.dart';
 import 'package:oreamnos/config/theme/card_theme.dart';
 import 'package:oreamnos/domain/models/card_config.dart';
+import 'package:oreamnos/domain/models/card_template.dart';
 import 'package:oreamnos/domain/services/giant_text_source.dart';
 
 import '../view_models/card_generator_state.dart';
 import 'primitives/giant_text_behind.dart';
 import 'primitives/grain_overlay.dart';
+import 'primitives/halftone_overlay.dart';
 
 /// Renders the card background including preset gradients, custom images,
 /// photo filters, opacity, blur, and positioning.
@@ -32,7 +34,12 @@ class CardBackgroundRenderer extends StatelessWidget {
     } else {
       return const SizedBox.shrink();
     }
-    return GrainOverlay(child: background);
+    Widget layered = GrainOverlay(child: background);
+    if (state.selectedTemplate == CardTemplate.onThisDay ||
+        state.selectedTemplate == CardTemplate.socialPost) {
+      layered = HalftoneOverlay(child: layered);
+    }
+    return layered;
   }
 
   static LinearGradient presetGradient(PresetBackground preset) {

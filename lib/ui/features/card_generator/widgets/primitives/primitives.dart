@@ -5,6 +5,8 @@ export 'crest_badge.dart';
 export 'content_fit_resolver.dart';
 export 'fade_hairline.dart';
 export 'giant_text_behind.dart';
+export 'glass_tile.dart';
 export 'grain_overlay.dart';
+export 'halftone_overlay.dart';
 export 'subject_glow.dart';
 export 'vignette.dart';
