@@ -209,6 +209,11 @@ class _CardGeneratorScreenState extends ConsumerState<CardGeneratorScreen> {
             actions: [
               if (hasData) ...[
                 IconButton(
+                  tooltip: 'Carousel Studio',
+                  icon: const Icon(Icons.view_carousel_outlined, size: 20),
+                  onPressed: () => context.go(RoutePaths.carousel),
+                ),
+                IconButton(
                   tooltip: 'Publish to Facebook',
                   icon: const Icon(Icons.facebook_rounded, size: 20),
                   onPressed: _handlePublishToFacebook,

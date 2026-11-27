@@ -11,6 +11,8 @@ import '../../ui/features/settings/views/widgets_manager_screen.dart';
 import '../../ui/features/usage/views/usage_screen.dart';
 import '../../ui/features/usage/views/session_list_screen.dart';
 import '../../ui/features/card_generator/views/card_generator_screen.dart';
+import '../../ui/features/card_generator/views/carousel_composer_screen.dart';
+import '../../ui/features/settings/views/brand_kit_screen.dart';
 import '../../ui/features/generate/views/reading_mode_screen.dart';
 import '../../ui/features/facebook/views/facebook_compose_screen.dart';
 import '../../ui/features/facebook/views/facebook_comments_screen.dart';
@@ -37,6 +39,8 @@ abstract final class RoutePaths {
   static const String library = '/library';
   static const String widgets = '/widgets';
   static const String cardGenerator = '/card-generator';
+  static const String carousel = '/carousel';
+  static const String brandKit = '/brand-kit';
   static const String debugLogs = '/debug-logs';
   static const String sessionHistory = '/sessions';
   static const String publish = '/publish';
@@ -310,6 +314,16 @@ GoRouter createAppRouter({String? initialLocation}) {
         path: RoutePaths.widgets,
         pageBuilder: (context, state) =>
             _kickoffPage(child: const WidgetsManagerScreen()),
+      ),
+      GoRoute(
+        path: RoutePaths.carousel,
+        pageBuilder: (context, state) =>
+            _kickoffPage(child: const CarouselComposerScreen()),
+      ),
+      GoRoute(
+        path: RoutePaths.brandKit,
+        pageBuilder: (context, state) =>
+            _kickoffPage(child: const BrandKitScreen()),
       ),
       GoRoute(
         path: RoutePaths.facebookCompose,

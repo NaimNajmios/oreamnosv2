@@ -354,6 +354,17 @@ class SettingsScreen extends ConsumerWidget {
           ),
         ],
       ),
+      const SectionHeader(title: 'Card Studio'),
+      sectionCard(
+        children: [
+          SettingsTile(
+            leadingIcon: Icons.badge_outlined,
+            title: 'Brand Kit',
+            subtitle: 'Club colours, crest, handle and roster',
+            onTap: () => context.push(RoutePaths.brandKit),
+          ),
+        ],
+      ),
       const SectionHeader(title: 'Home screen widgets'),
       sectionCard(
         children: [

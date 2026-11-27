@@ -60,6 +60,21 @@ class ExportService {
     return encoded;
   }
 
+  /// Shares several ordered card images as one native share payload.
+  Future<void> sharePages(
+    List<List<int>> pages, {
+    String filename = 'oreamnos_slide',
+  }) async {
+    final tempDir = await getTemporaryDirectory();
+    final files = <XFile>[];
+    for (var i = 0; i < pages.length; i++) {
+      final file = File('${tempDir.path}/${filename}_${i + 1}.png');
+      await file.writeAsBytes(pages[i]);
+      files.add(XFile(file.path));
+    }
+    await SharePlus.instance.share(ShareParams(files: files));
+  }
+
   /// Saves the captured PNG bytes to the device's gallery (Oreamnos album).
   /// PNG is lossless — preferred over JPEG95 for flat graphics/text cards.
   /// Capture at pixelRatio 3.0 yields ~1080px+ output (Android exact-px parity).
