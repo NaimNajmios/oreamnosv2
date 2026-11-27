@@ -2,72 +2,72 @@ import 'package:flutter/material.dart';
 
 enum CardTemplate {
   playerSpotlight('Player Spotlight', 'Player performance highlight', [
-    Color(0xFF1A237E),
-    Color(0xFF283593),
+    Color(0xFF0B0B0F),
+    Color(0xFF1B2A6B),
   ]),
   headlineQuote('Headline Quote', 'Key quote or headline', [
-    Color(0xFF004D40),
-    Color(0xFF00695C),
+    Color(0xFF0B0B0F),
+    Color(0xFF0E4F45),
   ]),
   topStats('Top 3 Statistics', 'Statistical comparison', [
-    Color(0xFF4A148C),
-    Color(0xFF6A1B9A),
+    Color(0xFF0B0B0F),
+    Color(0xFF3B1B6B),
   ]),
   transferNews('Transfer News', 'Transfers & rumors', [
-    Color(0xFFB71C1C),
-    Color(0xFFD32F2F),
+    Color(0xFF0B0B0F),
+    Color(0xFF6B1B1B),
   ]),
   breakingNews('Breaking News', 'Urgent / breaking news', [
-    Color(0xFF880E4F),
-    Color(0xFFE11D48),
+    Color(0xFF0B0B0F),
+    Color(0xFF5C1230),
   ]),
   matchPreview('Match Preview', 'Upcoming fixture', [
-    Color(0xFF0D47A1),
-    Color(0xFF1976D2),
+    Color(0xFF0B0B0F),
+    Color(0xFF123A6B),
   ]),
   detailedScoreboard('Detailed Scoreboard', 'Full scoreboard stats', [
-    Color(0xFF1B5E20),
-    Color(0xFF2E7D32),
+    Color(0xFF0B0B0F),
+    Color(0xFF14491E),
   ]),
   onThisDay('On This Day', 'Anniversary moment', [
-    Color(0xFF4E342E),
-    Color(0xFF6D4C41),
+    Color(0xFF0B0B0F),
+    Color(0xFF3E2A22),
   ]),
   startingXI('Starting XI', 'Team lineup display', [
-    Color(0xFF263238),
-    Color(0xFF37474F),
+    Color(0xFF0B0B0F),
+    Color(0xFF1F2B30),
   ]),
   matchStatsComparison('Match Stats Comparison', 'Side-by-side stats', [
-    Color(0xFF01579B),
-    Color(0xFF0288D1),
+    Color(0xFF0B0B0F),
+    Color(0xFF0E3D5C),
   ]),
   socialPost('Social Post', 'Minimalist social post', [
-    Color(0xFF212121),
-    Color(0xFF424242),
+    Color(0xFF0B0B0F),
+    Color(0xFF1C1C1C),
   ]),
   rivalry('Head-to-Head', 'Rivalry comparison', [
-    Color(0xFF311B92),
-    Color(0xFF4527A0),
+    Color(0xFF0B0B0F),
+    Color(0xFF281B6B),
   ]),
   tableStandings('League Standings', 'League table', [
-    Color(0xFF006064),
-    Color(0xFF00838F),
+    Color(0xFF0B0B0F),
+    Color(0xFF0A3A42),
   ]),
   injuryReport('Injury Report', 'Injury update', [
-    Color(0xFFBF360C),
-    Color(0xFFE64A19),
+    Color(0xFF0B0B0F),
+    Color(0xFF6B2410),
   ]),
   contractExpiry('Expiring Contracts', 'Contract expiry list', [
-    Color(0xFF33691E),
-    Color(0xFF558B2F),
+    Color(0xFF0B0B0F),
+    Color(0xFF2F4A12),
   ]),
   awardNominee('Award Nominees', 'Award ceremony nominees', [
-    Color(0xFFF57F17),
-    Color(0xFFFF8F00),
+    Color(0xFF0B0B0F),
+    Color(0xFF6B5208),
   ]),
   freeform('Freeform', 'Draggable text elements', [
-    Color(0xFF263238),
-    Color(0xFF37474F),
+    Color(0xFF0B0B0F),
+    Color(0xFF1F2B30),
   ]);
 
   const CardTemplate(this.displayName, this.description, this.previewGradient);

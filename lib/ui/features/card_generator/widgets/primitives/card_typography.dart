@@ -1,58 +1,55 @@
 import 'package:flutter/material.dart';
 
-/// Centralized typography scale for broadcast-grade card renderers.
+import '../../../../../config/theme/card_type.dart';
+
+/// Backwards-compatible facade over the [CardType] five-tier system.
+///
+/// New renderers should use [CardType] directly; these helpers keep the older
+/// scoreboard/quote/stat renderers compiling while they are migrated.
 class CardTypography {
   const CardTypography._();
 
-  /// HERO — the dominant focal element (e.g. score, player name, big fee).
-  static const TextStyle hero = TextStyle(
-    fontFamily: 'BarlowCondensed',
-    fontWeight: FontWeight.w900,
-    fontSize: 96,
-    height: 0.95,
-    letterSpacing: 1,
-    color: Color(0xFFFFFFFF),
-  );
+  /// HERO — the dominant focal element (score, player name, big fee).
+  static TextStyle get hero => CardType.hero;
 
   /// HEADLINE — secondary large display text.
-  static const TextStyle headline = TextStyle(
-    fontFamily: 'BarlowCondensed',
-    fontWeight: FontWeight.w700,
-    fontSize: 44,
-    height: 1.0,
-    letterSpacing: 0.5,
-    color: Color(0xFFFFFFFF),
+  static TextStyle get headline => CardType.display;
+
+  /// TITLE — section titles and player names.
+  static TextStyle title({
+    Color? color,
+    double fontSize = 26,
+    FontWeight fontWeight = FontWeight.w700,
+  }) => CardType.title.copyWith(
+    color: color,
+    fontSize: fontSize,
+    fontWeight: fontWeight,
   );
 
-  /// KICKER — small uppercase category label ("BREAKING NEWS", "TRANSFER ALERT").
-  static TextStyle kicker({Color? color, double fontSize = 13}) => TextStyle(
-    fontFamily: 'Inter',
-    fontWeight: FontWeight.w700,
-    fontSize: fontSize,
-    letterSpacing: 3.5,
-    color: color ?? const Color(0xB3FFFFFF),
-  );
+  /// KICKER — small uppercase category label.
+  static TextStyle kicker({Color? color, double fontSize = 13}) =>
+      CardType.label.copyWith(
+        color: color ?? const Color(0xB3FFFFFF),
+        fontSize: fontSize,
+        letterSpacing: 3.5,
+      );
 
   /// BODY — supporting text or narrative quotes.
   static TextStyle body({
     Color? color,
     double fontSize = 16,
     FontStyle? fontStyle,
-  }) => TextStyle(
-    fontFamily: 'Inter',
-    fontWeight: FontWeight.w400,
+  }) => CardType.body.copyWith(
+    color: color ?? const Color(0xCCFFFFFF),
     fontSize: fontSize,
     fontStyle: fontStyle,
-    height: 1.4,
-    color: color ?? const Color(0xCCFFFFFF),
   );
 
   /// META — timestamps, sources, attendance, bylines.
-  static TextStyle meta({Color? color, double fontSize = 12}) => TextStyle(
-    fontFamily: 'Inter',
-    fontWeight: FontWeight.w500,
-    fontSize: fontSize,
-    letterSpacing: 0.8,
-    color: color ?? const Color(0x99FFFFFF),
-  );
+  static TextStyle meta({Color? color, double fontSize = 12}) =>
+      CardType.label.copyWith(
+        color: color ?? const Color(0x99FFFFFF),
+        fontSize: fontSize,
+        letterSpacing: 0.8,
+      );
 }

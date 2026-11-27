@@ -1,9 +1,12 @@
 import 'dart:ui' as dart_ui;
 
-import 'package:flutter/material.dart';
+import 'package:flutter/material.dart' hide CardTheme;
+import 'package:oreamnos/config/theme/card_filters.dart';
+import 'package:oreamnos/config/theme/card_theme.dart';
 import 'package:oreamnos/domain/models/card_config.dart';
 
 import '../view_models/card_generator_state.dart';
+import 'primitives/grain_overlay.dart';
 
 /// Renders the card background including preset gradients, custom images,
 /// photo filters, opacity, blur, and positioning.
@@ -14,17 +17,20 @@ class CardBackgroundRenderer extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final Widget background;
     if (state.backgroundType == BackgroundType.preset &&
         state.presetBackground != null) {
-      return Container(
+      background = Container(
         decoration: BoxDecoration(
           gradient: presetGradient(state.presetBackground!),
         ),
       );
     } else if (state.backgroundImage != null) {
-      return buildBackgroundByPosition(state);
+      background = buildBackgroundByPosition(state);
+    } else {
+      return const SizedBox.shrink();
     }
-    return const SizedBox.shrink();
+    return GrainOverlay(child: background);
   }
 
   static LinearGradient presetGradient(PresetBackground preset) {
@@ -282,6 +288,22 @@ class CardBackgroundRenderer extends StatelessWidget {
             1,
             0,
           ]),
+          child: child,
+        );
+      case PhotoFilter.duotone:
+        final palette =
+            state.extractedPalette ??
+            (state.accentColor != null
+                ? [state.accentColor!, state.accentColor!]
+                : const [Color(0xFF1A237E), Color(0xFF0D47A1)]);
+        final theme = CardTheme.from(
+          colorPair: palette,
+          accentOverride: state.accentColor,
+        );
+        return ColorFiltered(
+          colorFilter: ColorFilter.matrix(
+            CardFilters.duotone(theme.bg, theme.accent),
+          ),
           child: child,
         );
       case PhotoFilter.none:

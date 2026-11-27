@@ -15,7 +15,7 @@ class BroadcastBackground extends StatelessWidget {
     super.key,
     required this.config,
     required this.child,
-    this.vignetteStrength = 0.5,
+    this.vignetteStrength = 0.2,
   });
 
   final CardConfig config;
@@ -24,37 +24,31 @@ class BroadcastBackground extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final colors = config.colorPair;
+    final theme = config.theme;
     final hasCustomImage = config.backgroundImagePath != null;
 
     return Container(
       decoration: BoxDecoration(
-        gradient: hasCustomImage ? null : GradientBuilder.diagonal(colors),
+        gradient: hasCustomImage
+            ? null
+            : GradientBuilder.diagonal([theme.surface, theme.bg]),
       ),
       child: Stack(
         fit: StackFit.expand,
         children: [
-          // Layer 2: Top-left radial accent light (creates depth/specular glow)
-          if (!hasCustomImage && colors.isNotEmpty)
+          // Flat, team-tinted surface — no radial glow.
+          if (!hasCustomImage)
             Positioned.fill(
               child: IgnorePointer(
                 child: DecoratedBox(
                   decoration: BoxDecoration(
-                    gradient: RadialGradient(
-                      center: const Alignment(-0.6, -0.7),
-                      radius: 1.25,
-                      colors: [
-                        colors.first.withValues(alpha: 0.55),
-                        Colors.transparent,
-                      ],
-                      stops: const [0.0, 1.0],
-                    ),
+                    color: theme.accent.withValues(alpha: 0.06),
                   ),
                 ),
               ),
             ),
 
-          // Layer 3: Edge vignette
+          // Edge framing (kept subtle).
           Vignette(strength: vignetteStrength),
 
           // Layer 4: Scrim

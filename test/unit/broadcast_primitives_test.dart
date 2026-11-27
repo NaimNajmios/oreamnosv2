@@ -37,23 +37,23 @@ void main() {
   });
 
   group('CardTypography', () {
-    test('hero typography has condensed font and black weight', () {
-      expect(CardTypography.hero.fontFamily, 'BarlowCondensed');
+    test('hero typography uses the bundled display face at black weight', () {
+      expect(CardTypography.hero.fontFamily, 'BigShouldersDisplay');
       expect(CardTypography.hero.fontWeight, FontWeight.w900);
-      expect(CardTypography.hero.fontSize, 96);
+      expect(CardTypography.hero.fontSize, 112);
     });
 
-    test('headline typography has condensed font and bold weight', () {
-      expect(CardTypography.headline.fontFamily, 'BarlowCondensed');
-      expect(CardTypography.headline.fontWeight, FontWeight.w700);
-      expect(CardTypography.headline.fontSize, 44);
+    test('headline typography uses the display tier', () {
+      expect(CardTypography.headline.fontFamily, 'BigShouldersDisplay');
+      expect(CardTypography.headline.fontWeight, FontWeight.w800);
+      expect(CardTypography.headline.fontSize, 52);
     });
 
     test('kicker typography has wide tracking', () {
       final kicker = CardTypography.kicker();
       expect(kicker.fontFamily, 'Inter');
       expect(kicker.letterSpacing, greaterThanOrEqualTo(3.0));
-      expect(kicker.fontWeight, FontWeight.w700);
+      expect(kicker.fontWeight, FontWeight.w600);
     });
 
     test('body and meta typography scales appropriately', () {

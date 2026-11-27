@@ -2,6 +2,7 @@ import 'package:flutter/material.dart' hide CardTheme;
 import 'package:oreamnos/config/theme/card_fonts.dart';
 import 'package:oreamnos/config/theme/card_scale.dart';
 import 'package:oreamnos/config/theme/card_theme.dart';
+import 'package:oreamnos/config/theme/card_type.dart';
 
 import 'card_template.dart';
 
@@ -20,7 +21,7 @@ enum ImagePosition {
   floatWindow,
 }
 
-enum PhotoFilter { none, blackWhite, vintage, vibrant, highContrast }
+enum PhotoFilter { none, blackWhite, vintage, vibrant, highContrast, duotone }
 
 enum ExportSize {
   square(1080, 1080),
@@ -80,7 +81,7 @@ class CardConfig {
     this.template = CardTemplate.detailedScoreboard,
     this.backgroundType = BackgroundType.gradient,
     this.colorPair = const [Color(0xFF1A237E), Color(0xFF0D47A1)],
-    this.exportSize = ExportSize.square,
+    this.exportSize = ExportSize.portrait,
     this.backgroundImagePath,
     this.presetBackground,
     this.imagePosition = ImagePosition.background,
@@ -125,10 +126,14 @@ class CardConfig {
     List<Shadow>? shadows,
     bool applyMultiplier = true,
   }) {
-    final family = primaryFontFamilyName ?? 'Inter';
     final scaledSize = applyMultiplier
         ? fontSize * fontSizeMultiplier * aspectRatioScale
         : fontSize;
+    // The two largest tiers always use the bundled hero face; smaller tiers
+    // respect the user's bundled font choice.
+    final family = scaledSize >= 44
+        ? CardFonts.display
+        : (primaryFontFamilyName ?? CardFonts.text);
     return CardFonts.getFont(
       family,
       fontSize: scaledSize,
@@ -148,7 +153,7 @@ class CardConfig {
                   ),
                 ]
               : null),
-    );
+    ).copyWith(fontFeatures: CardType.tabular);
   }
 
   CardConfig copyWith({
