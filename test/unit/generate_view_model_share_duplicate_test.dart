@@ -319,13 +319,17 @@ void main() {
       vm.toggleResearchMode();
 
       // Session 1 pauses inside research enrichment.
-      final first = vm.handleExternalSharedInput('first plain text');
+      final first = vm.handleExternalSharedInput(
+        'Max Dowman Arsenal contract transfer news',
+      );
       await Future<void>.delayed(const Duration(milliseconds: 50));
       expect(slowSearch.searchCalls, 1);
 
       // Session 2 supersedes Session 1 (with research disabled) and finishes.
       vm.toggleResearchMode();
-      final second = vm.handleExternalSharedInput('second plain text');
+      final second = vm.handleExternalSharedInput(
+        'Selangor FC JDT match report',
+      );
       await Future<void>.delayed(const Duration(milliseconds: 50));
       repo.complete();
       await second;

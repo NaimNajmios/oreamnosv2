@@ -49,6 +49,118 @@ class FootballSearchLexicon {
     'spurs': 'Tottenham Hotspur',
   };
 
+  /// Clubs that are safe to put into a search query even when they appear as
+  /// a single capitalised word. Kept small and explicit: an arbitrary capital
+  /// at the start of a sentence is not enough to become an entity.
+  static const Set<String> knownClubs = {
+    'Arsenal',
+    'Chelsea',
+    'Liverpool',
+    'Manchester United',
+    'Manchester City',
+    'Tottenham Hotspur',
+    'Newcastle United',
+    'Aston Villa',
+    'Brighton',
+    'West Ham',
+    'Barcelona',
+    'Real Madrid',
+    'Bayern Munich',
+    'Paris Saint-Germain',
+    'Inter Milan',
+    'AC Milan',
+    'Juventus',
+    'Johor Darul Ta\'zim',
+    'Selangor FC',
+    'Kuala Lumpur City FC',
+    'Sabah FC',
+    'Terengganu FC',
+    'Harimau Malaya',
+  };
+
+  /// Domains used for the trusted-source fallback query. Tavily has no
+  /// "prefer domains" mode; restricting this one query to known outlets is the
+  /// closest supported equivalent.
+  static const List<String> preferredSearchDomains = [
+    'bbc.com',
+    'skysports.com',
+    'espn.com',
+    'reuters.com',
+    'theathletic.com',
+    'goal.com',
+    'stadiumastro.com',
+    'bernama.com',
+    'thestar.com.my',
+    'malaymail.com',
+  ];
+
+  /// Labels pasted by the app's own prompt templates. A line beginning with
+  /// one of these is metadata, not article text.
+  static const Set<String> templateLabels = {
+    'type',
+    'date',
+    'time',
+    'post content',
+    'post',
+    'content',
+    'body',
+    'headline',
+    'title',
+    'source',
+    'url',
+    'category',
+    'topic',
+    'author',
+    'caption',
+  };
+
+  /// Standalone day/month tokens. These are date noise, never football
+  /// entities, and must not survive into a query.
+  static const Set<String> dateTokens = {
+    'mon',
+    'monday',
+    'tue',
+    'tues',
+    'tuesday',
+    'wed',
+    'weds',
+    'wednesday',
+    'thu',
+    'thur',
+    'thurs',
+    'thursday',
+    'fri',
+    'friday',
+    'sat',
+    'saturday',
+    'sun',
+    'sunday',
+    'jan',
+    'january',
+    'feb',
+    'february',
+    'mar',
+    'march',
+    'apr',
+    'april',
+    'may',
+    'jun',
+    'june',
+    'jul',
+    'july',
+    'aug',
+    'august',
+    'sep',
+    'sept',
+    'september',
+    'oct',
+    'october',
+    'nov',
+    'november',
+    'dec',
+    'december',
+  };
+
   /// Malay → English football terms. Used to build an English alias query.
   static const Map<String, String> malayToEnglish = {
     'kalah': 'lost',

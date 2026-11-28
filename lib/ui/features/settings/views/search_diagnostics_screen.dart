@@ -345,6 +345,7 @@ class _EntryRow extends StatelessWidget {
                 Text(entry.query, style: theme.textTheme.bodySmall),
               Text(
                 [
+                  'planner=${entry.planner}',
                   if (entry.intent.isNotEmpty) 'intent=${entry.intent}',
                   if (entry.topic.isNotEmpty) 'topic=${entry.topic}',
                   if (entry.requestId != null) 'request=${entry.requestId}',

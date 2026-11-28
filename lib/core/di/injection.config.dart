@@ -34,6 +34,7 @@ import '../../data/services/facebook_storage_service.dart' as _i141;
 import '../../data/services/facebook_story_composer.dart' as _i282;
 import '../../data/services/facebook_workflow_store.dart' as _i703;
 import '../../data/services/free_tier_guard.dart' as _i200;
+import '../../data/services/groq_query_planner_service.dart' as _i300;
 import '../../data/services/home_widget_service.dart' as _i137;
 import '../../data/services/log_service.dart' as _i713;
 import '../../data/services/ml_kit_vision_extractor.dart' as _i560;
@@ -41,6 +42,7 @@ import '../../data/services/motion_capture_service.dart' as _i858;
 import '../../data/services/motion_export_service.dart' as _i380;
 import '../../data/services/preferences_service.dart' as _i867;
 import '../../data/services/provider_api_service.dart' as _i581;
+import '../../data/services/query_planner_quota_guard.dart' as _i970;
 import '../../data/services/rate_limit_guard.dart' as _i466;
 import '../../data/services/search_diagnostics_service.dart' as _i658;
 import '../../data/services/token_usage_side_channel.dart' as _i952;
@@ -51,6 +53,7 @@ import '../../data/services/web_scraper_service.dart' as _i978;
 import '../../domain/models/research_context.dart' as _i96;
 import '../../domain/repositories/search_repository.dart' as _i475;
 import '../../domain/services/enrich_context_usecase.dart' as _i253;
+import '../../domain/services/query_planner_ai.dart' as _i559;
 import '../../domain/services/vision_extractor.dart' as _i754;
 import '../network/api_client.dart' as _i557;
 import '../repositories/card_repository.dart' as _i83;
@@ -147,6 +150,9 @@ extension GetItInjectableX on _i174.GetIt {
     gh.lazySingleton<_i713.LogService>(
       () => _i713.LogService(gh<_i460.SharedPreferences>()),
     );
+    gh.lazySingleton<_i970.QueryPlannerQuotaGuard>(
+      () => _i970.QueryPlannerQuotaGuard(gh<_i460.SharedPreferences>()),
+    );
     gh.lazySingleton<_i466.RateLimitGuard>(
       () => _i466.RateLimitGuard(gh<_i460.SharedPreferences>()),
     );
@@ -204,11 +210,19 @@ extension GetItInjectableX on _i174.GetIt {
         gh<_i581.ProviderApiService>(),
       ),
     );
+    gh.lazySingleton<_i559.QueryPlannerAi>(
+      () => _i300.GroqQueryPlannerService(
+        gh<_i557.ApiClient>(),
+        gh<_i867.PreferencesService>(),
+        gh<_i970.QueryPlannerQuotaGuard>(),
+      ),
+    );
     gh.factory<_i253.EnrichContextUseCase>(
       () => _i253.EnrichContextUseCase(
         gh<_i475.ISearchRepository>(),
         gh<_i978.WebScraperService>(),
         diagnostics: gh<_i96.SearchDiagnosticsRecorder>(),
+        queryPlannerAi: gh<_i559.QueryPlannerAi>(),
       ),
     );
     return this;

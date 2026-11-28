@@ -78,6 +78,10 @@ class GenerateViewModel extends Notifier<GenerateUiState>
   /// and leave the UI stranded on the loading card.
   String? _activeShareInput;
 
+  /// Input used by the last generation, so "View context → Re-run" can repeat
+  /// the same post with a corrected research query.
+  String? _lastGenerationInput;
+
   /// Extra attempts for share-initiated generations on transient failures
   /// (flaky FxTwitter, network gap right after app resume). Non-share
   /// generations keep single-shot semantics.
@@ -373,6 +377,17 @@ class GenerateViewModel extends Notifier<GenerateUiState>
     }
   }
 
+  /// Repeats the last generation with a user-corrected research query.
+  Future<void> rerunResearch(String query) async {
+    final input = _lastGenerationInput;
+    final corrected = query.trim();
+    if (input == null || input.isEmpty || corrected.isEmpty) return;
+    if (!state.isResearchModeEnabled) {
+      state = state.copyWith(isResearchModeEnabled: true);
+    }
+    await generatePost(input, forceResearchQuery: corrected);
+  }
+
   void toggleResearchMode() {
     final next = !state.isResearchModeEnabled;
     state = state.copyWith(isResearchModeEnabled: next);
@@ -523,6 +538,7 @@ class GenerateViewModel extends Notifier<GenerateUiState>
     int shareAttempt = 0,
     int fallbackDepth = 0,
     AiProvider? forceProvider,
+    String? forceResearchQuery,
   }) async {
     final sessionId = ++_generationSessionId;
     final attemptToken = _newAttemptToken(sessionId);
@@ -551,6 +567,7 @@ class GenerateViewModel extends Notifier<GenerateUiState>
     }
 
     final trimmedInput = input.trim();
+    _lastGenerationInput = trimmedInput;
     _addRecentInput(trimmedInput);
     state = state.copyWith(
       status: GenerateState.generating,
@@ -781,6 +798,7 @@ class GenerateViewModel extends Notifier<GenerateUiState>
           preExtractedText:
               article?.text ?? (inputIsUrl ? textForEnrichment : null),
           cancelToken: attemptToken,
+          queryOverride: forceResearchQuery,
         );
         if (sessionId != _generationSessionId) return;
 
@@ -966,6 +984,7 @@ class GenerateViewModel extends Notifier<GenerateUiState>
                 shareAttempt: shareAttempt,
                 fallbackDepth: fallbackDepth + 1,
                 forceProvider: fallback,
+                forceResearchQuery: forceResearchQuery,
               );
               return;
             }
@@ -1006,6 +1025,7 @@ class GenerateViewModel extends Notifier<GenerateUiState>
             // Retry the same provider (a transient network failure doesn't
             // imply a provider choice change); preserve any cooldown hop.
             forceProvider: provider,
+            forceResearchQuery: forceResearchQuery,
           );
           return;
         } else if (failure is AuthFailure) {

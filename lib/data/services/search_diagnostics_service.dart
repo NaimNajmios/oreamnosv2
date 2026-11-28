@@ -51,7 +51,8 @@ class SearchDiagnosticsService extends SearchDiagnosticsRecorder {
           'credits=${entry.credits}',
         )
         ..writeln(
-          '  message=${entry.message ?? '-'} '
+          '  planner=${entry.planner} '
+          'message=${entry.message ?? '-'} '
           'failure=${entry.failureKind ?? '-'} '
           'requestId=${entry.requestId ?? '-'} '
           'responseTime=${entry.responseTime ?? '-'}',

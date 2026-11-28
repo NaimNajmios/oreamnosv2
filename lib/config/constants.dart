@@ -46,6 +46,22 @@ abstract final class AppConstants {
   /// so the embedding does not average away the entities).
   static const int tavilyMaxQueryChars = 220;
 
+  // === Groq-backed query planner (optional, strictly inside research) ===
+  // One tiny call per generation, pinned to Groq. Keep the model id in ONE
+  // place: Groq rotates its catalogue and a retired id must be swappable
+  // without touching service code. llama-3.1-8b-instant has far more daily
+  // headroom than the 70B model; switch the constant if entity extraction
+  // proves too weak on unusual names.
+  static const String groqPlannerModelId = 'llama-3.1-8b-instant';
+  static const Duration groqPlannerTimeout = Duration(seconds: 5);
+  static const int groqPlannerMaxInputChars = 800;
+  static const int groqPlannerMaxOutputTokens = 200;
+
+  /// Separate from FreeTierGuard's vision Groq cap (80/day). This counter
+  /// only bounds the tiny planner calls, so research cannot eat the vision
+  /// budget (or vice versa).
+  static const int groqPlannerDailyCap = 40;
+
   // === Facebook Publishing ===
   // Page publishing goes through the Graph API; the version constant keeps
   // each call pinned in one place (older versions eventually get retired).

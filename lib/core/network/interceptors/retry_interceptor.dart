@@ -57,6 +57,13 @@ class RetryInterceptor extends Interceptor {
     final extra = err.requestOptions.extra;
     final retries = (extra['retryCount'] as int?) ?? 0;
 
+    // Tiny utility calls (e.g. the Groq query planner) opt out: a 429 means
+    // "skip this optional step", not "wait and spend another request".
+    if (extra['noRetry'] == true) {
+      handler.next(err);
+      return;
+    }
+
     // Graph writes are not idempotent: a retry after a lost response can
     // create a duplicate post. They never auto-retry; the UI offers manual
     // retry with a duplicate warning.

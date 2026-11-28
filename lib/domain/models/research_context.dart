@@ -105,6 +105,7 @@ class SearchDiagnosticEntry {
     this.requestId,
     this.responseTime,
     this.decisions = const [],
+    this.planner = 'heuristic',
   });
 
   final DateTime at;
@@ -121,6 +122,10 @@ class SearchDiagnosticEntry {
   final double? responseTime;
   final List<SearchDecisionDetail> decisions;
 
+  /// `groq` when the optional AI planner produced the queries, otherwise
+  /// `heuristic`. Useful when checking why a run searched a given phrase.
+  final String planner;
+
   SearchDiagnosticEntry copyWith({
     ResearchStatus? status,
     int? resultCount,
@@ -131,6 +136,7 @@ class SearchDiagnosticEntry {
     String? requestId,
     double? responseTime,
     List<SearchDecisionDetail>? decisions,
+    String? planner,
   }) {
     return SearchDiagnosticEntry(
       at: at,
@@ -146,6 +152,7 @@ class SearchDiagnosticEntry {
       requestId: requestId ?? this.requestId,
       responseTime: responseTime ?? this.responseTime,
       decisions: decisions ?? this.decisions,
+      planner: planner ?? this.planner,
     );
   }
 
@@ -162,6 +169,7 @@ class SearchDiagnosticEntry {
     'failureKind': failureKind,
     'requestId': requestId,
     'responseTime': responseTime,
+    'planner': planner,
     'decisions': [for (final d in decisions) d.toJson()],
   };
 }

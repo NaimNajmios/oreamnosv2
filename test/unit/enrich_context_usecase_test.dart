@@ -3,11 +3,13 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:oreamnos/core/error/failures.dart';
 import 'package:oreamnos/core/network/api_client.dart';
 import 'package:oreamnos/data/services/web_scraper_service.dart';
+import 'package:oreamnos/domain/models/query_plan_suggestion.dart';
 import 'package:oreamnos/domain/models/research_context.dart';
 import 'package:oreamnos/domain/models/tavily_search.dart';
 import 'package:oreamnos/domain/repositories/search_repository.dart';
 import 'package:oreamnos/domain/services/enrich_context_usecase.dart';
 import 'package:oreamnos/domain/services/intent_classifier.dart';
+import 'package:oreamnos/domain/services/query_planner_ai.dart';
 
 class _FakeSearchRepository implements ISearchRepository {
   _FakeSearchRepository({
@@ -61,6 +63,23 @@ class _FakeSearchRepository implements ISearchRepository {
   @override
   Future<SearchConnectionResult> testConnection({String? apiKey}) async =>
       const SearchConnectionResult.success();
+}
+
+class _FakeQueryPlannerAi extends QueryPlannerAi {
+  _FakeQueryPlannerAi(this.suggestion);
+
+  final QueryPlanSuggestion? suggestion;
+  int calls = 0;
+
+  @override
+  Future<QueryPlanSuggestion?> plan({
+    required String text,
+    String? pageTitle,
+    CancelToken? cancelToken,
+  }) async {
+    calls++;
+    return suggestion;
+  }
 }
 
 void main() {
@@ -162,6 +181,53 @@ void main() {
       expect(result.status, ResearchStatus.empty);
       expect(result.content, article);
       expect(result.sources, isEmpty);
+      expect(result.message, contains('No relevant context found'));
+    });
+
+    test('skips research when the text has no player or club name', () async {
+      final repo = _FakeSearchRepository();
+      final usecase = EnrichContextUseCase(
+        repo,
+        WebScraperService(ApiClient()),
+      );
+
+      final result = await usecase.execute(
+        'TYPE DATE Fri Nov POST CONTENT transfer news',
+        InputIntent.fullArticle,
+      );
+
+      expect(result.status, ResearchStatus.empty);
+      expect(result.message, contains('player or club name'));
+      expect(repo.queries, isEmpty);
+    });
+
+    test('an edited query overrides the pasted text', () async {
+      final repo = _FakeSearchRepository(
+        results: const [
+          TavilySearchResult(
+            title: 'Max Dowman signs three-year Arsenal contract',
+            url: 'https://www.bbc.com/sport/football/99999',
+            content: 'Max Dowman has signed a three-year deal with Arsenal after turning 17.',
+            score: 0.93,
+          ),
+        ],
+      );
+      final usecase = EnrichContextUseCase(
+        repo,
+        WebScraperService(ApiClient()),
+      );
+
+      const junkInput =
+          'TYPE: Transfer\nDATE: Fri Nov\nPOST CONTENT: Max Dowman deal';
+      final result = await usecase.execute(
+        junkInput,
+        InputIntent.fullArticle,
+        queryOverride: 'Max Dowman Arsenal contract',
+      );
+
+      expect(result.status, ResearchStatus.ok);
+      expect(result.query, contains('Max Dowman'));
+      expect(repo.queries.first, contains('Max Dowman'));
     });
 
     test('planner prefers the headline and never blindly appends stats', () {
@@ -170,6 +236,106 @@ void main() {
       final query = EnrichContextUseCase.extractSearchQuery(article);
       expect(query, isNot(contains('stats')));
       expect(query.toLowerCase(), contains('johor'));
+    });
+
+    test('uses a Groq suggestion when available', () async {
+      final repo = _FakeSearchRepository(
+        results: const [
+          TavilySearchResult(
+            title: 'Max Dowman signs three-year Arsenal contract',
+            url: 'https://www.bbc.com/sport/football/99999',
+            content: 'Max Dowman has signed a three-year deal with Arsenal.',
+            score: 0.93,
+          ),
+        ],
+      );
+      final ai = _FakeQueryPlannerAi(
+        const QueryPlanSuggestion(
+          entities: ['Max Dowman', 'Arsenal'],
+          queries: ['Max Dowman Arsenal first professional contract'],
+        ),
+      );
+      final usecase = EnrichContextUseCase(
+        repo,
+        WebScraperService(ApiClient()),
+        queryPlannerAi: ai,
+      );
+
+      final result = await usecase.execute(
+        'TYPE DATE Fri Nov POST CONTENT Max Dowman deal',
+        InputIntent.fullArticle,
+      );
+
+      expect(ai.calls, 1);
+      expect(result.status, ResearchStatus.ok);
+      expect(result.query, 'Max Dowman Arsenal first professional contract');
+      expect(result.diagnostic?.planner, 'groq');
+    });
+
+    test(
+      'falls back to the heuristic planner when Groq returns nothing',
+      () async {
+        final repo = _FakeSearchRepository(
+          results: const [
+            TavilySearchResult(
+              title: 'Bukayo Saka scores twice as Arsenal beat Chelsea 3-1',
+              url: 'https://www.bbc.com/sport/football/12345',
+              content:
+                  'Bukayo Saka reached 15 goals this season as Arsenal won.',
+              score: 0.95,
+            ),
+          ],
+        );
+        final ai = _FakeQueryPlannerAi(null);
+        final usecase = EnrichContextUseCase(
+          repo,
+          WebScraperService(ApiClient()),
+          queryPlannerAi: ai,
+        );
+
+        final result = await usecase.execute(
+          'Bukayo Saka scored twice as Arsenal beat Chelsea 3-1.',
+          InputIntent.fullArticle,
+        );
+
+        expect(ai.calls, 1);
+        expect(result.status, ResearchStatus.ok);
+        expect(result.query, contains('Bukayo Saka'));
+        expect(result.diagnostic?.planner, 'heuristic');
+      },
+    );
+
+    test('an edited query does not spend a Groq planner call', () async {
+      final repo = _FakeSearchRepository(
+        results: const [
+          TavilySearchResult(
+            title: 'Max Dowman signs three-year Arsenal contract',
+            url: 'https://www.bbc.com/sport/football/99999',
+            content: 'Max Dowman has signed a three-year deal with Arsenal.',
+            score: 0.93,
+          ),
+        ],
+      );
+      final ai = _FakeQueryPlannerAi(
+        const QueryPlanSuggestion(
+          entities: ['Max Dowman'],
+          queries: ['wrong query'],
+        ),
+      );
+      final usecase = EnrichContextUseCase(
+        repo,
+        WebScraperService(ApiClient()),
+        queryPlannerAi: ai,
+      );
+
+      await usecase.execute(
+        'Max Dowman deal',
+        InputIntent.fullArticle,
+        queryOverride: 'Max Dowman Arsenal contract',
+      );
+
+      expect(ai.calls, 0);
+      expect(repo.queries.first, contains('Max Dowman Arsenal contract'));
     });
   });
 }

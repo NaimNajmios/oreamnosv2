@@ -67,6 +67,19 @@ class SearchRelevanceGuard {
     }
 
     final text = '${result.title} ${result.content}';
+
+    // A high similarity score is not enough: the page must actually mention
+    // the named player/club from the pasted story. Without this check a
+    // "transfer news" query can surface a generic newspaper roundup.
+    final keyEntity = plan.keyEntity;
+    if (keyEntity != null && !_mentionsKeyEntity(keyEntity, text)) {
+      return SearchGuardDecision(
+        keep: false,
+        relevance: result.score,
+        reason: 'key name missing',
+      );
+    }
+
     final resultTokens = _tokens(text);
     final entityOverlap = _entityOverlap(plan.entities, text);
     final headlineOverlap = _jaccard(_tokens(plan.headline), resultTokens);
@@ -93,6 +106,19 @@ class SearchRelevanceGuard {
       entityOverlap: entityOverlap,
       headlineOverlap: headlineOverlap,
     );
+  }
+
+  bool _mentionsKeyEntity(String entity, String text) {
+    final lower = text.toLowerCase();
+    final parts = entity
+        .toLowerCase()
+        .split(RegExp(r'\s+'))
+        .where((part) => part.replaceAll(RegExp(r'[^a-z]'), '').length > 3)
+        .map((part) => part.replaceAll(RegExp(r'[^a-z0-9]'), ''))
+        .where((part) => part.length > 3)
+        .toList();
+    if (parts.isEmpty) return true;
+    return parts.any(lower.contains);
   }
 
   double _entityOverlap(List<String> entities, String text) {

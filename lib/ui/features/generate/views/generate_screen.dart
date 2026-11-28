@@ -623,6 +623,10 @@ class _GenerateScreenState extends ConsumerState<GenerateScreen> {
   }
 
   void _showResearchContext(BuildContext context, GenerateUiState viewModel) {
+    final theme = Theme.of(context);
+    final queryController = TextEditingController(
+      text: viewModel.researchQuery ?? '',
+    );
     showDialog<void>(
       context: context,
       builder: (dialogContext) => AlertDialog(
@@ -632,10 +636,30 @@ class _GenerateScreenState extends ConsumerState<GenerateScreen> {
             crossAxisAlignment: CrossAxisAlignment.start,
             mainAxisSize: MainAxisSize.min,
             children: [
-              if ((viewModel.researchQuery ?? '').isNotEmpty) ...[
-                Text('Query: ${viewModel.researchQuery}'),
-                const SizedBox(height: AppSpacing.sm),
-              ],
+              Text(
+                'Query (editable — fix it and re-run):',
+                style: theme.textTheme.labelMedium?.copyWith(
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
+              const SizedBox(height: AppSpacing.xs),
+              TextField(
+                controller: queryController,
+                maxLines: 2,
+                decoration: const InputDecoration(
+                  hintText: 'e.g. Max Dowman Arsenal contract',
+                  border: OutlineInputBorder(),
+                  isDense: true,
+                ),
+              ),
+              const SizedBox(height: AppSpacing.md),
+              Text(
+                'Digest used by the model:',
+                style: theme.textTheme.labelMedium?.copyWith(
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
+              const SizedBox(height: AppSpacing.xs),
               Text(
                 (viewModel.researchDigest ?? '').trim().isEmpty
                     ? 'No digest recorded.'
@@ -643,6 +667,13 @@ class _GenerateScreenState extends ConsumerState<GenerateScreen> {
               ),
               if (viewModel.researchSources.isNotEmpty) ...[
                 const SizedBox(height: AppSpacing.md),
+                Text(
+                  'Sources checked:',
+                  style: theme.textTheme.labelMedium?.copyWith(
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+                const SizedBox(height: AppSpacing.xs),
                 for (final source in viewModel.researchSources)
                   Padding(
                     padding: const EdgeInsets.only(bottom: 6),
@@ -658,11 +689,21 @@ class _GenerateScreenState extends ConsumerState<GenerateScreen> {
         actions: [
           TextButton(
             onPressed: () => Navigator.of(dialogContext).pop(),
-            child: const Text('Close'),
+            child: const Text('Cancel'),
+          ),
+          FilledButton.icon(
+            icon: const Icon(Icons.refresh_rounded, size: 16),
+            label: const Text('Re-run'),
+            onPressed: () {
+              final query = queryController.text.trim();
+              if (query.isEmpty) return;
+              Navigator.of(dialogContext).pop();
+              ref.read(generateViewModelProvider.notifier).rerunResearch(query);
+            },
           ),
         ],
       ),
-    );
+    ).whenComplete(queryController.dispose);
   }
 
   Widget _buildResearchStatusLine(
@@ -1495,6 +1536,13 @@ class _GenerateScreenState extends ConsumerState<GenerateScreen> {
                           child: const Text('View context'),
                         ),
                     ],
+                  ),
+                  Text(
+                    'Context lookup only — not the post’s own source '
+                    '(shown separately under “Sumber”).',
+                    style: theme.textTheme.labelSmall?.copyWith(
+                      color: theme.colorScheme.onSurfaceVariant,
+                    ),
                   ),
                   const SizedBox(height: AppSpacing.xs),
                   Wrap(

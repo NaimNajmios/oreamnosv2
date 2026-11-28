@@ -54,7 +54,30 @@ void main() {
       );
 
       expect(decision.keep, isFalse);
-      expect(decision.reason, contains('overlap'));
+      expect(decision.reason, anyOf(contains('overlap'), 'key name missing'));
+    });
+
+    test('drops a generic roundup that never mentions the key name', () {
+      final plan = const SearchQueryPlanner().plan(
+        text:
+            'Max Dowman is set to sign a three-year contract with Arsenal '
+            'after his 17th birthday.',
+      );
+      final decision = _guard.evaluate(
+        result: _result(
+          title: 'Friday football transfer roundup: Calvert-Lewin, Musiala',
+          url: 'https://www.skysports.com/football/news/11661/roundup',
+          content:
+              'The latest deals include Calvert-Lewin and Nottingham Forest '
+              'targets, plus Bayern midfielder Musiala.',
+          score: 0.92,
+        ),
+        plan: plan,
+      );
+
+      expect(plan.keyEntity, 'Max Dowman');
+      expect(decision.keep, isFalse);
+      expect(decision.reason, 'key name missing');
     });
 
     test('drops results below the score floor', () {

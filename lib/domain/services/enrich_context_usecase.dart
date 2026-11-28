@@ -8,6 +8,7 @@ import '../../core/error/failures.dart';
 import '../../data/services/web_scraper_service.dart';
 import '../models/research_context.dart';
 import '../models/tavily_search.dart';
+import 'query_planner_ai.dart';
 import '../repositories/search_repository.dart';
 import 'intent_classifier.dart';
 import 'search_query_planner.dart';
@@ -60,13 +61,16 @@ class EnrichContextUseCase {
     // ignore: prefer_initializing_formals
     SearchDiagnosticsRecorder diagnostics =
         const NoopSearchDiagnosticsRecorder(),
+    QueryPlannerAi? queryPlannerAi,
   })
     // ignore: prefer_initializing_formals
-    : _diagnostics = diagnostics;
+    : _diagnostics = diagnostics,
+       _queryPlannerAi = queryPlannerAi ?? const NoopQueryPlannerAi();
 
   final ISearchRepository _searchRepo;
   final WebScraperService _webScraper;
   final SearchDiagnosticsRecorder _diagnostics;
+  final QueryPlannerAi _queryPlannerAi;
   final SearchQueryPlanner _planner = const SearchQueryPlanner();
   final SearchRelevanceGuard _guard = const SearchRelevanceGuard();
   final SearchResultRanker _ranker = const SearchResultRanker();
@@ -84,6 +88,7 @@ class EnrichContextUseCase {
     String? description,
     String? preExtractedText,
     CancelToken? cancelToken,
+    String? queryOverride,
   }) async {
     final result = await _execute(
       input,
@@ -92,6 +97,7 @@ class EnrichContextUseCase {
       description: description,
       preExtractedText: preExtractedText,
       cancelToken: cancelToken,
+      queryOverride: queryOverride,
     );
     final diagnostic = result.diagnostic;
     if (diagnostic != null) _diagnostics.record(diagnostic);
@@ -105,6 +111,7 @@ class EnrichContextUseCase {
     String? description,
     String? preExtractedText,
     CancelToken? cancelToken,
+    String? queryOverride,
   }) async {
     if (cancelToken?.isCancelled ?? false) {
       return _plain(input, ResearchStatus.cancelled, 'Research cancelled.');
@@ -125,6 +132,7 @@ class EnrichContextUseCase {
         description: description,
         preExtractedText: preExtractedText,
         cancelToken: cancelToken,
+        queryOverride: queryOverride,
       );
     }
 
@@ -134,6 +142,7 @@ class EnrichContextUseCase {
       pageTitle: pageTitle,
       description: description,
       cancelToken: cancelToken,
+      queryOverride: queryOverride,
     );
   }
 
@@ -143,6 +152,7 @@ class EnrichContextUseCase {
     String? description,
     String? preExtractedText,
     CancelToken? cancelToken,
+    String? queryOverride,
   }) async {
     try {
       var content = (preExtractedText ?? '').trim();
@@ -177,6 +187,7 @@ class EnrichContextUseCase {
         description: description,
         intent: InputIntent.url,
         cancelToken: cancelToken,
+        queryOverride: queryOverride,
       );
     } catch (e) {
       if (cancelToken?.isCancelled ?? false) {
@@ -196,6 +207,7 @@ class EnrichContextUseCase {
     String? pageTitle,
     String? description,
     CancelToken? cancelToken,
+    String? queryOverride,
   }) async {
     try {
       return await _research(
@@ -205,6 +217,7 @@ class EnrichContextUseCase {
         description: description,
         intent: intent,
         cancelToken: cancelToken,
+        queryOverride: queryOverride,
       );
     } catch (e) {
       if (cancelToken?.isCancelled ?? false) {
@@ -225,12 +238,56 @@ class EnrichContextUseCase {
     String? pageTitle,
     String? description,
     CancelToken? cancelToken,
+    String? queryOverride,
   }) async {
-    final plan = _planner.plan(
-      text: queryText,
-      pageTitle: pageTitle,
-      description: description,
-    );
+    final override = queryOverride?.trim();
+    final hasOverride = override != null && override.isNotEmpty;
+    // An edited query is authoritative: no AI call and no page metadata from
+    // the pasted text may pollute it again.
+    SearchPlan? aiPlan;
+    var plannerName = 'heuristic';
+    if (!hasOverride) {
+      try {
+        final suggestion = await _queryPlannerAi.plan(
+          text: queryText,
+          pageTitle: pageTitle,
+          cancelToken: cancelToken,
+        );
+        if (suggestion != null && suggestion.isUsable) {
+          aiPlan = _planner.planWith(
+            text: queryText,
+            pageTitle: pageTitle,
+            description: description,
+            entities: suggestion.entities,
+            queries: suggestion.queries,
+          );
+          plannerName = 'groq';
+        }
+      } catch (_) {
+        // Optional step: any failure keeps the deterministic heuristic plan.
+      }
+    }
+    final plan =
+        aiPlan ??
+        _planner.plan(
+          text: hasOverride ? override : queryText,
+          pageTitle: hasOverride ? null : pageTitle,
+          description: hasOverride ? null : description,
+        );
+
+    // A query with no player/club name can only match generic roundups. Skip
+    // it entirely rather than spending credits and injecting noise.
+    if (plan.entities.isEmpty) {
+      return _plain(
+        originalContent,
+        ResearchStatus.empty,
+        'No relevant context found — include a player or club name in the text.',
+        query: plan.primary.query,
+        intent: plan.intent,
+        topic: plan.primary.options.topic,
+        planner: plannerName,
+      );
+    }
 
     try {
       final run = await _runQueries(
@@ -246,6 +303,7 @@ class EnrichContextUseCase {
           query: plan.primary.query,
           intent: plan.intent,
           topic: plan.primary.options.topic,
+          planner: plannerName,
         );
       }
       if (run.failure != null && run.sources.isEmpty) {
@@ -262,16 +320,18 @@ class EnrichContextUseCase {
           decisions: run.decisions,
           requestId: run.requestId,
           responseTime: run.responseTime,
+          planner: plannerName,
         );
       }
       if (run.sources.isEmpty) {
         return _plain(
           originalContent,
           ResearchStatus.empty,
-          'No relevant sources found for "${plan.primary.query}".',
+          'No relevant context found for "${plan.primary.query}".',
           query: plan.primary.query,
           intent: plan.intent,
           topic: plan.primary.options.topic,
+          planner: plannerName,
           resultCount: run.resultCount,
           credits: run.credits,
           decisions: run.decisions,
@@ -315,6 +375,7 @@ class EnrichContextUseCase {
           requestId: run.requestId,
           responseTime: run.responseTime,
           decisions: run.decisions,
+          planner: plannerName,
         ),
       );
     } on TimeoutException {
@@ -326,6 +387,7 @@ class EnrichContextUseCase {
         intent: plan.intent,
         topic: plan.primary.options.topic,
         failureKind: 'TimeoutException',
+        planner: plannerName,
       );
     }
   }
@@ -583,6 +645,7 @@ class EnrichContextUseCase {
     List<SearchDecisionDetail> decisions = const [],
     String? requestId,
     double? responseTime,
+    String planner = 'heuristic',
   }) {
     return EnrichmentResult(
       content: content,
@@ -603,6 +666,7 @@ class EnrichContextUseCase {
         decisions: decisions,
         requestId: requestId,
         responseTime: responseTime,
+        planner: planner,
       ),
     );
   }

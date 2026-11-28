@@ -63,4 +63,75 @@ void main() {
 
     expect(plan.primary.query.length, lessThanOrEqualTo(220));
   });
+
+  test('drops TYPE/DATE/POST CONTENT template headers before planning', () {
+    final plan = planner.plan(
+      text:
+          'TYPE: Transfer\n'
+          'DATE: Fri Nov 28\n'
+          'POST CONTENT: Max Dowman is set to sign a new contract with Arsenal '
+          'after his 17th birthday. The England wonderkid has been training '
+          'with the first team.',
+    );
+    final query = plan.primary.query.toLowerCase();
+
+    expect(plan.headline.toLowerCase(), contains('max dowman'));
+    expect(query, contains('dowman'));
+    expect(query, contains('arsenal'));
+    for (final junk in ['type', 'date', 'post content', 'fri', 'nov']) {
+      expect(query, isNot(contains(junk)), reason: 'query was $query');
+    }
+    expect(plan.keyEntity, 'Max Dowman');
+  });
+
+  test('handles an inline POST CONTENT header on a single line', () {
+    final plan = planner.plan(
+      text:
+          'TYPE DATE Fri Nov POST CONTENT Max Dowman Arsenal contract talks '
+          'continue this week.',
+    );
+
+    expect(plan.primary.query.toLowerCase(), contains('max dowman'));
+    expect(plan.primary.query.toLowerCase(), isNot(contains('post content')));
+  });
+
+  test('AI-suggested entities and queries override the heuristic query', () {
+    final plan = const SearchQueryPlanner().planWith(
+      text: 'TYPE DATE Fri Nov POST CONTENT Max Dowman deal news',
+      entities: const ['Max Dowman', 'Arsenal'],
+      queries: const ['Max Dowman Arsenal first professional contract'],
+    );
+
+    expect(
+      plan.primary.query,
+      'Max Dowman Arsenal first professional contract',
+    );
+    expect(plan.keyEntity, 'Max Dowman');
+    expect(plan.entities, contains('Arsenal'));
+    expect(plan.primary.options.topic, anyOf('news', 'general'));
+    expect(
+      plan.queries.any((q) => q.options.includeDomains.isNotEmpty),
+      isTrue,
+    );
+  });
+
+  test('prefers a trusted-domain fallback query', () {
+    final plan = planner.plan(
+      text:
+          'Max Dowman is expected to sign a three-year deal with Arsenal '
+          'this month.',
+    );
+
+    expect(
+      plan.queries.any((q) => q.options.includeDomains.isNotEmpty),
+      isTrue,
+    );
+    expect(
+      plan.queries
+          .firstWhere((q) => q.options.includeDomains.isNotEmpty)
+          .options
+          .includeDomains,
+      contains('bbc.com'),
+    );
+  });
 }
