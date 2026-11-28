@@ -1,6 +1,7 @@
 import 'package:freezed_annotation/freezed_annotation.dart';
 import 'package:oreamnos/data/models/ai_provider.dart';
 import 'package:oreamnos/domain/models/curated_post.dart';
+import 'package:oreamnos/domain/models/research_context.dart';
 
 import 'generate_view_model.dart';
 
@@ -24,6 +25,12 @@ abstract class GenerateUiState with _$GenerateUiState {
     String? pendingInput,
     @Default(false) bool isResearchModeEnabled,
     @Default([]) List<String> searchSources,
+    @Default(ResearchStatus.off) ResearchStatus researchStatus,
+    String? researchMessage,
+    String? researchQuery,
+    @Default([]) List<ResearchSource> researchSources,
+    @Default(0) int researchCredits,
+    String? researchDigest,
     @Default(true) bool showTitle,
     @Default(false) bool uppercaseTitle,
     @Default(true) bool showHashtags,

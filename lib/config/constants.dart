@@ -16,6 +16,36 @@ abstract final class AppConstants {
   static const String openRouterBaseUrl = 'https://openrouter.ai/api/v1';
   static const String cerebrasBaseUrl = 'https://api.cerebras.ai/v1';
 
+  // === Tavily Web Research ===
+  // Search is strictly opt-in (Generate → Web research toggle). The numbers
+  // below bound cost and latency: basic depth is 1 credit, advanced is 2.
+  static const String tavilyBaseUrl = 'https://api.tavily.com';
+  static const Duration tavilySearchTimeout = Duration(seconds: 30);
+  static const Duration tavilyExtractTimeout = Duration(seconds: 45);
+
+  /// Whole research stage budget. Generation has its own 150s watchdog; this
+  /// keeps the *search* stage from eating that window when Tavily is slow.
+  static const Duration tavilyResearchBudget = Duration(seconds: 25);
+
+  /// Identical queries within this window are served from memory. Live-score
+  /// queries opt out (they carry `max_age_hours`).
+  static const Duration tavilyCacheTtl = Duration(minutes: 10);
+  static const int tavilyCacheMaxEntries = 32;
+
+  /// Minimum Tavily relevance score for a result to reach the prompt.
+  static const double tavilyMinScore = 0.45;
+  static const double tavilyRelaxedMinScore = 0.30;
+
+  /// Prompt payload caps. The digest is the system-prompt summary; the block
+  /// is the full structured context appended to the user input.
+  static const int tavilyMaxSources = 4;
+  static const int tavilyMaxContextChars = 6000;
+  static const int tavilyDigestMaxChars = 1200;
+
+  /// Query length ceiling recommended by Tavily (< 1500 is safe; keep short
+  /// so the embedding does not average away the entities).
+  static const int tavilyMaxQueryChars = 220;
+
   // === Facebook Publishing ===
   // Page publishing goes through the Graph API; the version constant keeps
   // each call pinned in one place (older versions eventually get retired).

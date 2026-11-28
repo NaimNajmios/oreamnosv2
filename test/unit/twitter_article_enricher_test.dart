@@ -1,4 +1,6 @@
 import 'package:flutter_test/flutter_test.dart';
+import 'package:dio/dio.dart';
+import 'package:oreamnos/core/error/failures.dart';
 import 'package:oreamnos/data/services/twitter_article_enricher.dart';
 import 'package:oreamnos/data/services/web_scraper_service.dart';
 import 'package:oreamnos/core/network/api_client.dart';
@@ -28,6 +30,35 @@ class FakeSearchRepository implements ISearchRepository {
   }) async {
     throw UnimplementedError();
   }
+
+  @override
+  Future<Result<TavilySearchResponse>> search(
+    SearchOptions options, {
+    CancelToken? cancelToken,
+  }) async => ResultSuccess(
+    await searchContext(
+      query: options.query,
+      maxResults: options.maxResults,
+      includeAnswer: options.includeAnswer,
+    ),
+  );
+
+  @override
+  Future<Result<String>> extract(
+    String url, {
+    CancelToken? cancelToken,
+    String? query,
+  }) async {
+    try {
+      return ResultSuccess(await extractFromUrl(url));
+    } catch (e) {
+      return ResultError(UnknownFailure(e.toString()));
+    }
+  }
+
+  @override
+  Future<SearchConnectionResult> testConnection({String? apiKey}) async =>
+      const SearchConnectionResult.success();
 }
 
 class FakeWebScraperService extends WebScraperService {

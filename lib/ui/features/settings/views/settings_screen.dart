@@ -237,9 +237,15 @@ class SettingsScreen extends ConsumerWidget {
             leadingIcon: Icons.travel_explore_rounded,
             title: 'Web search',
             subtitle: (state.tavilyApiKey?.isNotEmpty ?? false)
-                ? 'Tavily · Configured'
-                : 'Let AI look up live news & scores (Tavily)',
+                ? 'Tavily · Configured · opt-in on the Generate tab'
+                : 'Add a Tavily key for opt-in live news & scores',
             onTap: () => TavilyApiKeyDialog.show(context),
+          ),
+          SettingsTile(
+            leadingIcon: Icons.monitor_heart_outlined,
+            title: 'Web search diagnostics',
+            subtitle: 'Queries, source decisions & failures (redacted)',
+            onTap: () => context.push(RoutePaths.searchDiagnostics),
           ),
         ],
       ),

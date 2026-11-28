@@ -28,6 +28,7 @@ abstract class IContentCurator {
     required String apiKey,
     String? sourceUrl,
     List<String> searchSources = const [],
+    String? researchDigest,
     bool keepStructure = false,
     bool isFanModeEnabled = false,
     String fanClubName = '',
@@ -56,6 +57,7 @@ abstract class IContentCurator {
     String length = 'medium',
     bool isFanModeEnabled = false,
     String fanClubName = '',
+    String? researchDigest,
     CancelToken? cancelToken,
   });
 

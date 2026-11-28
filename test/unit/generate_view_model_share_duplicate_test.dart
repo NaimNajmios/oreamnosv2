@@ -42,6 +42,29 @@ class _SlowSearchRepository implements ISearchRepository {
 
   @override
   Future<String> extractFromUrl(String url) async => '';
+
+  @override
+  Future<Result<TavilySearchResponse>> search(
+    SearchOptions options, {
+    CancelToken? cancelToken,
+  }) async => ResultSuccess(
+    await searchContext(
+      query: options.query,
+      maxResults: options.maxResults,
+      includeAnswer: options.includeAnswer,
+    ),
+  );
+
+  @override
+  Future<Result<String>> extract(
+    String url, {
+    CancelToken? cancelToken,
+    String? query,
+  }) async => ResultSuccess(await extractFromUrl(url));
+
+  @override
+  Future<SearchConnectionResult> testConnection({String? apiKey}) async =>
+      const SearchConnectionResult.success();
 }
 
 /// Keeps URL-driven share tests off the network: the published
@@ -88,6 +111,7 @@ class _GatedRepository implements IContentRepository {
     String? sourceUrl,
     required AiProvider provider,
     List<String> searchSources = const [],
+    String? researchDigest,
     bool keepStructure = false,
     bool isFanModeEnabled = false,
     String fanClubName = '',
@@ -116,6 +140,7 @@ class _GatedRepository implements IContentRepository {
     String length = 'medium',
     bool isFanModeEnabled = false,
     String fanClubName = '',
+    String? researchDigest,
     CancelToken? cancelToken,
   }) async {
     callCount++;

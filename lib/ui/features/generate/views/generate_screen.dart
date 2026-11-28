@@ -17,6 +17,7 @@ import 'package:oreamnos/config/constants.dart';
 import 'package:oreamnos/data/services/web_scraper_service.dart';
 import 'package:oreamnos/domain/models/card_brief.dart';
 import 'package:oreamnos/domain/models/default_pill.dart';
+import 'package:oreamnos/domain/models/research_context.dart';
 import 'package:oreamnos/ui/core/utils/haptics.dart';
 import 'package:oreamnos/ui/core/widgets/app_button.dart';
 import 'package:oreamnos/ui/core/widgets/app_outlined_button.dart';
@@ -578,6 +579,165 @@ class _GenerateScreenState extends ConsumerState<GenerateScreen> {
     );
   }
 
+  Widget _researchChip(
+    ThemeData theme, {
+    required String label,
+    required String tooltip,
+  }) {
+    return Tooltip(
+      message: tooltip,
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+        decoration: BoxDecoration(
+          color: theme.colorScheme.primary.withValues(alpha: 0.1),
+          borderRadius: AppSpacing.borderRadiusSm,
+          border: Border.all(
+            color: theme.colorScheme.primary.withValues(alpha: 0.2),
+          ),
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(
+              Icons.link_rounded,
+              size: 12,
+              color: theme.colorScheme.primary,
+            ),
+            const SizedBox(width: 4),
+            ConstrainedBox(
+              constraints: const BoxConstraints(maxWidth: 150),
+              child: Text(
+                label,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: theme.textTheme.bodySmall?.copyWith(
+                  color: theme.colorScheme.primary,
+                  fontSize: 11,
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  void _showResearchContext(BuildContext context, GenerateUiState viewModel) {
+    showDialog<void>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: const Text('Research context'),
+        content: SingleChildScrollView(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              if ((viewModel.researchQuery ?? '').isNotEmpty) ...[
+                Text('Query: ${viewModel.researchQuery}'),
+                const SizedBox(height: AppSpacing.sm),
+              ],
+              Text(
+                (viewModel.researchDigest ?? '').trim().isEmpty
+                    ? 'No digest recorded.'
+                    : viewModel.researchDigest!,
+              ),
+              if (viewModel.researchSources.isNotEmpty) ...[
+                const SizedBox(height: AppSpacing.md),
+                for (final source in viewModel.researchSources)
+                  Padding(
+                    padding: const EdgeInsets.only(bottom: 6),
+                    child: Text(
+                      '${source.displayLabel} · ${source.title}',
+                      style: Theme.of(dialogContext).textTheme.bodySmall,
+                    ),
+                  ),
+              ],
+            ],
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(dialogContext).pop(),
+            child: const Text('Close'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildResearchStatusLine(
+    ThemeData theme,
+    GenerateUiState viewModel, {
+    required bool hasTavilyKey,
+    required bool isGenerating,
+    required VoidCallback onRetry,
+  }) {
+    final status = viewModel.researchStatus;
+    final isError = status == ResearchStatus.failed;
+    final color = isError
+        ? theme.colorScheme.error
+        : theme.colorScheme.onSurfaceVariant;
+
+    final icon = switch (status) {
+      ResearchStatus.searching => Icons.sync_rounded,
+      ResearchStatus.ok => Icons.check_circle_outline_rounded,
+      ResearchStatus.empty => Icons.search_off_rounded,
+      ResearchStatus.failed => Icons.error_outline_rounded,
+      ResearchStatus.unconfigured => Icons.key_off_outlined,
+      ResearchStatus.cancelled => Icons.stop_circle_outlined,
+      ResearchStatus.off => Icons.info_outline_rounded,
+    };
+
+    final text = switch (status) {
+      ResearchStatus.searching => 'Searching the web…',
+      ResearchStatus.ok =>
+        '${viewModel.researchSources.length} source(s) used'
+            '${viewModel.researchCredits > 0 ? ' · ${viewModel.researchCredits} credits' : ''}',
+      ResearchStatus.empty =>
+        viewModel.researchMessage ?? 'No relevant sources found',
+      ResearchStatus.failed => viewModel.researchMessage ?? 'Web search failed',
+      ResearchStatus.unconfigured =>
+        'Add a Tavily key in Settings to use web research',
+      ResearchStatus.cancelled => 'Research cancelled',
+      ResearchStatus.off =>
+        hasTavilyKey
+            ? 'Ready · runs only while this toggle is on'
+            : 'Add a Tavily key in Settings',
+    };
+
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Icon(icon, size: 13, color: color),
+        const SizedBox(width: 4),
+        Expanded(
+          child: Text(
+            text,
+            maxLines: 2,
+            overflow: TextOverflow.ellipsis,
+            style: theme.textTheme.labelSmall?.copyWith(
+              color: color,
+              fontSize: 10.5,
+            ),
+          ),
+        ),
+        if (!isGenerating &&
+            (status == ResearchStatus.failed ||
+                status == ResearchStatus.empty ||
+                status == ResearchStatus.cancelled))
+          TextButton(
+            onPressed: onRetry,
+            style: TextButton.styleFrom(
+              padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 0),
+              minimumSize: Size.zero,
+              tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+            ),
+            child: const Text('Retry', style: TextStyle(fontSize: 10.5)),
+          ),
+      ],
+    );
+  }
+
   Widget _buildCaptureCard(
     BuildContext context,
     GenerateUiState viewModel,
@@ -821,7 +981,7 @@ class _GenerateScreenState extends ConsumerState<GenerateScreen> {
                           ),
                           const SizedBox(width: AppSpacing.xs),
                           Text(
-                            'AI Research Mode',
+                            'Web research (Tavily)',
                             style: theme.textTheme.labelSmall?.copyWith(
                               fontWeight: FontWeight.w600,
                               color: theme.colorScheme.onSurface,
@@ -842,6 +1002,18 @@ class _GenerateScreenState extends ConsumerState<GenerateScreen> {
                       ),
                     ],
                   ),
+                  if (viewModel.isResearchModeEnabled) ...[
+                    const SizedBox(height: 2),
+                    _buildResearchStatusLine(
+                      theme,
+                      viewModel,
+                      hasTavilyKey: state.tavilyApiKey?.isNotEmpty ?? false,
+                      isGenerating: isGenerating,
+                      onRetry: () => ref
+                          .read(generateViewModelProvider.notifier)
+                          .generatePost(_controller.text),
+                    ),
+                  ],
                   const SizedBox(height: AppSpacing.sm),
                   Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -1302,57 +1474,53 @@ class _GenerateScreenState extends ConsumerState<GenerateScreen> {
                   SourceAttributionCard(source: post.source),
                 ],
                 if (viewModel.isResearchModeEnabled &&
-                    viewModel.searchSources.isNotEmpty) ...[
+                    (viewModel.researchSources.isNotEmpty ||
+                        viewModel.searchSources.isNotEmpty)) ...[
                   const SizedBox(height: AppSpacing.md),
-                  Text(
-                    'AI Research Context',
-                    style: theme.textTheme.labelMedium?.copyWith(
-                      fontWeight: FontWeight.w700,
-                      color: theme.colorScheme.primary,
-                    ),
+                  Row(
+                    children: [
+                      Expanded(
+                        child: Text(
+                          'Web research',
+                          style: theme.textTheme.labelMedium?.copyWith(
+                            fontWeight: FontWeight.w700,
+                            color: theme.colorScheme.primary,
+                          ),
+                        ),
+                      ),
+                      if ((viewModel.researchDigest ?? '').isNotEmpty)
+                        TextButton(
+                          onPressed: () =>
+                              _showResearchContext(context, viewModel),
+                          child: const Text('View context'),
+                        ),
+                    ],
                   ),
                   const SizedBox(height: AppSpacing.xs),
                   Wrap(
                     spacing: AppSpacing.xs,
                     runSpacing: AppSpacing.xs,
-                    children: viewModel.searchSources.map((url) {
-                      final domain = Uri.tryParse(url)?.host ?? url;
-                      return Container(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 8,
-                          vertical: 4,
-                        ),
-                        decoration: BoxDecoration(
-                          color: theme.colorScheme.primary.withValues(
-                            alpha: 0.1,
-                          ),
-                          borderRadius: AppSpacing.borderRadiusSm,
-                          border: Border.all(
-                            color: theme.colorScheme.primary.withValues(
-                              alpha: 0.2,
-                            ),
-                          ),
-                        ),
-                        child: Row(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            Icon(
-                              Icons.link_rounded,
-                              size: 12,
-                              color: theme.colorScheme.primary,
-                            ),
-                            const SizedBox(width: 4),
-                            Text(
-                              domain,
-                              style: theme.textTheme.bodySmall?.copyWith(
-                                color: theme.colorScheme.primary,
-                                fontSize: 11,
-                              ),
-                            ),
-                          ],
-                        ),
-                      );
-                    }).toList(),
+                    children: viewModel.researchSources.isNotEmpty
+                        ? viewModel.researchSources.map((source) {
+                            final label = source.outlet.trim().isNotEmpty
+                                ? source.outlet.trim()
+                                : (source.title.trim().isNotEmpty
+                                      ? source.title.trim()
+                                      : source.domain);
+                            return _researchChip(
+                              theme,
+                              label: label,
+                              tooltip: '${source.title}\n${source.url}',
+                            );
+                          }).toList()
+                        : viewModel.searchSources.map((url) {
+                            final domain = Uri.tryParse(url)?.host ?? url;
+                            return _researchChip(
+                              theme,
+                              label: domain,
+                              tooltip: url,
+                            );
+                          }).toList(),
                   ),
                 ],
               ],

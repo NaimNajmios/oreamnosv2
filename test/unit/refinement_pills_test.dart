@@ -363,6 +363,7 @@ class _FakeContentRepository implements IContentRepository {
     String? sourceUrl,
     required AiProvider provider,
     List<String> searchSources = const [],
+    String? researchDigest,
     bool keepStructure = false,
     bool isFanModeEnabled = false,
     String fanClubName = '',
@@ -398,6 +399,7 @@ class _FakeContentRepository implements IContentRepository {
     String length = 'medium',
     bool isFanModeEnabled = false,
     String fanClubName = '',
+    String? researchDigest,
     CancelToken? cancelToken,
   }) async {
     lastRefinements = refinements;

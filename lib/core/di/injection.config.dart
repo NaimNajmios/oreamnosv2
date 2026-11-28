@@ -42,11 +42,13 @@ import '../../data/services/motion_export_service.dart' as _i380;
 import '../../data/services/preferences_service.dart' as _i867;
 import '../../data/services/provider_api_service.dart' as _i581;
 import '../../data/services/rate_limit_guard.dart' as _i466;
+import '../../data/services/search_diagnostics_service.dart' as _i658;
 import '../../data/services/token_usage_side_channel.dart' as _i952;
 import '../../data/services/update_service.dart' as _i846;
 import '../../data/services/usage_service.dart' as _i1062;
 import '../../data/services/vision_curator_chain.dart' as _i652;
 import '../../data/services/web_scraper_service.dart' as _i978;
+import '../../domain/models/research_context.dart' as _i96;
 import '../../domain/repositories/search_repository.dart' as _i475;
 import '../../domain/services/enrich_context_usecase.dart' as _i253;
 import '../../domain/services/vision_extractor.dart' as _i754;
@@ -90,6 +92,9 @@ extension GetItInjectableX on _i174.GetIt {
       () => _i952.TokenUsageSideChannel(),
     );
     gh.lazySingleton<_i846.UpdateService>(() => _i846.UpdateService());
+    gh.lazySingleton<_i96.SearchDiagnosticsRecorder>(
+      () => _i658.SearchDiagnosticsService(),
+    );
     gh.lazySingleton<_i739.IContentRepository>(() => _i739.ContentRepository());
     gh.lazySingleton<_i867.PreferencesService>(
       () => _i867.PreferencesService(
@@ -192,17 +197,18 @@ extension GetItInjectableX on _i174.GetIt {
         gh<_i217.FacebookDraftStore>(),
       ),
     );
-    gh.factory<_i253.EnrichContextUseCase>(
-      () => _i253.EnrichContextUseCase(
-        gh<_i475.ISearchRepository>(),
-        gh<_i978.WebScraperService>(),
-      ),
-    );
     gh.lazySingleton<_i652.VisionCuratorChain>(
       () => _i652.VisionCuratorChain(
         gh<_i867.PreferencesService>(),
         gh<_i200.FreeTierGuard>(),
         gh<_i581.ProviderApiService>(),
+      ),
+    );
+    gh.factory<_i253.EnrichContextUseCase>(
+      () => _i253.EnrichContextUseCase(
+        gh<_i475.ISearchRepository>(),
+        gh<_i978.WebScraperService>(),
+        diagnostics: gh<_i96.SearchDiagnosticsRecorder>(),
       ),
     );
     return this;

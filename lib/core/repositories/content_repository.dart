@@ -20,6 +20,7 @@ abstract class IContentRepository {
     String? sourceUrl,
     required AiProvider provider,
     List<String> searchSources = const [],
+    String? researchDigest,
     bool keepStructure = false,
     bool isFanModeEnabled = false,
     String fanClubName = '',
@@ -44,6 +45,7 @@ abstract class IContentRepository {
     String length = 'medium',
     bool isFanModeEnabled = false,
     String fanClubName = '',
+    String? researchDigest,
     CancelToken? cancelToken,
   });
 
@@ -107,6 +109,7 @@ class ContentRepository implements IContentRepository {
     String? sourceUrl,
     required AiProvider provider,
     List<String> searchSources = const [],
+    String? researchDigest,
     bool keepStructure = false,
     bool isFanModeEnabled = false,
     String fanClubName = '',
@@ -127,6 +130,7 @@ class ContentRepository implements IContentRepository {
         apiKey: apiKey,
         sourceUrl: sourceUrl,
         searchSources: searchSources,
+        researchDigest: researchDigest,
         keepStructure: keepStructure,
         isFanModeEnabled: isFanModeEnabled,
         fanClubName: fanClubName,
@@ -157,6 +161,7 @@ class ContentRepository implements IContentRepository {
     String length = 'medium',
     bool isFanModeEnabled = false,
     String fanClubName = '',
+    String? researchDigest,
     CancelToken? cancelToken,
   }) async {
     try {
@@ -171,6 +176,7 @@ class ContentRepository implements IContentRepository {
         length: length,
         isFanModeEnabled: isFanModeEnabled,
         fanClubName: fanClubName,
+        researchDigest: researchDigest,
         cancelToken: cancelToken,
       );
       return ResultSuccess(res);

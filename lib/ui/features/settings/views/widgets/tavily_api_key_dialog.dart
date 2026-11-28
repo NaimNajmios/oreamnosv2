@@ -23,9 +23,12 @@ class TavilyApiKeyDialog extends ConsumerStatefulWidget {
 class _TavilyApiKeyDialogState extends ConsumerState<TavilyApiKeyDialog> {
   late TextEditingController _controller;
   bool _isLoading = false;
+  bool _isTesting = false;
   bool _obscureText = true;
   bool _hasExistingKey = false;
   String _maskedKey = '';
+  String? _testMessage;
+  bool _testOk = false;
 
   @override
   void initState() {
@@ -61,9 +64,45 @@ class _TavilyApiKeyDialogState extends ConsumerState<TavilyApiKeyDialog> {
       ).showSnackBar(const SnackBar(content: Text('API Key cannot be empty')));
       return;
     }
+    await _testKey(key: key, saveOnSuccess: true);
+  }
 
+  Future<void> _testKey({String? key, bool saveOnSuccess = false}) async {
+    final candidate = (key ?? _controller.text).trim();
+    if (candidate.isEmpty) {
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('API Key cannot be empty')));
+      return;
+    }
+
+    setState(() {
+      _isTesting = true;
+      _testMessage = null;
+    });
+
+    final result = await ref
+        .read(settingsViewModelProvider.notifier)
+        .testTavilyConnection(candidate);
+    if (!mounted) return;
+
+    setState(() {
+      _isTesting = false;
+      _testOk = result.ok;
+      _testMessage = result.ok
+          ? (result.credits > 0
+                ? '${result.message} · ${result.credits} credits'
+                : result.message)
+          : result.message;
+    });
+
+    if (result.ok && saveOnSuccess) {
+      await _persistKey(candidate);
+    }
+  }
+
+  Future<void> _persistKey(String key) async {
     setState(() => _isLoading = true);
-
     try {
       await ref.read(settingsViewModelProvider.notifier).setTavilyApiKey(key);
       if (mounted) {
@@ -209,6 +248,34 @@ class _TavilyApiKeyDialogState extends ConsumerState<TavilyApiKeyDialog> {
                   },
                 ),
               ),
+              if (_testMessage != null) ...[
+                const SizedBox(height: AppSpacing.sm),
+                Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Icon(
+                      _testOk
+                          ? Icons.check_circle_outline_rounded
+                          : Icons.error_outline_rounded,
+                      size: 14,
+                      color: _testOk
+                          ? theme.colorScheme.primary
+                          : theme.colorScheme.error,
+                    ),
+                    const SizedBox(width: 4),
+                    Expanded(
+                      child: Text(
+                        _testMessage!,
+                        style: theme.textTheme.bodySmall?.copyWith(
+                          color: _testOk
+                              ? theme.colorScheme.primary
+                              : theme.colorScheme.error,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ],
               const SizedBox(height: AppSpacing.xl),
               Row(
                 mainAxisAlignment: MainAxisAlignment.end,
@@ -225,15 +292,26 @@ class _TavilyApiKeyDialogState extends ConsumerState<TavilyApiKeyDialog> {
                     ),
                   const Spacer(),
                   TextButton(
+                    onPressed: _isLoading || _isTesting ? null : _testKey,
+                    child: _isTesting
+                        ? const SizedBox(
+                            width: 14,
+                            height: 14,
+                            child: CircularProgressIndicator(strokeWidth: 2),
+                          )
+                        : const Text('Test'),
+                  ),
+                  const SizedBox(width: AppSpacing.xs),
+                  TextButton(
                     onPressed: () => Navigator.of(context).pop(),
                     child: const Text('Cancel'),
                   ),
                   const SizedBox(width: AppSpacing.sm),
                   AppButton(
                     label: 'Save Key',
-                    isLoading: _isLoading,
+                    isLoading: _isLoading || _isTesting,
                     height: 44,
-                    onPressed: _isLoading ? null : _saveKey,
+                    onPressed: _isLoading || _isTesting ? null : _saveKey,
                   ),
                 ],
               ),

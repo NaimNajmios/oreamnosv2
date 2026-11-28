@@ -59,6 +59,7 @@ class OpenAICompatibleCurator implements IContentCurator {
     required String apiKey,
     String? sourceUrl,
     List<String> searchSources = const [],
+    String? researchDigest,
     bool keepStructure = false,
     bool isFanModeEnabled = false,
     String fanClubName = '',
@@ -78,6 +79,7 @@ class OpenAICompatibleCurator implements IContentCurator {
     final systemPrompt = GenerationPromptManager.buildSystemPrompt(
       sourceUrl: resolvedSourceUrl,
       searchSources: searchSources,
+      researchDigest: researchDigest,
       keepStructure: keepStructure,
       isFanModeEnabled: isFanModeEnabled,
       fanClubName: fanClubName,
@@ -350,10 +352,12 @@ class OpenAICompatibleCurator implements IContentCurator {
     String length = 'medium',
     bool isFanModeEnabled = false,
     String fanClubName = '',
+    String? researchDigest,
     CancelToken? cancelToken,
   }) async {
     final systemPrompt = GenerationPromptManager.buildSystemPrompt(
       sourceUrl: original.source.url,
+      researchDigest: researchDigest,
       keepStructure: keepStructure,
       length: length,
       isFanModeEnabled: isFanModeEnabled,
@@ -361,7 +365,7 @@ class OpenAICompatibleCurator implements IContentCurator {
       sourceText: original.rawMarkdown,
     );
     final userPrompt =
-        '${GenerationPromptManager.buildRefinementPrompt(originalPost: original.rawMarkdown, refinements: refinements, includeSource: includeSource)}\n\nReturn ONLY the JSON object per the schema.';
+        '${GenerationPromptManager.buildRefinementPrompt(originalPost: original.rawMarkdown, refinements: refinements, includeSource: includeSource, researchDigest: researchDigest)}\n\nReturn ONLY the JSON object per the schema.';
 
     final path = '$baseUrl/chat/completions';
 

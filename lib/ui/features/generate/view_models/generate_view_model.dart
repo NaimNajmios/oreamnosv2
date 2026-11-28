@@ -20,6 +20,7 @@ import 'package:oreamnos/data/services/token_usage_side_channel.dart';
 import 'package:oreamnos/data/services/usage_service.dart';
 import 'package:oreamnos/data/services/web_scraper_service.dart';
 import 'package:oreamnos/domain/models/curated_post.dart';
+import 'package:oreamnos/domain/models/research_context.dart';
 import 'package:oreamnos/domain/models/usage_log.dart';
 import 'package:oreamnos/domain/services/generation_prompt_manager.dart';
 import 'package:oreamnos/domain/repositories/search_repository.dart';
@@ -562,6 +563,12 @@ class GenerateViewModel extends Notifier<GenerateUiState>
       pendingInput: trimmedInput,
       isFromShare: isFromShare,
       fallbackNotice: null,
+      researchStatus: ResearchStatus.off,
+      researchMessage: null,
+      researchQuery: null,
+      researchSources: const [],
+      researchCredits: 0,
+      researchDigest: null,
     );
 
     // Every state that shows the loading card needs a live watchdog. Arm it
@@ -745,46 +752,77 @@ class GenerateViewModel extends Notifier<GenerateUiState>
         state = state.copyWith(generatingStep: GeneratingStep.prompting);
       }
 
-      // 2. AI Research Mode Enrichment (if enabled)
+      // 2. AI Research Mode Enrichment (strictly opt-in)
       if (state.isResearchModeEnabled) {
         if (sessionId != _generationSessionId) return;
-        state = state.copyWith(status: GenerateState.researching);
+        state = state.copyWith(
+          status: GenerateState.researching,
+          researchStatus: ResearchStatus.searching,
+          researchMessage: 'Searching the web…',
+          researchQuery: null,
+        );
 
         final enrichUsecase = getIt<EnrichContextUseCase>();
-        final textForEnrichment = contentToCurate is ExtractedArticle
-            ? contentToCurate.text
-            : contentToCurate.toString();
+        final article = contentToCurate is ExtractedArticle
+            ? contentToCurate
+            : null;
+        final textForEnrichment = article?.text ?? contentToCurate.toString();
+        final inputIsUrl =
+            parsed.primaryUrl != null || WebScraperService.isUrl(trimmedInput);
+        final intent = inputIsUrl
+            ? InputIntent.url
+            : IntentClassifier.classify(textForEnrichment);
 
-        final intent = IntentClassifier.classify(textForEnrichment);
         final enrichmentResult = await enrichUsecase.execute(
-          textForEnrichment,
+          inputIsUrl ? (parsed.primaryUrl ?? trimmedInput) : textForEnrichment,
           intent,
+          pageTitle: article?.pageTitle,
+          description: article?.description,
+          preExtractedText:
+              article?.text ?? (inputIsUrl ? textForEnrichment : null),
+          cancelToken: attemptToken,
         );
         if (sessionId != _generationSessionId) return;
 
-        if (contentToCurate is ExtractedArticle) {
-          contentToCurate = contentToCurate.copyWith(
-            text: enrichmentResult.content,
-          );
-        } else {
-          contentToCurate = enrichmentResult.content;
+        // Only replace the source text when research actually produced
+        // relevant context. Every other status keeps the original input.
+        if (enrichmentResult.status == ResearchStatus.ok) {
+          if (contentToCurate is ExtractedArticle) {
+            contentToCurate = contentToCurate.copyWith(
+              text: enrichmentResult.content,
+            );
+          } else {
+            contentToCurate = enrichmentResult.content;
+          }
         }
 
         final sources = enrichmentResult.sources;
-        if (sourceUrl == null &&
-            intent == InputIntent.url &&
-            sources.isNotEmpty) {
+        if (sourceUrl == null && sources.isNotEmpty) {
           sourceUrl = sources.first;
         }
 
         state = state.copyWith(
           searchSources: sources,
+          researchStatus: enrichmentResult.status,
+          researchMessage: enrichmentResult.message,
+          researchQuery: enrichmentResult.query,
+          researchSources: enrichmentResult.sourceDetails,
+          researchCredits: enrichmentResult.credits,
+          researchDigest: enrichmentResult.digest,
           status: GenerateState.generating,
           generatingStep: GeneratingStep.prompting,
         );
       } else {
         if (sessionId != _generationSessionId) return;
-        state = state.copyWith(searchSources: []);
+        state = state.copyWith(
+          searchSources: [],
+          researchStatus: ResearchStatus.off,
+          researchMessage: null,
+          researchQuery: null,
+          researchSources: [],
+          researchCredits: 0,
+          researchDigest: null,
+        );
       }
 
       final settings = ref.read(settingsViewModelProvider);
@@ -837,6 +875,7 @@ class GenerateViewModel extends Notifier<GenerateUiState>
             sourceUrl: sourceUrl,
             provider: provider,
             searchSources: state.searchSources,
+            researchDigest: state.researchDigest,
             keepStructure: state.keepStructure,
             isFanModeEnabled: settings.isFanModeEnabled,
             fanClubName: settings.fanClubName,
@@ -1277,6 +1316,7 @@ class GenerateViewModel extends Notifier<GenerateUiState>
             length: state.promptLength.name,
             isFanModeEnabled: settings.isFanModeEnabled,
             fanClubName: settings.fanClubName,
+            researchDigest: state.researchDigest,
             cancelToken: attemptToken,
           )
           .timeout(

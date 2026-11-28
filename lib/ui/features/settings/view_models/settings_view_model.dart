@@ -12,7 +12,9 @@ import '../../../../data/services/usage_service.dart';
 import '../../../../domain/models/app_theme_mode.dart';
 import '../../../../domain/models/custom_pill.dart';
 import '../../../../domain/models/hashtag_group.dart';
+import '../../../../domain/models/tavily_search.dart';
 import '../../../../domain/models/vision_mode.dart';
+import '../../../../domain/repositories/search_repository.dart';
 import 'settings_state.dart';
 
 final settingsViewModelProvider =
@@ -188,6 +190,11 @@ class SettingsNotifier extends Notifier<SettingsState> {
 
   Future<String?> getTavilyApiKey() async {
     return await _preferencesService.getTavilyApiKey();
+  }
+
+  /// Validates a Tavily key without persisting it.
+  Future<SearchConnectionResult> testTavilyConnection(String? key) async {
+    return getIt<ISearchRepository>().testConnection(apiKey: key);
   }
 
   Future<bool> setToneMode(String tone) {

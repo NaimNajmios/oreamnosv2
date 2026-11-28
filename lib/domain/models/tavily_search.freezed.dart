@@ -16,7 +16,8 @@ T _$identity<T>(T value) => value;
 /// @nodoc
 mixin _$TavilySearchResponse {
 
- String get query; List<TavilySearchResult> get results; String get answer;
+ String get query; List<TavilySearchResult> get results; String get answer;/// Credits consumed by this request (`include_usage: true`).
+ int get credits;@JsonKey(name: 'request_id') String? get requestId;@JsonKey(name: 'response_time') double get responseTime;
 /// Create a copy of TavilySearchResponse
 /// with the given fields replaced by the non-null parameter values.
 @JsonKey(includeFromJson: false, includeToJson: false)
@@ -29,16 +30,16 @@ $TavilySearchResponseCopyWith<TavilySearchResponse> get copyWith => _$TavilySear
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is TavilySearchResponse&&(identical(other.query, query) || other.query == query)&&const DeepCollectionEquality().equals(other.results, results)&&(identical(other.answer, answer) || other.answer == answer));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is TavilySearchResponse&&(identical(other.query, query) || other.query == query)&&const DeepCollectionEquality().equals(other.results, results)&&(identical(other.answer, answer) || other.answer == answer)&&(identical(other.credits, credits) || other.credits == credits)&&(identical(other.requestId, requestId) || other.requestId == requestId)&&(identical(other.responseTime, responseTime) || other.responseTime == responseTime));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,query,const DeepCollectionEquality().hash(results),answer);
+int get hashCode => Object.hash(runtimeType,query,const DeepCollectionEquality().hash(results),answer,credits,requestId,responseTime);
 
 @override
 String toString() {
-  return 'TavilySearchResponse(query: $query, results: $results, answer: $answer)';
+  return 'TavilySearchResponse(query: $query, results: $results, answer: $answer, credits: $credits, requestId: $requestId, responseTime: $responseTime)';
 }
 
 
@@ -49,7 +50,7 @@ abstract mixin class $TavilySearchResponseCopyWith<$Res>  {
   factory $TavilySearchResponseCopyWith(TavilySearchResponse value, $Res Function(TavilySearchResponse) _then) = _$TavilySearchResponseCopyWithImpl;
 @useResult
 $Res call({
- String query, List<TavilySearchResult> results, String answer
+ String query, List<TavilySearchResult> results, String answer, int credits,@JsonKey(name: 'request_id') String? requestId,@JsonKey(name: 'response_time') double responseTime
 });
 
 
@@ -66,12 +67,15 @@ class _$TavilySearchResponseCopyWithImpl<$Res>
 
 /// Create a copy of TavilySearchResponse
 /// with the given fields replaced by the non-null parameter values.
-@pragma('vm:prefer-inline') @override $Res call({Object? query = null,Object? results = null,Object? answer = null,}) {
+@pragma('vm:prefer-inline') @override $Res call({Object? query = null,Object? results = null,Object? answer = null,Object? credits = null,Object? requestId = freezed,Object? responseTime = null,}) {
   return _then(TavilySearchResponse(
 query: null == query ? _self.query : query // ignore: cast_nullable_to_non_nullable
 as String,results: null == results ? _self.results : results // ignore: cast_nullable_to_non_nullable
 as List<TavilySearchResult>,answer: null == answer ? _self.answer : answer // ignore: cast_nullable_to_non_nullable
-as String,
+as String,credits: null == credits ? _self.credits : credits // ignore: cast_nullable_to_non_nullable
+as int,requestId: freezed == requestId ? _self.requestId : requestId // ignore: cast_nullable_to_non_nullable
+as String?,responseTime: null == responseTime ? _self.responseTime : responseTime // ignore: cast_nullable_to_non_nullable
+as double,
   ));
 }
 
@@ -156,10 +160,10 @@ return $default(_that);case _:
 /// }
 /// ```
 
-@optionalTypeArgs TResult maybeWhen<TResult extends Object?>(TResult Function( String query,  List<TavilySearchResult> results,  String answer)?  $default,{required TResult orElse(),}) {final _that = this;
+@optionalTypeArgs TResult maybeWhen<TResult extends Object?>(TResult Function( String query,  List<TavilySearchResult> results,  String answer,  int credits, @JsonKey(name: 'request_id')  String? requestId, @JsonKey(name: 'response_time')  double responseTime)?  $default,{required TResult orElse(),}) {final _that = this;
 switch (_that) {
 case _TavilySearchResponse() when $default != null:
-return $default(_that.query,_that.results,_that.answer);case _:
+return $default(_that.query,_that.results,_that.answer,_that.credits,_that.requestId,_that.responseTime);case _:
   return orElse();
 
 }
@@ -177,10 +181,10 @@ return $default(_that.query,_that.results,_that.answer);case _:
 /// }
 /// ```
 
-@optionalTypeArgs TResult when<TResult extends Object?>(TResult Function( String query,  List<TavilySearchResult> results,  String answer)  $default,) {final _that = this;
+@optionalTypeArgs TResult when<TResult extends Object?>(TResult Function( String query,  List<TavilySearchResult> results,  String answer,  int credits, @JsonKey(name: 'request_id')  String? requestId, @JsonKey(name: 'response_time')  double responseTime)  $default,) {final _that = this;
 switch (_that) {
 case _TavilySearchResponse():
-return $default(_that.query,_that.results,_that.answer);case _:
+return $default(_that.query,_that.results,_that.answer,_that.credits,_that.requestId,_that.responseTime);case _:
   throw StateError('Unexpected subclass');
 
 }
@@ -197,10 +201,10 @@ return $default(_that.query,_that.results,_that.answer);case _:
 /// }
 /// ```
 
-@optionalTypeArgs TResult? whenOrNull<TResult extends Object?>(TResult? Function( String query,  List<TavilySearchResult> results,  String answer)?  $default,) {final _that = this;
+@optionalTypeArgs TResult? whenOrNull<TResult extends Object?>(TResult? Function( String query,  List<TavilySearchResult> results,  String answer,  int credits, @JsonKey(name: 'request_id')  String? requestId, @JsonKey(name: 'response_time')  double responseTime)?  $default,) {final _that = this;
 switch (_that) {
 case _TavilySearchResponse() when $default != null:
-return $default(_that.query,_that.results,_that.answer);case _:
+return $default(_that.query,_that.results,_that.answer,_that.credits,_that.requestId,_that.responseTime);case _:
   return null;
 
 }
@@ -212,18 +216,22 @@ return $default(_that.query,_that.results,_that.answer);case _:
 @JsonSerializable()
 
 class _TavilySearchResponse implements TavilySearchResponse {
-  const _TavilySearchResponse({required this.query, required  List<TavilySearchResult> results, this.answer = ''}): _results = results;
+  const _TavilySearchResponse({this.query = '',  List<TavilySearchResult> results = const [], this.answer = '', this.credits = 0, @JsonKey(name: 'request_id') this.requestId, @JsonKey(name: 'response_time') this.responseTime = 0.0}): _results = results;
   factory _TavilySearchResponse.fromJson(Map<String, dynamic> json) => _$TavilySearchResponseFromJson(json);
 
-@override final  String query;
+@override@JsonKey() final  String query;
  final  List<TavilySearchResult> _results;
-@override List<TavilySearchResult> get results {
+@override@JsonKey() List<TavilySearchResult> get results {
   if (_results is EqualUnmodifiableListView) return _results;
   // ignore: implicit_dynamic_type
   return EqualUnmodifiableListView(_results);
 }
 
 @override@JsonKey() final  String answer;
+/// Credits consumed by this request (`include_usage: true`).
+@override@JsonKey() final  int credits;
+@override@JsonKey(name: 'request_id') final  String? requestId;
+@override@JsonKey(name: 'response_time') final  double responseTime;
 
 /// Create a copy of TavilySearchResponse
 /// with the given fields replaced by the non-null parameter values.
@@ -238,16 +246,16 @@ Map<String, dynamic> toJson() {
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is _TavilySearchResponse&&(identical(other.query, query) || other.query == query)&&const DeepCollectionEquality().equals(other._results, _results)&&(identical(other.answer, answer) || other.answer == answer));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is _TavilySearchResponse&&(identical(other.query, query) || other.query == query)&&const DeepCollectionEquality().equals(other._results, _results)&&(identical(other.answer, answer) || other.answer == answer)&&(identical(other.credits, credits) || other.credits == credits)&&(identical(other.requestId, requestId) || other.requestId == requestId)&&(identical(other.responseTime, responseTime) || other.responseTime == responseTime));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,query,const DeepCollectionEquality().hash(_results),answer);
+int get hashCode => Object.hash(runtimeType,query,const DeepCollectionEquality().hash(_results),answer,credits,requestId,responseTime);
 
 @override
 String toString() {
-  return 'TavilySearchResponse(query: $query, results: $results, answer: $answer)';
+  return 'TavilySearchResponse(query: $query, results: $results, answer: $answer, credits: $credits, requestId: $requestId, responseTime: $responseTime)';
 }
 
 
@@ -258,7 +266,7 @@ abstract mixin class _$TavilySearchResponseCopyWith<$Res> implements $TavilySear
   factory _$TavilySearchResponseCopyWith(_TavilySearchResponse value, $Res Function(_TavilySearchResponse) _then) = __$TavilySearchResponseCopyWithImpl;
 @override @useResult
 $Res call({
- String query, List<TavilySearchResult> results, String answer
+ String query, List<TavilySearchResult> results, String answer, int credits,@JsonKey(name: 'request_id') String? requestId,@JsonKey(name: 'response_time') double responseTime
 });
 
 
@@ -275,12 +283,15 @@ class __$TavilySearchResponseCopyWithImpl<$Res>
 
 /// Create a copy of TavilySearchResponse
 /// with the given fields replaced by the non-null parameter values.
-@override @pragma('vm:prefer-inline') $Res call({Object? query = null,Object? results = null,Object? answer = null,}) {
+@override @pragma('vm:prefer-inline') $Res call({Object? query = null,Object? results = null,Object? answer = null,Object? credits = null,Object? requestId = freezed,Object? responseTime = null,}) {
   return _then(_TavilySearchResponse(
 query: null == query ? _self.query : query // ignore: cast_nullable_to_non_nullable
 as String,results: null == results ? _self._results : results // ignore: cast_nullable_to_non_nullable
 as List<TavilySearchResult>,answer: null == answer ? _self.answer : answer // ignore: cast_nullable_to_non_nullable
-as String,
+as String,credits: null == credits ? _self.credits : credits // ignore: cast_nullable_to_non_nullable
+as int,requestId: freezed == requestId ? _self.requestId : requestId // ignore: cast_nullable_to_non_nullable
+as String?,responseTime: null == responseTime ? _self.responseTime : responseTime // ignore: cast_nullable_to_non_nullable
+as double,
   ));
 }
 
@@ -291,7 +302,7 @@ as String,
 /// @nodoc
 mixin _$TavilySearchResult {
 
- String get title; String get url; String get content; double get score;
+ String get title; String get url; String get content; double get score;@JsonKey(name: 'published_date') String? get publishedDate;@JsonKey(name: 'raw_content') String? get rawContent; String? get favicon; String? get id;
 /// Create a copy of TavilySearchResult
 /// with the given fields replaced by the non-null parameter values.
 @JsonKey(includeFromJson: false, includeToJson: false)
@@ -304,16 +315,16 @@ $TavilySearchResultCopyWith<TavilySearchResult> get copyWith => _$TavilySearchRe
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is TavilySearchResult&&(identical(other.title, title) || other.title == title)&&(identical(other.url, url) || other.url == url)&&(identical(other.content, content) || other.content == content)&&(identical(other.score, score) || other.score == score));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is TavilySearchResult&&(identical(other.title, title) || other.title == title)&&(identical(other.url, url) || other.url == url)&&(identical(other.content, content) || other.content == content)&&(identical(other.score, score) || other.score == score)&&(identical(other.publishedDate, publishedDate) || other.publishedDate == publishedDate)&&(identical(other.rawContent, rawContent) || other.rawContent == rawContent)&&(identical(other.favicon, favicon) || other.favicon == favicon)&&(identical(other.id, id) || other.id == id));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,title,url,content,score);
+int get hashCode => Object.hash(runtimeType,title,url,content,score,publishedDate,rawContent,favicon,id);
 
 @override
 String toString() {
-  return 'TavilySearchResult(title: $title, url: $url, content: $content, score: $score)';
+  return 'TavilySearchResult(title: $title, url: $url, content: $content, score: $score, publishedDate: $publishedDate, rawContent: $rawContent, favicon: $favicon, id: $id)';
 }
 
 
@@ -324,7 +335,7 @@ abstract mixin class $TavilySearchResultCopyWith<$Res>  {
   factory $TavilySearchResultCopyWith(TavilySearchResult value, $Res Function(TavilySearchResult) _then) = _$TavilySearchResultCopyWithImpl;
 @useResult
 $Res call({
- String title, String url, String content, double score
+ String title, String url, String content, double score,@JsonKey(name: 'published_date') String? publishedDate,@JsonKey(name: 'raw_content') String? rawContent, String? favicon, String? id
 });
 
 
@@ -341,13 +352,17 @@ class _$TavilySearchResultCopyWithImpl<$Res>
 
 /// Create a copy of TavilySearchResult
 /// with the given fields replaced by the non-null parameter values.
-@pragma('vm:prefer-inline') @override $Res call({Object? title = null,Object? url = null,Object? content = null,Object? score = null,}) {
+@pragma('vm:prefer-inline') @override $Res call({Object? title = null,Object? url = null,Object? content = null,Object? score = null,Object? publishedDate = freezed,Object? rawContent = freezed,Object? favicon = freezed,Object? id = freezed,}) {
   return _then(TavilySearchResult(
 title: null == title ? _self.title : title // ignore: cast_nullable_to_non_nullable
 as String,url: null == url ? _self.url : url // ignore: cast_nullable_to_non_nullable
 as String,content: null == content ? _self.content : content // ignore: cast_nullable_to_non_nullable
 as String,score: null == score ? _self.score : score // ignore: cast_nullable_to_non_nullable
-as double,
+as double,publishedDate: freezed == publishedDate ? _self.publishedDate : publishedDate // ignore: cast_nullable_to_non_nullable
+as String?,rawContent: freezed == rawContent ? _self.rawContent : rawContent // ignore: cast_nullable_to_non_nullable
+as String?,favicon: freezed == favicon ? _self.favicon : favicon // ignore: cast_nullable_to_non_nullable
+as String?,id: freezed == id ? _self.id : id // ignore: cast_nullable_to_non_nullable
+as String?,
   ));
 }
 
@@ -432,10 +447,10 @@ return $default(_that);case _:
 /// }
 /// ```
 
-@optionalTypeArgs TResult maybeWhen<TResult extends Object?>(TResult Function( String title,  String url,  String content,  double score)?  $default,{required TResult orElse(),}) {final _that = this;
+@optionalTypeArgs TResult maybeWhen<TResult extends Object?>(TResult Function( String title,  String url,  String content,  double score, @JsonKey(name: 'published_date')  String? publishedDate, @JsonKey(name: 'raw_content')  String? rawContent,  String? favicon,  String? id)?  $default,{required TResult orElse(),}) {final _that = this;
 switch (_that) {
 case _TavilySearchResult() when $default != null:
-return $default(_that.title,_that.url,_that.content,_that.score);case _:
+return $default(_that.title,_that.url,_that.content,_that.score,_that.publishedDate,_that.rawContent,_that.favicon,_that.id);case _:
   return orElse();
 
 }
@@ -453,10 +468,10 @@ return $default(_that.title,_that.url,_that.content,_that.score);case _:
 /// }
 /// ```
 
-@optionalTypeArgs TResult when<TResult extends Object?>(TResult Function( String title,  String url,  String content,  double score)  $default,) {final _that = this;
+@optionalTypeArgs TResult when<TResult extends Object?>(TResult Function( String title,  String url,  String content,  double score, @JsonKey(name: 'published_date')  String? publishedDate, @JsonKey(name: 'raw_content')  String? rawContent,  String? favicon,  String? id)  $default,) {final _that = this;
 switch (_that) {
 case _TavilySearchResult():
-return $default(_that.title,_that.url,_that.content,_that.score);case _:
+return $default(_that.title,_that.url,_that.content,_that.score,_that.publishedDate,_that.rawContent,_that.favicon,_that.id);case _:
   throw StateError('Unexpected subclass');
 
 }
@@ -473,10 +488,10 @@ return $default(_that.title,_that.url,_that.content,_that.score);case _:
 /// }
 /// ```
 
-@optionalTypeArgs TResult? whenOrNull<TResult extends Object?>(TResult? Function( String title,  String url,  String content,  double score)?  $default,) {final _that = this;
+@optionalTypeArgs TResult? whenOrNull<TResult extends Object?>(TResult? Function( String title,  String url,  String content,  double score, @JsonKey(name: 'published_date')  String? publishedDate, @JsonKey(name: 'raw_content')  String? rawContent,  String? favicon,  String? id)?  $default,) {final _that = this;
 switch (_that) {
 case _TavilySearchResult() when $default != null:
-return $default(_that.title,_that.url,_that.content,_that.score);case _:
+return $default(_that.title,_that.url,_that.content,_that.score,_that.publishedDate,_that.rawContent,_that.favicon,_that.id);case _:
   return null;
 
 }
@@ -488,13 +503,17 @@ return $default(_that.title,_that.url,_that.content,_that.score);case _:
 @JsonSerializable()
 
 class _TavilySearchResult implements TavilySearchResult {
-  const _TavilySearchResult({required this.title, required this.url, required this.content, this.score = 0.0});
+  const _TavilySearchResult({this.title = '', this.url = '', this.content = '', this.score = 0.0, @JsonKey(name: 'published_date') this.publishedDate, @JsonKey(name: 'raw_content') this.rawContent, this.favicon, this.id});
   factory _TavilySearchResult.fromJson(Map<String, dynamic> json) => _$TavilySearchResultFromJson(json);
 
-@override final  String title;
-@override final  String url;
-@override final  String content;
+@override@JsonKey() final  String title;
+@override@JsonKey() final  String url;
+@override@JsonKey() final  String content;
 @override@JsonKey() final  double score;
+@override@JsonKey(name: 'published_date') final  String? publishedDate;
+@override@JsonKey(name: 'raw_content') final  String? rawContent;
+@override final  String? favicon;
+@override final  String? id;
 
 /// Create a copy of TavilySearchResult
 /// with the given fields replaced by the non-null parameter values.
@@ -509,16 +528,16 @@ Map<String, dynamic> toJson() {
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is _TavilySearchResult&&(identical(other.title, title) || other.title == title)&&(identical(other.url, url) || other.url == url)&&(identical(other.content, content) || other.content == content)&&(identical(other.score, score) || other.score == score));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is _TavilySearchResult&&(identical(other.title, title) || other.title == title)&&(identical(other.url, url) || other.url == url)&&(identical(other.content, content) || other.content == content)&&(identical(other.score, score) || other.score == score)&&(identical(other.publishedDate, publishedDate) || other.publishedDate == publishedDate)&&(identical(other.rawContent, rawContent) || other.rawContent == rawContent)&&(identical(other.favicon, favicon) || other.favicon == favicon)&&(identical(other.id, id) || other.id == id));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,title,url,content,score);
+int get hashCode => Object.hash(runtimeType,title,url,content,score,publishedDate,rawContent,favicon,id);
 
 @override
 String toString() {
-  return 'TavilySearchResult(title: $title, url: $url, content: $content, score: $score)';
+  return 'TavilySearchResult(title: $title, url: $url, content: $content, score: $score, publishedDate: $publishedDate, rawContent: $rawContent, favicon: $favicon, id: $id)';
 }
 
 
@@ -529,7 +548,7 @@ abstract mixin class _$TavilySearchResultCopyWith<$Res> implements $TavilySearch
   factory _$TavilySearchResultCopyWith(_TavilySearchResult value, $Res Function(_TavilySearchResult) _then) = __$TavilySearchResultCopyWithImpl;
 @override @useResult
 $Res call({
- String title, String url, String content, double score
+ String title, String url, String content, double score,@JsonKey(name: 'published_date') String? publishedDate,@JsonKey(name: 'raw_content') String? rawContent, String? favicon, String? id
 });
 
 
@@ -546,13 +565,17 @@ class __$TavilySearchResultCopyWithImpl<$Res>
 
 /// Create a copy of TavilySearchResult
 /// with the given fields replaced by the non-null parameter values.
-@override @pragma('vm:prefer-inline') $Res call({Object? title = null,Object? url = null,Object? content = null,Object? score = null,}) {
+@override @pragma('vm:prefer-inline') $Res call({Object? title = null,Object? url = null,Object? content = null,Object? score = null,Object? publishedDate = freezed,Object? rawContent = freezed,Object? favicon = freezed,Object? id = freezed,}) {
   return _then(_TavilySearchResult(
 title: null == title ? _self.title : title // ignore: cast_nullable_to_non_nullable
 as String,url: null == url ? _self.url : url // ignore: cast_nullable_to_non_nullable
 as String,content: null == content ? _self.content : content // ignore: cast_nullable_to_non_nullable
 as String,score: null == score ? _self.score : score // ignore: cast_nullable_to_non_nullable
-as double,
+as double,publishedDate: freezed == publishedDate ? _self.publishedDate : publishedDate // ignore: cast_nullable_to_non_nullable
+as String?,rawContent: freezed == rawContent ? _self.rawContent : rawContent // ignore: cast_nullable_to_non_nullable
+as String?,favicon: freezed == favicon ? _self.favicon : favicon // ignore: cast_nullable_to_non_nullable
+as String?,id: freezed == id ? _self.id : id // ignore: cast_nullable_to_non_nullable
+as String?,
   ));
 }
 

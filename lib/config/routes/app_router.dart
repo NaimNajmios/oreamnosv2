@@ -24,6 +24,7 @@ import '../../ui/features/facebook/views/facebook_history_screen.dart';
 import '../../ui/features/facebook/views/facebook_performance_screen.dart';
 import '../../ui/features/publish/views/publish_hub_screen.dart';
 import '../../ui/features/settings/views/debug_log_screen.dart';
+import '../../ui/features/settings/views/search_diagnostics_screen.dart';
 import '../../data/models/ai_provider.dart';
 import '../../domain/models/card_brief.dart';
 import '../../domain/models/curated_post.dart';
@@ -42,6 +43,7 @@ abstract final class RoutePaths {
   static const String carousel = '/carousel';
   static const String brandKit = '/brand-kit';
   static const String debugLogs = '/debug-logs';
+  static const String searchDiagnostics = '/search-diagnostics';
   static const String sessionHistory = '/sessions';
   static const String publish = '/publish';
   static const String facebookCompose = '/facebook-compose';
@@ -396,6 +398,11 @@ GoRouter createAppRouter({String? initialLocation}) {
         path: RoutePaths.debugLogs,
         pageBuilder: (context, state) =>
             _kickoffPage(child: const DebugLogScreen()),
+      ),
+      GoRoute(
+        path: RoutePaths.searchDiagnostics,
+        pageBuilder: (context, state) =>
+            _kickoffPage(child: const SearchDiagnosticsScreen()),
       ),
       GoRoute(
         path: RoutePaths.sessionHistory,

@@ -36,6 +36,7 @@ class GenerationPromptManager {
   static String buildSystemPrompt({
     String? sourceUrl,
     List<String> searchSources = const [],
+    String? researchDigest,
     bool keepStructure = false,
     bool isFanModeEnabled = false,
     String fanClubName = '',
@@ -89,7 +90,7 @@ class GenerationPromptManager {
     );
     buf.writeln('');
 
-    if (searchSources.isNotEmpty) {
+    if (searchSources.isNotEmpty || (researchDigest ?? '').trim().isNotEmpty) {
       buf.writeln('GROUNDEDNESS RULES (when search context is provided):');
       buf.writeln(
         '1. Base ALL facts, stats and quotes ONLY on the provided search context and source text.',
@@ -100,7 +101,18 @@ class GenerationPromptManager {
       buf.writeln(
         '3. Do NOT append source URLs inside body. Return sources only via the JSON source field; the app renders "Sumber:" separately.',
       );
-      buf.writeln('   Reference sources: ${searchSources.join(', ')}');
+      buf.writeln(
+        '4. Never put a URL, domain, platform name, or handle in source.label. Use the outlet name named in the research context.',
+      );
+      final digest = (researchDigest ?? '').trim();
+      if (digest.isNotEmpty) {
+        buf.writeln('');
+        buf.writeln('RESEARCH DIGEST (Tavily web search):');
+        buf.writeln(digest);
+        buf.writeln(
+          'Use these facts where relevant. Prefer the newest source when facts conflict.',
+        );
+      }
       buf.writeln('');
     }
     buf.writeln('STRICT EDITORIAL GUIDELINES:');
@@ -417,6 +429,7 @@ class GenerationPromptManager {
     required String originalPost,
     required List<String> refinements,
     required bool includeSource,
+    String? researchDigest,
   }) {
     final buf = StringBuffer();
     buf.writeln(
@@ -452,6 +465,18 @@ class GenerationPromptManager {
     buf.writeln('---');
     buf.writeln(originalPost);
     buf.writeln('---');
+    buf.writeln('');
+    final digest = (researchDigest ?? '').trim();
+    if (digest.isNotEmpty) {
+      buf.writeln('RESEARCH CONTEXT ALREADY USED (do not contradict):');
+      buf.writeln(digest);
+      buf.writeln('');
+    }
+    buf.writeln(
+      'PRESERVE FACTS: Keep every statistic, score, date, and proper noun from '
+      'the original post unless the user explicitly asks to remove it. Never '
+      'invent new facts to replace them.',
+    );
     buf.writeln('');
     buf.writeln(
       "Provide ONLY the refined Bahasa Malaysia post, BUT ALWAYS use natural English football terminology where appropriate (e.g., 'Offside', 'Clean Sheet', 'Hat-trick'). Maintain the same length and structure. If there are bullet points, use • character only. Do NOT include any hashtags or explanations. Do NOT include any emojis in the output.",
