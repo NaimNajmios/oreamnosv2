@@ -759,12 +759,37 @@ class PreferencesService {
 
   // === Settings snapshot (export/import) ===
 
-  /// Snapshot of every shared preference, suitable for [jsonEncode].
-  /// Secure-storage API keys are not included — they live in the credential
-  /// store.
+  /// Preference keys that make up a portable settings snapshot.
+  ///
+  /// Deliberately narrow: data stores (Facebook history/drafts, logs, usage
+  /// records, widget payloads), connection-test timestamps and every
+  /// secure-storage credential are excluded, so a backup cannot leak or
+  /// resurrect stale account state on another device. Only keys that
+  /// [importSettings] knows how to restore belong here.
+  static Set<String> get settingsExportKeys => <String>{
+    AppConstants.keyThemeMode,
+    AppConstants.keyToneMode,
+    'vision_mode',
+    AppConstants.keyReadingTextSize,
+    AppConstants.keyPersistGenerationOptions,
+    AppConstants.keyShowWidgetSnippet,
+    AppConstants.keyAutoAppendHashtags,
+    'is_fan_mode_enabled',
+    'fan_club_name',
+    AppConstants.keyUsageRangeDays,
+    AppConstants.keyUsageProviderFilter,
+    AppConstants.keyUsageLogMaxSize,
+    AppConstants.keySelectedProvider,
+    AppConstants.keyDefaultHashtags,
+    AppConstants.keyLastUppercaseTitle,
+    for (final provider in AiProvider.values) 'model_${provider.name}',
+  };
+
+  /// Snapshot of portable settings only, suitable for [jsonEncode].
+  /// API keys live in the credential store and are never exported.
   Future<Map<String, Object?>> exportSettings() async {
     final map = <String, Object?>{};
-    for (final key in _prefs.getKeys()) {
+    for (final key in settingsExportKeys) {
       final value = _prefs.get(key);
       if (value != null) map[key] = value;
     }
@@ -806,6 +831,25 @@ class PreferencesService {
     final providerFilter = exported[AppConstants.keyUsageProviderFilter];
     if (providerFilter is String) {
       await setUsageProviderFilter(providerFilter);
+    }
+    final logMax = exported[AppConstants.keyUsageLogMaxSize];
+    if (logMax is int) await setUsageLogMaxSize(logMax);
+    final hashtags = exported[AppConstants.keyDefaultHashtags];
+    if (hashtags is String) await setDefaultHashtags(hashtags);
+    final upper = exported[AppConstants.keyLastUppercaseTitle];
+    if (upper is bool) await setLastUppercaseTitle(upper);
+    final providerName = exported[AppConstants.keySelectedProvider];
+    if (providerName is String) {
+      final provider = AiProvider.values
+          .where((p) => p.name == providerName)
+          .firstOrNull;
+      if (provider != null) await setSelectedProvider(provider);
+    }
+    for (final provider in AiProvider.values) {
+      final model = exported['model_${provider.name}'];
+      if (model is String && model.trim().isNotEmpty) {
+        await setSelectedModel(provider, model);
+      }
     }
   }
 }

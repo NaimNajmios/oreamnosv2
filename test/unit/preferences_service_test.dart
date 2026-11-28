@@ -2,6 +2,7 @@ import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:oreamnos/config/constants.dart';
 import 'package:oreamnos/data/models/ai_provider.dart';
+import 'package:oreamnos/data/services/preferences_service.dart';
 import 'package:oreamnos/domain/models/app_theme_mode.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -119,6 +120,35 @@ void main() {
       expect(svc2.isFanModeEnabled, isTrue);
       expect(svc2.fanClubName, 'Arsenal');
       expect(svc2.showWidgetSnippet, isTrue);
+    });
+
+    test('exportSettings is a whitelist, not a full prefs dump', () async {
+      final prefs = await createMockPrefs();
+      final svc = createTestPreferencesService(prefs);
+
+      await svc.setThemeMode(AppThemeMode.light);
+      await prefs.setString(AppConstants.keyFacebookHistory, 'history-blob');
+      await prefs.setString(AppConstants.keyFacebookDrafts, 'draft-blob');
+      await prefs.setString('logs_v2', 'log-blob');
+      await prefs.setString(AppConstants.keyGeminiApiKey, 'secret');
+
+      final snapshot = await svc.exportSettings();
+      expect(snapshot[AppConstants.keyThemeMode], AppThemeMode.light.name);
+      for (final key in snapshot.keys) {
+        expect(
+          PreferencesService.settingsExportKeys,
+          contains(key),
+          reason: key,
+        );
+      }
+      for (final key in [
+        AppConstants.keyFacebookHistory,
+        AppConstants.keyFacebookDrafts,
+        'logs_v2',
+        AppConstants.keyGeminiApiKey,
+      ]) {
+        expect(snapshot.containsKey(key), isFalse, reason: key);
+      }
     });
   });
 }

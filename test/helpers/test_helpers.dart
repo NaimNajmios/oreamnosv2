@@ -14,7 +14,8 @@ import 'package:oreamnos/data/services/usage_service.dart';
 ///   `FlutterSecureStorage.setMockInitialValues({})`
 ///   `SharedPreferences.setMockInitialValues({})`
 /// but exposes `ProviderScope` overrides for Riverpod phase.
-// Vision/ML Kit excluded — FakeVisionExtractor removed.
+// Vision uses the production $0 cloud chain + real ML Kit OCR fallback; the
+// old FakeVisionExtractor was removed.
 
 /// Creates a test [PreferencesService] with mocked storage.
 PreferencesService createTestPreferencesService(SharedPreferences prefs) {

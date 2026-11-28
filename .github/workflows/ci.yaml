@@ -2,9 +2,9 @@ name: CI
 
 on:
   push:
-    branches: [main, master]
+    branches: [main, master, develop]
   pull_request:
-    branches: [main, master]
+    branches: [main, master, develop]
 
 jobs:
   analyze-test:
@@ -31,3 +31,15 @@ jobs:
 
       - name: Build check (codegen)
         run: dart run build_runner build --delete-conflicting-outputs
+
+      # Dart's analyzer cannot see Kotlin/Java. A debug APK compiles every
+      # native widget receiver, the update installer channel and MainActivity
+      # without needing a signing key.
+      - name: Build debug APK (native Kotlin check)
+        run: flutter build apk --debug
+
+      - name: Upload debug APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: oreamnos-debug-apk
+          path: build/app/outputs/flutter-apk/app-debug.apk

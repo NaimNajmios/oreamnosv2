@@ -11,10 +11,15 @@
     <uses-permission
         android:name="android.permission.WRITE_EXTERNAL_STORAGE"
         android:maxSdkVersion="28"/>
+    <!-- Auto-backup is disabled explicitly. A restore can bring back stale
+         Facebook page/draft state and clobber the secure-storage credentials
+         (API keys and Page tokens) that belong to the previous device. -->
     <application
         android:label="oreamnos"
         android:name="${applicationName}"
-        android:icon="@mipmap/launcher_icon">
+        android:icon="@mipmap/launcher_icon"
+        android:allowBackup="false"
+        android:fullBackupContent="false">
         <activity
             android:name=".MainActivity"
             android:exported="true"

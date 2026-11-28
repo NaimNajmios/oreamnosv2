@@ -1,6 +1,6 @@
 # Oreamnos
 
-**Oreamnos** is an AI-assisted editorial curator and social card generator built with Flutter. It streamlines the workflow of curating, polishing, and designing sports media content (specifically football/soccer) across multiple LLM providers (**Gemini**, **Groq**, **OpenRouter**, **Cerebras**) with rich Malay editorial styling, strict JSON extraction, and instant shareable canvas generation. **On-device vision/ML Kit is intentionally excluded (v2 verdict — stubbed `MLKitVisionExtractor`).**
+**Oreamnos** is an AI-assisted editorial curator and social card generator built with Flutter. It streamlines the workflow of curating, polishing, and designing sports media content (specifically football/soccer) across multiple LLM providers (**Gemini**, **Groq**, **OpenRouter**, **Cerebras**) with rich Malay editorial styling, strict JSON extraction, instant shareable canvas generation, and a **$0 vision pipeline** (free-tier cloud models with an on-device ML Kit OCR fallback).
 
 ---
 
@@ -37,17 +37,18 @@ Instant, pixel-perfect graphics with deterministic JSON schema extraction and cu
 
 > Pruned (not implemented): `cutoutBitmap`, `CardConfig.elementOffsets` map (shadowed by separate freeform offsets + watermark drag) — badge/accent/blur/opacity only, per original.
 
-### 3. Vision Extraction — Excluded (v2 Verdict)
-- **On-device vision models excluded**: `Gemma 3n/1B/PaliGemma/Nano/LiteRTEngine/VisionModelManager` intentionally not ported (≈15% original complexity). `MLKitVisionExtractor` `lib/data/services/ml_kit_vision_extractor.dart:1` stubbed (returns `''`), `google_mlkit_text_recognition` removed from `pubspec.yaml` (probe moved `tool/scrape_probe.dart → tool/dev/scrape_probe.dart`).
+### 3. Vision Extraction — $0 Cloud Chain + On-Device Fallback
+- **Cloud-first, free-tier only**: `VisionCuratorChain` `lib/data/services/vision_curator_chain.dart:23` tries Gemini Flash-Lite → Groq → OpenRouter free models (Cerebras is text-only and skipped), with `FreeTierGuard` skip-at-cap, `VisionModelAllowlist` blocking paid/retired IDs, and per-attempt `CancelToken`. Quota exhaustion surfaces as `RateLimitFailure` — never a bill.
+- **On-device fallback**: `MLKitVisionExtractor` `lib/data/services/ml_kit_vision_extractor.dart:1` runs real Latin-script `google_mlkit_text_recognition` OCR locally when no cloud hop succeeds; output is normalized by `FootballOcrParser.formatForPrompt`. Large local vision models (Gemma 3n/PaliGemma/LiteRTEngine) remain intentionally unported; the network probe moved `tool/scrape_probe.dart → tool/dev/scrape_probe.dart`.
 - **Image picker retained** for card backgrounds `lib/ui/features/card_generator/view_models/card_generator_view_model.dart:489` + watermark logos `284` (background/watermark `image_picker:90` only) — no OCR path on Generate.
 
 ### 4. Facebook Page Publishing (Graph API)
 - **Dedicated Publish tab**: publishing has its own bottom-nav home (`/publish`) with Page identity/switcher, a **Create a post** CTA, draft/scheduled/published counts, the next scheduled post, a continue-writing card, recent posts with insights/Story status, and shortcuts to Drafts, Published, Workflows and Storage. Settings no longer hosts Facebook tiles; composer/history/drafts/workflows/comments open as full-screen pushes from the hub.
 - **Connect once, post to any Page**: paste a **user token** (recommended, `pages_show_list` + `pages_read_engagement` + `pages_manage_posts`) and every Page is discovered via `GET /me/accounts`; only the derived Page tokens are persisted, each under `facebook_page_token_<pageId>`. The user token is exchanged and discarded — never written to prefs, secure storage, drafts, logs or analytics. A Page-token path remains for single-Page setups. `FacebookPageService` owns verification + exchange. A received HTTP response is terminal (no duplicate exchange after a 200); transport failures are typed (timeout/DNS/TLS/cancel), and a non-JSON 200 page shows an unexpected-response message instead of a fake network error.
 - **Page switcher + draft safety**: `PageSwitcherSheet` changes the active publish target from the composer header. Each draft is stamped with its Page; switching Pages with a non-empty draft opens a **Switch target / Duplicate draft / Keep original Page** guard so a caption cannot silently post to the wrong Page.
-- **Multi-photo carousel (up to 4)**: the gallery picker adds multiple photos; the composer shows a swipeable `MediaCarousel` with `1/4` and **Cover** badges, per-photo **Edit** (crop/aspect/zoom/alt text, make cover, move left/right, remove) and screen-reader index announcements. Publishing uploads each photo with `published=false`, then creates **one** feed post with `attached_media`; a failed upload deletes already-uploaded photos and never creates the feed post.
+- **Multi-photo carousel (up to 10)**: the gallery picker adds multiple photos; the composer shows a swipeable `MediaCarousel` with `1/10` and **Cover** badges, per-photo **Edit** (crop/aspect/zoom/alt text, make cover, move left/right, remove) and screen-reader index announcements. Publishing uploads each photo with `published=false`, then creates **one** feed post with `attached_media`; a failed upload deletes already-uploaded photos and never creates the feed post.
 - **Publish from anywhere**: Generate result header and Card Studio both seed a `FacebookDraftNotifier` draft (Card Studio captures its 4:5 PNG to a temp file first) and push `/facebook-compose` — no router `extra`.
-- **Composer + photo pipeline**: message-first Facebook-style card, drag-to-reposition + pinch/slider zoom (1×–4×), crop presets **Feed 1.91:1 / Square 1:1 / Portrait 4:5**, **alt text** (≤420 chars, `alt_text_custom`), and a full feed `PostPreviewCard` preview. `FacebookImageCropper` bakes the visible frame into a **JPEG q85, ≤2048 px** on an isolate (with a `dart:ui` PNG fallback). Upload progress aggregates across photos ("Uploading photo 2 of 4 · 40%").
+- **Composer + photo pipeline**: message-first Facebook-style card, drag-to-reposition + pinch/slider zoom (1×–4×), crop presets **Feed 1.91:1 / Square 1:1 / Portrait 4:5**, **alt text** (≤420 chars, `alt_text_custom`), and a full feed `PostPreviewCard` preview. `FacebookImageCropper` bakes the visible frame into a **JPEG q85, ≤2048 px** on an isolate (with a `dart:ui` PNG fallback). Upload progress aggregates across photos ("Uploading photo 2 of 10 · 40%").
 - **Scheduling**: bottom bar switches between **Post now** and **Schedule**; date/time picker validated to Graph's **10 minutes – 30 days** window, device-local UI with UTC timestamps. Scheduled posts send `published=false` + `scheduled_publish_time`, return no permalink, and can be cancelled (`DELETE /{post-id}`) or rescheduled (`POST /{post-id}`).
 - **Service**: `FacebookPublisherService` on the pooled `ApiClient` — text → `/{page}/feed`, single photo → `/{page}/photos` multipart with `AppConstants.photoUploadTimeout` 60s, multi-photo → unpublished `/photos` uploads + `/feed` `attached_media` (JSON body), plus `listScheduled`, `deletePhoto`, `deletePost`, `updatePostMessage`. Tokens travel in form bodies or `Authorization: Bearer`, never URLs. `FacebookApiException` maps 190/200/10/4/17/32/613/506 plus `mediaUploadFailed`, `insightsUnavailable`, `pageTokenExchangeFailed`.
 - **Post lifecycle**: published rows support **Edit caption** (`POST /{post-id}`) and **Delete post** (`DELETE /{post-id}`) with confirmation. Local history and thumbnails change only after Graph success; unsupported photo-post edits show “delete and repost” guidance.
@@ -121,7 +122,7 @@ dart format --output=none --set-exit-if-changed .
 # Run static analysis (0 issues)
 flutter analyze
 
-# Run complete test suite (836 tests) with coverage
+# Run complete test suite (1070 tests) with coverage
 flutter test --coverage
 
 # Run build runner for codegen (Freezed & json_serializable & injectable)
@@ -132,7 +133,7 @@ dart run build_runner build --delete-conflicting-outputs
 
 ## Testing & Quality Assurance
 
-- **Unit & Widget Tests**: `836 tests` across 30 files — `UsageService(50)/LogService(200 ring,500ms persist)/Curators + 429 error paths/JsonCleaner/ResponseCleanup/Interceptors(400→friendly Auth/429→RateLimit)/Prompt detectors + length/refine + Gemini schema strip/CardData(17)/CardCanvasDispatcher 17/StudioDeck/VM shuffle + lists + bools/Edit mode/Readability/Scraper/ErrorState overflow` + `test/widget_test.dart` 4-tab nav; `test/generate_view_model_test.dart` Notifier via `contentRepositoryProvider`.
-- **CI**: `.github/workflows/ci.yaml:20` pinned `3.47.1` → `pub get` → `dart format --output=none --set-exit-if-changed .` (0) → `flutter analyze` (0) → `flutter test --coverage` (836) → `dart run build_runner build` (freezed/json/injectable) on push/PR.
+- **Unit & Widget Tests**: `1070 tests` across 131 files — `UsageService(50)/LogService(200 ring,500ms persist)/Curators + 429 error paths/JsonCleaner/ResponseCleanup/Interceptors(400→friendly Auth/429→RateLimit)/Prompt detectors + length/refine + Gemini schema strip/CardData(17)/CardCanvasDispatcher 17/StudioDeck/VM shuffle + lists + bools/Edit mode/Readability/Scraper/ErrorState overflow` + `test/widget_test.dart` 5-tab nav; `test/generate_view_model_test.dart` Notifier via `contentRepositoryProvider`.
+- **CI**: `.github/workflows/ci.yaml` pinned `3.47.1` → `pub get` → `dart format --output=none --set-exit-if-changed .` (0) → `flutter analyze` (0) → `flutter test --coverage` (1070) → `dart run build_runner build` (freezed/json/injectable) → `flutter build apk --debug` (compiles native Kotlin widgets; uploaded as an artifact) on push/PR to `main`, `master` and `develop`.
 
 See `docs/architecture.md`, `docs/design-system-threads.md`, `docs/migration-threads-convergence.md`, `docs/parity-matrix.md`, `docs/baseline-phaseD.md`, and `CHANGELOG.md` for details.
