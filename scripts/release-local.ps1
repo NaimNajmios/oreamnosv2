@@ -301,18 +301,31 @@ if ($NoPublish) {
     Write-Host "  pubspec.yaml is now at $Version+$newBuild (not committed)"
     Write-Host ""
     Write-Host "Publish later with:" -ForegroundColor DarkGray
-    Write-Host "  gh release create $tag `"$apkPath`" `"$sumPath`" --repo $Repo --target $Branch --title $tag --notes `"$Notes`""
+    Write-Host "  gh release create $tag `"$apkPath`" `"$sumPath`" --repo $Repo --target $Branch --title $tag --notes-file <notes.md>"
     exit 0
 }
 
 # --- 6. Publish --------------------------------------------------------------
 Step "Publishing $tag"
-Invoke-Native {
-    & $gh release create $tag $apkPath $sumPath `
-        --repo $Repo `
-        --target $Branch `
-        --title $tag `
-        --notes $Notes
+# Markdown notes contain backticks, which PowerShell mangles when passed as a
+# native command argument ("no matches found for `in`"). Hand them to gh as a
+# UTF-8 file instead; --notes-file also preserves newlines exactly.
+$notesFile = Join-Path ([IO.Path]::GetTempPath()) "oreamnos-$tag-notes.md"
+try {
+    [IO.File]::WriteAllText(
+        $notesFile,
+        $Notes,
+        (New-Object Text.UTF8Encoding $false)
+    )
+    Invoke-Native {
+        & $gh release create $tag $apkPath $sumPath `
+            --repo $Repo `
+            --target $Branch `
+            --title $tag `
+            --notes-file $notesFile
+    }
+} finally {
+    Remove-Item $notesFile -Force -ErrorAction SilentlyContinue
 }
 if ($LASTEXITCODE -ne 0) { Fail "gh release create failed. Assets are still in $DistDir." }
 
